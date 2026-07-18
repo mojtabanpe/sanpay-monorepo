@@ -1,0 +1,58 @@
+<!-- هدر -->
+<header class="sticky top-0 z-40 border-b border-white/40 bg-white/40 backdrop-blur-xl">
+  <div class="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-4 sm:px-6">
+    <div class="flex items-center gap-3">
+      <div
+        class="flex size-10 items-center justify-center rounded-xl bg-primary font-bold text-primary-foreground"
+      >
+        ج‌ف
+      </div>
+      <div class="leading-tight">
+        <p class="font-bold">جهان‌فولاد سیرجان</p>
+        <p class="text-muted-foreground text-xs">سامانه رفاهی پرسنل</p>
+      </div>
+    </div>
+    <div class="flex items-center gap-4">
+      <span class="text-muted-foreground hidden text-sm md:block">
+        کد پرسنلی: <span class="text-foreground font-medium" dir="ltr">{{ personnelCode }}</span>
+      </span>
+      <button hlmBtn variant="outline" size="sm" (click)="logout()">خروج</button>
+    </div>
+  </div>
+</header>
+
+<main class="mx-auto w-full max-w-6xl px-4 py-10 sm:px-6">
+  <!-- کارت رفاهی مجازی -->
+  <div
+    class="relative w-full max-w-sm overflow-hidden rounded-2xl bg-gradient-to-l from-violet-700 via-violet-600 to-emerald-600 p-6 text-white shadow-xl"
+  >
+    <div class="absolute -top-10 -left-10 size-40 rounded-full bg-white/15 blur-2xl"></div>
+    <div class="flex items-center justify-between">
+      <p class="text-sm font-medium opacity-90">کارت رفاهی مجازی</p>
+      <p class="text-xs opacity-75">جهان‌فولاد سیرجان</p>
+    </div>
+    <p class="mt-6 text-2xl font-bold tracking-wider" dir="ltr">
+      ۶۰۳۷ &bull;&bull;&bull;&bull; &bull;&bull;&bull;&bull; ۱۲۴۸
+    </p>
+    <div class="mt-6 flex items-end justify-between text-sm">
+      <div>
+        <p class="text-xs opacity-75">مانده اعتبار</p>
+        <p class="mt-1 text-lg font-bold">۲۴٬۵۰۰٬۰۰۰ تومان</p>
+      </div>
+      <div class="text-left">
+        <p class="text-xs opacity-75">انقضا</p>
+        <p class="mt-1 font-medium">۱۴۰۵/۰۶/۳۱</p>
+      </div>
+    </div>
+  </div>
+</main>
+
+<!-- فوتر -->
+<footer class="border-t border-white/40 bg-white/30 backdrop-blur-xl">
+  <div
+    class="text-muted-foreground mx-auto flex w-full max-w-6xl flex-col items-center justify-between gap-3 px-4 py-8 text-sm sm:flex-row sm:px-6"
+  >
+    <p>© ۱۴۰۴ شرکت جهان‌فولاد سیرجان — سامانه رفاهی پرسنل</p>
+    <p>طراحی و توسعه: شرکت طرح و توسعه دیار مانا</p>
+  </div>
+</footer>

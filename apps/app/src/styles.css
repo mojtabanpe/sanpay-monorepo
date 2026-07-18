@@ -1,0 +1,23 @@
+@layer theme, base, components, utilities;
+@import 'tailwindcss/theme.css' layer(theme);
+@import 'tailwindcss/preflight.css' layer(base);
+@import 'tailwindcss/utilities.css';
+
+@import '@spartan-ng/brain/hlm-tailwind-preset.css';
+
+/* Shared Sanpay glassmorphism theme (see design-system/sanpay/MASTER.md) */
+@import '../../../packages/ui/theme/glass.css';
+
+/* Self-hosted Vazirmatn (bundled; no dependency on Google Fonts). */
+@import '@fontsource/vazirmatn/300.css';
+@import '@fontsource/vazirmatn/400.css';
+@import '@fontsource/vazirmatn/500.css';
+@import '@fontsource/vazirmatn/700.css';
+@import '@fontsource/vazirmatn/800.css';
+
+/* Persian app: Vazirmatn for both body and display type. */
+:root {
+  --font-sans: 'Vazirmatn', -apple-system, BlinkMacSystemFont, 'Segoe UI',
+    Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-display: 'Vazirmatn', var(--font-sans);
+}
