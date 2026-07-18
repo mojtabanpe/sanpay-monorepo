@@ -1,0 +1,30 @@
+{
+  "name": "alert",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "packages/ui/alert/src",
+  "prefix": "hlm",
+  "projectType": "library",
+  "tags": [],
+  "targets": {
+    "build": {
+      "executor": "@nx/angular:ng-packagr-lite",
+      "outputs": [
+        "{workspaceRoot}/dist/{projectRoot}"
+      ],
+      "defaultConfiguration": "production",
+      "options": {
+        "project": "packages/ui/alert/ng-package.json",
+        "tsConfig": "packages/ui/alert/tsconfig.lib.json"
+      },
+      "configurations": {
+        "production": {
+          "tsConfig": "packages/ui/alert/tsconfig.lib.prod.json"
+        },
+        "development": {}
+      }
+    },
+    "lint": {
+      "executor": "@nx/eslint:lint"
+    }
+  }
+}

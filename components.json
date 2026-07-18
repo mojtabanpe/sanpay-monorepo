@@ -1,0 +1,7 @@
+{
+  "componentsPath": "packages/ui",
+  "buildable": true,
+  "generateAs": "entrypoint",
+  "importAlias": "@sanpay/ui",
+  "style": "nova"
+}

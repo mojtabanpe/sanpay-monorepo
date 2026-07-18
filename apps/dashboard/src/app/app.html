@@ -1,0 +1,67 @@
+<main class="mx-auto flex min-h-screen w-full max-w-3xl flex-col justify-center gap-8 px-6 py-16">
+  <header class="flex flex-col gap-2">
+    <span hlmBadge class="bg-accent text-accent-foreground w-fit">Sanpay</span>
+    <h1 class="text-4xl">Dashboard</h1>
+    <p class="text-muted-foreground">
+      Glassmorphism design system powered by spartan/ui.
+    </p>
+  </header>
+
+  <hlm-tabs tab="overview">
+    <hlm-tabs-list class="w-full">
+      <button hlmTabsTrigger="overview">Overview</button>
+      <button hlmTabsTrigger="payments">Payments</button>
+      <button hlmTabsTrigger="settings">Settings</button>
+    </hlm-tabs-list>
+
+    <div hlmTabsContent="overview" class="mt-4">
+      <section hlmCard>
+        <div hlmCardHeader>
+          <h3 hlmCardTitle>Balance</h3>
+          <p hlmCardDescription>Your account at a glance.</p>
+        </div>
+        <div hlmCardContent class="flex flex-col gap-4">
+          <p class="text-3xl font-semibold">$12,480.00</p>
+          <hlm-separator />
+          <div class="flex gap-3">
+            <button hlmBtn>Send money</button>
+            <button hlmBtn variant="secondary">Request</button>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <div hlmTabsContent="payments" class="mt-4">
+      <section hlmCard>
+        <div hlmCardHeader>
+          <h3 hlmCardTitle>New payment</h3>
+          <p hlmCardDescription>Transfer to any account instantly.</p>
+        </div>
+        <div hlmCardContent class="flex flex-col gap-4">
+          <div class="flex flex-col gap-2">
+            <label hlmLabel for="recipient">Recipient</label>
+            <input hlmInput id="recipient" placeholder="name@example.com" />
+          </div>
+          <div class="flex flex-col gap-2">
+            <label hlmLabel for="amount">Amount</label>
+            <input hlmInput id="amount" type="number" placeholder="0.00" />
+          </div>
+          <button hlmBtn class="w-fit">Review transfer</button>
+        </div>
+      </section>
+    </div>
+
+    <div hlmTabsContent="settings" class="mt-4">
+      <section hlmCard>
+        <div hlmCardHeader>
+          <h3 hlmCardTitle>Settings</h3>
+          <p hlmCardDescription>Manage your workspace preferences.</p>
+        </div>
+        <div hlmCardContent>
+          <p class="text-muted-foreground">Nothing here yet.</p>
+        </div>
+      </section>
+    </div>
+  </hlm-tabs>
+</main>
+<router-outlet></router-outlet>

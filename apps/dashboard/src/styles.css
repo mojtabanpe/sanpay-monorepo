@@ -1,0 +1,9 @@
+@layer theme, base, components, utilities;
+@import 'tailwindcss/theme.css' layer(theme);
+@import 'tailwindcss/preflight.css' layer(base);
+@import 'tailwindcss/utilities.css';
+
+@import '@spartan-ng/brain/hlm-tailwind-preset.css';
+
+/* Shared Sanpay glassmorphism theme (see design-system/sanpay/MASTER.md) */
+@import '../../../packages/ui/theme/glass.css';

@@ -10,21 +10,188 @@
     "importHelpers": true,
     "target": "es2015",
     "module": "esnext",
-    "lib": ["es2020", "dom"],
+    "lib": [
+      "es2020",
+      "dom"
+    ],
     "skipLibCheck": true,
     "skipDefaultLibCheck": true,
     "paths": {
-      "@org/api/products": ["./packages/api/products/src/index.ts"],
-      "@org/models": ["./packages/shared/models/src/index.ts"],
-      "@org/shop/data": ["./packages/shop/data/src/index.ts"],
-      "@org/shop/feature-product-detail": [
-        "./packages/shop/feature-product-detail/src/index.ts"
+      "@sanpay/ui/button": [
+        "./packages/ui/button/src/index.ts"
       ],
-      "@org/shop/feature-products": [
-        "./packages/shop/feature-products/src/index.ts"
+      "@sanpay/ui/utils": [
+        "./packages/ui/utils/src/index.ts"
       ],
-      "@org/shop/shared-ui": ["./packages/shop/shared-ui/src/index.ts"]
+      "@sanpay/ui/card": [
+        "./packages/ui/card/src/index.ts"
+      ],
+      "@sanpay/ui/input": [
+        "./packages/ui/input/src/index.ts"
+      ],
+      "@sanpay/ui/label": [
+        "./packages/ui/label/src/index.ts"
+      ],
+      "@sanpay/ui/badge": [
+        "./packages/ui/badge/src/index.ts"
+      ],
+      "@sanpay/ui/separator": [
+        "./packages/ui/separator/src/index.ts"
+      ],
+      "@sanpay/ui/accordion": [
+        "./packages/ui/accordion/src/index.ts"
+      ],
+      "@sanpay/ui/alert": [
+        "./packages/ui/alert/src/index.ts"
+      ],
+      "@sanpay/ui/alert-dialog": [
+        "./packages/ui/alert-dialog/src/index.ts"
+      ],
+      "@sanpay/ui/aspect-ratio": [
+        "./packages/ui/aspect-ratio/src/index.ts"
+      ],
+      "@sanpay/ui/autocomplete": [
+        "./packages/ui/autocomplete/src/index.ts"
+      ],
+      "@sanpay/ui/popover": [
+        "./packages/ui/popover/src/index.ts"
+      ],
+      "@sanpay/ui/input-group": [
+        "./packages/ui/input-group/src/index.ts"
+      ],
+      "@sanpay/ui/textarea": [
+        "./packages/ui/textarea/src/index.ts"
+      ],
+      "@sanpay/ui/avatar": [
+        "./packages/ui/avatar/src/index.ts"
+      ],
+      "@sanpay/ui/breadcrumb": [
+        "./packages/ui/breadcrumb/src/index.ts"
+      ],
+      "@sanpay/ui/button-group": [
+        "./packages/ui/button-group/src/index.ts"
+      ],
+      "@sanpay/ui/calendar": [
+        "./packages/ui/calendar/src/index.ts"
+      ],
+      "@sanpay/ui/select": [
+        "./packages/ui/select/src/index.ts"
+      ],
+      "@sanpay/ui/carousel": [
+        "./packages/ui/carousel/src/index.ts"
+      ],
+      "@sanpay/ui/checkbox": [
+        "./packages/ui/checkbox/src/index.ts"
+      ],
+      "@sanpay/ui/collapsible": [
+        "./packages/ui/collapsible/src/index.ts"
+      ],
+      "@sanpay/ui/combobox": [
+        "./packages/ui/combobox/src/index.ts"
+      ],
+      "@sanpay/ui/command": [
+        "./packages/ui/command/src/index.ts"
+      ],
+      "@sanpay/ui/dialog": [
+        "./packages/ui/dialog/src/index.ts"
+      ],
+      "@sanpay/ui/context-menu": [
+        "./packages/ui/context-menu/src/index.ts"
+      ],
+      "@sanpay/ui/dropdown-menu": [
+        "./packages/ui/dropdown-menu/src/index.ts"
+      ],
+      "@sanpay/ui/date-picker": [
+        "./packages/ui/date-picker/src/index.ts"
+      ],
+      "@sanpay/ui/drawer": [
+        "./packages/ui/drawer/src/index.ts"
+      ],
+      "@sanpay/ui/empty": [
+        "./packages/ui/empty/src/index.ts"
+      ],
+      "@sanpay/ui/field": [
+        "./packages/ui/field/src/index.ts"
+      ],
+      "@sanpay/ui/hover-card": [
+        "./packages/ui/hover-card/src/index.ts"
+      ],
+      "@sanpay/ui/input-otp": [
+        "./packages/ui/input-otp/src/index.ts"
+      ],
+      "@sanpay/ui/item": [
+        "./packages/ui/item/src/index.ts"
+      ],
+      "@sanpay/ui/kbd": [
+        "./packages/ui/kbd/src/index.ts"
+      ],
+      "@sanpay/ui/menubar": [
+        "./packages/ui/menubar/src/index.ts"
+      ],
+      "@sanpay/ui/native-select": [
+        "./packages/ui/native-select/src/index.ts"
+      ],
+      "@sanpay/ui/navigation-menu": [
+        "./packages/ui/navigation-menu/src/index.ts"
+      ],
+      "@sanpay/ui/pagination": [
+        "./packages/ui/pagination/src/index.ts"
+      ],
+      "@sanpay/ui/progress": [
+        "./packages/ui/progress/src/index.ts"
+      ],
+      "@sanpay/ui/radio-group": [
+        "./packages/ui/radio-group/src/index.ts"
+      ],
+      "@sanpay/ui/resizable": [
+        "./packages/ui/resizable/src/index.ts"
+      ],
+      "@sanpay/ui/scroll-area": [
+        "./packages/ui/scroll-area/src/index.ts"
+      ],
+      "@sanpay/ui/sheet": [
+        "./packages/ui/sheet/src/index.ts"
+      ],
+      "@sanpay/ui/sidebar": [
+        "./packages/ui/sidebar/src/index.ts"
+      ],
+      "@sanpay/ui/skeleton": [
+        "./packages/ui/skeleton/src/index.ts"
+      ],
+      "@sanpay/ui/tooltip": [
+        "./packages/ui/tooltip/src/index.ts"
+      ],
+      "@sanpay/ui/slider": [
+        "./packages/ui/slider/src/index.ts"
+      ],
+      "@sanpay/ui/sonner": [
+        "./packages/ui/sonner/src/index.ts"
+      ],
+      "@sanpay/ui/spinner": [
+        "./packages/ui/spinner/src/index.ts"
+      ],
+      "@sanpay/ui/switch": [
+        "./packages/ui/switch/src/index.ts"
+      ],
+      "@sanpay/ui/table": [
+        "./packages/ui/table/src/index.ts"
+      ],
+      "@sanpay/ui/tabs": [
+        "./packages/ui/tabs/src/index.ts"
+      ],
+      "@sanpay/ui/toggle": [
+        "./packages/ui/toggle/src/index.ts"
+      ],
+      "@sanpay/ui/toggle-group": [
+        "./packages/ui/toggle-group/src/index.ts"
+      ],
+      "@sanpay/ui/typography": [
+        "./packages/ui/typography/src/index.ts"
+      ]
     }
   },
-  "exclude": ["node_modules", "tmp"]
+  "exclude": [
+    "node_modules",
+    "tmp"
+  ]
 }
