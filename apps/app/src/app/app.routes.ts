@@ -7,10 +7,13 @@ export const appRoutes: Route[] = [
     loadComponent: () => import('./pages/login/login').then((m) => m.LoginPage),
   },
   {
-    path: 'home',
-    loadComponent: () => import('./pages/home/home').then((m) => m.HomePage),
+    path: '',
+    loadComponent: () => import('./layout/shell/shell').then((m) => m.ShellComponent),
     canActivate: [authGuard],
+    children: [
+      { path: 'home', loadComponent: () => import('./pages/home/home').then((m) => m.HomePage) },
+      { path: '', redirectTo: 'home', pathMatch: 'full' },
+    ],
   },
-  { path: '', redirectTo: 'home', pathMatch: 'full' },
-  { path: '**', redirectTo: 'home' },
+  { path: '**', redirectTo: '' },
 ];

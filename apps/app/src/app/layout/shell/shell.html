@@ -1,0 +1,128 @@
+<!-- ظرف اصلی — عرض ماکسیمم ۵۵۰ پیکسل -->
+<div class="mx-auto flex min-h-dvh w-full max-w-[550px] flex-col">
+
+  <!-- هدر -->
+  <header class="sticky top-0 z-40 border-b border-white/40 bg-white/40 backdrop-blur-xl">
+    <div class="flex h-14 items-center justify-between px-4">
+      <div class="flex items-center gap-2.5">
+        <div
+          class="flex size-9 items-center justify-center rounded-xl bg-primary text-sm font-bold text-primary-foreground"
+        >
+          ج‌ف
+        </div>
+        <div class="leading-tight">
+          <p class="text-sm font-bold">جهان‌فولاد سیرجان</p>
+          <p class="text-muted-foreground text-[0.65rem]">سامانه رفاهی پرسنل</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-3">
+        <span class="text-muted-foreground text-xs">
+          کد: <span class="text-foreground font-medium" dir="ltr">{{ personnelCode }}</span>
+        </span>
+        <button hlmBtn variant="ghost" size="sm" (click)="logout()">
+          <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+            <polyline points="16 17 21 12 16 7" />
+            <line x1="21" x2="9" y1="12" y2="12" />
+          </svg>
+          <span class="sr-only">خروج</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- محتوای صفحه -->
+  <main class="flex-1 pb-20">
+    <router-outlet />
+  </main>
+
+  <!-- ناوبری پایین — fixed و هم‌عرض ظرف -->
+  <nav
+    class="fixed bottom-0 left-1/2 z-50 w-full max-w-[550px] -translate-x-1/2 border-t border-white/40 bg-white/70 backdrop-blur-xl"
+    aria-label="ناوبری اصلی"
+  >
+    <div class="flex h-16 items-center">
+
+      <!-- خانه -->
+      <a
+        routerLink="/home"
+        routerLinkActive="text-primary"
+        class="text-muted-foreground flex flex-1 flex-col items-center justify-center gap-1 text-[0.65rem] transition-colors"
+        ariaCurrentWhenActive="page"
+      >
+        <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+          <polyline points="9 22 9 12 15 12 15 22" />
+        </svg>
+        خانه
+      </a>
+
+      <!-- فروشگاه‌ها -->
+      <a
+        routerLink="/stores"
+        routerLinkActive="text-primary"
+        class="text-muted-foreground flex flex-1 flex-col items-center justify-center gap-1 text-[0.65rem] transition-colors"
+      >
+        <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z" />
+          <path d="M3 6h18" />
+          <path d="M16 10a4 4 0 0 1-8 0" />
+        </svg>
+        فروشگاه‌ها
+      </a>
+
+      <!-- دکمه QR — مرکز، برجسته -->
+      <div class="flex flex-1 justify-center">
+        <a
+          routerLink="/qr"
+          class="flex size-14 -translate-y-4 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/30 transition-transform active:scale-95"
+          aria-label="تولید کد خرید"
+        >
+          <svg class="size-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <rect width="5" height="5" x="3" y="3" rx="1" />
+            <rect width="5" height="5" x="16" y="3" rx="1" />
+            <rect width="5" height="5" x="3" y="16" rx="1" />
+            <path d="M21 16h-3a2 2 0 0 0-2 2v3" />
+            <path d="M21 21v.01" />
+            <path d="M12 7v3a2 2 0 0 1-2 2H7" />
+            <path d="M3 12h.01" />
+            <path d="M12 3h.01" />
+            <path d="M12 16v.01" />
+            <path d="M16 12h1" />
+            <path d="M21 12v.01" />
+            <path d="M12 21v-1" />
+          </svg>
+        </a>
+      </div>
+
+      <!-- ارزاق -->
+      <a
+        routerLink="/rations"
+        routerLinkActive="text-primary"
+        class="text-muted-foreground flex flex-1 flex-col items-center justify-center gap-1 text-[0.65rem] transition-colors"
+      >
+        <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z" />
+          <path d="m3.3 7 8.7 5 8.7-5" />
+          <path d="M12 22V12" />
+        </svg>
+        ارزاق
+      </a>
+
+      <!-- پروفایل -->
+      <a
+        routerLink="/profile"
+        routerLinkActive="text-primary"
+        class="text-muted-foreground flex flex-1 flex-col items-center justify-center gap-1 text-[0.65rem] transition-colors"
+      >
+        <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="12" cy="8" r="4" />
+          <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
+        </svg>
+        پروفایل
+      </a>
+
+    </div>
+  </nav>
+
+</div>
