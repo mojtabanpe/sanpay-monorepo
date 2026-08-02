@@ -46,6 +46,27 @@ QR scanning uses the native `BarcodeDetector` when available and falls back to `
 - Do NOT use `background-attachment: fixed` — it blanks/janks Chromium on scroll; the fixed gradient lives on `body::before` in `glass.css`.
 - Use the `ui-ux-pro-max` skill (global, `~/.agents/skills/ui-ux-pro-max`) for style/palette/UX decisions, and the `spartan` skill + `spartan-ui` MCP server (`.mcp.json`) for component APIs.
 
+## Module boundaries & lint tags
+
+Every project is tagged so `@nx/enforce-module-boundaries` (depConstraints in the root `eslint.config.mjs`) can work — untagged projects fail lint outright.
+
+| Project | Tags |
+|---|---|
+| `apps/app` | `type:app`, `scope:employee` |
+| `apps/store` | `type:app`, `scope:store` |
+| `apps/dashboard` | `type:app`, `scope:admin` |
+| `apps/api` | `type:app`, `scope:api` |
+| `shared/models`, `shared/receipt`, `shared/ui/*` | `type:lib`, `scope:shared` |
+
+Apps may depend on libs only (never on each other); libs may depend on libs only. Each app reaches its own scope plus `scope:shared`. **Any new project needs tags** — pick the app's scope, or `type:lib` + `scope:shared` for shared code.
+
+Two lint rules are turned off for the generated spartan libs in the hand-owned `shared/ui/eslint.overrides.mjs`, which each `shared/ui/*/eslint.config.mjs` spreads **last** (a root-level override can't win: the generated lib configs spread the root config first, and in flat config the last match wins):
+
+- `@nx/dependency-checks` — the generator emits identical `peerDependencies` regardless of what a component imports, so fixing it would mean hand-editing generated `package.json` files.
+- `@angular-eslint/component-selector`, scoped to `hlm-carousel-next.ts` / `hlm-carousel-previous.ts` — generated source uses attribute selectors on a host element (`button[hlmCarouselNext]`).
+
+**After `nx g @spartan-ng/cli:ui <name>`** the regenerated component's `project.json` and `eslint.config.mjs` are overwritten, dropping its `tags` and its `...uiOverrides` spread. Re-add both, then re-run `npx nx run-many -t lint`.
+
 ## Persian/RTL conventions (`apps/app`)
 
 - Vazirmatn font, **self-hosted** via `@fontsource/vazirmatn` CSS imports in `apps/app/src/styles.css` — never add Google Fonts links (unreliable in Iran).

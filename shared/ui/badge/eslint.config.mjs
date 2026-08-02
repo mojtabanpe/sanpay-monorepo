@@ -1,5 +1,6 @@
 import nx from "@nx/eslint-plugin";
 import baseConfig from "../../../eslint.config.mjs";
+import uiOverrides from "../eslint.overrides.mjs";
 
 export default [
     ...nx.configs["flat/angular"],
@@ -72,5 +73,6 @@ export default [
             "@angular-eslint/template/interactive-supports-focus": "off",
             "@angular-eslint/template/click-events-have-key-events": "off"
         }
-    }
+    },
+    ...uiOverrides,
 ];
