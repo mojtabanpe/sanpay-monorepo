@@ -4,7 +4,7 @@
   "projectType": "application",
   "prefix": "app",
   "sourceRoot": "apps/app/src",
-  "tags": [],
+  "tags": ["type:app", "scope:employee"],
   "targets": {
     "build": {
       "executor": "@angular/build:application",
@@ -20,7 +20,8 @@
             "input": "apps/app/public"
           }
         ],
-        "styles": ["apps/app/src/styles.css"]
+        "styles": ["apps/app/src/styles.css"],
+        "allowedCommonJsDependencies": ["jsqr"]
       },
       "configurations": {
         "production": {
@@ -49,6 +50,9 @@
       "continuous": true,
       "executor": "@angular/build:dev-server",
       "defaultConfiguration": "development",
+      "options": {
+        "proxyConfig": "apps/app/proxy.conf.json"
+      },
       "configurations": {
         "production": {
           "buildTarget": "app:build:production"

@@ -1,0 +1,30 @@
+{
+  "name": "alert-dialog",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "shared/ui/alert-dialog/src",
+  "prefix": "hlm",
+  "projectType": "library",
+  "tags": ["type:lib", "scope:shared"],
+  "targets": {
+    "build": {
+      "executor": "@nx/angular:ng-packagr-lite",
+      "outputs": [
+        "{workspaceRoot}/dist/{projectRoot}"
+      ],
+      "defaultConfiguration": "production",
+      "options": {
+        "project": "shared/ui/alert-dialog/ng-package.json",
+        "tsConfig": "shared/ui/alert-dialog/tsconfig.lib.json"
+      },
+      "configurations": {
+        "production": {
+          "tsConfig": "shared/ui/alert-dialog/tsconfig.lib.prod.json"
+        },
+        "development": {}
+      }
+    },
+    "lint": {
+      "executor": "@nx/eslint:lint"
+    }
+  }
+}

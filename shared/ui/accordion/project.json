@@ -1,0 +1,30 @@
+{
+  "name": "accordion",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "shared/ui/accordion/src",
+  "prefix": "hlm",
+  "projectType": "library",
+  "tags": ["type:lib", "scope:shared"],
+  "targets": {
+    "build": {
+      "executor": "@nx/angular:ng-packagr-lite",
+      "outputs": [
+        "{workspaceRoot}/dist/{projectRoot}"
+      ],
+      "defaultConfiguration": "production",
+      "options": {
+        "project": "shared/ui/accordion/ng-package.json",
+        "tsConfig": "shared/ui/accordion/tsconfig.lib.json"
+      },
+      "configurations": {
+        "production": {
+          "tsConfig": "shared/ui/accordion/tsconfig.lib.prod.json"
+        },
+        "development": {}
+      }
+    },
+    "lint": {
+      "executor": "@nx/eslint:lint"
+    }
+  }
+}

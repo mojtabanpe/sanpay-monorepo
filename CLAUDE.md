@@ -2,7 +2,7 @@
 
 Welfare/credit platform for the employees of **شرکت جهان‌فولاد سیرجان** (Jahan Foolad Sirjan), built by **شرکت طرح و توسعه دیار مانا**. Employees receive purchase credit for contracted stores plus welfare credits; stores get their own panel; employees log in from the app's home page. Functional scope: `~/Downloads/jahan-foolad.pdf` (Persian proposal — virtual credit card, QR one-time-code purchases, contracted stores, rations/ارزاق distribution, reporting; phase 2 adds travel services).
 
-**Current workflow: design-first.** UI is being finalized with mock data only — do not wire pages to the backend until the design is approved.
+**Current workflow: full-stack.** Design is approved; pages are being wired to the real API. Employee auth is JWT-based and uses the **national code (کد ملی)** as the login identifier (`POST /api/auth/login`); the app dev-server proxies `/api` to `localhost:3000`. Seed data: `npm run prisma:seed` (demo employee `3060123456` / `12345678`). Remaining mock-only pages should be migrated to API data as they are touched.
 
 ## Projects
 
@@ -10,14 +10,38 @@ Welfare/credit platform for the employees of **شرکت جهان‌فولاد س
 |---|---|---|
 | `app` | `apps/app` | Employee-facing app. **Persian, RTL** (`lang="fa" dir="rtl"`). Serve: port **4200** |
 | `dashboard` | `apps/dashboard` | Admin/management dashboard (English/LTR so far). Serve: port **4300** |
+| `store` | `apps/store` | Contracted-store panel. **Persian, RTL.** Store login + live payment feed. Serve: port **4400** |
 | `api` | `apps/api` | NestJS + Prisma 7 + PostgreSQL |
-| `ui` | `packages/ui` | Shared spartan/ui library — all 57 primitives as secondary entrypoints: `import { HlmButtonImports } from '@sanpay/ui/button'` |
+| `ui` | `shared/ui` | Shared spartan/ui library — all 57 primitives as secondary entrypoints: `import { HlmButtonImports } from '@sanpay/ui/button'` |
+| `models` | `shared/models` | Shared domain models (TypeScript interfaces) used by app + dashboard: `import { Wallet } from '@sanpay/models'` |
+| `receipt` | `shared/receipt` | Shared receipt component used by both the employee app and the store panel: `import { ReceiptCard } from '@sanpay/receipt'` |
+
+## Purchase flow (approved design — merchant-presented QR)
+
+The employee scans a **static QR printed at the store's till**; there is no physical card and the cashier needs no scanner.
+
+1. Each `Store` has a short `code` (e.g. `OLMP3652`). The QR encodes `SANPAY:S:<code>`; the bare code is also accepted so it can be typed by hand when the camera is unavailable.
+2. Employee opens the QR tab (`/qr` → `apps/app/src/app/pages/pay/`), scans, and `GET /api/checkout/:storeCode` returns the store plus **only** the wallets usable there, each with its `max` (remaining credit).
+3. The employee types the amount, asking the cashier what it is. The input is clamped to that wallet's `max` client-side and re-checked server-side. When several wallets apply to the store, the employee splits the amount across them; one wallet shows a single input with its max.
+4. `POST /api/payments` writes one `Payment` (with an 8-digit `receiptNo`) plus one `Transaction` per wallet, in a single DB transaction, with an optimistic `spent` check so concurrent payments cannot overdraw.
+5. The receipt (`<sanpay-receipt-card>`) is shown to the cashier, and the same receipt appears **live** in the store panel via SSE — see below.
+
+**Known trade-off:** the employee enters the amount and the cashier does not confirm in-system, so the receipt screen is the store's only assurance. That is why it carries store + amount + exact time + receipt number. A cashier-side confirmation step would close this gap if it ever matters.
+
+QR scanning uses the native `BarcodeDetector` when available and falls back to `jsqr` on canvas frames (`apps/app/src/app/core/checkout/qr-scanner.ts`), so it works on iOS Safari too.
+
+## Store panel live feed
+
+- Store auth is separate from employee auth: `POST /api/store/auth/login` (username/password) issues a JWT carrying `role: 'store'`. `JwtAuthGuard` rejects store tokens and `StoreJwtGuard` rejects employee tokens — verified in both directions.
+- `GET /api/store/payments/stream` is SSE (`@Sse`) with a 25 s ping. The client reads it with **`fetch` + `Authorization` header, not `EventSource`**, so the token never lands in a URL or proxy log.
+- The client has a 60 s heartbeat watchdog: a dead backend behind the dev proxy leaves the request hanging without an error, so silence — not just a socket error — must trigger reconnect. On every reconnect the list is refetched to pick up payments missed while offline.
+- The store never receives employee wallet balances: `ReceiptLine.remainingAfter` is stripped from both the SSE payload and `GET /api/store/payments`.
 
 ## Design system (important — user-approved, do not regress)
 
 - **Glassmorphism, light-first.** Dark mode is opt-in via the `.dark` class only — never default to dark and never follow OS preference. Palette: violet `#7C3AED` primary, emerald `#059669` accent, lavender `#FAF5FF` background.
-- Single source of truth: `packages/ui/theme/glass.css` (imported by both apps) + `design-system/sanpay/MASTER.md`.
-- Style spartan components via CSS variables and `[data-slot=…]` overrides in `glass.css`. **Never hand-edit generated files under `packages/ui/*`** — they must stay regeneratable via `nx g @spartan-ng/cli:ui <name>` (config in `components.json`).
+- Single source of truth: `shared/ui/theme/glass.css` (imported by both apps) + `design-system/sanpay/MASTER.md`.
+- Style spartan components via CSS variables and `[data-slot=…]` overrides in `glass.css`. **Never hand-edit generated files under `shared/ui/*`** — they must stay regeneratable via `nx g @spartan-ng/cli:ui <name>` (config in `components.json`).
 - Backdrop blur only on elevated surfaces (cards, dialogs, menus, sheets…), not inputs/rows. Keep the `prefers-reduced-transparency` / `prefers-reduced-motion` fallbacks. Text contrast ≥ 4.5:1. SVG icons only, no emoji.
 - Do NOT use `background-attachment: fixed` — it blanks/janks Chromium on scroll; the fixed gradient lives on `body::before` in `glass.css`.
 - Use the `ui-ux-pro-max` skill (global, `~/.agents/skills/ui-ux-pro-max`) for style/palette/UX decisions, and the `spartan` skill + `spartan-ui` MCP server (`.mcp.json`) for component APIs.
@@ -38,6 +62,7 @@ Welfare/credit platform for the employees of **شرکت جهان‌فولاد س
 ```bash
 npx nx serve app        # employee app  → http://localhost:4200
 npx nx serve dashboard  # dashboard     → http://localhost:4300
+npx nx serve store      # store panel   → http://localhost:4400  (demo: olympic / store1234)
 npx nx serve api        # NestJS API    → http://localhost:3000/api
 npx nx run-many -t build test lint
 npx nx g @spartan-ng/cli:ui <name>   # add/regen a spartan primitive

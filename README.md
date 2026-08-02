@@ -158,21 +158,14 @@ This feature helps maintain a healthy CI pipeline by automatically detecting and
 
 ```
 ├── apps/
-│   ├── shop/           [scope:shop]    - Angular e-commerce app
-│   ├── shop-e2e/                       - E2E tests for shop
-│   └── api/            [scope:api]     - Backend API with Docker
-├── packages/
-│   ├── shop/
-│   │   ├── feature-products/        [scope:shop,type:feature] - Product listing
-│   │   ├── feature-product-detail/  [scope:shop,type:feature] - Product details
-│   │   ├── data/                    [scope:shop,type:data]    - Data access
-│   │   └── shared-ui/               [scope:shop,type:ui]      - UI components
-│   ├── api/
-│   │   └── products/    [scope:api]    - Product service
-│   └── shared/
-│       └── models/      [scope:shared,type:data] - Shared models
+│   ├── app/            - Employee app (Angular, Persian/RTL)
+│   ├── dashboard/      - Admin dashboard (Angular)
+│   └── api/            - NestJS + Prisma backend
+├── shared/
+│   ├── ui/             - spartan/ui primitives (@sanpay/ui/*)
+│   └── models/         - Shared domain models (@sanpay/models)
 ├── nx.json             - Nx configuration
-├── tsconfig.json       - TypeScript configuration
+├── tsconfig.base.json  - TypeScript configuration + path aliases
 └── eslint.config.mjs   - ESLint with module boundary rules
 ```
 

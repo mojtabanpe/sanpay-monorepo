@@ -1,0 +1,7 @@
+{
+  "name": "receipt",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "shared/receipt/src",
+  "projectType": "library",
+  "tags": ["type:lib", "scope:shared"]
+}

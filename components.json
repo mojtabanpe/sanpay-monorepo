@@ -1,5 +1,5 @@
 {
-  "componentsPath": "packages/ui",
+  "componentsPath": "shared/ui",
   "buildable": true,
   "generateAs": "entrypoint",
   "importAlias": "@sanpay/ui",

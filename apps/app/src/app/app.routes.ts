@@ -12,6 +12,7 @@ export const appRoutes: Route[] = [
     canActivate: [authGuard],
     children: [
       { path: 'home', loadComponent: () => import('./pages/home/home').then((m) => m.HomePage) },
+      { path: 'qr', loadComponent: () => import('./pages/pay/pay').then((m) => m.PayPage) },
       { path: '', redirectTo: 'home', pathMatch: 'full' },
     ],
   },

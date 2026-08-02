@@ -7,10 +7,191 @@ datasource db {
   provider = "postgresql"
 }
 
-model User {
-  id        String   @id @default(uuid())
-  email     String   @unique
-  name      String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+// ─── کارمند ───────────────────────────────────────────────────────────────────
+
+model Employee {
+  id            String   @id @default(uuid())
+  /// کد ملی — شناسهٔ ورود به سامانه
+  nationalCode  String   @unique
+  personnelCode String   @unique
+  firstName     String
+  lastName      String
+  phone         String?
+  passwordHash  String
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  allocations   WalletAllocation[]
+  purchaseCodes PurchaseCode[]
+  transactions  Transaction[]
+  payments      Payment[]
+}
+
+// ─── کیف پول ──────────────────────────────────────────────────────────────────
+
+enum WalletKind {
+  /// اعتبار خرید عادی
+  CREDIT
+  /// سهمیهٔ ارزاق
+  RATION
+}
+
+/// تعریف مشترک یک کیف پول (مثلاً «ارزاق ماهانه») که به فروشگاه‌های مشخصی وصل است.
+/// اعتبار هر کارمند از این تعریف، در WalletAllocation با سقف و انقضای خودش نگهداری می‌شود.
+model WalletDefinition {
+  id          String     @id @default(uuid())
+  name        String
+  kind        WalletKind @default(CREDIT)
+  description String?
+  /// اسلاگ آیکون برای نمایش در اپ (food | grocery | sport | health | …)
+  icon        String?
+  /// سقف پیش‌فرض تخصیص‌ها (تومان) — قابل بازنویسی به‌ازای هر کارمند
+  defaultCap  BigInt?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  stores      WalletDefinitionStore[]
+  allocations WalletAllocation[]
+}
+
+/// تخصیص یک کیف پول به یک کارمند: سقف اعتبار، مصرف‌شده و تاریخ انقضا.
+/// مانده = cap - spent
+model WalletAllocation {
+  id           String   @id @default(uuid())
+  employeeId   String
+  definitionId String
+  /// سقف اعتبار (تومان)
+  cap          BigInt
+  /// جمع مصرف‌شده (تومان) — دینرمالایز از تراکنش‌ها
+  spent        BigInt   @default(0)
+  expiresAt    DateTime
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  employee      Employee         @relation(fields: [employeeId], references: [id])
+  definition    WalletDefinition @relation(fields: [definitionId], references: [id])
+  purchaseCodes PurchaseCode[]
+  transactions  Transaction[]
+
+  @@index([employeeId])
+  @@index([definitionId])
+}
+
+// ─── فروشگاه ──────────────────────────────────────────────────────────────────
+
+model Store {
+  id           String   @id @default(uuid())
+  name         String
+  /// کد کوتاه فروشگاه — محتوای QR ثابتِ چاپ‌شده روی صندوق و قابل تایپ دستی
+  code         String   @unique
+  /// دسته‌بندی (آجیل، میوه، پروتئین، عینک، …)
+  category     String?
+  phone        String?
+  address      String?
+  /// ورود پنل فروشگاه
+  username     String   @unique
+  passwordHash String
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  walletDefinitions WalletDefinitionStore[]
+  transactions      Transaction[]
+  payments          Payment[]
+}
+
+/// رابطهٔ چند-به-چند: هر کیف پول در کدام فروشگاه‌ها قابل استفاده است
+model WalletDefinitionStore {
+  definitionId String
+  storeId      String
+
+  definition   WalletDefinition @relation(fields: [definitionId], references: [id])
+  store        Store            @relation(fields: [storeId], references: [id])
+
+  @@id([definitionId, storeId])
+}
+
+// ─── خرید با کد یک‌بارمصرف ────────────────────────────────────────────────────
+
+enum PurchaseCodeStatus {
+  PENDING
+  USED
+  EXPIRED
+  CANCELED
+}
+
+/// کد QR یک‌بارمصرف که کارمند می‌سازد و فروشنده اسکن می‌کند (اعتبار ~۱ دقیقه)
+model PurchaseCode {
+  id           String             @id @default(uuid())
+  code         String             @unique
+  employeeId   String
+  allocationId String
+  status       PurchaseCodeStatus @default(PENDING)
+  expiresAt    DateTime
+  createdAt    DateTime           @default(now())
+
+  employee    Employee         @relation(fields: [employeeId], references: [id])
+  allocation  WalletAllocation @relation(fields: [allocationId], references: [id])
+  transaction Transaction?
+
+  @@index([employeeId, status])
+}
+
+// ─── پرداخت ───────────────────────────────────────────────────────────────────
+
+/// یک پرداخت در صندوق فروشگاه: کارمند QR ثابت فروشگاه را اسکن می‌کند، مبلغ را
+/// وارد می‌کند و مبلغ می‌تواند بین چند کیف پول شکسته شود. هر سطر یک Transaction است.
+model Payment {
+  id         String   @id @default(uuid())
+  /// شمارهٔ رسید — چیزی که کارمند به فروشنده نشان می‌دهد و در پنل فروشگاه دیده می‌شود
+  receiptNo  String   @unique
+  employeeId String
+  storeId    String
+  /// جمع کل پرداخت (تومان)
+  amount     BigInt
+  createdAt  DateTime @default(now())
+
+  employee     Employee      @relation(fields: [employeeId], references: [id])
+  store        Store         @relation(fields: [storeId], references: [id])
+  transactions Transaction[]
+
+  @@index([storeId, createdAt])
+  @@index([employeeId, createdAt])
+}
+
+// ─── تراکنش ───────────────────────────────────────────────────────────────────
+
+enum TransactionType {
+  PURCHASE
+  REFUND
+  ADJUSTMENT
+}
+
+model Transaction {
+  id             String          @id @default(uuid())
+  type           TransactionType @default(PURCHASE)
+  /// مبلغ (تومان) — برای REFUND هم مثبت ذخیره می‌شود؛ جهت از type مشخص است
+  amount         BigInt
+  employeeId     String
+  allocationId   String
+  storeId        String?
+  purchaseCodeId String?         @unique
+  /// پرداختی که این سطر بخشی از آن است (پرداخت شکسته‌شده بین چند کیف پول)
+  paymentId      String?
+  note           String?
+  createdAt      DateTime        @default(now())
+
+  employee     Employee         @relation(fields: [employeeId], references: [id])
+  allocation   WalletAllocation @relation(fields: [allocationId], references: [id])
+  store        Store?           @relation(fields: [storeId], references: [id])
+  purchaseCode PurchaseCode?    @relation(fields: [purchaseCodeId], references: [id])
+  payment      Payment?         @relation(fields: [paymentId], references: [id])
+
+  @@index([employeeId, createdAt])
+  @@index([storeId, createdAt])
+  @@index([allocationId])
+  @@index([paymentId])
 }

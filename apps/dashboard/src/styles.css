@@ -6,4 +6,4 @@
 @import '@spartan-ng/brain/hlm-tailwind-preset.css';
 
 /* Shared Sanpay glassmorphism theme (see design-system/sanpay/MASTER.md) */
-@import '../../../packages/ui/theme/glass.css';
+@import '../../../shared/ui/theme/glass.css';

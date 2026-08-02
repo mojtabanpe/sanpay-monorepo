@@ -1,226 +1,77 @@
-<!-- هدر -->
-<header
-  class="sticky top-0 z-40 border-b border-white/40 bg-white/40 backdrop-blur-xl"
->
-  <div class="mx-auto flex h-14 w-full max-w-[550px] items-center justify-between px-4">
-    <div class="flex items-center gap-3">
-      <div
-        class="flex size-10 items-center justify-center rounded-xl bg-primary font-bold text-primary-foreground"
-      >
-        ج‌ف
-      </div>
-      <div class="leading-tight">
-        <p class="font-bold">جهان‌فولاد سیرجان</p>
-        <p class="text-muted-foreground text-xs">سامانه رفاهی پرسنل</p>
-      </div>
+<main class="mx-auto flex min-h-dvh w-full max-w-[550px] flex-col items-center justify-center gap-8 px-4 py-10">
+
+  <!-- برند -->
+  <div class="flex flex-col items-center gap-3 text-center">
+    <div
+      class="flex size-14 items-center justify-center rounded-2xl bg-primary text-lg font-bold text-primary-foreground"
+    >
+      ج‌ف
     </div>
-    <nav class="text-muted-foreground hidden items-center gap-6 text-sm md:flex">
-      <a class="hover:text-foreground transition-colors" href="#features">امکانات</a>
-      <a class="hover:text-foreground transition-colors" href="#stores">فروشگاه‌ها</a>
-      <a class="hover:text-foreground transition-colors" href="#steps">راهنمای خرید</a>
-    </nav>
-    <a hlmBtn size="sm" href="#login">ورود کارکنان</a>
+    <div class="leading-tight">
+      <p class="text-lg font-bold">جهان‌فولاد سیرجان</p>
+      <p class="text-muted-foreground text-sm">سامانه رفاهی پرسنل</p>
+    </div>
   </div>
-</header>
 
-<main class="mx-auto w-full max-w-[550px] px-4">
-  <!-- هیرو + ورود -->
-  <section class="grid items-center gap-10 py-14 lg:grid-cols-2 lg:py-20">
-    <div class="flex flex-col gap-6">
-      <span hlmBadge class="bg-accent text-accent-foreground w-fit"
-        >ویژه پرسنل جهان‌فولاد سیرجان</span
-      >
-      <h1 class="text-3xl leading-snug font-extrabold sm:text-4xl lg:text-[2.6rem]">
-        اعتبار رفاهی شما،
-        <span class="text-primary">همیشه همراه‌تان</span>
-      </h1>
-      <p class="text-muted-foreground max-w-lg leading-8">
-        کارت رفاهی مجازی، اعتبار خرید از فروشگاه‌های طرف قرارداد و دریافت ارزاق —
-        همه در یک سامانه یکپارچه و شفاف، بدون کاغذبازی.
+  <!-- کارت ورود -->
+  <section hlmCard class="w-full max-w-md">
+    <div hlmCardHeader>
+      <h1 hlmCardTitle class="text-xl">ورود کارکنان</h1>
+      <p hlmCardDescription>
+        با کد ملی و رمز عبور خود وارد سامانه شوید.
       </p>
-
-      <!-- پیش‌نمایش کارت مجازی -->
-      <div
-        class="relative mt-2 w-full max-w-sm overflow-hidden rounded-2xl bg-gradient-to-l from-violet-700 via-violet-600 to-emerald-600 p-6 text-white shadow-xl"
-      >
-        <div class="absolute -top-10 -left-10 size-40 rounded-full bg-white/15 blur-2xl"></div>
+    </div>
+    <div hlmCardContent class="flex flex-col gap-5">
+      <div class="flex flex-col gap-2">
+        <label hlmLabel for="national-code">کد ملی</label>
+        <input
+          hlmInput
+          id="national-code"
+          inputmode="numeric"
+          maxlength="10"
+          placeholder="مثلاً ۳۰۶۰۱۲۳۴۵۶"
+          #nationalCodeInput
+        />
+      </div>
+      <div class="flex flex-col gap-2">
         <div class="flex items-center justify-between">
-          <p class="text-sm font-medium opacity-90">کارت رفاهی مجازی</p>
-          <p class="text-xs opacity-75">جهان‌فولاد سیرجان</p>
-        </div>
-        <p class="mt-6 text-2xl font-bold tracking-wider" dir="ltr">
-          ۶۰۳۷ &bull;&bull;&bull;&bull; &bull;&bull;&bull;&bull; ۱۲۴۸
-        </p>
-        <div class="mt-6 flex items-end justify-between text-sm">
-          <div>
-            <p class="text-xs opacity-75">مانده اعتبار</p>
-            <p class="mt-1 text-lg font-bold">۲۴٬۵۰۰٬۰۰۰ تومان</p>
-          </div>
-          <div class="text-left">
-            <p class="text-xs opacity-75">انقضا</p>
-            <p class="mt-1 font-medium">۱۴۰۵/۰۶/۳۱</p>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- کارت ورود -->
-    <section hlmCard id="login" class="w-full max-w-md justify-self-center lg:justify-self-end">
-      <div hlmCardHeader>
-        <h2 hlmCardTitle class="text-xl">ورود کارکنان</h2>
-        <p hlmCardDescription>
-          با کد پرسنلی و رمز عبور خود وارد سامانه شوید.
-        </p>
-      </div>
-      <div hlmCardContent class="flex flex-col gap-5">
-        <div class="flex flex-col gap-2">
-          <label hlmLabel for="personnel-code">کد پرسنلی</label>
-          <input
-            hlmInput
-            id="personnel-code"
-            inputmode="numeric"
-            placeholder="مثلاً ۱۲۳۴۵"
-            #personnelCodeInput
-          />
-        </div>
-        <div class="flex flex-col gap-2">
-          <div class="flex items-center justify-between">
-            <label hlmLabel for="password">رمز عبور</label>
-            <a class="text-primary text-xs hover:underline" href="#login"
-              >فراموشی رمز عبور</a
-            >
-          </div>
-          <input hlmInput id="password" type="password" placeholder="••••••••" #passwordInput />
-        </div>
-        <button hlmBtn class="w-full" (click)="onSubmit(personnelCodeInput, passwordInput)">
-          ورود به سامانه
-        </button>
-        <hlm-separator />
-        <p class="text-muted-foreground text-center text-sm">
-          فروشگاه طرف قرارداد هستید؟
-          <a class="text-primary font-medium hover:underline" href="#login"
-            >ورود به پنل فروشگاه</a
+          <label hlmLabel for="password">رمز عبور</label>
+          <a class="text-primary text-xs hover:underline" href="#login"
+            >فراموشی رمز عبور</a
           >
-        </p>
+        </div>
+        <input
+          hlmInput
+          id="password"
+          type="password"
+          placeholder="••••••••"
+          #passwordInput
+          (keyup.enter)="onSubmit(nationalCodeInput, passwordInput)"
+        />
       </div>
-    </section>
-  </section>
-
-  <!-- امکانات -->
-  <section id="features" class="flex flex-col gap-8 py-14">
-    <div class="flex flex-col gap-2 text-center">
-      <h2 class="text-2xl font-bold sm:text-3xl">همه خدمات رفاهی در یک اپ</h2>
-      <p class="text-muted-foreground">
-        دیجیتال‌سازی کامل فرآیندهای رفاهی و حذف روش‌های سنتی کاغذی
-      </p>
-    </div>
-    <div class="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-      @for (feature of features; track feature.title) {
-        <section hlmCard>
-          <div hlmCardContent class="flex flex-col gap-3 pt-6">
-            <div
-              class="bg-secondary text-primary flex size-11 items-center justify-center rounded-xl"
-            >
-              @switch (feature.icon) {
-                @case ('card') {
-                  <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                    <rect width="20" height="14" x="2" y="5" rx="2" />
-                    <line x1="2" x2="22" y1="10" y2="10" />
-                  </svg>
-                }
-                @case ('qr') {
-                  <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                    <rect width="5" height="5" x="3" y="3" rx="1" />
-                    <rect width="5" height="5" x="16" y="3" rx="1" />
-                    <rect width="5" height="5" x="3" y="16" rx="1" />
-                    <path d="M21 16h-3a2 2 0 0 0-2 2v3" />
-                    <path d="M21 21v.01" />
-                    <path d="M12 7v3a2 2 0 0 1-2 2H7" />
-                    <path d="M3 12h.01" />
-                    <path d="M12 3h.01" />
-                    <path d="M12 16v.01" />
-                    <path d="M16 12h1" />
-                    <path d="M21 12v.01" />
-                    <path d="M12 21v-1" />
-                  </svg>
-                }
-                @case ('store') {
-                  <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                    <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z" />
-                    <path d="M3 6h18" />
-                    <path d="M16 10a4 4 0 0 1-8 0" />
-                  </svg>
-                }
-                @case ('package') {
-                  <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                    <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z" />
-                    <path d="m3.3 7 8.7 5 8.7-5" />
-                    <path d="M12 22V12" />
-                  </svg>
-                }
-              }
-            </div>
-            <h3 class="font-bold">{{ feature.title }}</h3>
-            <p class="text-muted-foreground text-sm leading-7">
-              {{ feature.description }}
-            </p>
-          </div>
-        </section>
+      @if (error(); as message) {
+        <p class="text-destructive text-sm" role="alert">{{ message }}</p>
       }
-    </div>
-  </section>
-
-  <!-- فروشگاه‌ها -->
-  <section id="stores" class="flex flex-col gap-8 py-14">
-    <div class="flex flex-col gap-2 text-center">
-      <h2 class="text-2xl font-bold sm:text-3xl">فروشگاه‌های طرف قرارداد</h2>
-      <p class="text-muted-foreground">
-        با اعتبار رفاهی خود از این دسته‌بندی‌ها خرید کنید؛ فهرست فروشگاه‌ها به‌مرور گسترش می‌یابد.
-      </p>
-    </div>
-    <div class="flex flex-wrap justify-center gap-3">
-      @for (category of storeCategories; track category) {
-        <span
-          hlmBadge
-          variant="secondary"
-          class="rounded-full px-5 py-2 text-sm font-medium"
-          >{{ category }}</span
+      <button
+        hlmBtn
+        class="w-full"
+        [disabled]="loading()"
+        (click)="onSubmit(nationalCodeInput, passwordInput)"
+      >
+        {{ loading() ? 'در حال ورود…' : 'ورود به سامانه' }}
+      </button>
+      <hlm-separator />
+      <p class="text-muted-foreground text-center text-sm">
+        فروشگاه طرف قرارداد هستید؟
+        <a class="text-primary font-medium hover:underline" href="#login"
+          >ورود به پنل فروشگاه</a
         >
-      }
+      </p>
     </div>
   </section>
 
-  <!-- راهنمای خرید -->
-  <section id="steps" class="flex flex-col gap-8 py-14">
-    <div class="flex flex-col gap-2 text-center">
-      <h2 class="text-2xl font-bold sm:text-3xl">خرید در سه قدم</h2>
-      <p class="text-muted-foreground">فرآیند خرید با QR ساده، سریع و امن است.</p>
-    </div>
-    <div class="grid gap-5 md:grid-cols-3">
-      @for (step of steps; track step.title) {
-        <section hlmCard>
-          <div hlmCardContent class="flex flex-col gap-3 pt-6">
-            <span
-              class="bg-primary text-primary-foreground flex size-9 items-center justify-center rounded-full text-sm font-bold"
-              >{{ step.num }}</span
-            >
-            <h3 class="font-bold">{{ step.title }}</h3>
-            <p class="text-muted-foreground text-sm leading-7">
-              {{ step.description }}
-            </p>
-          </div>
-        </section>
-      }
-    </div>
-  </section>
+  <p class="text-muted-foreground text-center text-xs">
+    © ۱۴۰۴ شرکت جهان‌فولاد سیرجان — طراحی و توسعه: شرکت طرح و توسعه دیار مانا
+  </p>
+
 </main>
-
-<!-- فوتر -->
-<footer class="border-t border-white/40 bg-white/30 backdrop-blur-xl">
-  <div
-    class="text-muted-foreground mx-auto flex w-full max-w-[550px] flex-col items-center gap-2 px-4 py-6 text-xs"
-  >
-    <p>© ۱۴۰۴ شرکت جهان‌فولاد سیرجان — سامانه رفاهی پرسنل</p>
-    <p>طراحی و توسعه: شرکت طرح و توسعه دیار مانا</p>
-  </div>
-</footer>

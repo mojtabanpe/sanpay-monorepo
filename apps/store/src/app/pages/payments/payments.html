@@ -1,0 +1,92 @@
+<div class="mx-auto flex min-h-dvh w-full max-w-3xl flex-col gap-5 px-4 py-6">
+
+  <!-- سربرگ فروشگاه -->
+  <header class="flex items-start justify-between gap-4">
+    <div class="min-w-0">
+      <div class="flex items-center gap-2">
+        <h1 class="truncate text-lg font-bold">{{ store()?.name }}</h1>
+        <!-- وضعیت اتصال زنده -->
+        <span
+          class="inline-flex shrink-0 items-center gap-1.5 rounded-full px-2 py-0.5 text-[0.65rem] font-medium"
+          [class]="
+            live()
+              ? 'bg-emerald-100 text-emerald-700'
+              : 'bg-amber-100 text-amber-700'
+          "
+        >
+          <span
+            class="size-1.5 rounded-full"
+            [class]="live() ? 'bg-emerald-500' : 'bg-amber-500'"
+          ></span>
+          {{ live() ? 'اتصال زنده' : 'در حال اتصال…' }}
+        </span>
+      </div>
+      <p class="text-muted-foreground mt-1 text-xs">
+        کد فروشگاه:
+        <span dir="ltr" class="font-mono font-semibold">{{ store()?.code }}</span>
+        — این کد در کیو‌آر روی صندوق است.
+      </p>
+    </div>
+    <button hlmBtn variant="ghost" size="sm" class="shrink-0" (click)="logout()">
+      خروج
+    </button>
+  </header>
+
+  <!-- خلاصهٔ امروز -->
+  <div
+    class="rounded-2xl bg-gradient-to-l from-violet-700 via-violet-600 to-emerald-600 p-5 text-white shadow-lg"
+  >
+    <p class="text-xs opacity-90">فروش امروز</p>
+    <p class="mt-2 text-2xl font-bold">{{ toman(todayTotal()) }}</p>
+    <p class="mt-2 text-xs opacity-80">
+      {{ count(todayCount()) }} پرداخت ثبت‌شده
+    </p>
+  </div>
+
+  <h2 class="px-1 font-bold">آخرین پرداخت‌ها</h2>
+
+  @if (loading()) {
+    <hlm-skeleton class="h-32 w-full rounded-2xl" />
+    <hlm-skeleton class="h-32 w-full rounded-2xl" />
+  } @else if (error()) {
+    <div class="flex flex-col items-center gap-3 py-10 text-center">
+      <p class="text-muted-foreground text-sm">دریافت لیست پرداخت‌ها ممکن نشد.</p>
+      <button class="text-primary text-sm font-medium hover:underline" (click)="load()">
+        تلاش دوباره
+      </button>
+    </div>
+  } @else if (receipts().length === 0) {
+    <div class="flex flex-col items-center gap-2 py-14 text-center">
+      <svg class="text-muted-foreground size-10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z" />
+        <path d="M3 6h18" />
+        <path d="M16 10a4 4 0 0 1-8 0" />
+      </svg>
+      <p class="text-sm font-medium">هنوز پرداختی ثبت نشده</p>
+      <p class="text-muted-foreground text-xs">
+        به‌محض پرداخت مشتری، رسید همین‌جا ظاهر می‌شود.
+      </p>
+    </div>
+  } @else {
+    <!-- لیست رسیدها — تازه‌ترین بالا -->
+    <ul class="flex flex-col gap-3" aria-live="polite">
+      @for (receipt of receipts(); track receipt.id) {
+        <li
+          class="rounded-2xl transition-shadow"
+          [class]="
+            justArrived() === receipt.id
+              ? 'ring-2 ring-emerald-500 ring-offset-2 ring-offset-transparent'
+              : ''
+          "
+        >
+          @if (justArrived() === receipt.id) {
+            <p class="mb-1.5 px-1 text-xs font-bold text-emerald-700">
+              پرداخت جدید
+            </p>
+          }
+          <sanpay-receipt-card [receipt]="receipt" variant="store" [compact]="true" />
+        </li>
+      }
+    </ul>
+  }
+</div>

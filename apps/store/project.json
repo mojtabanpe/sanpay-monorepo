@@ -1,0 +1,78 @@
+{
+  "name": "store",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "application",
+  "prefix": "store",
+  "sourceRoot": "apps/store/src",
+  "tags": ["type:app", "scope:store"],
+  "targets": {
+    "build": {
+      "executor": "@angular/build:application",
+      "outputs": ["{options.outputPath}"],
+      "defaultConfiguration": "production",
+      "options": {
+        "outputPath": "dist/apps/store",
+        "browser": "apps/store/src/main.ts",
+        "tsConfig": "apps/store/tsconfig.app.json",
+        "assets": [
+          {
+            "glob": "**/*",
+            "input": "apps/store/public"
+          }
+        ],
+        "styles": ["apps/store/src/styles.css"]
+      },
+      "configurations": {
+        "production": {
+          "budgets": [
+            {
+              "type": "initial",
+              "maximumWarning": "500kb",
+              "maximumError": "1mb"
+            },
+            {
+              "type": "anyComponentStyle",
+              "maximumWarning": "4kb",
+              "maximumError": "8kb"
+            }
+          ],
+          "outputHashing": "all"
+        },
+        "development": {
+          "optimization": false,
+          "extractLicenses": false,
+          "sourceMap": true
+        }
+      }
+    },
+    "serve": {
+      "continuous": true,
+      "executor": "@angular/build:dev-server",
+      "defaultConfiguration": "development",
+      "options": {
+        "port": 4400,
+        "proxyConfig": "apps/store/proxy.conf.json"
+      },
+      "configurations": {
+        "production": {
+          "buildTarget": "store:build:production"
+        },
+        "development": {
+          "buildTarget": "store:build:development"
+        }
+      }
+    },
+    "lint": {
+      "executor": "@nx/eslint:lint"
+    },
+    "serve-static": {
+      "continuous": true,
+      "executor": "@nx/web:file-server",
+      "options": {
+        "buildTarget": "store:build",
+        "staticFilePath": "dist/apps/store/browser",
+        "spa": true
+      }
+    }
+  }
+}
