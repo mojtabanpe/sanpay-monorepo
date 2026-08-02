@@ -6,15 +6,15 @@ Welfare/credit platform for the employees of **شرکت جهان‌فولاد س
 
 ## Projects
 
-| Project | Path | What it is |
-|---|---|---|
-| `app` | `apps/app` | Employee-facing app. **Persian, RTL** (`lang="fa" dir="rtl"`). Serve: port **4200** |
-| `dashboard` | `apps/dashboard` | Admin/management dashboard (English/LTR so far). Serve: port **4300** |
-| `store` | `apps/store` | Contracted-store panel. **Persian, RTL.** Store login + live payment feed. Serve: port **4400** |
-| `api` | `apps/api` | NestJS + Prisma 7 + PostgreSQL |
-| `ui` | `shared/ui` | Shared spartan/ui library — all 57 primitives as secondary entrypoints: `import { HlmButtonImports } from '@sanpay/ui/button'` |
-| `models` | `shared/models` | Shared domain models (TypeScript interfaces) used by app + dashboard: `import { Wallet } from '@sanpay/models'` |
-| `receipt` | `shared/receipt` | Shared receipt component used by both the employee app and the store panel: `import { ReceiptCard } from '@sanpay/receipt'` |
+| Project     | Path             | What it is                                                                                                                     |
+| ----------- | ---------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| `app`       | `apps/app`       | Employee-facing app. **Persian, RTL** (`lang="fa" dir="rtl"`). Serve: port **4200**                                            |
+| `dashboard` | `apps/dashboard` | Admin/management dashboard (English/LTR so far). Serve: port **4300**                                                          |
+| `store`     | `apps/store`     | Contracted-store panel. **Persian, RTL.** Store login + live payment feed. Serve: port **4400**                                |
+| `api`       | `apps/api`       | NestJS + Prisma 7 + PostgreSQL                                                                                                 |
+| `ui`        | `shared/ui`      | Shared spartan/ui library — all 57 primitives as secondary entrypoints: `import { HlmButtonImports } from '@sanpay/ui/button'` |
+| `models`    | `shared/models`  | Shared domain models (TypeScript interfaces) used by app + dashboard: `import { Wallet } from '@sanpay/models'`                |
+| `receipt`   | `shared/receipt` | Shared receipt component used by both the employee app and the store panel: `import { ReceiptCard } from '@sanpay/receipt'`    |
 
 ## Purchase flow (approved design — merchant-presented QR)
 
@@ -50,13 +50,13 @@ QR scanning uses the native `BarcodeDetector` when available and falls back to `
 
 Every project is tagged so `@nx/enforce-module-boundaries` (depConstraints in the root `eslint.config.mjs`) can work — untagged projects fail lint outright.
 
-| Project | Tags |
-|---|---|
-| `apps/app` | `type:app`, `scope:employee` |
-| `apps/store` | `type:app`, `scope:store` |
-| `apps/dashboard` | `type:app`, `scope:admin` |
-| `apps/api` | `type:app`, `scope:api` |
-| `shared/models`, `shared/receipt`, `shared/ui/*` | `type:lib`, `scope:shared` |
+| Project                                          | Tags                         |
+| ------------------------------------------------ | ---------------------------- |
+| `apps/app`                                       | `type:app`, `scope:employee` |
+| `apps/store`                                     | `type:app`, `scope:store`    |
+| `apps/dashboard`                                 | `type:app`, `scope:admin`    |
+| `apps/api`                                       | `type:app`, `scope:api`      |
+| `shared/models`, `shared/receipt`, `shared/ui/*` | `type:lib`, `scope:shared`   |
 
 Apps may depend on libs only (never on each other); libs may depend on libs only. Each app reaches its own scope plus `scope:shared`. **Any new project needs tags** — pick the app's scope, or `type:lib` + `scope:shared` for shared code.
 
@@ -92,7 +92,7 @@ npx nx g @spartan-ng/cli:ui <name>   # add/regen a spartan primitive
 <!-- nx configuration start-->
 <!-- Leave the start & end comments to automatically receive updates. -->
 
-# General Guidelines for working with Nx
+## General Guidelines for working with Nx
 
 - For navigating/exploring the workspace, invoke the `nx-workspace` skill first - it has patterns for querying projects, targets, and dependencies
 - When running tasks (for example build, lint, test, e2e, etc.), always prefer running the task through `nx` (i.e. `nx run`, `nx run-many`, `nx affected`) instead of using the underlying tooling directly
