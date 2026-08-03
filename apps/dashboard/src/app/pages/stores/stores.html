@@ -1,0 +1,205 @@
+<div class="flex w-full flex-col gap-5">
+  <header class="flex flex-wrap items-end justify-between gap-3">
+    <div>
+      <h1 class="text-2xl font-bold">فروشگاه‌ها</h1>
+      <p class="text-muted-foreground text-sm">
+        {{ fa(total()) }} فروشگاه طرف قرارداد — کد هر فروشگاه روی QR صندوق چاپ می‌شود
+      </p>
+    </div>
+    @if (canWrite()) {
+      <button hlmBtn (click)="showForm.set(!showForm())">
+        {{ showForm() ? 'بستن فرم' : 'فروشگاه جدید' }}
+      </button>
+    }
+  </header>
+
+  @if (error()) {
+    <div hlmAlert variant="destructive">
+      <p hlmAlertDescription>{{ error() }}</p>
+    </div>
+  }
+  @if (notice()) {
+    <div hlmAlert>
+      <p hlmAlertDescription>{{ notice() }}</p>
+    </div>
+  }
+
+  @if (showForm()) {
+    <section hlmCard>
+      <div hlmCardHeader>
+        <h2 hlmCardTitle>ثبت فروشگاه</h2>
+        <p hlmCardDescription>
+          اگر کد را خالی بگذارید، یک کد یکتای ۸ نویسه‌ای ساخته می‌شود.
+        </p>
+      </div>
+      <div hlmCardContent class="grid gap-4 md:grid-cols-3">
+        <hlm-field>
+          <label hlmFieldLabel for="fld-1">نام فروشگاه</label>
+          <input id="fld-1" hlmInput class="w-full" [value]="form().name"
+            (input)="update('name', $any($event.target).value)" />
+        </hlm-field>
+        <hlm-field>
+          <label hlmFieldLabel for="fld-2">دسته‌بندی</label>
+          <input id="fld-2" hlmInput class="w-full" [value]="form().category"
+            (input)="update('category', $any($event.target).value)" />
+        </hlm-field>
+        <hlm-field>
+          <label hlmFieldLabel for="fld-3">کد فروشگاه (اختیاری)</label>
+          <input id="fld-3" hlmInput class="w-full" dir="ltr" [value]="form().code"
+            (input)="update('code', $any($event.target).value)" />
+        </hlm-field>
+        <hlm-field>
+          <label hlmFieldLabel for="fld-4">تلفن</label>
+          <input id="fld-4" hlmInput class="w-full" dir="ltr" [value]="form().phone"
+            (input)="update('phone', $any($event.target).value)" />
+        </hlm-field>
+        <hlm-field class="md:col-span-2">
+          <label hlmFieldLabel for="fld-5">نشانی</label>
+          <input id="fld-5" hlmInput class="w-full" [value]="form().address"
+            (input)="update('address', $any($event.target).value)" />
+        </hlm-field>
+        <hlm-field>
+          <label hlmFieldLabel for="fld-6">نام کاربری پنل</label>
+          <input id="fld-6" hlmInput class="w-full" dir="ltr" [value]="form().username"
+            (input)="update('username', $any($event.target).value)" />
+        </hlm-field>
+        <hlm-field>
+          <label hlmFieldLabel for="fld-7">رمز پنل</label>
+          <input id="fld-7" hlmInput class="w-full" dir="ltr" [value]="form().password"
+            (input)="update('password', $any($event.target).value)" />
+        </hlm-field>
+        <div class="flex items-end">
+          <button hlmBtn [disabled]="saving()" (click)="create()">ثبت فروشگاه</button>
+        </div>
+      </div>
+    </section>
+  }
+
+  <div class="flex flex-wrap items-center gap-3">
+    <input
+      hlmInput
+      class="w-full sm:w-80"
+      placeholder="جست‌وجو: نام، کد، نام کاربری…"
+      [value]="query()"
+      (input)="query.set($any($event.target).value)"
+      (keyup.enter)="search()"
+    />
+    <button hlmBtn variant="secondary" (click)="search()">جست‌وجو</button>
+  </div>
+
+  <section hlmCard class="w-full">
+    <div hlmCardContent class="pt-6">
+      <div hlmTableContainer>
+        <table hlmTable class="w-full">
+          <thead hlmTHead>
+            <tr hlmTr>
+              <th hlmTh>نام</th>
+              <th hlmTh>کد QR</th>
+              <th hlmTh>دسته</th>
+              <th hlmTh>نام کاربری</th>
+              <th hlmTh>کیف‌پول‌ها</th>
+              <th hlmTh>تعداد خرید</th>
+              <th hlmTh>جمع فروش</th>
+              <th hlmTh>وضعیت</th>
+              @if (canWrite()) {
+                <th hlmTh>رمز جدید</th>
+                <th hlmTh></th>
+              }
+            </tr>
+          </thead>
+          <tbody hlmTBody>
+            @for (row of rows(); track row.id) {
+              <tr hlmTr>
+                <td hlmTd class="font-medium">{{ row.name }}</td>
+                <td hlmTd dir="ltr">{{ row.code }}</td>
+                <td hlmTd>{{ row.category ?? '—' }}</td>
+                <td hlmTd dir="ltr">{{ row.username }}</td>
+                <td hlmTd>{{ fa(row.walletCount) }}</td>
+                <td hlmTd>{{ fa(row.paymentCount) }}</td>
+                <td hlmTd class="font-semibold">{{ toman(row.totalAmount) }}</td>
+                <td hlmTd>
+                  <span hlmBadge [variant]="row.isActive ? 'default' : 'secondary'">
+                    {{ row.isActive ? 'فعال' : 'غیرفعال' }}
+                  </span>
+                </td>
+                @if (canWrite()) {
+                  <td hlmTd>
+                    <input
+                      hlmInput
+                      #passwordInput
+                      class="w-36"
+                      dir="ltr"
+                      placeholder="رمز تازه"
+                      (keyup.enter)="resetPassword(row.id, passwordInput.value)"
+                    />
+                  </td>
+                  <td hlmTd class="text-left whitespace-nowrap">
+                    <button hlmBtn variant="ghost" size="sm" (click)="startEdit(row)">
+                      ویرایش
+                    </button>
+                    <button hlmBtn variant="ghost" size="sm" (click)="toggleActive(row)">
+                      {{ row.isActive ? 'غیرفعال' : 'فعال' }}
+                    </button>
+                  </td>
+                }
+              </tr>
+
+              @if (editingId() === row.id) {
+                <tr hlmTr>
+                  <td hlmTd colspan="10">
+                    <div class="bg-muted/40 grid gap-4 rounded-2xl p-4 md:grid-cols-4">
+                      <hlm-field>
+                        <label hlmFieldLabel for="fld-8">نام</label>
+                        <input id="fld-8" hlmInput class="w-full" [value]="editForm().name"
+                          (input)="updateEdit('name', $any($event.target).value)" />
+                      </hlm-field>
+                      <hlm-field>
+                        <label hlmFieldLabel for="fld-9">دسته‌بندی</label>
+                        <input id="fld-9" hlmInput class="w-full" [value]="editForm().category"
+                          (input)="updateEdit('category', $any($event.target).value)" />
+                      </hlm-field>
+                      <hlm-field>
+                        <label hlmFieldLabel for="fld-10">تلفن</label>
+                        <input id="fld-10" hlmInput class="w-full" dir="ltr" [value]="editForm().phone"
+                          (input)="updateEdit('phone', $any($event.target).value)" />
+                      </hlm-field>
+                      <hlm-field>
+                        <label hlmFieldLabel for="fld-11">نشانی</label>
+                        <input id="fld-11" hlmInput class="w-full" [value]="editForm().address"
+                          (input)="updateEdit('address', $any($event.target).value)" />
+                      </hlm-field>
+                      <div class="flex items-end gap-2 md:col-span-4">
+                        <button hlmBtn [disabled]="saving()" (click)="saveEdit(row.id)">
+                          ذخیره
+                        </button>
+                        <button hlmBtn variant="ghost" (click)="editingId.set(null)">
+                          انصراف
+                        </button>
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+              }
+            } @empty {
+              <tr hlmTr>
+                <td hlmTd colspan="10" class="text-muted-foreground text-center">
+                  {{ loading() ? 'در حال بارگذاری…' : 'فروشگاهی پیدا نشد.' }}
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      <div class="flex items-center justify-between pt-4">
+        <span class="text-muted-foreground text-sm">
+          صفحهٔ {{ fa(page()) }} از {{ fa(pageCount()) }}
+        </span>
+        <div class="flex gap-2">
+          <button hlmBtn variant="outline" size="sm" (click)="changePage(-1)">قبلی</button>
+          <button hlmBtn variant="outline" size="sm" (click)="changePage(1)">بعدی</button>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>

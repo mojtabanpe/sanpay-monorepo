@@ -1,0 +1,222 @@
+<div class="flex w-full flex-col gap-5">
+  <header class="flex flex-wrap items-end justify-between gap-3">
+    <div>
+      <h1 class="text-2xl font-bold">کارمندان</h1>
+      <p class="text-muted-foreground text-sm">
+        {{ fa(total()) }} کارمند — ورود با کد ملی
+      </p>
+    </div>
+    @if (canWrite()) {
+      <button hlmBtn (click)="showForm.set(!showForm())">
+        {{ showForm() ? 'بستن فرم' : 'کارمند جدید' }}
+      </button>
+    }
+  </header>
+
+  @if (showForm()) {
+    <section hlmCard>
+      <div hlmCardHeader>
+        <h2 hlmCardTitle>ثبت کارمند</h2>
+        <p hlmCardDescription>
+          اگر رمز خالی بماند، کد ملی به‌عنوان رمز اولیه ثبت می‌شود.
+        </p>
+      </div>
+      <div hlmCardContent class="grid gap-4 md:grid-cols-3">
+        <hlm-field>
+          <label hlmFieldLabel for="fld-1">نام</label>
+          <input
+            hlmInput
+            class="w-full"
+            [value]="form().firstName"
+            (input)="update('firstName', $any($event.target).value)"
+          />
+        </hlm-field>
+        <hlm-field>
+          <label hlmFieldLabel for="fld-2">نام خانوادگی</label>
+          <input
+            hlmInput
+            class="w-full"
+            [value]="form().lastName"
+            (input)="update('lastName', $any($event.target).value)"
+          />
+        </hlm-field>
+        <hlm-field>
+          <label hlmFieldLabel for="fld-3">کد ملی</label>
+          <input
+            hlmInput
+            class="w-full"
+            dir="ltr"
+            [value]="form().nationalCode"
+            (input)="update('nationalCode', $any($event.target).value)"
+          />
+        </hlm-field>
+        <hlm-field>
+          <label hlmFieldLabel for="fld-4">کد پرسنلی</label>
+          <input
+            hlmInput
+            class="w-full"
+            dir="ltr"
+            [value]="form().personnelCode"
+            (input)="update('personnelCode', $any($event.target).value)"
+          />
+        </hlm-field>
+        <hlm-field>
+          <label hlmFieldLabel for="fld-5">موبایل</label>
+          <input
+            hlmInput
+            class="w-full"
+            dir="ltr"
+            [value]="form().phone"
+            (input)="update('phone', $any($event.target).value)"
+          />
+        </hlm-field>
+        <hlm-field>
+          <label hlmFieldLabel for="fld-6">رمز اولیه (اختیاری)</label>
+          <input
+            hlmInput
+            class="w-full"
+            dir="ltr"
+            [value]="form().password"
+            (input)="update('password', $any($event.target).value)"
+          />
+        </hlm-field>
+
+        @if (formError()) {
+          <div hlmAlert variant="destructive" class="md:col-span-3">
+            <p hlmAlertDescription>{{ formError() }}</p>
+          </div>
+        }
+
+        <div class="md:col-span-3">
+          <button hlmBtn [disabled]="saving()" (click)="create()">
+            {{ saving() ? 'در حال ثبت…' : 'ثبت کارمند' }}
+          </button>
+        </div>
+      </div>
+    </section>
+  }
+
+  <!-- جست‌وجو و فیلتر -->
+  <div class="flex flex-wrap items-center gap-3">
+    <input
+      hlmInput
+      class="w-full sm:w-80"
+      placeholder="جست‌وجو: نام، کد ملی، کد پرسنلی…"
+      [value]="query()"
+      (input)="query.set($any($event.target).value)"
+      (keyup.enter)="search()"
+    />
+    <button hlmBtn variant="secondary" (click)="search()">جست‌وجو</button>
+    <div class="flex gap-2">
+      <button
+        hlmBtn
+        size="sm"
+        [variant]="activeFilter() === '' ? 'default' : 'outline'"
+        (click)="setFilter('')"
+      >
+        همه
+      </button>
+      <button
+        hlmBtn
+        size="sm"
+        [variant]="activeFilter() === 'true' ? 'default' : 'outline'"
+        (click)="setFilter('true')"
+      >
+        فعال
+      </button>
+      <button
+        hlmBtn
+        size="sm"
+        [variant]="activeFilter() === 'false' ? 'default' : 'outline'"
+        (click)="setFilter('false')"
+      >
+        غیرفعال
+      </button>
+    </div>
+  </div>
+
+  @if (error()) {
+    <p class="text-destructive text-sm">{{ error() }}</p>
+  }
+
+  <section hlmCard class="w-full">
+    <div hlmCardContent class="pt-6">
+      <div hlmTableContainer>
+        <table hlmTable class="w-full">
+          <thead hlmTHead>
+            <tr hlmTr>
+              <th hlmTh>نام</th>
+              <th hlmTh>کد ملی</th>
+              <th hlmTh>کد پرسنلی</th>
+              <th hlmTh>موبایل</th>
+              <th hlmTh>کیف‌پول فعال</th>
+              <th hlmTh>ماندهٔ اعتبار</th>
+              <th hlmTh>وضعیت</th>
+              <th hlmTh></th>
+            </tr>
+          </thead>
+          <tbody hlmTBody>
+            @for (row of rows(); track row.id) {
+              <tr hlmTr>
+                <td hlmTd class="font-medium">
+                  <a class="text-primary" [routerLink]="['/employees', row.id]">
+                    {{ row.firstName }} {{ row.lastName }}
+                  </a>
+                </td>
+                <td hlmTd dir="ltr">{{ row.nationalCode }}</td>
+                <td hlmTd dir="ltr">{{ row.personnelCode }}</td>
+                <td hlmTd dir="ltr">{{ row.phone ?? '—' }}</td>
+                <td hlmTd>{{ fa(row.walletCount) }}</td>
+                <td hlmTd class="font-semibold">{{ toman(row.remaining) }}</td>
+                <td hlmTd>
+                  <span hlmBadge [variant]="row.isActive ? 'default' : 'secondary'">
+                    {{ row.isActive ? 'فعال' : 'غیرفعال' }}
+                  </span>
+                </td>
+                <td hlmTd class="text-left">
+                  <a
+                    hlmBtn
+                    variant="ghost"
+                    size="sm"
+                    [routerLink]="['/employees', row.id]"
+                    >جزئیات</a
+                  >
+                  @if (canWrite()) {
+                    <button
+                      hlmBtn
+                      variant="ghost"
+                      size="sm"
+                      (click)="toggleActive(row)"
+                    >
+                      {{ row.isActive ? 'غیرفعال' : 'فعال' }}
+                    </button>
+                  }
+                </td>
+              </tr>
+            } @empty {
+              <tr hlmTr>
+                <td hlmTd colspan="8" class="text-muted-foreground text-center">
+                  {{ loading() ? 'در حال بارگذاری…' : 'کارمندی پیدا نشد.' }}
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      <div class="flex items-center justify-between pt-4">
+        <span class="text-muted-foreground text-sm">
+          صفحهٔ {{ fa(page()) }} از {{ fa(pageCount()) }}
+        </span>
+        <div class="flex gap-2">
+          <button hlmBtn variant="outline" size="sm" (click)="changePage(-1)">
+            قبلی
+          </button>
+          <button hlmBtn variant="outline" size="sm" (click)="changePage(1)">
+            بعدی
+          </button>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>

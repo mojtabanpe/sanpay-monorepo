@@ -1,0 +1,120 @@
+<div class="flex min-h-screen w-full">
+  <!-- نوار کناری — روی دسکتاپ ثابت، روی موبایل کشویی -->
+  <aside
+    class="bg-sidebar/80 fixed inset-y-0 right-0 z-40 w-64 shrink-0 flex-col gap-2 border-l p-4 backdrop-blur-xl lg:static lg:flex"
+    [class.flex]="menuOpen()"
+    [class.hidden]="!menuOpen()"
+  >
+    <a routerLink="/overview" class="flex items-center gap-3 px-2 py-3">
+      <span
+        class="bg-primary text-primary-foreground flex size-9 items-center justify-center rounded-xl font-bold"
+        >س</span
+      >
+      <span class="leading-tight">
+        <span class="block font-bold">سان‌پی</span>
+        <span class="text-muted-foreground block text-xs">داشبورد مدیریت</span>
+      </span>
+    </a>
+
+    <hlm-separator />
+
+    <nav class="flex flex-1 flex-col gap-1 overflow-y-auto py-2">
+      @for (item of items(); track item.path) {
+        <a
+          [routerLink]="item.path"
+          routerLinkActive="bg-primary/10 text-primary font-semibold"
+          (click)="menuOpen.set(false)"
+          class="hover:bg-muted flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-colors"
+        >
+          <svg
+            class="size-5 shrink-0"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.7"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <path [attr.d]="item.icon" />
+          </svg>
+          {{ item.label }}
+        </a>
+      }
+    </nav>
+
+    <hlm-separator />
+
+    <div class="flex items-center gap-3 px-2 py-3">
+      <span
+        class="bg-primary/15 text-primary flex size-9 shrink-0 items-center justify-center rounded-full text-xs font-bold"
+        >{{ initials() }}</span
+      >
+      <span class="min-w-0 flex-1 leading-tight">
+        <span class="block truncate text-sm font-medium">{{
+          profile()?.name
+        }}</span>
+        <span class="text-muted-foreground block text-xs">{{ roleLabel() }}</span>
+      </span>
+      <button
+        hlmBtn
+        variant="ghost"
+        size="icon"
+        (click)="logout()"
+        aria-label="خروج"
+      >
+        <svg
+          class="size-5"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.7"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path d="M15 17l5-5-5-5M20 12H9M12 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h6" />
+        </svg>
+      </button>
+    </div>
+  </aside>
+
+  @if (menuOpen()) {
+    <button
+      type="button"
+      class="fixed inset-0 z-30 bg-black/30 lg:hidden"
+      aria-label="بستن منو"
+      (click)="menuOpen.set(false)"
+    ></button>
+  }
+
+  <!-- محتوا: تمام‌عرض، بدون max-width -->
+  <div class="flex min-w-0 flex-1 flex-col">
+    <header
+      class="flex items-center gap-3 px-4 py-3 lg:hidden"
+    >
+      <button
+        hlmBtn
+        variant="outline"
+        size="icon"
+        (click)="menuOpen.set(!menuOpen())"
+        aria-label="منو"
+      >
+        <svg
+          class="size-5"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.7"
+          stroke-linecap="round"
+        >
+          <path d="M4 6h16M4 12h16M4 18h16" />
+        </svg>
+      </button>
+      <span class="font-bold">سان‌پی — داشبورد</span>
+    </header>
+
+    <main class="w-full flex-1 px-4 py-4 lg:px-8 lg:py-8">
+      <router-outlet />
+    </main>
+  </div>
+</div>

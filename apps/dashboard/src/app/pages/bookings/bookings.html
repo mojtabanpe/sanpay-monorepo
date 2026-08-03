@@ -1,0 +1,105 @@
+<div class="flex w-full flex-col gap-5">
+  <header>
+    <h1 class="text-2xl font-bold">رزرو هتل</h1>
+    <p class="text-muted-foreground text-sm">
+      {{ fa(total()) }} رزرو با اعتبار گردشگری — «قابل پرداخت» بدهی ما به هتل‌یار است،
+      نه مبلغی که کارمند پرداخته.
+    </p>
+  </header>
+
+  <div class="flex flex-wrap items-center gap-3">
+    <input
+      hlmInput
+      class="w-full sm:w-80"
+      placeholder="شمارهٔ پیگیری، هتل، نام مسافر…"
+      [value]="query()"
+      (input)="query.set($any($event.target).value)"
+      (keyup.enter)="search()"
+    />
+    <button hlmBtn variant="secondary" (click)="search()">جست‌وجو</button>
+    <hlm-toggle-group [spacing]="2" [value]="status()" (valueChange)="setStatus($any($event))">
+      @for (item of statuses; track item) {
+        <button hlmToggleGroupItem [value]="item">
+          {{ item === '' ? 'همه' : statusLabels[item] }}
+        </button>
+      }
+    </hlm-toggle-group>
+  </div>
+
+  @if (error()) {
+    <p class="text-destructive text-sm">{{ error() }}</p>
+  }
+
+  <section hlmCard class="w-full">
+    <div hlmCardContent class="pt-6">
+      <div hlmTableContainer>
+        <table hlmTable class="w-full">
+          <thead hlmTHead>
+            <tr hlmTr>
+              <th hlmTh>شمارهٔ پیگیری</th>
+              <th hlmTh>کارمند</th>
+              <th hlmTh>هتل</th>
+              <th hlmTh>اتاق</th>
+              <th hlmTh>ورود</th>
+              <th hlmTh>شب</th>
+              <th hlmTh>مسافر</th>
+              <th hlmTh>مبلغ</th>
+              <th hlmTh>قابل پرداخت</th>
+              <th hlmTh>برگشتی</th>
+              <th hlmTh>وضعیت</th>
+              <th hlmTh>تسویه</th>
+              <th hlmTh>ثبت</th>
+            </tr>
+          </thead>
+          <tbody hlmTBody>
+            @for (row of rows(); track row.id) {
+              <tr hlmTr>
+                <td hlmTd dir="ltr">{{ row.referenceNo }}</td>
+                <td hlmTd>
+                  <a class="text-primary" [routerLink]="['/employees', row.employee.id]">
+                    {{ row.employee.name }}
+                  </a>
+                </td>
+                <td hlmTd class="font-medium">{{ row.hotelName }}</td>
+                <td hlmTd>{{ row.roomType }}</td>
+                <td hlmTd>{{ jalali(row.checkin) }}</td>
+                <td hlmTd>{{ fa(row.nights) }}</td>
+                <td hlmTd>{{ row.guestName }}</td>
+                <td hlmTd class="font-semibold">{{ toman(row.amount) }}</td>
+                <td hlmTd>{{ toman(row.payable) }}</td>
+                <td hlmTd>{{ toman(row.refundedAmount) }}</td>
+                <td hlmTd>
+                  <span hlmBadge [variant]="statusVariant(row.status)">
+                    {{ statusLabels[row.status] }}
+                  </span>
+                </td>
+                <td hlmTd class="text-xs">
+                  {{ row.settledAt ? jalali(row.settledAt) : 'تسویه‌نشده' }}
+                </td>
+                <td hlmTd class="text-muted-foreground text-xs">
+                  {{ jalaliTime(row.createdAt) }}
+                </td>
+              </tr>
+            } @empty {
+              <tr hlmTr>
+                <td hlmTd colspan="13" class="text-muted-foreground text-center">
+                  {{ loading() ? 'در حال بارگذاری…' : 'رزروی پیدا نشد.' }}
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      <div class="flex items-center justify-between pt-4">
+        <span class="text-muted-foreground text-sm">
+          صفحهٔ {{ fa(page()) }} از {{ fa(pageCount()) }}
+        </span>
+        <div class="flex gap-2">
+          <button hlmBtn variant="outline" size="sm" (click)="changePage(-1)">قبلی</button>
+          <button hlmBtn variant="outline" size="sm" (click)="changePage(1)">بعدی</button>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>

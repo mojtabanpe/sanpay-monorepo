@@ -6,7 +6,7 @@ import {
 import { provideRouter } from '@angular/router';
 import { appRoutes } from './app.routes';
 import { authInterceptor } from '@sanpay/applets/auth';
-import { providePersianDates } from './core/date/persian-date';
+import { providePersianDates } from '@sanpay/dates';
 
 export const appConfig: ApplicationConfig = {
   providers: [

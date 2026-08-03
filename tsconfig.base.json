@@ -35,6 +35,9 @@
       "@sanpay/receipt": [
         "./shared/receipt/src/index.ts"
       ],
+      "@sanpay/dates": [
+        "./shared/dates/src/index.ts"
+      ],
       "@sanpay/models": [
         "./shared/models/src/index.ts"
       ],

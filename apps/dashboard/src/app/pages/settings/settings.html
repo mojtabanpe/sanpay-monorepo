@@ -1,0 +1,75 @@
+<div class="flex w-full flex-col gap-5">
+  <header>
+    <h1 class="text-2xl font-bold">تنظیمات حساب</h1>
+    <p class="text-muted-foreground text-sm">مشخصات کاربری و رمز عبور شما</p>
+  </header>
+
+  <section class="grid gap-4 lg:grid-cols-2">
+    <div hlmCard>
+      <div hlmCardHeader>
+        <h2 hlmCardTitle>مشخصات</h2>
+      </div>
+      <div hlmCardContent class="flex flex-col gap-3 text-sm">
+        <div class="flex justify-between">
+          <span class="text-muted-foreground">نام</span>
+          <span>{{ profile()?.name }}</span>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-muted-foreground">نام کاربری</span>
+          <span dir="ltr">{{ profile()?.username }}</span>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-muted-foreground">نقش</span>
+          <span hlmBadge variant="secondary">{{
+            roleLabels[profile()?.role ?? '']
+          }}</span>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-muted-foreground">آخرین ورود</span>
+          <span>{{
+            profile()?.lastLoginAt ? jalaliTime(profile()!.lastLoginAt) : '—'
+          }}</span>
+        </div>
+      </div>
+    </div>
+
+    <div hlmCard>
+      <div hlmCardHeader>
+        <h2 hlmCardTitle>تغییر رمز عبور</h2>
+        <p hlmCardDescription>رمز جدید حداقل ۸ نویسه باشد.</p>
+      </div>
+      <div hlmCardContent class="flex flex-col gap-4">
+        <hlm-field>
+          <label hlmFieldLabel for="fld-1">رمز فعلی</label>
+          <input id="fld-1" hlmInput class="w-full" type="password" dir="ltr" [value]="current()"
+            (input)="current.set($any($event.target).value)" />
+        </hlm-field>
+        <hlm-field>
+          <label hlmFieldLabel for="fld-2">رمز جدید</label>
+          <input id="fld-2" hlmInput class="w-full" type="password" dir="ltr" [value]="next()"
+            (input)="next.set($any($event.target).value)" />
+        </hlm-field>
+        <hlm-field>
+          <label hlmFieldLabel for="fld-3">تکرار رمز جدید</label>
+          <input id="fld-3" hlmInput class="w-full" type="password" dir="ltr" [value]="repeat()"
+            (input)="repeat.set($any($event.target).value)" />
+        </hlm-field>
+
+        @if (error()) {
+          <div hlmAlert variant="destructive">
+            <p hlmAlertDescription>{{ error() }}</p>
+          </div>
+        }
+        @if (notice()) {
+          <div hlmAlert>
+            <p hlmAlertDescription>{{ notice() }}</p>
+          </div>
+        }
+
+        <button hlmBtn class="w-fit" [disabled]="saving()" (click)="submit()">
+          تغییر رمز
+        </button>
+      </div>
+    </div>
+  </section>
+</div>

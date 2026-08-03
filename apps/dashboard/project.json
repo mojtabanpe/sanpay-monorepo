@@ -50,7 +50,8 @@
       "executor": "@angular/build:dev-server",
       "defaultConfiguration": "development",
       "options": {
-        "port": 4300
+        "port": 4300,
+        "proxyConfig": "apps/dashboard/proxy.conf.json"
       },
       "configurations": {
         "production": {

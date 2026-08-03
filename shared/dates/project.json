@@ -1,0 +1,7 @@
+{
+  "name": "dates",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "shared/dates/src",
+  "projectType": "library",
+  "tags": ["type:lib", "scope:shared"]
+}

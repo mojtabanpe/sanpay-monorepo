@@ -167,7 +167,21 @@ async function main() {
     }
   }
 
+  // ─── مدیر داشبورد ───────────────────────────────────────────────
+  const adminPassword = await bcrypt.hash('admin1234', 10);
+  await prisma.admin.upsert({
+    where: { username: 'admin' },
+    update: {},
+    create: {
+      username: 'admin',
+      name: 'مدیر سامانه',
+      role: 'SUPER_ADMIN',
+      passwordHash: adminPassword,
+    },
+  });
+
   console.log('Seed completed: employee 3060123456 / 12345678');
+  console.log('Dashboard admin: admin / admin1234');
 }
 
 main()

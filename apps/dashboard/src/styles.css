@@ -7,3 +7,39 @@
 
 /* Shared Sanpay glassmorphism theme (see design-system/sanpay/MASTER.md) */
 @import '../../../shared/ui/theme/glass.css';
+
+/* Self-hosted Vazirmatn (bundled; no dependency on Google Fonts). */
+@import '@fontsource/vazirmatn/300.css';
+@import '@fontsource/vazirmatn/400.css';
+@import '@fontsource/vazirmatn/500.css';
+@import '@fontsource/vazirmatn/700.css';
+@import '@fontsource/vazirmatn/800.css';
+
+/* Persian dashboard: Vazirmatn for both body and display type. */
+:root {
+  --font-sans: 'Vazirmatn', -apple-system, BlinkMacSystemFont, 'Segoe UI',
+    Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-display: 'Vazirmatn', var(--font-sans);
+}
+
+/*
+ * داشبورد مدیریت تمام‌عرض است: برخلاف اپ کارمند که یک ستون باریک موبایلی دارد،
+ * اینجا جدول‌ها باید کل عرض نمایشگر را بگیرند. جدول‌های پهن داخل ظرف خودشان
+ * افقی اسکرول می‌شوند تا بدنهٔ صفحه هرگز افقی اسکرول نخورد.
+ */
+html,
+body {
+  width: 100%;
+  max-width: none;
+  overflow-x: hidden;
+}
+
+[data-slot='table-container'] {
+  width: 100%;
+  overflow-x: auto;
+}
+
+[data-slot='table'] {
+  width: 100%;
+  white-space: nowrap;
+}

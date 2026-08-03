@@ -1,0 +1,55 @@
+<main class="flex min-h-screen w-full items-center justify-center p-6">
+  <section hlmCard class="w-full max-w-sm">
+    <div hlmCardHeader class="items-center text-center">
+      <span
+        class="bg-primary text-primary-foreground mb-2 flex size-12 items-center justify-center rounded-2xl text-xl font-bold"
+        >س</span
+      >
+      <h1 hlmCardTitle>داشبورد مدیریت سان‌پی</h1>
+      <p hlmCardDescription>با نام کاربری مدیر وارد شوید</p>
+    </div>
+
+    <form
+      hlmCardContent
+      class="flex flex-col gap-4"
+      (ngSubmit)="submit(username, password)"
+    >
+      <hlm-field>
+        <label hlmFieldLabel for="username">نام کاربری</label>
+        <input
+          hlmInput
+          id="username"
+          #username
+          name="username"
+          dir="ltr"
+          autocomplete="username"
+          class="w-full"
+        />
+      </hlm-field>
+
+      <hlm-field>
+        <label hlmFieldLabel for="password">رمز عبور</label>
+        <input
+          hlmInput
+          id="password"
+          #password
+          name="password"
+          type="password"
+          dir="ltr"
+          autocomplete="current-password"
+          class="w-full"
+        />
+      </hlm-field>
+
+      @if (error()) {
+        <div hlmAlert variant="destructive">
+          <p hlmAlertDescription>{{ error() }}</p>
+        </div>
+      }
+
+      <button hlmBtn type="submit" class="w-full" [disabled]="loading()">
+        {{ loading() ? 'در حال ورود…' : 'ورود' }}
+      </button>
+    </form>
+  </section>
+</main>

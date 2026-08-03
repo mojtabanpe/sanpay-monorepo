@@ -1,0 +1,129 @@
+<div class="flex w-full flex-col gap-5">
+  <header>
+    <h1 class="text-2xl font-bold">پرداخت‌ها</h1>
+    <p class="text-muted-foreground text-sm">
+      {{ fa(total()) }} پرداخت — جمع این صفحه {{ toman(pageSum()) }}
+    </p>
+  </header>
+
+  <section hlmCard>
+    <div hlmCardContent class="grid gap-4 pt-6 md:grid-cols-5">
+      <hlm-field class="md:col-span-2">
+        <label hlmFieldLabel for="fld-1">جست‌وجو</label>
+        <input
+          hlmInput
+          class="w-full"
+          placeholder="شمارهٔ رسید، نام کارمند، فروشگاه…"
+          [value]="query()"
+          (input)="query.set($any($event.target).value)"
+          (keyup.enter)="search()"
+        />
+      </hlm-field>
+
+      <hlm-field>
+        <label hlmFieldLabel for="fld-2">فروشگاه</label>
+        <hlm-select
+          [value]="storeId()"
+          [itemToString]="storeLabel"
+          (valueChange)="onStoreChange($event)"
+        >
+          <hlm-select-trigger class="w-full">
+            <hlm-select-value />
+          </hlm-select-trigger>
+          <hlm-select-content *hlmSelectPortal>
+            <hlm-select-item value="">همهٔ فروشگاه‌ها</hlm-select-item>
+            @for (store of stores(); track store.id) {
+              <hlm-select-item [value]="store.id">{{ store.name }}</hlm-select-item>
+            }
+          </hlm-select-content>
+        </hlm-select>
+      </hlm-field>
+
+      <hlm-field>
+        <label hlmFieldLabel for="fld-3">از تاریخ</label>
+        <hlm-date-picker id="fld-3" [date]="fromDate()" (dateChange)="onFromChange($event)">
+          <hlm-date-picker-trigger class="w-full">همه</hlm-date-picker-trigger>
+        </hlm-date-picker>
+      </hlm-field>
+
+      <hlm-field>
+        <label hlmFieldLabel for="fld-4">تا تاریخ</label>
+        <hlm-date-picker id="fld-4" [date]="toDate()" (dateChange)="onToChange($event)">
+          <hlm-date-picker-trigger class="w-full">همه</hlm-date-picker-trigger>
+        </hlm-date-picker>
+      </hlm-field>
+
+      <div class="flex items-end gap-2 md:col-span-5">
+        <button hlmBtn (click)="search()">اعمال فیلتر</button>
+        <button hlmBtn variant="ghost" (click)="clearFilters()">پاک‌کردن</button>
+      </div>
+    </div>
+  </section>
+
+  @if (error()) {
+    <p class="text-destructive text-sm">{{ error() }}</p>
+  }
+
+  <section hlmCard class="w-full">
+    <div hlmCardContent class="pt-6">
+      <div hlmTableContainer>
+        <table hlmTable class="w-full">
+          <thead hlmTHead>
+            <tr hlmTr>
+              <th hlmTh>شمارهٔ رسید</th>
+              <th hlmTh>کارمند</th>
+              <th hlmTh>کد پرسنلی</th>
+              <th hlmTh>فروشگاه</th>
+              <th hlmTh>تفکیک کیف‌پول‌ها</th>
+              <th hlmTh>مبلغ</th>
+              <th hlmTh>زمان</th>
+            </tr>
+          </thead>
+          <tbody hlmTBody>
+            @for (row of rows(); track row.id) {
+              <tr hlmTr>
+                <td hlmTd dir="ltr">{{ row.receiptNo }}</td>
+                <td hlmTd class="font-medium">
+                  <a class="text-primary" [routerLink]="['/employees', row.employee.id]">
+                    {{ row.employee.name }}
+                  </a>
+                </td>
+                <td hlmTd dir="ltr">{{ row.employee.personnelCode }}</td>
+                <td hlmTd>{{ row.store.name }}</td>
+                <td hlmTd>
+                  <span class="flex flex-wrap gap-1">
+                    @for (line of row.lines; track line.walletName) {
+                      <span hlmBadge variant="secondary"
+                        >{{ line.walletName }} — {{ toman(line.amount) }}</span
+                      >
+                    }
+                  </span>
+                </td>
+                <td hlmTd class="font-semibold">{{ toman(row.amount) }}</td>
+                <td hlmTd class="text-muted-foreground text-xs">
+                  {{ jalaliTime(row.createdAt) }}
+                </td>
+              </tr>
+            } @empty {
+              <tr hlmTr>
+                <td hlmTd colspan="7" class="text-muted-foreground text-center">
+                  {{ loading() ? 'در حال بارگذاری…' : 'پرداختی با این فیلتر پیدا نشد.' }}
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      <div class="flex items-center justify-between pt-4">
+        <span class="text-muted-foreground text-sm">
+          صفحهٔ {{ fa(page()) }} از {{ fa(pageCount()) }}
+        </span>
+        <div class="flex gap-2">
+          <button hlmBtn variant="outline" size="sm" (click)="changePage(-1)">قبلی</button>
+          <button hlmBtn variant="outline" size="sm" (click)="changePage(1)">بعدی</button>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>

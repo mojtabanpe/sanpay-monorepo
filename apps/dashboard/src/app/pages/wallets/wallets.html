@@ -1,0 +1,212 @@
+<div class="flex w-full flex-col gap-5">
+  <header class="flex flex-wrap items-end justify-between gap-3">
+    <div>
+      <h1 class="text-2xl font-bold">کیف‌پول‌ها</h1>
+      <p class="text-muted-foreground text-sm">
+        تعریف اعتبارها و فروشگاه‌هایی که هر اعتبار در آن‌ها خرج می‌شود
+      </p>
+    </div>
+    @if (canWrite()) {
+      <button hlmBtn (click)="startCreate()">کیف پول جدید</button>
+    }
+  </header>
+
+  @if (error()) {
+    <div hlmAlert variant="destructive">
+      <p hlmAlertDescription>{{ error() }}</p>
+    </div>
+  }
+  @if (notice()) {
+    <div hlmAlert>
+      <p hlmAlertDescription>{{ notice() }}</p>
+    </div>
+  }
+
+  @if (showForm() && canWrite()) {
+    <section hlmCard>
+      <div hlmCardHeader>
+        <h2 hlmCardTitle>
+          {{ editingId() ? 'ویرایش کیف پول' : 'کیف پول جدید' }}
+        </h2>
+        <p hlmCardDescription>
+          کیف پول گردشگری فقط برای رزرو هتل است و به فروشگاه وصل نمی‌شود.
+        </p>
+      </div>
+      <div hlmCardContent class="flex flex-col gap-5">
+        <div class="grid gap-4 md:grid-cols-4">
+          <hlm-field>
+            <label hlmFieldLabel for="fld-1">نام</label>
+            <input id="fld-1" hlmInput class="w-full" [value]="form().name"
+              (input)="update('name', $any($event.target).value)" />
+          </hlm-field>
+
+          <hlm-field>
+            <label hlmFieldLabel for="fld-2">نوع</label>
+            <hlm-toggle-group
+              [spacing]="2"
+              [value]="form().kind"
+              (valueChange)="setKind($any($event))"
+            >
+              @for (kind of kinds; track kind) {
+                <button hlmToggleGroupItem [value]="kind">
+                  {{ kindLabels[kind] }}
+                </button>
+              }
+            </hlm-toggle-group>
+          </hlm-field>
+
+          <hlm-field>
+            <label hlmFieldLabel for="fld-3">سقف پیش‌فرض (تومان)</label>
+            <input id="fld-3" hlmInput class="w-full" dir="ltr" [value]="form().defaultCap"
+              (input)="update('defaultCap', $any($event.target).value)" />
+          </hlm-field>
+
+          <hlm-field>
+            <label hlmFieldLabel for="fld-4">آیکون (food | grocery | sport | health)</label>
+            <input id="fld-4" hlmInput class="w-full" dir="ltr" [value]="form().icon"
+              (input)="update('icon', $any($event.target).value)" />
+          </hlm-field>
+
+          <hlm-field class="md:col-span-4">
+            <label hlmFieldLabel for="fld-5">توضیح</label>
+            <input id="fld-5" hlmInput class="w-full" [value]="form().description"
+              (input)="update('description', $any($event.target).value)" />
+          </hlm-field>
+        </div>
+
+        @if (form().kind !== 'TOURISM') {
+          <div class="flex flex-col gap-3">
+            <span class="text-sm font-medium">فروشگاه‌های مجاز</span>
+            <div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+              @for (store of stores(); track store.id) {
+                <div class="hover:bg-muted flex items-center gap-2 rounded-xl px-3 py-2">
+                  <hlm-checkbox
+                    [id]="'store-' + store.id"
+                    [checked]="isStoreSelected(store.id)"
+                    (checkedChange)="toggleStore(store.id)"
+                  />
+                  <label
+                    hlmLabel
+                    class="text-sm"
+                    [for]="'store-' + store.id"
+                    >{{ store.name }}</label
+                  >
+                </div>
+              }
+            </div>
+          </div>
+        }
+
+        <div class="flex gap-2">
+          <button hlmBtn [disabled]="saving()" (click)="save()">ذخیره</button>
+          <button hlmBtn variant="ghost" (click)="showForm.set(false)">انصراف</button>
+        </div>
+      </div>
+    </section>
+  }
+
+  <!-- کارت هر کیف پول -->
+  <section class="grid gap-4 lg:grid-cols-2 2xl:grid-cols-3">
+    @for (definition of definitions(); track definition.id) {
+      <div hlmCard class="flex flex-col gap-3 p-5">
+        <div class="flex items-start justify-between gap-3">
+          <div>
+            <h2 class="font-bold">{{ definition.name }}</h2>
+            <p class="text-muted-foreground text-xs">
+              {{ definition.description ?? 'بدون توضیح' }}
+            </p>
+          </div>
+          <div class="flex shrink-0 flex-col items-end gap-1">
+            <span hlmBadge variant="secondary">{{ kindLabels[definition.kind] }}</span>
+            <span hlmBadge [variant]="definition.isActive ? 'default' : 'outline'">
+              {{ definition.isActive ? 'فعال' : 'غیرفعال' }}
+            </span>
+          </div>
+        </div>
+
+        <dl class="grid grid-cols-2 gap-2 text-sm">
+          <div>
+            <dt class="text-muted-foreground text-xs">تخصیص‌ها</dt>
+            <dd>{{ fa(definition.allocationCount) }} کارمند</dd>
+          </div>
+          <div>
+            <dt class="text-muted-foreground text-xs">سقف پیش‌فرض</dt>
+            <dd>{{ toman(definition.defaultCap) }}</dd>
+          </div>
+          <div>
+            <dt class="text-muted-foreground text-xs">جمع اعتبار</dt>
+            <dd>{{ toman(definition.allocatedAmount) }}</dd>
+          </div>
+          <div>
+            <dt class="text-muted-foreground text-xs">مصرف‌شده</dt>
+            <dd>{{ toman(definition.spentAmount) }}</dd>
+          </div>
+        </dl>
+
+        @if (definition.kind !== 'TOURISM') {
+          <div class="flex flex-wrap gap-1">
+            @for (store of definition.stores; track store.id) {
+              <span hlmBadge variant="secondary">{{ store.name }}</span>
+            } @empty {
+              <span class="text-muted-foreground text-xs">
+                به هیچ فروشگاهی وصل نیست — فعلاً جایی خرج نمی‌شود.
+              </span>
+            }
+          </div>
+        }
+
+        @if (canWrite()) {
+          <div class="flex flex-wrap gap-2 pt-1">
+            <button hlmBtn size="sm" variant="outline" (click)="startEdit(definition)">
+              ویرایش
+            </button>
+            <button hlmBtn size="sm" variant="outline" (click)="toggleActive(definition)">
+              {{ definition.isActive ? 'غیرفعال کردن' : 'فعال کردن' }}
+            </button>
+            <button hlmBtn size="sm" variant="secondary" (click)="bulkFor.set(definition)">
+              تخصیص گروهی
+            </button>
+          </div>
+        }
+
+        @if (bulkFor()?.id === definition.id) {
+          <div class="bg-muted/40 mt-2 flex flex-col gap-3 rounded-2xl p-4">
+            <p class="text-sm">
+              تخصیص «{{ definition.name }}» به همهٔ کارمندان فعال — تخصیص موجود
+              به‌روزرسانی می‌شود.
+            </p>
+            <hlm-field>
+              <label hlmFieldLabel for="fld-6">سقف اعتبار (تومان)</label>
+              <input id="fld-6" hlmInput class="w-full" dir="ltr" [value]="bulkCap()"
+                (input)="bulkCap.set($any($event.target).value)" />
+            </hlm-field>
+            <hlm-field>
+              <label hlmFieldLabel for="fld-7">تاریخ انقضا</label>
+              <hlm-date-picker
+                [date]="bulkExpiryDate()"
+                [min]="minDate"
+                (dateChange)="onBulkExpiryChange($event)"
+              >
+                <hlm-date-picker-trigger class="w-full">
+                  انتخاب تاریخ
+                </hlm-date-picker-trigger>
+              </hlm-date-picker>
+            </hlm-field>
+            <div class="flex gap-2">
+              <button hlmBtn size="sm" [disabled]="saving()" (click)="bulkAllocate()">
+                اجرای تخصیص
+              </button>
+              <button hlmBtn size="sm" variant="ghost" (click)="bulkFor.set(null)">
+                انصراف
+              </button>
+            </div>
+          </div>
+        }
+      </div>
+    } @empty {
+      <p class="text-muted-foreground text-sm">
+        {{ loading() ? 'در حال بارگذاری…' : 'هنوز کیف پولی تعریف نشده است.' }}
+      </p>
+    }
+  </section>
+</div>

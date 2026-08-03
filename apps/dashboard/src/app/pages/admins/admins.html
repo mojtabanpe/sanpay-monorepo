@@ -1,0 +1,121 @@
+<div class="flex w-full flex-col gap-5">
+  <header>
+    <h1 class="text-2xl font-bold">کاربران داشبورد</h1>
+    <p class="text-muted-foreground text-sm">
+      «فقط مشاهده» می‌تواند گزارش‌ها را ببیند ولی چیزی را تغییر نمی‌دهد.
+    </p>
+  </header>
+
+  @if (error()) {
+    <div hlmAlert variant="destructive">
+      <p hlmAlertDescription>{{ error() }}</p>
+    </div>
+  }
+  @if (notice()) {
+    <div hlmAlert>
+      <p hlmAlertDescription>{{ notice() }}</p>
+    </div>
+  }
+
+  <section hlmCard>
+    <div hlmCardHeader>
+      <h2 hlmCardTitle>کاربر جدید</h2>
+    </div>
+    <div hlmCardContent class="grid gap-4 md:grid-cols-4">
+      <hlm-field>
+        <label hlmFieldLabel for="fld-1">نام و نام خانوادگی</label>
+        <input id="fld-1" hlmInput class="w-full" [value]="form().name"
+          (input)="update('name', $any($event.target).value)" />
+      </hlm-field>
+      <hlm-field>
+        <label hlmFieldLabel for="fld-2">نام کاربری</label>
+        <input id="fld-2" hlmInput class="w-full" dir="ltr" [value]="form().username"
+          (input)="update('username', $any($event.target).value)" />
+      </hlm-field>
+      <hlm-field>
+        <label hlmFieldLabel for="fld-3">رمز عبور</label>
+        <input id="fld-3" hlmInput class="w-full" dir="ltr" [value]="form().password"
+          (input)="update('password', $any($event.target).value)" />
+      </hlm-field>
+      <hlm-field>
+        <label hlmFieldLabel for="fld-4">نقش</label>
+        <hlm-toggle-group
+          [spacing]="2"
+          [value]="form().role"
+          (valueChange)="update('role', $any($event))"
+        >
+          @for (role of roles; track role) {
+            <button hlmToggleGroupItem [value]="role">{{ roleLabels[role] }}</button>
+          }
+        </hlm-toggle-group>
+      </hlm-field>
+      <div class="md:col-span-4">
+        <button hlmBtn [disabled]="saving()" (click)="create()">ساخت کاربر</button>
+      </div>
+    </div>
+  </section>
+
+  <section hlmCard class="w-full">
+    <div hlmCardContent class="pt-6">
+      <div hlmTableContainer>
+        <table hlmTable class="w-full">
+          <thead hlmTHead>
+            <tr hlmTr>
+              <th hlmTh>نام</th>
+              <th hlmTh>نام کاربری</th>
+              <th hlmTh>نقش</th>
+              <th hlmTh>آخرین ورود</th>
+              <th hlmTh>وضعیت</th>
+              <th hlmTh>رمز جدید</th>
+              <th hlmTh></th>
+            </tr>
+          </thead>
+          <tbody hlmTBody>
+            @for (row of rows(); track row.id) {
+              <tr hlmTr>
+                <td hlmTd class="font-medium">{{ row.name }}</td>
+                <td hlmTd dir="ltr">{{ row.username }}</td>
+                <td hlmTd>
+                  <hlm-toggle-group
+                    [spacing]="2"
+                    [value]="row.role"
+                    (valueChange)="setRole(row.id, $any($event))"
+                  >
+                    @for (role of roles; track role) {
+                      <button hlmToggleGroupItem [value]="role">
+                        {{ roleLabels[role] }}
+                      </button>
+                    }
+                  </hlm-toggle-group>
+                </td>
+                <td hlmTd class="text-muted-foreground text-xs">
+                  {{ row.lastLoginAt ? jalaliTime(row.lastLoginAt) : 'هرگز' }}
+                </td>
+                <td hlmTd>
+                  <span hlmBadge [variant]="row.isActive ? 'default' : 'secondary'">
+                    {{ row.isActive ? 'فعال' : 'غیرفعال' }}
+                  </span>
+                </td>
+                <td hlmTd>
+                  <input
+                    hlmInput
+                    #passwordInput
+                    class="w-36"
+                    dir="ltr"
+                    placeholder="رمز تازه"
+                    (keyup.enter)="resetPassword(row.id, passwordInput.value)"
+                  />
+                </td>
+                <td hlmTd class="text-left">
+                  <button hlmBtn variant="ghost" size="sm" (click)="toggleActive(row)">
+                    {{ row.isActive ? 'غیرفعال' : 'فعال' }}
+                  </button>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+</div>

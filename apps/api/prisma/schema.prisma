@@ -292,3 +292,28 @@ model Transaction {
   @@index([allocationId])
   @@index([paymentId])
 }
+
+// ─── مدیر سامانه (داشبورد) ────────────────────────────────────────────────────
+
+enum AdminRole {
+  /// دسترسی کامل، از جمله مدیریت سایر مدیران
+  SUPER_ADMIN
+  /// دسترسی کامل به کارمندان، فروشگاه‌ها و کیف‌پول‌ها
+  ADMIN
+  /// فقط خواندن — گزارش‌ها و فهرست‌ها
+  VIEWER
+}
+
+/// کاربر داشبورد مدیریت. توکن آن `role: 'admin'` دارد و نه JwtAuthGuard کارمند
+/// آن را می‌پذیرد و نه StoreJwtGuard فروشگاه.
+model Admin {
+  id           String    @id @default(uuid())
+  username     String    @unique
+  name         String
+  passwordHash String
+  role         AdminRole @default(ADMIN)
+  isActive     Boolean   @default(true)
+  lastLoginAt  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+}

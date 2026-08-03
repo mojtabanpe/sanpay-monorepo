@@ -1,0 +1,161 @@
+<div class="flex w-full flex-col gap-6">
+  <header class="flex flex-wrap items-end justify-between gap-2">
+    <div>
+      <h1 class="text-2xl font-bold">نمای کلی</h1>
+      <p class="text-muted-foreground text-sm">
+        وضعیت اعتبار، خرید و فروشگاه‌های سامانه
+      </p>
+    </div>
+  </header>
+
+  @if (error()) {
+    <p class="text-destructive text-sm">{{ error() }}</p>
+  }
+
+  @if (!data()) {
+    <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      @for (i of [1, 2, 3, 4]; track i) {
+        <hlm-skeleton class="h-28 w-full rounded-2xl" />
+      }
+    </div>
+  } @else {
+    <!-- کارت‌های آمار -->
+    <section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div hlmCard class="p-5">
+        <p class="text-muted-foreground text-sm">کارمندان فعال</p>
+        <p class="mt-1 text-2xl font-bold">{{ fa(data()!.employees.active) }}</p>
+        <p class="text-muted-foreground mt-1 text-xs">
+          از {{ fa(data()!.employees.total) }} کارمند ثبت‌شده
+        </p>
+      </div>
+
+      <div hlmCard class="p-5">
+        <p class="text-muted-foreground text-sm">فروشگاه‌های فعال</p>
+        <p class="mt-1 text-2xl font-bold">{{ fa(data()!.stores.active) }}</p>
+        <p class="text-muted-foreground mt-1 text-xs">
+          از {{ fa(data()!.stores.total) }} فروشگاه طرف قرارداد
+        </p>
+      </div>
+
+      <div hlmCard class="p-5">
+        <p class="text-muted-foreground text-sm">ماندهٔ اعتبار</p>
+        <p class="mt-1 text-2xl font-bold">{{ toman(data()!.credit.remaining) }}</p>
+        <div class="bg-muted mt-3 h-2 overflow-hidden rounded-full">
+          <div class="bg-primary h-full" [style.width.%]="usage()"></div>
+        </div>
+        <p class="text-muted-foreground mt-1 text-xs">
+          {{ fa(usage()) }}٪ از {{ toman(data()!.credit.allocated) }} خرج شده
+        </p>
+      </div>
+
+      <div hlmCard class="p-5">
+        <p class="text-muted-foreground text-sm">خرید امروز</p>
+        <p class="mt-1 text-2xl font-bold">{{ toman(data()!.payments.today.amount) }}</p>
+        <p class="text-muted-foreground mt-1 text-xs">
+          {{ fa(data()!.payments.today.count) }} تراکنش — این ماه
+          {{ toman(data()!.payments.month.amount) }}
+        </p>
+      </div>
+    </section>
+
+    <!-- نمودار ۱۴ روز اخیر + پرفروش‌ترین فروشگاه‌ها -->
+    <section class="grid gap-4 xl:grid-cols-3">
+      <div hlmCard class="xl:col-span-2">
+        <div hlmCardHeader>
+          <h2 hlmCardTitle>خرید ۱۴ روز اخیر</h2>
+          <p hlmCardDescription>مجموع مبلغ خرید در هر روز</p>
+        </div>
+        <div hlmCardContent>
+          <div class="flex h-48 items-end gap-2" dir="ltr">
+            @for (day of data()!.daily; track day.date) {
+              <div class="flex min-w-0 flex-1 flex-col items-center gap-2">
+                <div class="flex h-full w-full items-end">
+                  <div
+                    class="bg-primary/70 hover:bg-primary w-full rounded-t-md transition-colors"
+                    [style.height]="barHeight(day.amount)"
+                    [title]="jalali(day.date) + ' — ' + toman(day.amount)"
+                  ></div>
+                </div>
+                <span class="text-muted-foreground truncate text-[10px]">{{
+                  jalali(day.date).slice(5)
+                }}</span>
+              </div>
+            }
+          </div>
+        </div>
+      </div>
+
+      <div hlmCard>
+        <div hlmCardHeader>
+          <h2 hlmCardTitle>پرفروش‌ترین فروشگاه‌ها</h2>
+          <p hlmCardDescription>۳۰ روز اخیر</p>
+        </div>
+        <div hlmCardContent class="flex flex-col gap-3">
+          @for (store of data()!.topStores; track store.id) {
+            <div class="flex items-center justify-between gap-3">
+              <span class="min-w-0 truncate text-sm">{{ store.name }}</span>
+              <span class="shrink-0 text-sm font-semibold">{{
+                toman(store.amount)
+              }}</span>
+            </div>
+          } @empty {
+            <p class="text-muted-foreground text-sm">هنوز خریدی ثبت نشده است.</p>
+          }
+        </div>
+      </div>
+    </section>
+
+    <!-- آخرین پرداخت‌ها -->
+    <section hlmCard>
+      <div hlmCardHeader class="flex-row items-center justify-between">
+        <div>
+          <h2 hlmCardTitle>آخرین پرداخت‌ها</h2>
+          <p hlmCardDescription>۱۰ تراکنش آخر</p>
+        </div>
+        <a routerLink="/payments" class="text-primary text-sm">همهٔ پرداخت‌ها</a>
+      </div>
+      <div hlmCardContent>
+        <div hlmTableContainer>
+          <table hlmTable class="w-full">
+            <thead hlmTHead>
+              <tr hlmTr>
+                <th hlmTh>شمارهٔ رسید</th>
+                <th hlmTh>کارمند</th>
+                <th hlmTh>فروشگاه</th>
+                <th hlmTh>کیف‌پول‌ها</th>
+                <th hlmTh>مبلغ</th>
+                <th hlmTh>زمان</th>
+              </tr>
+            </thead>
+            <tbody hlmTBody>
+              @for (payment of data()!.recentPayments; track payment.id) {
+                <tr hlmTr>
+                  <td hlmTd dir="ltr">{{ payment.receiptNo }}</td>
+                  <td hlmTd>{{ payment.employee.name }}</td>
+                  <td hlmTd>{{ payment.store.name }}</td>
+                  <td hlmTd>
+                    <span class="flex flex-wrap gap-1">
+                      @for (line of payment.lines; track line.walletName) {
+                        <span hlmBadge variant="secondary">{{ line.walletName }}</span>
+                      }
+                    </span>
+                  </td>
+                  <td hlmTd class="font-semibold">{{ toman(payment.amount) }}</td>
+                  <td hlmTd class="text-muted-foreground text-xs">
+                    {{ jalaliTime(payment.createdAt) }}
+                  </td>
+                </tr>
+              } @empty {
+                <tr hlmTr>
+                  <td hlmTd colspan="6" class="text-muted-foreground text-center">
+                    پرداختی ثبت نشده است.
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  }
+</div>
