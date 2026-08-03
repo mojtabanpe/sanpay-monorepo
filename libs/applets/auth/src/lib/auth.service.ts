@@ -1,17 +1,10 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, computed, inject, signal } from '@angular/core';
+import { EmployeeProfile } from '@sanpay/models';
 import { firstValueFrom } from 'rxjs';
 
 const TOKEN_KEY = 'sanpay_token';
 const PROFILE_KEY = 'sanpay_profile';
-
-export interface EmployeeProfile {
-  id: string;
-  nationalCode: string;
-  personnelCode: string;
-  firstName: string;
-  lastName: string;
-}
 
 interface LoginResponse {
   accessToken: string;
@@ -38,6 +31,21 @@ export class AuthService {
     localStorage.setItem(TOKEN_KEY, response.accessToken);
     localStorage.setItem(PROFILE_KEY, JSON.stringify(response.employee));
     this._profile.set(response.employee);
+  }
+
+  /** پروفایل تازه از سرور — بعد از ویرایش اطلاعات تماس هم صدا زده می‌شود */
+  async refreshProfile(): Promise<EmployeeProfile> {
+    const profile = await firstValueFrom(
+      this.http.get<EmployeeProfile>('/api/auth/me'),
+    );
+    this.setProfile(profile);
+    return profile;
+  }
+
+  /** پروفایل ذخیره‌شده را جایگزین می‌کند (مثلاً بعد از تغییر شمارهٔ موبایل) */
+  setProfile(profile: EmployeeProfile): void {
+    localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
+    this._profile.set(profile);
   }
 
   logout(): void {

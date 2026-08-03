@@ -1,0 +1,208 @@
+<div class="flex flex-col gap-4 pb-6">
+
+  @if (loading()) {
+    <hlm-skeleton class="h-56 w-full" />
+    <div class="flex flex-col gap-3 px-4">
+      <hlm-skeleton class="h-7 w-56" />
+      <hlm-skeleton class="h-4 w-40" />
+      <hlm-skeleton class="h-32 w-full rounded-xl" />
+    </div>
+  } @else if (error()) {
+    <section hlmCard class="mx-4 mt-6">
+      <div hlmCardContent class="flex flex-col items-center gap-4 py-10 text-center">
+        <p class="text-muted-foreground text-sm">{{ error() }}</p>
+        <button class="text-primary text-sm font-medium hover:underline" (click)="load()">
+          تلاش دوباره
+        </button>
+      </div>
+    </section>
+  } @else if (hotel(); as h) {
+
+    <!-- گالری -->
+    <div class="relative">
+      @if (h.images.length > 0) {
+        <img
+          [src]="h.images[activeImage()]"
+          [alt]="h.name"
+          class="h-56 w-full object-cover"
+        />
+      } @else {
+        <div class="bg-secondary h-56 w-full"></div>
+      }
+
+      <button
+        type="button"
+        class="absolute top-4 right-4 flex size-9 items-center justify-center rounded-full bg-white/80 backdrop-blur-md transition-transform active:scale-95"
+        aria-label="بازگشت"
+        (click)="back()"
+      >
+        <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="m9 18 6-6-6-6" />
+        </svg>
+      </button>
+
+      @if (h.images.length > 1) {
+        <div class="absolute bottom-3 left-1/2 flex -translate-x-1/2 gap-1.5">
+          @for (image of h.images; track image; let i = $index) {
+            <button
+              type="button"
+              class="size-2 rounded-full transition-colors"
+              [class]="i === activeImage() ? 'bg-white' : 'bg-white/50'"
+              [attr.aria-label]="'تصویر ' + count(i + 1)"
+              [attr.aria-current]="i === activeImage() ? 'true' : null"
+              (click)="activeImage.set(i)"
+            ></button>
+          }
+        </div>
+      }
+    </div>
+
+    <div class="flex flex-col gap-4 px-4">
+
+      <!-- عنوان -->
+      <div class="flex flex-col gap-2">
+        <div class="flex items-start justify-between gap-2">
+          <h1 class="flex-1 text-lg font-bold leading-tight">{{ h.name }}</h1>
+          <span class="flex shrink-0 items-center gap-0.5 text-amber-500">
+            @for (star of stars(h.rate); track star) {
+              <svg class="size-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <path d="m12 2 3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01z" />
+              </svg>
+            }
+            <span class="sr-only">{{ count(h.rate) }} ستاره</span>
+          </span>
+        </div>
+        <p class="text-muted-foreground text-xs leading-relaxed">{{ h.address }}</p>
+        <div class="flex flex-wrap gap-2">
+          <span hlmBadge variant="secondary" class="rounded-full font-normal">{{ h.type }}</span>
+          @if (h.cityName) {
+            <span hlmBadge variant="secondary" class="rounded-full font-normal">{{ h.cityName }}</span>
+          }
+          @if (h.checkInTimeFrom) {
+            <span hlmBadge variant="secondary" class="rounded-full font-normal" dir="ltr">
+              {{ h.checkInTimeFrom }} — {{ h.checkOutTimeFrom }}
+            </span>
+          }
+        </div>
+      </div>
+
+      <!-- امکانات -->
+      @if (facilities().length > 0) {
+        <section hlmCard>
+          <div hlmCardContent class="flex flex-col gap-3 pt-6">
+            <h2 class="text-sm font-bold">امکانات هتل</h2>
+            <div class="flex flex-wrap gap-2">
+              @for (facility of facilities(); track facility) {
+                <span hlmBadge variant="secondary" class="rounded-full font-normal">{{ facility }}</span>
+              }
+            </div>
+          </div>
+        </section>
+      }
+
+      <!-- توضیحات -->
+      @if (h.description) {
+        <section hlmCard>
+          <div hlmCardContent class="flex flex-col gap-2 pt-6">
+            <h2 class="text-sm font-bold">دربارهٔ هتل</h2>
+            <p class="text-muted-foreground text-xs leading-loose whitespace-pre-line">
+              {{ h.description }}
+            </p>
+          </div>
+        </section>
+      }
+
+      <!-- مکان‌های نزدیک -->
+      @if (h.nearPlaces.length > 0) {
+        <section hlmCard>
+          <div hlmCardContent class="flex flex-col gap-3 pt-6">
+            <h2 class="text-sm font-bold">مکان‌های نزدیک</h2>
+            @for (place of h.nearPlaces; track place.title) {
+              <div class="flex items-start justify-between gap-3 text-xs">
+                <span class="flex-1">{{ place.title }}</span>
+                <span class="text-muted-foreground shrink-0">{{ place.distance }}</span>
+              </div>
+            }
+          </div>
+        </section>
+      }
+
+      <!-- اتاق‌ها -->
+      <div class="mt-2 flex items-center justify-between px-1">
+        <h2 class="font-bold">اتاق‌های موجود</h2>
+        <span class="text-muted-foreground text-xs">{{ stayLabel() }}</span>
+      </div>
+
+      @if (roomsLoading()) {
+        <hlm-skeleton class="h-28 w-full rounded-xl" />
+        <hlm-skeleton class="h-28 w-full rounded-xl" />
+      } @else if (roomsError()) {
+        <section hlmCard>
+          <div hlmCardContent class="flex flex-col items-center gap-4 py-8 text-center">
+            <p class="text-muted-foreground text-sm">{{ roomsError() }}</p>
+            <button class="text-primary text-sm font-medium hover:underline" (click)="loadRooms()">
+              تلاش دوباره
+            </button>
+          </div>
+        </section>
+      } @else {
+        @for (room of rooms(); track room.roomId) {
+          <section hlmCard>
+            <div hlmCardContent class="flex flex-col gap-3 pt-6">
+
+              <div class="flex items-start justify-between gap-2">
+                <div class="flex-1 leading-tight">
+                  <h3 class="text-sm font-bold">{{ room.roomType }}</h3>
+                  <p class="text-muted-foreground mt-1 text-xs">
+                    ظرفیت {{ count(room.capacity) }} نفر@if (room.extraBed > 0) {<!--
+                      -->، تا {{ count(room.extraBed) }} تخت اضافه
+                    }
+                  </p>
+                </div>
+                @if (room.breakfast) {
+                  <span hlmBadge variant="secondary" class="shrink-0 rounded-full font-normal">
+                    با صبحانه
+                  </span>
+                }
+              </div>
+
+              <div class="flex items-end justify-between gap-3">
+                <div class="leading-tight">
+                  @if (discount(room) > 0) {
+                    <p class="text-muted-foreground text-xs line-through">
+                      {{ toman(room.rackRate) }}
+                    </p>
+                  }
+                  <p class="text-base font-bold">{{ toman(room.price) }}</p>
+                  <p class="text-muted-foreground text-[0.65rem]">
+                    برای {{ count(nights) }} شب
+                  </p>
+                </div>
+                <button hlmBtn size="sm" (click)="selectRoom(room)">
+                  انتخاب اتاق
+                </button>
+              </div>
+
+              @if (room.freeCapacity <= 3) {
+                <p class="text-xs font-medium text-amber-600">
+                  فقط {{ count(room.freeCapacity) }} اتاق باقی مانده
+                </p>
+              }
+
+            </div>
+          </section>
+        } @empty {
+          <section hlmCard>
+            <div hlmCardContent class="py-10 text-center">
+              <p class="text-muted-foreground text-sm">
+                برای این تاریخ اتاق خالی وجود ندارد. تاریخ دیگری را امتحان کنید.
+              </p>
+            </div>
+          </section>
+        }
+      }
+
+    </div>
+  }
+
+</div>

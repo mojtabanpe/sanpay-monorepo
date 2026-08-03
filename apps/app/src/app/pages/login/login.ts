@@ -6,7 +6,7 @@ import { HlmCardImports } from '@sanpay/ui/card';
 import { HlmInputImports } from '@sanpay/ui/input';
 import { HlmLabelImports } from '@sanpay/ui/label';
 import { HlmSeparatorImports } from '@sanpay/ui/separator';
-import { AuthService } from '../../core/auth/auth.service';
+import { AuthService } from '@sanpay/applets/auth';
 
 /** ارقام فارسی/عربی را به لاتین تبدیل می‌کند تا کد ملی همیشه یکدست ذخیره شود */
 function toEnglishDigits(value: string): string {

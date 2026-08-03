@@ -20,6 +20,15 @@
       "@sanpay/applets/wallet": [
         "./libs/applets/wallet/src/index.ts"
       ],
+      "@sanpay/applets/auth": [
+        "./libs/applets/auth/src/index.ts"
+      ],
+      "@sanpay/applets/profile": [
+        "./libs/applets/profile/src/index.ts"
+      ],
+      "@sanpay/applets/stores": [
+        "./libs/applets/stores/src/index.ts"
+      ],
       "@sanpay/applets/tourism": [
         "./libs/applets/tourism/src/index.ts"
       ],

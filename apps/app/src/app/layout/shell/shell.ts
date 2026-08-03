@@ -1,7 +1,7 @@
 import { Component, computed, inject } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { HlmButtonImports } from '@sanpay/ui/button';
-import { AuthService } from '../../core/auth/auth.service';
+import { AuthService } from '@sanpay/applets/auth';
 
 @Component({
   selector: 'app-shell',

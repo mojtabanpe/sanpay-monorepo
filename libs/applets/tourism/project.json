@@ -1,0 +1,7 @@
+{
+  "name": "applet-tourism",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/applets/tourism/src",
+  "projectType": "library",
+  "tags": ["type:applet", "scope:employee"]
+}

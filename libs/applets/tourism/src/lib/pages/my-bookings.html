@@ -1,0 +1,78 @@
+<div class="flex flex-col gap-4 px-4 py-6">
+
+  <div class="flex items-center justify-between px-1">
+    <h1 class="font-bold">رزروهای من</h1>
+    <a routerLink="/tourism" class="text-primary text-xs font-medium hover:underline">
+      رزرو جدید
+    </a>
+  </div>
+
+  @if (loading()) {
+    <hlm-skeleton class="h-36 w-full rounded-xl" />
+    <hlm-skeleton class="h-36 w-full rounded-xl" />
+  } @else if (error()) {
+    <section hlmCard>
+      <div hlmCardContent class="flex flex-col items-center gap-4 py-10 text-center">
+        <p class="text-muted-foreground text-sm">دریافت رزروها ناموفق بود.</p>
+        <button class="text-primary text-sm font-medium hover:underline" (click)="load()">
+          تلاش دوباره
+        </button>
+      </div>
+    </section>
+  } @else {
+
+    @for (booking of bookings(); track booking.id) {
+      <section hlmCard>
+        <div hlmCardContent class="flex flex-col gap-3 pt-6">
+
+          <div class="flex items-start justify-between gap-2">
+            <div class="flex-1 leading-tight">
+              <h2 class="text-sm font-bold">{{ booking.hotelName }}</h2>
+              <p class="text-muted-foreground mt-1 text-xs">{{ booking.roomType }}</p>
+            </div>
+            <span hlmBadge [variant]="statusVariant(booking.status)" class="shrink-0 rounded-full">
+              {{ statusLabel(booking.status) }}
+            </span>
+          </div>
+
+          <div class="flex flex-col gap-2 text-xs">
+            <div class="flex justify-between gap-3">
+              <span class="text-muted-foreground">اقامت</span>
+              <span>
+                {{ jalali(booking.checkin) }} تا {{ jalali(booking.checkout) }}
+                ({{ count(booking.nights) }} شب)
+              </span>
+            </div>
+            <div class="flex justify-between gap-3">
+              <span class="text-muted-foreground">مسافر</span>
+              <span>{{ booking.guestName }}</span>
+            </div>
+            <div class="flex justify-between gap-3">
+              <span class="text-muted-foreground">شمارهٔ پیگیری</span>
+              <span dir="ltr" class="font-medium">{{ booking.referenceNo }}</span>
+            </div>
+            <div class="flex justify-between gap-3">
+              <span class="text-muted-foreground">مبلغ</span>
+              <span class="font-bold">{{ toman(booking.amount) }}</span>
+            </div>
+          </div>
+
+        </div>
+      </section>
+    } @empty {
+      <section hlmCard>
+        <div hlmCardContent class="flex flex-col items-center gap-4 py-12 text-center">
+          <svg class="text-muted-foreground size-10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M2 20h20" />
+            <path d="M4 20V8l8-5 8 5v12" />
+            <path d="M9 20v-6h6v6" />
+          </svg>
+          <p class="text-muted-foreground text-sm">هنوز رزروی ثبت نکرده‌اید.</p>
+          <a hlmBtn size="sm" routerLink="/tourism">جست‌وجوی هتل</a>
+        </div>
+      </section>
+    }
+
+  }
+
+</div>

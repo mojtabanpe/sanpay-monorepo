@@ -1,0 +1,241 @@
+<div class="flex flex-col gap-4 px-4 py-6">
+
+  @if (loading()) {
+    <hlm-skeleton class="h-32 w-full rounded-xl" />
+    <hlm-skeleton class="h-64 w-full rounded-xl" />
+  } @else if (receipt(); as r) {
+
+    <!-- ─── رسید رزرو ─── -->
+    <section hlmCard class="overflow-hidden">
+      <div
+        class="flex flex-col items-center gap-2 bg-gradient-to-l from-violet-700 via-violet-600 to-emerald-600 px-6 py-8 text-white"
+      >
+        @if (r.status === 'CONFIRMED') {
+          <svg class="size-12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="10" />
+            <path d="m9 12 2 2 4-4" />
+          </svg>
+          <p class="font-bold">رزرو شما قطعی شد</p>
+        } @else {
+          <svg class="size-12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="10" />
+            <path d="M12 6v6l4 2" />
+          </svg>
+          <p class="font-bold">رزرو ثبت شد — در انتظار تأیید هتل</p>
+        }
+        <p class="text-xs opacity-85">شمارهٔ پیگیری</p>
+        <p class="text-lg font-bold" dir="ltr">{{ r.referenceNo }}</p>
+      </div>
+
+      <div hlmCardContent class="flex flex-col gap-3 pt-6 text-sm">
+        <div class="flex justify-between gap-3">
+          <span class="text-muted-foreground">هتل</span>
+          <span class="font-medium">{{ r.hotelName }}</span>
+        </div>
+        <div class="flex justify-between gap-3">
+          <span class="text-muted-foreground">اتاق</span>
+          <span class="font-medium">{{ r.roomType }}</span>
+        </div>
+        <div class="flex justify-between gap-3">
+          <span class="text-muted-foreground">مسافر</span>
+          <span class="font-medium">{{ r.guestName }}</span>
+        </div>
+        <div class="flex justify-between gap-3">
+          <span class="text-muted-foreground">ورود</span>
+          <span class="font-medium">{{ jalali(r.checkin) }}</span>
+        </div>
+        <div class="flex justify-between gap-3">
+          <span class="text-muted-foreground">خروج</span>
+          <span class="font-medium">{{ jalali(r.checkout) }}</span>
+        </div>
+
+        <hr class="border-border my-1" />
+
+        <div class="flex justify-between gap-3">
+          <span class="text-muted-foreground">کسر از {{ r.walletName }}</span>
+          <span class="font-bold">{{ toman(r.amount) }}</span>
+        </div>
+        <div class="flex justify-between gap-3">
+          <span class="text-muted-foreground">ماندهٔ کیف پول</span>
+          <span class="font-medium">{{ toman(r.remainingAfter) }}</span>
+        </div>
+      </div>
+    </section>
+
+    @if (r.status !== 'CONFIRMED') {
+      <p class="text-muted-foreground px-2 text-xs leading-relaxed">
+        ظرفیت این هتل آفلاین است؛ تأیید نهایی توسط هتل انجام می‌شود و نتیجه در
+        بخش «رزروهای من» به‌روزرسانی خواهد شد.
+      </p>
+    }
+
+    <button hlmBtn class="w-full" (click)="done()">رزروهای من</button>
+
+  } @else if (quote(); as q) {
+
+    <!-- ─── خلاصهٔ اقامت ─── -->
+    <section hlmCard>
+      <div hlmCardContent class="flex flex-col gap-2 pt-6">
+        <div class="flex items-start justify-between gap-2">
+          <h1 class="flex-1 font-bold leading-tight">{{ q.hotelName }}</h1>
+          <button
+            type="button"
+            class="text-primary shrink-0 text-xs font-medium hover:underline"
+            (click)="back()"
+          >
+            تغییر اتاق
+          </button>
+        </div>
+        <p class="text-muted-foreground text-xs">{{ q.room.roomType }}</p>
+        <p class="text-muted-foreground text-xs">{{ stayLabel(q) }}</p>
+        <div class="mt-2 flex items-center justify-between">
+          <span class="text-sm">مبلغ قابل پرداخت</span>
+          <span class="text-base font-bold">{{ toman(q.amount) }}</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─── کیف پول ─── -->
+    <section hlmCard>
+      <div hlmCardContent class="flex flex-col gap-3 pt-6">
+        <h2 class="text-sm font-bold">پرداخت از کیف پول گردشگری</h2>
+
+        @for (wallet of q.wallets; track wallet.allocationId) {
+          <button
+            type="button"
+            class="flex items-center gap-3 rounded-xl border p-3 text-right transition-colors"
+            [class]="
+              wallet.allocationId === allocationId()
+                ? 'border-primary bg-secondary'
+                : 'border-border'
+            "
+            [disabled]="wallet.max < q.amount"
+            [class.opacity-50]="wallet.max < q.amount"
+            (click)="allocationId.set(wallet.allocationId)"
+          >
+            <span
+              class="flex size-5 shrink-0 items-center justify-center rounded-full border-2"
+              [class]="
+                wallet.allocationId === allocationId()
+                  ? 'border-primary bg-primary'
+                  : 'border-muted-foreground'
+              "
+            >
+              @if (wallet.allocationId === allocationId()) {
+                <svg class="text-primary-foreground size-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="m5 12 5 5L20 7" />
+                </svg>
+              }
+            </span>
+            <span class="flex-1 leading-tight">
+              <span class="block text-sm font-medium">{{ wallet.name }}</span>
+              <span class="text-muted-foreground block text-xs">
+                مانده: {{ toman(wallet.max) }}
+              </span>
+            </span>
+            @if (wallet.max < q.amount) {
+              <span hlmBadge variant="secondary" class="shrink-0 rounded-full font-normal">
+                ناکافی
+              </span>
+            }
+          </button>
+        } @empty {
+          <p class="text-muted-foreground py-4 text-center text-sm">
+            کیف پول گردشگری فعالی ندارید.
+          </p>
+        }
+      </div>
+    </section>
+
+    <!-- ─── مشخصات مسافر ─── -->
+    <section hlmCard>
+      <div hlmCardContent class="flex flex-col gap-3 pt-6">
+        <h2 class="text-sm font-bold">مشخصات مسافر</h2>
+
+        <div class="flex gap-3">
+          <label class="flex flex-1 flex-col gap-1.5">
+            <span class="text-xs font-medium">نام</span>
+            <input
+              type="text"
+              autocomplete="given-name"
+              class="border-input bg-background focus-visible:ring-ring h-10 rounded-lg border px-3 text-sm focus-visible:ring-2 focus-visible:outline-none"
+              [value]="firstName()"
+              (input)="firstName.set($any($event.target).value)"
+            />
+          </label>
+          <label class="flex flex-1 flex-col gap-1.5">
+            <span class="text-xs font-medium">نام خانوادگی</span>
+            <input
+              type="text"
+              autocomplete="family-name"
+              class="border-input bg-background focus-visible:ring-ring h-10 rounded-lg border px-3 text-sm focus-visible:ring-2 focus-visible:outline-none"
+              [value]="lastName()"
+              (input)="lastName.set($any($event.target).value)"
+            />
+          </label>
+        </div>
+
+        <label class="flex flex-col gap-1.5">
+          <span class="text-xs font-medium">کد ملی</span>
+          <input
+            type="text"
+            inputmode="numeric"
+            maxlength="10"
+            dir="ltr"
+            class="border-input bg-background focus-visible:ring-ring h-10 rounded-lg border px-3 text-sm focus-visible:ring-2 focus-visible:outline-none"
+            [value]="nationalCode()"
+            (input)="nationalCode.set($any($event.target).value)"
+          />
+        </label>
+
+        <label class="flex flex-col gap-1.5">
+          <span class="text-xs font-medium">شمارهٔ موبایل</span>
+          <input
+            type="tel"
+            inputmode="numeric"
+            maxlength="11"
+            dir="ltr"
+            placeholder="09121234567"
+            class="border-input bg-background focus-visible:ring-ring h-10 rounded-lg border px-3 text-sm focus-visible:ring-2 focus-visible:outline-none"
+            [value]="mobile()"
+            (input)="mobile.set($any($event.target).value)"
+          />
+        </label>
+      </div>
+    </section>
+
+    @if (error()) {
+      <p class="rounded-xl bg-red-50 px-4 py-3 text-xs leading-relaxed text-red-700">
+        {{ error() }}
+      </p>
+    }
+
+    <button
+      hlmBtn
+      class="w-full"
+      [disabled]="!formValid() || busy()"
+      (click)="confirm()"
+    >
+      @if (busy()) {
+        در حال ثبت رزرو…
+      } @else {
+        پرداخت و ثبت رزرو — {{ toman(q.amount) }}
+      }
+    </button>
+
+    <p class="text-muted-foreground px-2 text-center text-[0.65rem] leading-relaxed">
+      مبلغ فقط در صورت موفقیت رزرو در سامانهٔ هتل از اعتبار شما کسر می‌شود.
+    </p>
+
+  } @else if (error()) {
+    <section hlmCard>
+      <div hlmCardContent class="flex flex-col items-center gap-4 py-10 text-center">
+        <p class="text-muted-foreground text-sm">{{ error() }}</p>
+        <button class="text-primary text-sm font-medium hover:underline" (click)="load()">
+          تلاش دوباره
+        </button>
+      </div>
+    </section>
+  }
+
+</div>

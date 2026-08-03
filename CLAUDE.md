@@ -80,7 +80,9 @@ Employee-app features live as **applets**, not as pages inside `apps/app`. An ap
 
 - Each applet exports its `Route[]` (plus any service the host needs) from `src/index.ts`; the path alias is `@sanpay/applets/<name>` in `tsconfig.base.json`.
 - Tag every applet `type:applet` + the owning app's scope (`scope:employee`). Applets may use other applets and `type:lib` libs; the app may use applets and libs.
-- Existing applets: `tourism` (hotel booking) and `wallet` (`WalletService`, used by the home page). New employee features should be added as applets, and remaining `apps/app/src/app/pages/*` should migrate there as they are touched.
+- Existing applets: `auth` (`AuthService` + `authGuard` + `authInterceptor` — moved out of `apps/app/src/app/core/auth` so applets can use it), `wallet` (`WalletService`, used by the home page), `stores` (فروشگاه‌ها tab), `profile` (پروفایل tab) and `tourism` (hotel booking). New employee features should be added as applets, and remaining `apps/app/src/app/pages/*` should migrate there as they are touched.
+- The **stores tab** (`GET /api/stores`) derives from the employee's wallets, not the store list: it starts from active, unexpired allocations with a positive balance — the same rule as `checkout` — so a store the employee has no credit for never appears. Its «پرداخت» button deep-links to `/qr?store=<code>`, which `PayPage` reads from the query param and skips scanning.
+- The **profile tab** (`GET /api/profile/summary`, `GET /api/profile/payments`, `PATCH /api/auth/me`, `POST /api/auth/change-password`) covers identity, credit summary, purchase history, phone edit (the only self-editable field), password change and a static FAQ. The FAQ deliberately has no phone number — واحد رفاه's real contact details have not been given to us yet.
 - Applet routes navigate with absolute paths (`/tourism/...`), so an applet is currently tied to the prefix the app mounts it at.
 
 ### Tourism applet + هتل‌یار (WorldGDS)

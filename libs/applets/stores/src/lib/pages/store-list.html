@@ -1,0 +1,148 @@
+<div class="flex flex-col gap-4 px-4 py-6">
+
+  <!-- سربرگ + جست‌وجو -->
+  <section hlmCard>
+    <div hlmCardContent class="flex flex-col gap-3 pt-6">
+
+      <div class="flex items-center gap-2.5">
+        <div class="bg-secondary text-primary flex size-10 shrink-0 items-center justify-center rounded-xl">
+          <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z" />
+            <path d="M3 6h18" />
+            <path d="M16 10a4 4 0 0 1-8 0" />
+          </svg>
+        </div>
+        <div class="leading-tight">
+          <h1 class="font-bold">فروشگاه‌های طرف قرارداد</h1>
+          <p class="text-muted-foreground text-xs">جایی که با اعتبار خود می‌توانید خرید کنید</p>
+        </div>
+      </div>
+
+      <label class="flex flex-col gap-1.5">
+        <span class="sr-only">جست‌وجوی فروشگاه</span>
+        <input
+          type="search"
+          placeholder="نام فروشگاه، دسته‌بندی یا کد"
+          class="border-input bg-background focus-visible:ring-ring h-10 rounded-lg border px-3 text-sm focus-visible:ring-2 focus-visible:outline-none"
+          [value]="query()"
+          (input)="query.set($any($event.target).value)"
+        />
+      </label>
+
+      <!-- فیلتر بر اساس کیف پول -->
+      @if (walletOptions().length > 1) {
+        <div class="flex flex-wrap gap-2">
+          <button
+            type="button"
+            hlmBtn
+            size="sm"
+            [variant]="walletFilter() === '' ? 'default' : 'outline'"
+            (click)="walletFilter.set('')"
+          >
+            همه
+          </button>
+          @for (name of walletOptions(); track name) {
+            <button
+              type="button"
+              hlmBtn
+              size="sm"
+              [variant]="walletFilter() === name ? 'default' : 'outline'"
+              (click)="toggleWallet(name)"
+            >
+              {{ name }}
+            </button>
+          }
+        </div>
+      }
+    </div>
+  </section>
+
+  <!-- بارگذاری -->
+  @if (loading()) {
+    @for (placeholder of [1, 2, 3]; track placeholder) {
+      <div hlmSkeleton class="h-28 w-full rounded-xl"></div>
+    }
+  } @else if (error()) {
+    <section hlmCard>
+      <div hlmCardContent class="flex flex-col items-center gap-3 py-8 text-center">
+        <p class="text-muted-foreground text-sm">دریافت فهرست فروشگاه‌ها ناموفق بود</p>
+        <button type="button" hlmBtn variant="outline" size="sm" (click)="load()">تلاش دوباره</button>
+      </div>
+    </section>
+  } @else if (visibleStores().length === 0) {
+    <section hlmCard>
+      <div hlmCardContent class="flex flex-col items-center gap-2 py-10 text-center">
+        <p class="text-sm font-medium">فروشگاهی پیدا نشد</p>
+        <p class="text-muted-foreground text-xs">
+          @if (stores().length === 0) {
+            هنوز کیف پول فعالی با اعتبار قابل خرج ندارید
+          } @else {
+            جست‌وجو یا فیلتر را تغییر دهید
+          }
+        </p>
+      </div>
+    </section>
+  } @else {
+
+    <p class="text-muted-foreground px-1 text-xs">
+      {{ count(visibleStores().length) }} فروشگاه قابل استفاده
+    </p>
+
+    @for (store of visibleStores(); track store.id) {
+      <section hlmCard>
+        <div hlmCardContent class="flex flex-col gap-3 pt-6">
+
+          <div class="flex items-start justify-between gap-3">
+            <div class="leading-tight">
+              <h2 class="font-bold">{{ store.name }}</h2>
+              @if (store.category) {
+                <p class="text-muted-foreground text-xs">{{ store.category }}</p>
+              }
+            </div>
+            <span hlmBadge variant="outline" dir="ltr" class="shrink-0 font-mono text-[0.65rem]">
+              {{ store.code }}
+            </span>
+          </div>
+
+          @if (store.address) {
+            <p class="text-muted-foreground flex items-start gap-1.5 text-xs">
+              <svg class="mt-0.5 size-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" />
+                <circle cx="12" cy="10" r="3" />
+              </svg>
+              {{ store.address }}
+            </p>
+          }
+
+          <!-- کیف‌پول‌های قابل استفاده در این فروشگاه -->
+          <div class="flex flex-col gap-1.5">
+            @for (wallet of store.wallets; track wallet.allocationId) {
+              <div class="bg-secondary/50 flex items-center justify-between rounded-lg px-3 py-2">
+                <span class="text-xs font-medium">{{ wallet.name }}</span>
+                <span class="text-primary text-xs font-bold">{{ toman(wallet.remaining) }}</span>
+              </div>
+            }
+          </div>
+
+          <div class="flex items-center justify-between gap-3 border-t pt-3">
+            <div class="leading-tight">
+              <p class="text-muted-foreground text-[0.65rem]">اعتبار قابل خرج</p>
+              <p class="text-sm font-bold">{{ toman(store.totalAvailable) }}</p>
+            </div>
+            <button type="button" hlmBtn size="sm" (click)="pay(store)">
+              <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <rect width="5" height="5" x="3" y="3" rx="1" />
+                <rect width="5" height="5" x="16" y="3" rx="1" />
+                <rect width="5" height="5" x="3" y="16" rx="1" />
+                <path d="M21 16h-3a2 2 0 0 0-2 2v3" />
+                <path d="M21 21v.01" />
+                <path d="M12 7v3a2 2 0 0 1-2 2H7" />
+              </svg>
+              پرداخت
+            </button>
+          </div>
+        </div>
+      </section>
+    }
+  }
+</div>

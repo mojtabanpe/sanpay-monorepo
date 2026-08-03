@@ -1,0 +1,7 @@
+{
+  "name": "applet-wallet",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/applets/wallet/src",
+  "projectType": "library",
+  "tags": ["type:applet", "scope:employee"]
+}

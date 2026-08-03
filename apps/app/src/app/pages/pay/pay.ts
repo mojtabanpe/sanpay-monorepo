@@ -8,7 +8,7 @@ import {
   signal,
   viewChild,
 } from '@angular/core';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { PayableWallet, Receipt, StoreCheckout } from '@sanpay/models';
 import { ReceiptCard } from '@sanpay/receipt';
 import { HlmButtonImports } from '@sanpay/ui/button';
@@ -26,6 +26,7 @@ type Step = 'scan' | 'amount' | 'done';
 export class PayPage implements OnDestroy {
   private readonly checkoutService = inject(CheckoutService);
   private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
 
   private readonly videoRef = viewChild<ElementRef<HTMLVideoElement>>('video');
   private scanner: QrScanner | null = null;
@@ -54,6 +55,14 @@ export class PayPage implements OnDestroy {
   private readonly faNumber = new Intl.NumberFormat('fa-IR');
 
   constructor() {
+    // ورود از فهرست فروشگاه‌ها (`/qr?store=CODE`) — اسکن لازم نیست
+    const preselected = parseStoreCode(
+      this.route.snapshot.queryParamMap.get('store') ?? '',
+    );
+    if (preselected) {
+      void this.loadStore(preselected);
+    }
+
     // دوربین فقط در گام اسکن روشن است
     effect(() => {
       const video = this.videoRef()?.nativeElement;
