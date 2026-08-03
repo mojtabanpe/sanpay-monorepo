@@ -18,41 +18,50 @@
         </div>
       </div>
 
-      <label class="flex flex-col gap-1.5">
-        <span class="sr-only">جست‌وجوی فروشگاه</span>
+      <hlm-input-group>
+        <hlm-input-group-addon align="inline-start">
+          <ng-icon name="lucideSearch" />
+        </hlm-input-group-addon>
         <input
+          hlmInputGroupInput
           type="search"
+          aria-label="جست‌وجوی فروشگاه"
           placeholder="نام فروشگاه، دسته‌بندی یا کد"
-          class="border-input bg-background focus-visible:ring-ring h-10 rounded-lg border px-3 text-sm focus-visible:ring-2 focus-visible:outline-none"
           [value]="query()"
           (input)="query.set($any($event.target).value)"
         />
-      </label>
-
-      <!-- فیلتر بر اساس کیف پول -->
-      @if (walletOptions().length > 1) {
-        <div class="flex flex-wrap gap-2">
-          <button
-            type="button"
-            hlmBtn
-            size="sm"
-            [variant]="walletFilter() === '' ? 'default' : 'outline'"
-            (click)="walletFilter.set('')"
-          >
-            همه
-          </button>
-          @for (name of walletOptions(); track name) {
+        @if (query()) {
+          <hlm-input-group-addon align="inline-end">
             <button
+              hlmInputGroupButton
               type="button"
-              hlmBtn
-              size="sm"
-              [variant]="walletFilter() === name ? 'default' : 'outline'"
-              (click)="toggleWallet(name)"
+              aria-label="پاک کردن جست‌وجو"
+              (click)="query.set('')"
             >
-              {{ name }}
+              <ng-icon name="lucideX" />
             </button>
+          </hlm-input-group-addon>
+        }
+      </hlm-input-group>
+
+      <!-- فیلتر بر اساس کیف پول: مجموعه‌ای از گزینه‌های انحصاری، پس
+           toggle-group به‌جای ردیفی از دکمه‌های جدا -->
+      @if (walletOptions().length > 1) {
+        <!-- spacing>0 keeps the items as separate pills; spacing=0 (default)
+             would join them into a segmented bar, which wraps badly with
+             six variable-width Persian labels -->
+        <hlm-toggle-group
+          type="single"
+          [spacing]="2"
+          [value]="walletFilter()"
+          (valueChange)="walletFilter.set($any($event) ?? '')"
+          class="w-full flex-wrap justify-start"
+        >
+          <button hlmToggleGroupItem value="" size="sm">همه</button>
+          @for (name of walletOptions(); track name) {
+            <button hlmToggleGroupItem [value]="name" size="sm">{{ name }}</button>
           }
-        </div>
+        </hlm-toggle-group>
       }
     </div>
   </section>
@@ -129,7 +138,7 @@
               <p class="text-muted-foreground text-[0.65rem]">اعتبار قابل خرج</p>
               <p class="text-sm font-bold">{{ toman(store.totalAvailable) }}</p>
             </div>
-            <button type="button" hlmBtn size="sm" (click)="pay(store)">
+            <button type="button" hlmBtn (click)="pay(store)">
               <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                 <rect width="5" height="5" x="3" y="3" rx="1" />
                 <rect width="5" height="5" x="16" y="3" rx="1" />

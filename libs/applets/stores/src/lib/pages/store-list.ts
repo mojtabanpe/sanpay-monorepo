@@ -1,11 +1,15 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
+import { NgIcon, provideIcons } from '@ng-icons/core';
+import { lucideSearch, lucideX } from '@ng-icons/lucide';
 import { EmployeeStore } from '@sanpay/models';
 import { HlmBadgeImports } from '@sanpay/ui/badge';
 import { HlmButtonImports } from '@sanpay/ui/button';
 import { HlmCardImports } from '@sanpay/ui/card';
+import { HlmInputGroupImports } from '@sanpay/ui/input-group';
 import { HlmSkeletonImports } from '@sanpay/ui/skeleton';
+import { HlmToggleGroupImports } from '@sanpay/ui/toggle-group';
 import { firstValueFrom } from 'rxjs';
 import { StoresService } from '../data-access/stores.service';
 import { faNumber, toman } from '../format';
@@ -17,11 +21,15 @@ type WalletFilter = string;
   selector: 'stores-store-list',
   imports: [
     FormsModule,
+    NgIcon,
     HlmBadgeImports,
     HlmButtonImports,
     HlmCardImports,
+    HlmInputGroupImports,
     HlmSkeletonImports,
+    HlmToggleGroupImports,
   ],
+  viewProviders: [provideIcons({ lucideSearch, lucideX })],
   templateUrl: './store-list.html',
 })
 export class StoreListPage {

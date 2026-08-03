@@ -18,47 +18,78 @@
         </div>
       </div>
 
-      <label class="flex flex-col gap-1.5">
-        <span class="text-xs font-medium">شهر</span>
-        <select
-          class="border-input bg-background focus-visible:ring-ring h-10 rounded-lg border px-3 text-sm focus-visible:ring-2 focus-visible:outline-none"
+      <hlm-field>
+        <label hlmFieldLabel>شهر</label>
+        <hlm-select
           [value]="cityId()"
-          (change)="onCityChange($any($event.target).value)"
+          [itemToString]="cityLabel"
+          (valueChange)="onCityChange($any($event))"
         >
-          <option [value]="0">همهٔ شهرها</option>
-          @for (city of cities(); track city.id) {
-            <option [value]="city.id">{{ city.name }}</option>
-          }
-        </select>
-      </label>
+          <hlm-select-trigger class="w-full">
+            <hlm-select-value />
+          </hlm-select-trigger>
+          <hlm-select-content *hlmSelectPortal>
+            <hlm-select-item [value]="0">همهٔ شهرها</hlm-select-item>
+            @for (city of cities(); track city.id) {
+              <hlm-select-item [value]="city.id">{{ city.name }}</hlm-select-item>
+            }
+          </hlm-select-content>
+        </hlm-select>
+      </hlm-field>
 
       <div class="flex gap-3">
-        <label class="flex flex-1 flex-col gap-1.5">
-          <span class="text-xs font-medium">تاریخ ورود</span>
-          <input
-            type="date"
-            dir="ltr"
-            class="border-input bg-background focus-visible:ring-ring h-10 rounded-lg border px-3 text-sm focus-visible:ring-2 focus-visible:outline-none"
+        <hlm-field class="flex-1">
+          <label hlmFieldLabel>تاریخ ورود</label>
+          <hlm-date-picker
+            [date]="checkinDate()"
             [min]="minDate"
-            [value]="checkin()"
-            (change)="checkin.set($any($event.target).value)"
-          />
-        </label>
-        <label class="flex w-28 flex-col gap-1.5">
-          <span class="text-xs font-medium">تعداد شب</span>
-          <input
-            type="number"
-            dir="ltr"
-            min="1"
-            max="30"
-            class="border-input bg-background focus-visible:ring-ring h-10 rounded-lg border px-3 text-center text-sm focus-visible:ring-2 focus-visible:outline-none"
-            [value]="nights()"
-            (change)="onNightsChange($any($event.target).value)"
-          />
-        </label>
+            (dateChange)="onCheckinChange($event)"
+          >
+            <hlm-date-picker-trigger class="w-full">
+              انتخاب تاریخ
+            </hlm-date-picker-trigger>
+          </hlm-date-picker>
+        </hlm-field>
+
+        <hlm-field class="w-32">
+          <label hlmFieldLabel>تعداد شب</label>
+          <!-- استپر به‌جای input[type=number]: روی موبایل هدف لمسی درست‌تری
+               دارد و فلش‌های ریز مرورگر در RTL جای اشتباه می‌نشینند. -->
+          <hlm-input-group>
+            <hlm-input-group-addon align="inline-start">
+              <button
+                hlmInputGroupButton
+                type="button"
+                aria-label="یک شب کمتر"
+                size="icon-sm"
+                [disabled]="nights() <= 1"
+                (click)="stepNights(-1)"
+              >
+                <ng-icon name="lucideMinus" />
+              </button>
+            </hlm-input-group-addon>
+
+            <span class="flex-1 text-center text-sm font-medium tabular-nums">
+              {{ count(nights()) }}
+            </span>
+
+            <hlm-input-group-addon align="inline-end">
+              <button
+                hlmInputGroupButton
+                type="button"
+                aria-label="یک شب بیشتر"
+                size="icon-sm"
+                [disabled]="nights() >= 30"
+                (click)="stepNights(1)"
+              >
+                <ng-icon name="lucidePlus" />
+              </button>
+            </hlm-input-group-addon>
+          </hlm-input-group>
+        </hlm-field>
       </div>
 
-      <p class="text-muted-foreground text-xs">{{ stayLabel() }}</p>
+      <p hlmFieldDescription>{{ stayLabel() }}</p>
 
     </div>
   </section>

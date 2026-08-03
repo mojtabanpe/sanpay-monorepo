@@ -1,24 +1,37 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
+import { NgIcon, provideIcons } from '@ng-icons/core';
+import { lucideMinus, lucidePlus } from '@ng-icons/lucide';
+import { JalaliDate } from '@spartan-ng/brain/date-time';
 import { HotelSummary, TourismCity } from '@sanpay/models';
 import { HlmBadgeImports } from '@sanpay/ui/badge';
 import { HlmButtonImports } from '@sanpay/ui/button';
 import { HlmCardImports } from '@sanpay/ui/card';
+import { HlmDatePickerImports } from '@sanpay/ui/date-picker';
+import { HlmFieldImports } from '@sanpay/ui/field';
+import { HlmInputGroupImports } from '@sanpay/ui/input-group';
+import { HlmSelectImports } from '@sanpay/ui/select';
 import { HlmSkeletonImports } from '@sanpay/ui/skeleton';
 import { firstValueFrom } from 'rxjs';
 import { TourismService } from '../data-access/tourism.service';
-import { addDays, faNumber, jalaliLong, today } from '../format';
+import { addDays, faNumber, isoToJalali, jalaliLong, jalaliToIso, today } from '../format';
 
 @Component({
   selector: 'tourism-hotel-list',
   imports: [
     FormsModule,
+    NgIcon,
     HlmBadgeImports,
     HlmButtonImports,
     HlmCardImports,
+    HlmDatePickerImports,
+    HlmFieldImports,
+    HlmInputGroupImports,
+    HlmSelectImports,
     HlmSkeletonImports,
   ],
+  viewProviders: [provideIcons({ lucideMinus, lucidePlus })],
   templateUrl: './hotel-list.html',
 })
 export class HotelListPage {
@@ -35,7 +48,9 @@ export class HotelListPage {
   protected readonly checkin = signal(addDays(today(), 1));
   protected readonly nights = signal(1);
 
-  protected readonly minDate = today();
+  /** hlm-date-picker با JalaliDate کار می‌کند؛ منبع حقیقت همان ISO بالاست */
+  protected readonly checkinDate = computed(() => isoToJalali(this.checkin()));
+  protected readonly minDate = isoToJalali(today());
 
   /** هتل‌هایی که تصویرشان لود نشد — به‌جای کادر خالی، آیکون جایگزین می‌گیرند */
   protected readonly brokenImages = signal(new Set<number>());
@@ -72,13 +87,26 @@ export class HotelListPage {
     }
   }
 
-  protected onCityChange(value: string): void {
-    this.cityId.set(Number(value));
+  /**
+   * برچسبی که روی دکمهٔ select می‌نشیند. بدون این، مقدار خام (`0`) نمایش
+   * داده می‌شود. تابع پیکانی است تا `this` به کامپوننت بسته بماند.
+   */
+  protected readonly cityLabel = (id: number): string =>
+    id === 0
+      ? 'همهٔ شهرها'
+      : (this.cities().find((city) => city.id === id)?.name ?? '');
+
+  protected onCityChange(value: number): void {
+    this.cityId.set(value ?? 0);
     void this.load();
   }
 
-  protected onNightsChange(value: string): void {
-    this.nights.set(Math.min(30, Math.max(1, Number(value) || 1)));
+  protected onCheckinChange(date: JalaliDate | null): void {
+    if (date) this.checkin.set(jalaliToIso(date));
+  }
+
+  protected stepNights(delta: number): void {
+    this.nights.update((n) => Math.min(30, Math.max(1, n + delta)));
   }
 
   /** تاریخ و تعداد شب در query param می‌روند تا صفحهٔ هتل هم قابل اشتراک باشد */

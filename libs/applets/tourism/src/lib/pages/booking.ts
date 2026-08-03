@@ -5,6 +5,8 @@ import { BookingQuote, BookingReceipt } from '@sanpay/models';
 import { HlmBadgeImports } from '@sanpay/ui/badge';
 import { HlmButtonImports } from '@sanpay/ui/button';
 import { HlmCardImports } from '@sanpay/ui/card';
+import { HlmFieldImports } from '@sanpay/ui/field';
+import { HlmInputImports } from '@sanpay/ui/input';
 import { HlmSkeletonImports } from '@sanpay/ui/skeleton';
 import { firstValueFrom } from 'rxjs';
 import { TourismService } from '../data-access/tourism.service';
@@ -16,6 +18,8 @@ import { faNumber, jalali, jalaliLong, toman } from '../format';
     HlmBadgeImports,
     HlmButtonImports,
     HlmCardImports,
+    HlmFieldImports,
+    HlmInputImports,
     HlmSkeletonImports,
   ],
   templateUrl: './booking.html',

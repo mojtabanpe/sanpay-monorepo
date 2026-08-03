@@ -30,13 +30,16 @@
           <dd class="flex items-center gap-2">
             @if (editingPhone()) {
               <input
+                hlmInput
                 type="tel"
                 dir="ltr"
                 inputmode="numeric"
+                aria-label="شمارهٔ موبایل"
                 placeholder="09xxxxxxxxx"
-                class="border-input bg-background focus-visible:ring-ring h-9 w-40 rounded-lg border px-2 text-center text-xs focus-visible:ring-2 focus-visible:outline-none"
+                class="w-40 text-center"
                 [value]="phoneDraft()"
                 (input)="phoneDraft.set($any($event.target).value)"
+                (keyup.enter)="savePhone()"
               />
               <button type="button" hlmBtn size="sm" [disabled]="savingPhone()" (click)="savePhone()">
                 ثبت

@@ -152,55 +152,61 @@
       <div hlmCardContent class="flex flex-col gap-3 pt-6">
         <h2 class="text-sm font-bold">مشخصات مسافر</h2>
 
-        <div class="flex gap-3">
-          <label class="flex flex-1 flex-col gap-1.5">
-            <span class="text-xs font-medium">نام</span>
-            <input
-              type="text"
-              autocomplete="given-name"
-              class="border-input bg-background focus-visible:ring-ring h-10 rounded-lg border px-3 text-sm focus-visible:ring-2 focus-visible:outline-none"
-              [value]="firstName()"
-              (input)="firstName.set($any($event.target).value)"
-            />
-          </label>
-          <label class="flex flex-1 flex-col gap-1.5">
-            <span class="text-xs font-medium">نام خانوادگی</span>
-            <input
-              type="text"
-              autocomplete="family-name"
-              class="border-input bg-background focus-visible:ring-ring h-10 rounded-lg border px-3 text-sm focus-visible:ring-2 focus-visible:outline-none"
-              [value]="lastName()"
-              (input)="lastName.set($any($event.target).value)"
-            />
-          </label>
-        </div>
+        <hlm-field-group>
+          <div class="flex gap-3">
+            <hlm-field class="flex-1">
+              <label hlmFieldLabel for="traveller-first-name">نام</label>
+              <input
+                hlmInput
+                id="traveller-first-name"
+                type="text"
+                autocomplete="given-name"
+                [value]="firstName()"
+                (input)="firstName.set($any($event.target).value)"
+              />
+            </hlm-field>
+            <hlm-field class="flex-1">
+              <label hlmFieldLabel for="traveller-last-name">نام خانوادگی</label>
+              <input
+                hlmInput
+                id="traveller-last-name"
+                type="text"
+                autocomplete="family-name"
+                [value]="lastName()"
+                (input)="lastName.set($any($event.target).value)"
+              />
+            </hlm-field>
+          </div>
 
-        <label class="flex flex-col gap-1.5">
-          <span class="text-xs font-medium">کد ملی</span>
-          <input
-            type="text"
-            inputmode="numeric"
-            maxlength="10"
-            dir="ltr"
-            class="border-input bg-background focus-visible:ring-ring h-10 rounded-lg border px-3 text-sm focus-visible:ring-2 focus-visible:outline-none"
-            [value]="nationalCode()"
-            (input)="nationalCode.set($any($event.target).value)"
-          />
-        </label>
+          <hlm-field>
+            <label hlmFieldLabel for="traveller-national-code">کد ملی</label>
+            <input
+              hlmInput
+              id="traveller-national-code"
+              type="text"
+              inputmode="numeric"
+              maxlength="10"
+              dir="ltr"
+              [value]="nationalCode()"
+              (input)="nationalCode.set($any($event.target).value)"
+            />
+          </hlm-field>
 
-        <label class="flex flex-col gap-1.5">
-          <span class="text-xs font-medium">شمارهٔ موبایل</span>
-          <input
-            type="tel"
-            inputmode="numeric"
-            maxlength="11"
-            dir="ltr"
-            placeholder="09121234567"
-            class="border-input bg-background focus-visible:ring-ring h-10 rounded-lg border px-3 text-sm focus-visible:ring-2 focus-visible:outline-none"
-            [value]="mobile()"
-            (input)="mobile.set($any($event.target).value)"
-          />
-        </label>
+          <hlm-field>
+            <label hlmFieldLabel for="traveller-mobile">شمارهٔ موبایل</label>
+            <input
+              hlmInput
+              id="traveller-mobile"
+              type="tel"
+              inputmode="numeric"
+              maxlength="11"
+              dir="ltr"
+              placeholder="09121234567"
+              [value]="mobile()"
+              (input)="mobile.set($any($event.target).value)"
+            />
+          </hlm-field>
+        </hlm-field-group>
       </div>
     </section>
 

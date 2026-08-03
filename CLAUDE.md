@@ -47,6 +47,40 @@ QR scanning uses the native `BarcodeDetector` when available and falls back to `
 - Do NOT use `background-attachment: fixed` — it blanks/janks Chromium on scroll; the fixed gradient lives on `body::before` in `glass.css`.
 - Use the `ui-ux-pro-max` skill (global, `~/.agents/skills/ui-ux-pro-max`) for style/palette/UX decisions, and the `spartan` skill + `spartan-ui` MCP server (`.mcp.json`) for component APIs.
 
+### Spartan first — no native form controls
+
+**Before adding any UI, check what spartan already ships for it.** Never use a native `<select>`, `<input type="date">`, `<input type="number">`, or a hand-rolled `<input class="border-input bg-background h-10 …">`. Every one of those existed in the app once and has been migrated:
+
+| Need | Use | Not |
+| --- | --- | --- |
+| Text/password/tel input | `hlmInput` inside `<hlm-field>` + `hlmFieldLabel` | bare `<input>` + copy-pasted Tailwind |
+| Input with a unit, icon or inline button | `hlm-input-group` + `hlm-input-group-addon` / `-text` / `-button` | a sibling `<span>` next to the input |
+| Choice from a list | `hlm-select` (+ `[itemToString]` so the trigger shows a label, not the raw value) | native `<select>` |
+| 2–7 exclusive options | `hlm-toggle-group` + `hlmToggleGroupItem` | a row of `hlmBtn` with a `variant` ternary |
+| Date | `hlm-date-picker` + `hlm-date-picker-trigger` | `<input type="date">` |
+| Counter (e.g. تعداد شب) | `hlm-input-group` with −/+ `hlmInputGroupButton`s | `<input type="number">` |
+| Error message | `hlmAlert variant="destructive"` | a bare `<p class="text-destructive">` |
+
+Control sizing, focus rings, badge/progress/tabs/skeleton/toggle styling all live in `glass.css` — style there via `[data-slot=…]`, never per call site. Spartan ships form controls at `h-8` and buttons at `h-8`/`h-7`; `glass.css` raises them to a 44px touch target for this mobile-first app.
+
+Prefer a component's own inputs over CSS when one exists — e.g. `hlm-toggle-group [spacing]="2"` gives separate pills, where the default `spacing=0` builds a joined segmented bar. Fighting that in CSS produces the wrong shape.
+
+#### The `glass.css` overrides are deliberately UNLAYERED
+
+**Do not wrap the component overrides in `@layer components` (or any layer).** Tailwind v4 imports `tailwindcss/utilities.css` *without* a `layer()`, so every spartan utility is unlayered — and unlayered rules beat every layered rule regardless of specificity. A rule inside `@layer components` therefore loses to `data-[state=on]:bg-muted` no matter how specific you make the selector, and no `:root` prefix or extra attribute will save it. This is exactly how the selected toggle ended up as white text on a 5% grey fill (~1.1:1 contrast).
+
+Being unlayered and imported *after* utilities in each app's `styles.css`, the overrides win on source order. The trade-off is that a call-site utility can no longer override a property set in `glass.css`: put component-wide concerns in the theme file, and keep call sites to layout (width, alignment, spacing).
+
+When verifying CSS changes, confirm the browser is not on a cached stylesheet (check the `<link>` hash) — and note the dev server may need a reload to pick up `shared/ui` edits.
+
+### Jalali dates
+
+`@spartan-ng/brain` ships `BrnJalaliDateAdapter` + `JalaliDate` — **do not write a date adapter.** `providePersianDates()` (`apps/app/src/app/core/date/persian-date.ts`) is installed in `app.config.ts` and wires the adapter, Persian month/weekday labels, week-starts-Saturday, and Persian-digit formatting. Because it is a root provider, every applet's `hlm-calendar` / `hlm-date-picker` gets it without depending on the app.
+
+The API and هتل‌یار speak Gregorian `YYYY-MM-DD`; `JalaliDate` exists only at the display boundary. Convert with `isoToJalali` / `jalaliToIso` in `libs/applets/tourism/src/lib/format.ts`.
+
+**Known gap:** the day numbers *inside* the calendar grid render as Latin (`13`, not `۱۳`) — `hlm-calendar` interpolates `_dateAdapter.getDate(date)` directly and `BrnCalendarI18n` has no `formatDay` hook. Fixing it means editing a generated file, which the rule above forbids. The trigger, header and everything else are Persian.
+
 ## Module boundaries & lint tags
 
 Every project is tagged so `@nx/enforce-module-boundaries` (depConstraints in the root `eslint.config.mjs`) can work — untagged projects fail lint outright.

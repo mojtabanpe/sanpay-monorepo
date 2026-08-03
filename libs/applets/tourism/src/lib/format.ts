@@ -1,5 +1,7 @@
 /** قالب‌بندی فارسی مشترک بین صفحه‌های گردشگری */
 
+import { JalaliDate, PersianDate } from '@spartan-ng/brain/date-time';
+
 const NUMBER = new Intl.NumberFormat('fa-IR');
 const JALALI = new Intl.DateTimeFormat('fa-IR', {
   year: 'numeric',
@@ -41,6 +43,26 @@ export function addDays(isoDate: string, days: number): string {
   const date = parseDate(isoDate);
   date.setUTCDate(date.getUTCDate() + days);
   return date.toISOString().slice(0, 10);
+}
+
+/**
+ * تبدیل بین `YYYY-MM-DD` میلادی (زبان API و هتل‌یار) و `JalaliDate`
+ * (چیزی که hlm-date-picker نشان می‌دهد). تبدیل فقط در همین مرز انجام می‌شود؛
+ * هرچه به سرور می‌رود میلادی می‌ماند.
+ */
+export function isoToJalali(isoDate: string): JalaliDate {
+  const [year, month, day] = isoDate.slice(0, 10).split('-').map(Number);
+  const [jy, jm, jd] = PersianDate.gregorianToJalali(year, month, day);
+  return new JalaliDate(jy, jm, jd);
+}
+
+export function jalaliToIso(date: JalaliDate): string {
+  const [gy, gm, gd] = PersianDate.jalaliToGregorian(
+    date.year,
+    date.month,
+    date.day,
+  );
+  return `${gy}-${String(gm).padStart(2, '0')}-${String(gd).padStart(2, '0')}`;
 }
 
 /**

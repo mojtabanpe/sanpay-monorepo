@@ -1,14 +1,23 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
+import { HlmAlertImports } from '@sanpay/ui/alert';
 import { HlmButtonImports } from '@sanpay/ui/button';
 import { HlmCardImports } from '@sanpay/ui/card';
+import { HlmFieldImports } from '@sanpay/ui/field';
+import { HlmInputImports } from '@sanpay/ui/input';
 import { firstValueFrom } from 'rxjs';
 import { ProfileService } from '../data-access/profile.service';
 
 @Component({
   selector: 'profile-change-password',
-  imports: [HlmButtonImports, HlmCardImports],
+  imports: [
+    HlmAlertImports,
+    HlmButtonImports,
+    HlmCardImports,
+    HlmFieldImports,
+    HlmInputImports,
+  ],
   templateUrl: './change-password.html',
 })
 export class ChangePasswordPage {

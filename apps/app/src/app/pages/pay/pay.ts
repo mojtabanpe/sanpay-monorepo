@@ -13,6 +13,9 @@ import { PayableWallet, Receipt, StoreCheckout } from '@sanpay/models';
 import { ReceiptCard } from '@sanpay/receipt';
 import { HlmButtonImports } from '@sanpay/ui/button';
 import { HlmCardImports } from '@sanpay/ui/card';
+import { HlmFieldImports } from '@sanpay/ui/field';
+import { HlmInputImports } from '@sanpay/ui/input';
+import { HlmInputGroupImports } from '@sanpay/ui/input-group';
 import { CheckoutService, parseStoreCode } from '../../core/checkout/checkout.service';
 import { QrScanner } from '../../core/checkout/qr-scanner';
 
@@ -20,7 +23,14 @@ type Step = 'scan' | 'amount' | 'done';
 
 @Component({
   selector: 'app-pay',
-  imports: [HlmButtonImports, HlmCardImports, ReceiptCard],
+  imports: [
+    HlmButtonImports,
+    HlmCardImports,
+    HlmFieldImports,
+    HlmInputImports,
+    HlmInputGroupImports,
+    ReceiptCard,
+  ],
   templateUrl: './pay.html',
 })
 export class PayPage implements OnDestroy {

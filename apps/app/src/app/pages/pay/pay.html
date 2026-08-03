@@ -43,21 +43,24 @@
     <!-- ورود دستی — همیشه در دسترس، نه فقط در حالت خطا -->
     <section hlmCard>
       <div hlmCardContent class="flex flex-col gap-3 pt-6">
-        <label for="storeCode" class="text-xs font-medium">
-          یا کد فروشگاه را وارد کنید
-        </label>
-        <input
-          id="storeCode"
-          dir="ltr"
-          autocapitalize="characters"
-          autocomplete="off"
-          spellcheck="false"
-          placeholder="OLMP3652"
-          class="border-input bg-background/60 focus-visible:ring-ring w-full rounded-lg border px-3 py-2 text-center font-mono text-sm tracking-widest uppercase focus-visible:ring-2 focus-visible:outline-none"
-          [value]="manualCode()"
-          (input)="onManualInput($event)"
-          (keyup.enter)="submitManualCode()"
-        />
+        <hlm-field>
+          <label hlmFieldLabel for="storeCode">
+            یا کد فروشگاه را وارد کنید
+          </label>
+          <input
+            hlmInput
+            id="storeCode"
+            dir="ltr"
+            autocapitalize="characters"
+            autocomplete="off"
+            spellcheck="false"
+            placeholder="OLMP3652"
+            class="text-center font-mono tracking-widest uppercase"
+            [value]="manualCode()"
+            (input)="onManualInput($event)"
+            (keyup.enter)="submitManualCode()"
+          />
+        </hlm-field>
         <button
           hlmBtn
           class="w-full"
@@ -108,16 +111,21 @@
           </div>
 
           <div class="flex items-center gap-2">
-            <input
-              inputmode="numeric"
-              autocomplete="off"
-              placeholder="۰"
-              [attr.aria-label]="'مبلغ کسر از ' + wallet.name"
-              class="border-input bg-background/60 focus-visible:ring-ring min-w-0 flex-1 rounded-lg border px-3 py-2.5 text-left text-base font-semibold tabular-nums focus-visible:ring-2 focus-visible:outline-none"
-              [value]="amountText(wallet)"
-              (input)="onAmountInput(wallet, $event)"
-            />
-            <span class="text-muted-foreground shrink-0 text-xs">تومان</span>
+            <hlm-input-group class="min-w-0 flex-1">
+              <input
+                hlmInputGroupInput
+                inputmode="numeric"
+                autocomplete="off"
+                placeholder="۰"
+                [attr.aria-label]="'مبلغ کسر از ' + wallet.name"
+                class="text-left text-base font-semibold tabular-nums"
+                [value]="amountText(wallet)"
+                (input)="onAmountInput(wallet, $event)"
+              />
+              <hlm-input-group-addon align="inline-end">
+                <span hlmInputGroupText>تومان</span>
+              </hlm-input-group-addon>
+            </hlm-input-group>
             <button
               hlmBtn
               variant="outline"

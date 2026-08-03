@@ -6,6 +6,7 @@ import { EmployeeProfile, ProfileSummary } from '@sanpay/models';
 import { HlmBadgeImports } from '@sanpay/ui/badge';
 import { HlmButtonImports } from '@sanpay/ui/button';
 import { HlmCardImports } from '@sanpay/ui/card';
+import { HlmInputImports } from '@sanpay/ui/input';
 import { HlmSkeletonImports } from '@sanpay/ui/skeleton';
 import { firstValueFrom } from 'rxjs';
 import { ProfileService } from '../data-access/profile.service';
@@ -19,6 +20,7 @@ import { daysUntil, faNumber, jalali, toman } from '../format';
     HlmBadgeImports,
     HlmButtonImports,
     HlmCardImports,
+    HlmInputImports,
     HlmSkeletonImports,
   ],
   templateUrl: './profile-home.html',
