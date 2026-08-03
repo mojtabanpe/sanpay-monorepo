@@ -5,7 +5,7 @@ import { HlmProgressImports } from '@sanpay/ui/progress';
 import { HlmSkeletonImports } from '@sanpay/ui/skeleton';
 import { Wallet } from '@sanpay/models';
 import { firstValueFrom } from 'rxjs';
-import { WalletService } from '../../core/wallet/wallet.service';
+import { WalletService } from '@sanpay/applets/wallet';
 
 @Component({
   selector: 'app-home',

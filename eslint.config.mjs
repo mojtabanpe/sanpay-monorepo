@@ -20,10 +20,15 @@ export default [
           enforceBuildableLibDependency: true,
           allow: ['^.*/eslint(\\.base)?\\.config\\.[cm]?[jt]s$'],
           depConstraints: [
-            // type: apps may only consume libs; libs may only consume libs.
+            // type: apps consume applets + libs; applets consume applets + libs;
+            // plain libs stay at the bottom and may only consume other libs.
             {
               sourceTag: 'type:app',
-              onlyDependOnLibsWithTags: ['type:lib'],
+              onlyDependOnLibsWithTags: ['type:applet', 'type:lib'],
+            },
+            {
+              sourceTag: 'type:applet',
+              onlyDependOnLibsWithTags: ['type:applet', 'type:lib'],
             },
             {
               sourceTag: 'type:lib',

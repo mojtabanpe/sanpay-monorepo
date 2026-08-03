@@ -5,6 +5,7 @@ import { AuthModule } from './auth/auth.module';
 import { PaymentsModule } from './payments/payments.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { StoreModule } from './store/store.module';
+import { TourismModule } from './tourism/tourism.module';
 import { WalletsModule } from './wallets/wallets.module';
 
 @Module({
@@ -14,6 +15,7 @@ import { WalletsModule } from './wallets/wallets.module';
     WalletsModule,
     PaymentsModule,
     StoreModule,
+    TourismModule,
   ],
   controllers: [AppController],
   providers: [AppService],

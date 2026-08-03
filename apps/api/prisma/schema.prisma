@@ -26,6 +26,7 @@ model Employee {
   purchaseCodes PurchaseCode[]
   transactions  Transaction[]
   payments      Payment[]
+  hotelBookings HotelBooking[]
 }
 
 // ─── کیف پول ──────────────────────────────────────────────────────────────────
@@ -35,6 +36,8 @@ enum WalletKind {
   CREDIT
   /// سهمیهٔ ارزاق
   RATION
+  /// اعتبار گردشگری — فقط برای رزرو هتل از طریق هتل‌یار، نه فروشگاه‌ها
+  TOURISM
 }
 
 /// تعریف مشترک یک کیف پول (مثلاً «ارزاق ماهانه») که به فروشگاه‌های مشخصی وصل است.
@@ -75,6 +78,7 @@ model WalletAllocation {
   definition    WalletDefinition @relation(fields: [definitionId], references: [id])
   purchaseCodes PurchaseCode[]
   transactions  Transaction[]
+  hotelBookings HotelBooking[]
 
   @@index([employeeId])
   @@index([definitionId])
@@ -162,6 +166,98 @@ model Payment {
   @@index([employeeId, createdAt])
 }
 
+// ─── رزرو هتل (گردشگری) ───────────────────────────────────────────────────────
+
+enum BookingStatus {
+  /// ظرفیت آنلاین قطعی — هتل‌یار statusCode=1 برگردانده
+  CONFIRMED
+  /// ظرفیت آفلاین — هتل‌یار بعداً از طریق webhook تأیید یا رد می‌کند
+  PENDING
+  REJECTED
+  CANCELED
+}
+
+/// رزرو هتل با اعتبار گردشگری. هتل‌ها فروشگاه نیستند: رزرو مستقیماً روی API
+/// هتل‌یار انجام می‌شود و فقط در صورت موفقیت، اعتبار کارمند کم می‌شود.
+/// تسویهٔ ریالی با هتل‌یار جداگانه و شبانه انجام می‌شود (settledAt).
+model HotelBooking {
+  id           String        @id @default(uuid())
+  /// شمارهٔ پیگیری داخلی — همان externalId که به هتل‌یار فرستاده می‌شود
+  referenceNo  String        @unique
+  /// شناسهٔ رزرو در سامانهٔ هتل‌یار (response.reserve.info.id)
+  gdsReserveId String?
+  status       BookingStatus @default(PENDING)
+
+  employeeId   String
+  allocationId String
+  /// تراکنش کسر اعتبار — تا وقتی رزرو در هتل‌یار موفق نشده null است
+  transactionId String?      @unique
+
+  hotelId    Int
+  hotelName  String
+  roomId     Int
+  roomType   String
+  checkin    DateTime
+  nights     Int
+  guestName  String
+  guestIdNo  String
+  /// مبلغ کسرشده از کیف پول (تومان)
+  amount     BigInt
+  /// مبلغی که باید به هتل‌یار پرداخت شود (تومان) — مبنای تسویهٔ شبانه
+  payable    BigInt
+
+  /// زمان تسویه با هتل‌یار از طریق پرداخت‌یار (null = تسویه‌نشده)
+  settledAt DateTime?
+  /// شناسهٔ دستهٔ تسویهٔ شبانه
+  settlementBatchId String?
+
+  /// زمان رد/کنسل‌شدن از سمت هتل‌یار (از طریق webhook)
+  canceledAt DateTime?
+  /// مبلغی که بابت رد یا کنسلی به کیف پول برگشت (تومان)
+  refundedAmount BigInt?
+  /// توضیح هتل‌یار دربارهٔ رد یا تغییر رزرو — در اپ به کارمند نشان داده می‌شود
+  statusNote String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  employee    Employee         @relation(fields: [employeeId], references: [id])
+  allocation  WalletAllocation @relation(fields: [allocationId], references: [id])
+  transaction Transaction?     @relation(fields: [transactionId], references: [id])
+  webhookEvents GdsWebhookEvent[]
+
+  @@index([employeeId, createdAt])
+  @@index([settledAt])
+  @@index([gdsReserveId])
+}
+
+/// لاگ خام رویدادهای webhook هتل‌یار.
+///
+/// دو کار می‌کند: (۱) idempotency — هتل‌یار یک رویداد را می‌تواند چند بار
+/// بفرستد و کلید یکتای زیر جلوی برگشت دوبارهٔ اعتبار را می‌گیرد،
+/// (۲) بایگانی — اگر پردازش شکست بخورد بدنهٔ خام برای بررسی دستی می‌ماند.
+model GdsWebhookEvent {
+  id String @id @default(uuid())
+  /// reserve | reserve_reject | change
+  action String
+  /// شناسهٔ رزرو در هتل‌یار (detail.reservationId)
+  reservationId String
+  /// شناسهٔ تغییر برای اکشن change — برای بقیه رشتهٔ خالی تا کلید یکتا کار کند
+  changeId String @default("")
+  /// بدنهٔ خام رویداد، همان‌طور که رسیده
+  payload Json
+  bookingId String?
+  /// null یعنی هنوز/هرگز پردازش نشده — با error پر می‌شود
+  processedAt DateTime?
+  error String?
+  receivedAt DateTime @default(now())
+
+  booking HotelBooking? @relation(fields: [bookingId], references: [id])
+
+  @@unique([action, reservationId, changeId])
+  @@index([receivedAt])
+}
+
 // ─── تراکنش ───────────────────────────────────────────────────────────────────
 
 enum TransactionType {
@@ -189,6 +285,7 @@ model Transaction {
   store        Store?           @relation(fields: [storeId], references: [id])
   purchaseCode PurchaseCode?    @relation(fields: [purchaseCodeId], references: [id])
   payment      Payment?         @relation(fields: [paymentId], references: [id])
+  hotelBooking HotelBooking?
 
   @@index([employeeId, createdAt])
   @@index([storeId, createdAt])

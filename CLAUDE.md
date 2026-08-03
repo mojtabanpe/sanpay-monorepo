@@ -14,6 +14,7 @@ Welfare/credit platform for the employees of **شرکت جهان‌فولاد س
 | `api`       | `apps/api`       | NestJS + Prisma 7 + PostgreSQL                                                                                                 |
 | `ui`        | `shared/ui`      | Shared spartan/ui library — all 57 primitives as secondary entrypoints: `import { HlmButtonImports } from '@sanpay/ui/button'` |
 | `models`    | `shared/models`  | Shared domain models (TypeScript interfaces) used by app + dashboard: `import { Wallet } from '@sanpay/models'`                |
+| *applets*   | `libs/applets/*` | Self-contained feature units the employee app lazy-loads — see **Applets** below                                               |
 | `receipt`   | `shared/receipt` | Shared receipt component used by both the employee app and the store panel: `import { ReceiptCard } from '@sanpay/receipt'`    |
 
 ## Purchase flow (approved design — merchant-presented QR)
@@ -57,8 +58,9 @@ Every project is tagged so `@nx/enforce-module-boundaries` (depConstraints in th
 | `apps/dashboard`                                 | `type:app`, `scope:admin`    |
 | `apps/api`                                       | `type:app`, `scope:api`      |
 | `shared/models`, `shared/receipt`, `shared/ui/*` | `type:lib`, `scope:shared`   |
+| `libs/applets/*`                                 | `type:applet`, `scope:employee` |
 
-Apps may depend on libs only (never on each other); libs may depend on libs only. Each app reaches its own scope plus `scope:shared`. **Any new project needs tags** — pick the app's scope, or `type:lib` + `scope:shared` for shared code.
+Apps depend on applets + libs (never on each other); applets depend on applets + libs; plain libs depend on libs only. Each app reaches its own scope plus `scope:shared`. **Any new project needs tags** — pick the app's scope, `type:applet` + the owning app's scope for an applet, or `type:lib` + `scope:shared` for shared code.
 
 Two lint rules are turned off for the generated spartan libs in the hand-owned `shared/ui/eslint.overrides.mjs`, which each `shared/ui/*/eslint.config.mjs` spreads **last** (a root-level override can't win: the generated lib configs spread the root config first, and in flat config the last match wins):
 
@@ -67,10 +69,46 @@ Two lint rules are turned off for the generated spartan libs in the hand-owned `
 
 **After `nx g @spartan-ng/cli:ui <name>`** the regenerated component's `project.json` and `eslint.config.mjs` are overwritten, dropping its `tags` and its `...uiOverrides` spread. Re-add both, then re-run `npx nx run-many -t lint`.
 
+## Applets (`libs/applets/*`)
+
+Employee-app features live as **applets**, not as pages inside `apps/app`. An applet is an Angular library that owns its routes, pages and data-access service; the app mounts it lazily and knows nothing about its internals:
+
+```ts
+// apps/app/src/app/app.routes.ts
+{ path: 'tourism', loadChildren: () => import('@sanpay/applets/tourism').then((m) => m.tourismRoutes) }
+```
+
+- Each applet exports its `Route[]` (plus any service the host needs) from `src/index.ts`; the path alias is `@sanpay/applets/<name>` in `tsconfig.base.json`.
+- Tag every applet `type:applet` + the owning app's scope (`scope:employee`). Applets may use other applets and `type:lib` libs; the app may use applets and libs.
+- Existing applets: `tourism` (hotel booking) and `wallet` (`WalletService`, used by the home page). New employee features should be added as applets, and remaining `apps/app/src/app/pages/*` should migrate there as they are touched.
+- Applet routes navigate with absolute paths (`/tourism/...`), so an applet is currently tied to the prefix the app mounts it at.
+
+### Tourism applet + هتل‌یار (WorldGDS)
+
+Employees book hotels with a **`TOURISM` wallet** — hotels are *not* stores and never appear in the QR/store flow. A `TOURISM` `WalletDefinition` has no `WalletDefinitionStore` rows; `TourismService` rejects any other wallet kind.
+
+- Upstream is the هتل‌یار / WorldGDS API (spec: `~/Downloads/GDS Document V6.3.pdf`, Postman collection in `~/Downloads/GDS-Demo.postman_collection.json`). Everything is POST with `sessionId` **in the body** and `APIKEY` in the header; **errors come back with HTTP 200** and `status: false`, so `status` must be checked, not the status code. Most numbers arrive as strings — normalized in `tourism.mapper.ts`.
+- `GdsClient` (abstract, `apps/api/src/app/tourism/gds/gds.types.ts`) has two implementations: `GdsHttpClient` (real; caches the 1-hour session, retries once on error 1104/1107) and `GdsMockClient`. **`GDS_MODE=mock` in `.env` is the current default** — we have no real credentials yet. Mock images are inline SVG data URIs on purpose: external CDNs are unreliable in Iran. Mock hotel `362` returns `Pending` (offline capacity) and its room `9802` is full, so both paths stay testable.
+- **Booking order matters:** validate → book at هتل‌یار → *then* debit the wallet. Debiting first would burn credit on any network error. The `HotelBooking` row is written **before** the GDS call with `transactionId: null`, so a booking that succeeded upstream but failed locally is findable rather than silent.
+- `statusCode: '1'` → `CONFIRMED` (online capacity), `'0'` → `PENDING` (offline; هتل‌یار confirms later via webhook).
+
+### Webhook receiver (`POST /api/tourism/webhook`)
+
+هتل‌یار posts every reservation change to an address we register with them (spec section 14). `TourismWebhookController` + `TourismWebhookService` handle it; it is the **only** tourism endpoint without employee JWT.
+
+- **Auth** is a shared secret in the `X-Webhook-Token` header (`Authorization: Bearer …` also accepted), compared timing-safely in `GdsWebhookGuard`. `GDS_WEBHOOK_SECRET` in `.env`; if it is unset the endpoint is closed — except under `GDS_MODE=mock`, where it stays open for local testing and logs a warning.
+- Three actions: `reserve` → `CONFIRMED`; `reserve_reject` → `REJECTED` + full refund; `change` → cancellation (`report.changesLog[].detail.changes[].operation === 1`) means `CANCELED` + refund of `totalReturnToCustomer` only — the cancellation penalty stays in `payable` as our debt to هتل‌یار. A non-cancel `change` only updates `payable`; it never moves employee money without a human.
+- **Idempotency**: every event is stored in `GdsWebhookEvent`, unique on `(action, reservationId, changeId)`. Only a *successfully processed* event is skipped as a duplicate — a failed one is deliberately reprocessed, since هتل‌یار retries whatever does not get a 200. The refund itself is additionally guarded by `HotelBooking.refundedAmount` being non-null.
+- Matching is by `gdsReserveId`, falling back to `report.externalId` (= our `referenceNo`) for bookings whose GDS id never got written. An event with no matching booking is archived with an error and still answered 200 — endless retries for a payload we cannot act on help no one; the raw body is there for manual review.
+- A late `reserve` for an already `REJECTED`/`CANCELED` booking is ignored: final status and the refund must not roll back.
+- **Not** implemented: no request-body signature (هتل‌یار sends none) and no re-poll of `report` to reconcile events lost while the API was down.
+- Settlement with هتل‌یار (~2 AM, via a پرداخت‌یار) is **not implemented**. The data is in place: `HotelBooking.payable` (sum of `hotelPrice` = our debt, not what the employee paid), `settledAt`, `settlementBatchId`.
+
 ## Persian/RTL conventions (`apps/app`)
 
 - Vazirmatn font, **self-hosted** via `@fontsource/vazirmatn` CSS imports in `apps/app/src/styles.css` — never add Google Fonts links (unreliable in Iran).
 - Persian digits (۱۲۳) and amounts (۲۴٬۵۰۰٬۰۰۰ تومان), Jalali dates (۱۴۰۵/۰۶/۳۱); wrap card numbers/codes in `dir="ltr"`.
+- **Never use `•` as a separator next to a Persian digit** — «• ۲ شب» reads as «۲۰ شب». Use `—` or `،`.
 
 ## Backend (`apps/api`)
 

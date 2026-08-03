@@ -57,7 +57,7 @@ async function main() {
   const walletSeed: Array<{
     name: string;
     icon: string;
-    kind: 'CREDIT' | 'RATION';
+    kind: 'CREDIT' | 'RATION' | 'TOURISM';
     cap: bigint;
     spent: bigint;
     expiresAt: Date;
@@ -109,6 +109,17 @@ async function main() {
       spent: 1_750_000n,
       expiresAt: new Date('2026-12-21'), // ۱۴۰۵/۰۹/۳۰
       storeUsernames: ['didgan'],
+    },
+    {
+      // کیف پول گردشگری به هیچ فروشگاهی وصل نیست — فقط برای رزرو هتل از
+      // طریق هتل‌یار خرج می‌شود، نه خرید حضوری با QR.
+      name: 'اعتبار گردشگری',
+      icon: 'travel',
+      kind: 'TOURISM',
+      cap: 40_000_000n,
+      spent: 0n,
+      expiresAt: new Date('2027-03-20'), // ۱۴۰۵/۱۲/۲۹
+      storeUsernames: [],
     },
   ];
 

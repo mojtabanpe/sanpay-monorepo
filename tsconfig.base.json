@@ -17,6 +17,12 @@
     "skipLibCheck": true,
     "skipDefaultLibCheck": true,
     "paths": {
+      "@sanpay/applets/wallet": [
+        "./libs/applets/wallet/src/index.ts"
+      ],
+      "@sanpay/applets/tourism": [
+        "./libs/applets/tourism/src/index.ts"
+      ],
       "@sanpay/receipt": [
         "./shared/receipt/src/index.ts"
       ],

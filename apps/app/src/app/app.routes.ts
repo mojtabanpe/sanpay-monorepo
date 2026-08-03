@@ -13,6 +13,12 @@ export const appRoutes: Route[] = [
     children: [
       { path: 'home', loadComponent: () => import('./pages/home/home').then((m) => m.HomePage) },
       { path: 'qr', loadComponent: () => import('./pages/pay/pay').then((m) => m.PayPage) },
+      // اپلت گردشگری — روت‌هایش داخل خود اپلت تعریف شده‌اند
+      {
+        path: 'tourism',
+        loadChildren: () =>
+          import('@sanpay/applets/tourism').then((m) => m.tourismRoutes),
+      },
       { path: '', redirectTo: 'home', pathMatch: 'full' },
     ],
   },
