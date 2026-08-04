@@ -65,24 +65,28 @@
           <h2 hlmCardTitle>خرید ۱۴ روز اخیر</h2>
           <p hlmCardDescription>مجموع مبلغ خرید در هر روز</p>
         </div>
-        <div hlmCardContent>
-          <div class="flex h-48 items-end gap-2" dir="ltr">
-            @for (day of data()!.daily; track day.date) {
-              <div class="flex min-w-0 flex-1 flex-col items-center gap-2">
-                <div class="flex h-full w-full items-end">
-                  <div
-                    class="bg-primary/70 hover:bg-primary w-full rounded-t-md transition-colors"
-                    [style.height]="barHeight(day.amount)"
-                    [title]="jalali(day.date) + ' — ' + toman(day.amount)"
-                  ></div>
-                </div>
-                <span class="text-muted-foreground truncate text-[10px]">{{
-                  jalali(day.date).slice(5)
-                }}</span>
-              </div>
-            }
-          </div>
-        </div>
+         <div hlmCardContent>
+            <div class="flex h-48 items-end gap-2" dir="ltr">
+              @for (day of (data()?.daily ?? []); track day.date) {
+                <div class="flex h-full min-w-0 flex-1 flex-col items-center justify-end gap-2">
+                  <div class="flex w-full flex-1 items-end">
+                   <div
+                     class="bg-primary/70 hover:bg-primary w-full rounded-t-md transition-colors"
+                     [style.height]="barHeight(day.amount)"
+                     [title]="jalali(day.date) + ' — ' + toman(day.amount)"
+                   ></div>
+                 </div>
+                 <span class="text-muted-foreground truncate text-[10px]">{{
+                   jalali(day.date).slice(5)
+                 }}</span>
+               </div>
+             } @empty {
+               <div class="flex flex-col items-center justify-center h-full">
+                 <span class="text-muted-foreground text-sm">داده‌ای برای نمایش وجود ندارد.</span>
+               </div>
+             }
+           </div>
+         </div>
       </div>
 
       <div hlmCard>
