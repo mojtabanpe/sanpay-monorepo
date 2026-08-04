@@ -26,10 +26,17 @@ export class LoginPage {
   protected readonly loading = signal(false);
   protected readonly error = signal<string | null>(null);
 
+  /**
+   * به رویداد بومی `submit` وصل است، نه `ngSubmit` — این فرم `FormsModule` ندارد،
+   * پس بدون `preventDefault` مرورگر خودش فرم را با GET می‌فرستد و
+   * نام کاربری و رمز عبور در نوار نشانی ظاهر می‌شوند.
+   */
   protected async submit(
+    event: Event,
     usernameEl: HTMLInputElement,
     passwordEl: HTMLInputElement,
   ): Promise<void> {
+    event.preventDefault();
     const username = usernameEl.value.trim().toLowerCase();
     const password = passwordEl.value;
     if (!username || !password || this.loading()) return;
