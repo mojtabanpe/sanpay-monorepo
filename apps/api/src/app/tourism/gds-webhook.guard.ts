@@ -11,10 +11,18 @@ import { timingSafeEqual } from 'node:crypto';
 /**
  * تنها محافظ اندپوینت webhook هتل‌یار.
  *
- * هتل‌یار امضای دیجیتال نمی‌فرستد؛ چیزی که داریم یک رمز مشترک است که هنگام
- * ثبت آدرس webhook به آن‌ها می‌دهیم و در هدر `X-Webhook-Token` برمی‌گردد.
- * مقایسه‌اش timing-safe است چون این تنها چیزی است که بین اینترنت و برگرداندن
- * اعتبار به کیف پول کارمند ایستاده.
+ * هتل‌یار نه امضای دیجیتال می‌فرستد و نه جایی برای تنظیم هدر دلخواه دارد —
+ * طبق بخش ۱۴ داکیومنت تنها چیزی که به آن‌ها می‌دهیم یک **آدرس** است. پس راز
+ * را در همان آدرس می‌گذاریم: `/api/tourism/webhook/<secret>`. مقایسه
+ * timing-safe است چون این تنها چیزی است که بین اینترنت و برگرداندن اعتبار به
+ * کیف پول کارمند ایستاده.
+ *
+ * هدر `X-Webhook-Token` (و `Authorization: Bearer`) هم پذیرفته می‌شود تا اگر
+ * روزی هتل‌یار هدر فرستاد، آدرسِ بدون راز هم کار کند.
+ *
+ * **راز در URL یعنی در لاگ دسترسی وب‌سرور و پراکسی می‌نشیند.** پذیرفته‌ایم
+ * چون جایگزینی نیست؛ در استقرار، لاگ کردن query/path این مسیر را خاموش کنید
+ * و راز را دوره‌ای عوض کنید (عوض‌کردنش یعنی اعلام آدرس جدید به هتل‌یار).
  *
  * اگر `GDS_WEBHOOK_SECRET` تنظیم نشده باشد اندپوینت **بسته** است — مگر در حالت
  * `GDS_MODE=mock` که برای تست محلی باز می‌ماند و لاگ هشدار می‌دهد.
@@ -50,11 +58,21 @@ export class GdsWebhookGuard implements CanActivate {
 }
 
 function readToken(request: Request): string {
+  // راه اصلی: راز به‌عنوان بخشی از آدرسی که به هتل‌یار داده‌ایم
+  const fromPath = (request.params as Record<string, string | undefined>)
+    ?.secret;
+  if (fromPath) {
+    return fromPath;
+  }
+  // ?token=… برای وقتی هتل‌یار فقط query را نگه می‌دارد
+  const fromQuery = request.query?.['token'];
+  if (typeof fromQuery === 'string' && fromQuery) {
+    return fromQuery;
+  }
   const header = request.header('x-webhook-token');
   if (header) {
     return header;
   }
-  // اگر هتل‌یار نتوانست هدر دلخواه بفرستد، Bearer هم پذیرفته می‌شود
   const authorization = request.header('authorization') ?? '';
   return authorization.startsWith('Bearer ')
     ? authorization.slice('Bearer '.length)

@@ -17,11 +17,12 @@ import { TourismService } from './tourism.service';
     JwtAuthGuard,
     GdsWebhookGuard,
     {
-      // تا وقتی کلید واقعی هتل‌یار نداریم، `GDS_MODE=mock` در .env دادهٔ نمونه
-      // می‌دهد. سرویس گردشگری فقط GdsClient را می‌شناسد و از منبع خبر ندارد.
+      // `GDS_MODE=live` به API واقعی هتل‌یار وصل می‌شود؛ هر مقدار دیگری (و
+      // نبودِ متغیر) عمداً ماک است تا یک .env ناقص به‌جای خطای واضح، نیمه‌کاره
+      // به سرور واقعی وصل نشود. سرویس گردشگری فقط GdsClient را می‌شناسد.
       provide: GdsClient,
       useClass:
-        process.env.GDS_MODE === 'mock' ? GdsMockClient : GdsHttpClient,
+        process.env.GDS_MODE === 'live' ? GdsHttpClient : GdsMockClient,
     },
   ],
 })

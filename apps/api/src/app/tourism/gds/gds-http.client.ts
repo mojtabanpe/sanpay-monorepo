@@ -70,6 +70,8 @@ export class GdsHttpClient extends GdsClient {
         'GDS_API_KEY / GDS_USERNAME / GDS_PASSWORD تنظیم نشده‌اند. برای کار بدون کلید GDS_MODE=mock بگذارید.',
       );
     }
+
+    this.logger.log(`هتل‌یار: حالت واقعی — ${this.baseUrl} (${this.username})`);
   }
 
   async getCities(): Promise<GdsCity[]> {
@@ -183,10 +185,36 @@ export class GdsHttpClient extends GdsClient {
       password: this.password,
     });
     this.sessionId = result.sessionId;
-    // سشن یک ساعت اعتبار دارد؛ ۵ دقیقه حاشیهٔ امن می‌گذاریم
-    this.sessionExpiresAt = Date.now() + 55 * 60 * 1000;
+    this.sessionExpiresAt = expiryOf(result.expiredTime);
     return result.sessionId;
   }
+}
+
+/** ۵ دقیقه حاشیهٔ امن قبل از انقضای واقعی سشن */
+const SESSION_MARGIN_MS = 5 * 60 * 1000;
+/** اگر هتل‌یار expiredTime نداد: سشن یک ساعت اعتبار دارد */
+const SESSION_FALLBACK_MS = 60 * 60 * 1000;
+
+/**
+ * زمان انقضای سشن از پاسخ login.
+ *
+ * `expiredTime` به شکل «YYYY-MM-DD HH:mm:ss» و به وقت سرور هتل‌یار می‌آید؛
+ * چون منطقهٔ زمانی مشخص نیست، فقط وقتی به آن اعتماد می‌کنیم که در آینده و
+ * زودتر از یک ساعت باشد — یعنی سشنی کوتاه‌تر از پیش‌فرض. هر حالت دیگری
+ * (نبودن فیلد، فرمت ناشناخته، اختلاف ساعت سرور) به همان یک ساعت برمی‌گردد.
+ */
+function expiryOf(expiredTime: string | undefined): number {
+  const now = Date.now();
+  const fallback = now + SESSION_FALLBACK_MS - SESSION_MARGIN_MS;
+  if (!expiredTime) {
+    return fallback;
+  }
+  const parsed = Date.parse(expiredTime.trim().replace(' ', 'T'));
+  if (Number.isNaN(parsed)) {
+    return fallback;
+  }
+  const withMargin = parsed - SESSION_MARGIN_MS;
+  return withMargin > now && withMargin < fallback ? withMargin : fallback;
 }
 
 /** خطای سطح پروتکل GDS — با errorCode تا فراخواننده بتواند تصمیم بگیرد */
