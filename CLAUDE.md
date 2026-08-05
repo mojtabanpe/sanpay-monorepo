@@ -168,6 +168,42 @@ Persian/RTL admin panel for واحد رفاه, served at **4300** (dev-server pr
 - Wallet `defaultCap` left empty means **unlimited** (`null`), so the update DTO must accept an explicit `null` to clear a previous cap — `undefined` means "don't touch".
 - The kind picker offers only `CREDIT` and `TOURISM`. `RATION` still exists in the schema and in old rows (and keeps its label), but is no longer offered for new wallets.
 
+## Angular conventions
+
+**Angular is v22.** Two defaults are easy to get wrong because older docs and habits say otherwise:
+
+- **Do NOT write `standalone: true`** — it is the default since v20.
+- **Do NOT write `changeDetection: ChangeDetectionStrategy.OnPush`** — it is the default since v22. Adding it explicitly is noise, not safety.
+
+Tooling: the `angular-developer` and `angular-new-app` skills (`.agents/skills/`) plus the `angular-cli` MCP server in `.mcp.json`. Use them for component/service APIs and generators the same way `spartan` + `spartan-ui` cover the UI primitives.
+
+### Components
+
+- `input()` / `output()` functions, never the decorators. `model()` for two-way `[(prop)]` instead of an `input()`+`output()` pair.
+- Host bindings go in the `host` object of the decorator — **not** `@HostBinding` / `@HostListener`.
+- `inject()` over constructor injection. `@Service` over `@Injectable({providedIn: 'root'})` for new singletons.
+- Keep components small and single-purpose; prefer inline templates for small ones. External templates/styles use paths relative to the component `.ts`.
+
+### State
+
+Signals for local state, `computed()` for derived state, `linkedSignal()` when derived state must stay in sync across several reactive sources. Never `mutate` a signal — `set` or `update`. Keep transformations pure.
+
+### Templates
+
+- Native control flow (`@if` / `@for` / `@switch`), never the structural directives.
+- **`class` and `style` bindings — never `ngClass` / `ngStyle`.**
+- **Prefer `@defer` over hand-rolled `IntersectionObserver`.** `@defer (on viewport)` + `@placeholder` covers "load when it scrolls into view" natively; a custom observer directive is extra code with its own lifecycle bugs. This is why `scroll-end.ts` was deleted from the tourism applet.
+- `NgOptimizedImage` for static images — note it does **not** work with inline base64/data URIs, which is why the mock client's SVG placeholders can't use it.
+- Don't assume globals like `new Date()` are available in templates.
+
+### Forms
+
+Prefer **Signal Forms** (`@angular/forms/signals`, stable in v22) for new forms. Otherwise reactive forms — never template-driven.
+
+### Accessibility
+
+Must pass AXE and meet WCAG AA: focus management, ≥4.5:1 contrast, correct ARIA. This reinforces the contrast rule in the design system section.
+
 ## Persian/RTL conventions (`apps/app`)
 
 - **Vazirmatn FD** («Farsi Digits»), self-hosted from `shared/ui/theme/font.css` + `shared/ui/theme/fonts/*.woff2`, imported by all three apps — never add Google Fonts links (unreliable in Iran). The woff2 files are vendored out of the `vazirmatn` npm package (`misc/Farsi-Digits/fonts/webfonts`); that package is ~13 MB and is **not** kept as a dependency, so update by re-copying from a fresh version.

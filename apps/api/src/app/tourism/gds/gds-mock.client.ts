@@ -17,6 +17,27 @@ import {
  * عمداً همان شکل خام GDS را برمی‌گرداند — رشته‌بودن عددها، ظرفیت صفر برای
  * بعضی اتاق‌ها، رزرو Pending برای هتل آفلاین — تا وقتی کلید واقعی آمد
  * مپرها و مسیرهای خطا از قبل تست شده باشند.
+ *
+ * ── سه جایی که API واقعی خراب است و این ماک درستش را می‌دهد ──────────────
+ *
+ * روی محیط دمو (`apidemo.worldgds.com`, حساب sanatpey@gds.com) اندازه‌گیری
+ * شد. تا وقتی هتل‌یار اینها را درست نکند، توسعهٔ UI فقط با `GDS_MODE=mock`
+ * ممکن است:
+ *
+ * ۱. `searchHotel` همیشه آرایهٔ **خالی** برمی‌گرداند — با `status: true` و
+ *    `errorCode: 0`، یعنی خطا نیست و فقط ظرفیت/نرخی تعریف نشده. ۱۲ ترکیب
+ *    (دو حالت پارامتر × دو شهر × سه تاریخ) همه صفر. `agencyCredit` هم صفر
+ *    است. → این ماک برای هر هتل اتاق و قیمت واقعی می‌سازد.
+ *
+ * ۲. `getHotelImages` همیشه `{"list": null}` می‌دهد و **۱۰ تا ۲۰ ثانیه**
+ *    طول می‌کشد. به همین دلیل از مسیر `TourismService.hotel()` حذف شد؛
+ *    گالری واقعی داخل خودِ `getHotel` است. → این ماک گالری برمی‌گرداند.
+ *
+ * ۳. `facilities` روی پاسخ واقعی **وجود ندارد**؛ فیلد واقعی `facilitiesNew`
+ *    است و برای همهٔ هتل‌ها `null` برمی‌گردد. چون هیچ‌وقت مقدار پر ندیده‌ایم،
+ *    شکل واقعی‌اش را نمی‌دانیم و نمی‌شود ماکِ وفادار ساخت. → این ماک همان
+ *    `facilities` مستندشده در v6.3 را می‌دهد تا کارت «امکانات هتل» قابل
+ *    توسعه بماند؛ نگاشت واقعی منتظر هتل‌یار است.
  */
 @Injectable()
 export class GdsMockClient extends GdsClient {
@@ -43,10 +64,16 @@ export class GdsMockClient extends GdsClient {
 
   async getHotelImages(hotelId: number): Promise<GdsHotelImage[]> {
     const hotel = await this.getHotel(hotelId);
-    return (hotel?.hotelImage ?? []).map((image, index) => ({
-      url: image.src,
-      title: `${hotel?.description ?? ''} ${index + 1}`,
-    }));
+    return (hotel?.images ?? []).flatMap((entry, index) =>
+      entry.images
+        ? [
+            {
+              url: entry.images.original,
+              title: `${hotel?.description ?? ''} ${index + 1}`,
+            },
+          ]
+        : [],
+    );
   }
 
   async searchHotel(params: GdsSearchParams): Promise<GdsSearchResult[]> {
@@ -69,7 +96,7 @@ export class GdsMockClient extends GdsClient {
         rate: hotel.rate,
         type: hotel.type,
         address: hotel.address1,
-        photo: hotel.hotelImage[0]?.src ?? null,
+        photo: hotel.images?.[0]?.images?.original ?? null,
         partPayment: 0,
         room: hotel.room
           .filter((room) => Number(room.capacity) >= params.capacity)
@@ -281,10 +308,10 @@ const HOTELS: GdsHotel[] = [
       { id: '297', title: 'برج میلاد', distance: '۲۰ دقیقه با ماشین (۱۱ کیلومتر)' },
     ],
     facilities: FACILITIES_FULL,
-    hotelImage: [
-      { src: placeholder('استقلال تهران — نمای بیرونی', '#6d28d9', '#4c1d95'), alt: '' },
-      { src: placeholder('استقلال تهران — لابی', '#7c3aed', '#5b21b6'), alt: '' },
-      { src: placeholder('استقلال تهران — اتاق', '#8b5cf6', '#6d28d9'), alt: '' },
+    images: [
+      { category: '1', categoryName: 'نمای کلی', images: { original: placeholder('استقلال تهران — نمای بیرونی', '#6d28d9', '#4c1d95'), thumb: placeholder('استقلال تهران — نمای بیرونی', '#6d28d9', '#4c1d95') } },
+      { category: '1', categoryName: 'نمای کلی', images: { original: placeholder('استقلال تهران — لابی', '#7c3aed', '#5b21b6'), thumb: placeholder('استقلال تهران — لابی', '#7c3aed', '#5b21b6') } },
+      { category: '1', categoryName: 'نمای کلی', images: { original: placeholder('استقلال تهران — اتاق', '#8b5cf6', '#6d28d9'), thumb: placeholder('استقلال تهران — اتاق', '#8b5cf6', '#6d28d9') } },
     ],
     hotelGeo: { lat: '35.792954', lng: '51.355962' },
   },
@@ -327,9 +354,9 @@ const HOTELS: GdsHotel[] = [
       { id: '402', title: 'فرودگاه شهید هاشمی‌نژاد', distance: '۲۵ دقیقه با ماشین (۱۴ کیلومتر)' },
     ],
     facilities: FACILITIES_FULL,
-    hotelImage: [
-      { src: placeholder('قصر طلایی مشهد — نما', '#b45309', '#78350f'), alt: '' },
-      { src: placeholder('قصر طلایی مشهد — لابی', '#d97706', '#92400e'), alt: '' },
+    images: [
+      { category: '1', categoryName: 'نمای کلی', images: { original: placeholder('قصر طلایی مشهد — نما', '#b45309', '#78350f'), thumb: placeholder('قصر طلایی مشهد — نما', '#b45309', '#78350f') } },
+      { category: '1', categoryName: 'نمای کلی', images: { original: placeholder('قصر طلایی مشهد — لابی', '#d97706', '#92400e'), thumb: placeholder('قصر طلایی مشهد — لابی', '#d97706', '#92400e') } },
     ],
     hotelGeo: { lat: '36.316', lng: '59.529' },
   },
@@ -372,9 +399,9 @@ const HOTELS: GdsHotel[] = [
       { id: '502', title: 'سی‌وسه پل', distance: '۱۲ دقیقه پیاده (۹۰۰ متر)' },
     ],
     facilities: FACILITIES_FULL,
-    hotelImage: [
-      { src: placeholder('هتل عباسی — باغ مرکزی', '#047857', '#064e3b'), alt: '' },
-      { src: placeholder('هتل عباسی — اتاق سنتی', '#059669', '#065f46'), alt: '' },
+    images: [
+      { category: '1', categoryName: 'نمای کلی', images: { original: placeholder('هتل عباسی — باغ مرکزی', '#047857', '#064e3b'), thumb: placeholder('هتل عباسی — باغ مرکزی', '#047857', '#064e3b') } },
+      { category: '1', categoryName: 'نمای کلی', images: { original: placeholder('هتل عباسی — اتاق سنتی', '#059669', '#065f46'), thumb: placeholder('هتل عباسی — اتاق سنتی', '#059669', '#065f46') } },
     ],
     hotelGeo: { lat: '32.652', lng: '51.669' },
   },
@@ -417,9 +444,9 @@ const HOTELS: GdsHotel[] = [
       { id: '602', title: 'بازار پردیس', distance: '۱۰ دقیقه با ماشین (۵ کیلومتر)' },
     ],
     facilities: FACILITIES_BASIC,
-    hotelImage: [
-      { src: placeholder('جهان کیش — نمای ساحلی', '#0369a1', '#0c4a6e'), alt: '' },
-      { src: placeholder('جهان کیش — آپارتمان', '#0284c7', '#075985'), alt: '' },
+    images: [
+      { category: '1', categoryName: 'نمای کلی', images: { original: placeholder('جهان کیش — نمای ساحلی', '#0369a1', '#0c4a6e'), thumb: placeholder('جهان کیش — نمای ساحلی', '#0369a1', '#0c4a6e') } },
+      { category: '1', categoryName: 'نمای کلی', images: { original: placeholder('جهان کیش — آپارتمان', '#0284c7', '#075985'), thumb: placeholder('جهان کیش — آپارتمان', '#0284c7', '#075985') } },
     ],
     hotelGeo: { lat: '26.539', lng: '53.980' },
   },
@@ -462,9 +489,9 @@ const HOTELS: GdsHotel[] = [
       { id: '702', title: 'حافظیه', distance: '۱۰ دقیقه با ماشین (۴ کیلومتر)' },
     ],
     facilities: FACILITIES_FULL,
-    hotelImage: [
-      { src: placeholder('زندیه شیراز — نما', '#be185d', '#831843'), alt: '' },
-      { src: placeholder('زندیه شیراز — حیاط', '#db2777', '#9d174d'), alt: '' },
+    images: [
+      { category: '1', categoryName: 'نمای کلی', images: { original: placeholder('زندیه شیراز — نما', '#be185d', '#831843'), thumb: placeholder('زندیه شیراز — نما', '#be185d', '#831843') } },
+      { category: '1', categoryName: 'نمای کلی', images: { original: placeholder('زندیه شیراز — حیاط', '#db2777', '#9d174d'), thumb: placeholder('زندیه شیراز — حیاط', '#db2777', '#9d174d') } },
     ],
     hotelGeo: { lat: '29.616', lng: '52.531' },
   },

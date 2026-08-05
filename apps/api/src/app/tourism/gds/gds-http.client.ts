@@ -153,15 +153,27 @@ export class GdsHttpClient extends GdsClient {
       );
     }
 
-    if (!response.ok) {
+    // هتل‌یار خطای منطقی را هم با HTTP 200 و هم با 4xx می‌فرستد، ولی در هر دو
+    // حالت همان envelope را دارد؛ پس اول بدنه را می‌خوانیم تا errorCode واقعی
+    // به‌جای یک «HTTP 400» بی‌معنا بالا برود.
+    const raw = await response.text();
+    let envelope: GdsEnvelope<T> | null = null;
+    try {
+      envelope = JSON.parse(raw) as GdsEnvelope<T>;
+    } catch {
+      envelope = null;
+    }
+
+    if (!envelope || typeof envelope.status !== 'boolean') {
+      this.logger.error(
+        `پاسخ غیرمنتظرهٔ هتل‌یار (${method}, HTTP ${response.status}): ${raw.slice(0, 300)}`,
+      );
       throw new BadGatewayException(
         `سامانهٔ رزرو هتل پاسخ نامعتبر داد (HTTP ${response.status})`,
       );
     }
 
-    const envelope = (await response.json()) as GdsEnvelope<T>;
     if (!envelope.status) {
-      // خطاهای GDS با HTTP 200 برمی‌گردند؛ فقط status می‌گوید چه شده
       throw new GdsError(envelope.errorCode, envelope.description);
     }
     return envelope.response;

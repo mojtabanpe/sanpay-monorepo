@@ -65,19 +65,24 @@ export class TourismService {
     if (!hotel) {
       throw new NotFoundException('هتل پیدا نشد');
     }
-    // گالری جدا از getHotel می‌آید؛ اگر خطا داد صفحهٔ هتل نباید بشکند
-    const gallery = await this.gds
-      .getHotelImages(hotelId)
-      .then((images) => images.map((image) => image.url))
-      .catch((error) => {
-        this.logger.warn(`گالری هتل ${hotelId} دریافت نشد`, error);
-        return [] as string[];
-      });
 
-    return toHotelDetail(hotel, cityNames, gallery);
+    // TODO(هتل‌یار): اگر getHotelImages درست و سریع شد، دوباره به‌عنوان منبع
+    // دوم گالری اضافه شود — مپر آرگومان `gallery` را همچنان می‌پذیرد.
+    // getHotelImages عمداً صدا زده نمی‌شود: روی API واقعی همیشه `{list: null}`
+    // برمی‌گرداند ولی ۱۰ تا ۲۰ ثانیه طول می‌کشد، و چون await می‌شد کل صفحهٔ
+    // هتل را همان‌قدر معطل می‌کرد (۲۱ ثانیه اندازه‌گیری شد). گالری واقعی داخل
+    // خودِ getHotel است و مپر از همان می‌خواند.
+    return toHotelDetail(hotel, cityNames, []);
   }
 
-  /** جست‌وجوی اتاق‌های خالی — تاریخ گذشته همین‌جا رد می‌شود، نه در GDS */
+  /**
+   * جست‌وجوی اتاق‌های خالی — تاریخ گذشته همین‌جا رد می‌شود، نه در GDS.
+   *
+   * TODO(هتل‌یار): روی حساب دموی فعلی این همیشه خالی برمی‌گردد (با
+   * `status: true`)، یعنی هیچ ظرفیت و نرخی تعریف نشده و صفحهٔ هتل همیشه
+   * «اتاق خالی وجود ندارد» نشان می‌دهد. پارامترها بررسی شدند و مشکل از سمت
+   * ما نیست. تا رفع، جست‌وجو فقط با `GDS_MODE=mock` قابل توسعه است.
+   */
   async search(dto: SearchHotelsDto): Promise<HotelAvailability[]> {
     this.assertFutureDate(dto.checkin);
 

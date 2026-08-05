@@ -1,7 +1,7 @@
 <div class="flex flex-col gap-4 pb-6">
 
   @if (loading()) {
-    <hlm-skeleton class="h-56 w-full" />
+    <hlm-skeleton class="aspect-[16/10] max-h-72 w-full" />
     <div class="flex flex-col gap-3 px-4">
       <hlm-skeleton class="h-7 w-56" />
       <hlm-skeleton class="h-4 w-40" />
@@ -18,16 +18,22 @@
     </section>
   } @else if (hotel(); as h) {
 
-    <!-- گالری -->
-    <div class="relative">
+    <!-- گالری. نسبت ثابت است تا جای تصویر پیش از رسیدنش رزرو شود و صفحه هنگام
+         لود نپرد؛ max-h جلوی قدکشیدنش را روی نمایشگر پهن می‌گیرد. -->
+    <div class="bg-secondary relative aspect-[16/10] max-h-72 w-full overflow-hidden">
       @if (h.images.length > 0) {
         <img
           [src]="h.images[activeImage()]"
           [alt]="h.name"
-          class="h-56 w-full object-cover"
+          decoding="async"
+          class="size-full object-cover"
         />
       } @else {
-        <div class="bg-secondary h-56 w-full"></div>
+        <div class="flex size-full items-center justify-center">
+          <svg class="text-muted-foreground size-12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+            <path d="M2 20h20M4 20V8l8-5 8 5v12" />
+          </svg>
+        </div>
       }
 
       <button

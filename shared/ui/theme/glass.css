@@ -180,6 +180,22 @@ hlm-select-content div[role='listbox'] {
 }
 
 /*
+ * Media-first card: an image (or map, or chart) that must sit flush against
+ * the card's top edge, with no white band above it.
+ *
+ * hlm-card ships `py-(--card-spacing)` AND sets `--card-spacing` with a class
+ * on the very same element, so a competing utility at the call site is a
+ * coin-flip on generated source order — and an inline style is easy for
+ * tooling to clobber. Zeroing the variable here is reliable: these overrides
+ * are unlayered and imported after utilities, so they win on source order.
+ *
+ * Inner sections keep their own padding; only the card's own frame goes to 0.
+ */
+[data-slot='card'].card-flush {
+  --card-spacing: 0px;
+}
+
+/*
  * ── Buttons ──────────────────────────────────────────────────────────
  * Input-group buttons carry [data-size] and are deliberately small
  * (they sit inside a control), so every rule here excludes them.

@@ -37,8 +37,24 @@ export function toHotelSummary(
     cityId,
     cityName: cityNames.get(cityId) ?? '',
     address: hotel.address1 ?? '',
-    photo: hotel.hotelImage?.[0]?.src ?? null,
+    photo: photosOf(hotel)[0] ?? null,
   };
+}
+
+/**
+ * آدرس عکس‌های هتل از خروجی getHotel.
+ *
+ * همیشه `original` — نسخهٔ `thumb` فقط ۱۵۰ پیکسل است و در کارت تمام‌عرضِ اپ
+ * کشیده و تار می‌شود. خودِ سایت هتل‌یار هم `original` (حدود ۳۳۵×۲۰۸) را با
+ * `object-fit: cover` نشان می‌دهد.
+ *
+ * بعضی هتل‌ها اصلاً عکس ندارند و بعضی ورودی‌ها `images: null` دارند، پس هر دو
+ * سطح باید پاک‌سازی شود؛ خروجی همیشه آرایه‌ای از رشته‌های غیرخالی است.
+ */
+function photosOf(hotel: GdsHotel): string[] {
+  return (hotel.images ?? [])
+    .map((entry) => entry.images?.original)
+    .filter((url): url is string => !!url);
 }
 
 export function toHotelDetail(
@@ -52,6 +68,12 @@ export function toHotelDetail(
     checkInTimeFrom: hotel.checkInTimeFrom ?? '',
     checkOutTimeFrom: hotel.checkOutTimeFrom ?? '',
     // امکانات با "0"/"1" می‌آیند — فقط آن‌هایی که واقعاً هستند به true تبدیل می‌شوند
+    //
+    // TODO(هتل‌یار): روی API واقعی این فیلد وجود ندارد و همیشه {} می‌شود، پس
+    // کارت «امکانات هتل» در حالت live هیچ‌وقت نمایش داده نمی‌شود. فیلد واقعی
+    // `facilitiesNew` است ولی برای همهٔ هتل‌ها null برمی‌گردد، پس شکلش معلوم
+    // نیست. وقتی پرش کردند: `facilitiesNew` به GdsHotel اضافه و همین‌جا نگاشت
+    // شود. فقط در `GDS_MODE=mock` داده دارد.
     facilities: Object.fromEntries(
       Object.entries(hotel.facilities ?? {}).map(([key, value]) => [
         key,
@@ -64,9 +86,7 @@ export function toHotelDetail(
         distance: place.distance,
       }),
     ),
-    images: gallery.length > 0
-      ? gallery
-      : (hotel.hotelImage ?? []).map((image) => image.src),
+    images: gallery.length > 0 ? gallery : photosOf(hotel),
     geo: hotel.hotelGeo
       ? { lat: Number(hotel.hotelGeo.lat), lng: Number(hotel.hotelGeo.lng) }
       : null,

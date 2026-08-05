@@ -28,15 +28,24 @@ async function post<T>(method: string, body: Record<string, unknown>) {
     body: JSON.stringify(body),
     signal: AbortSignal.timeout(20_000),
   });
-  if (!response.ok) {
-    throw new Error(`${method}: HTTP ${response.status}`);
-  }
-  const envelope = (await response.json()) as {
+  // خطای منطقی هم با 200 و هم با 4xx می‌آید، ولی همیشه همین envelope را دارد
+  const raw = await response.text();
+  let envelope: {
     status: boolean;
     errorCode: number;
     description: string;
     response: T;
-  };
+  } | null = null;
+  try {
+    envelope = JSON.parse(raw);
+  } catch {
+    envelope = null;
+  }
+  if (!envelope || typeof envelope.status !== 'boolean') {
+    throw new Error(
+      `${method}: پاسخ نامعتبر (HTTP ${response.status}) — ${raw.slice(0, 200)}`,
+    );
+  }
   if (!envelope.status) {
     throw new Error(
       `${method}: خطای ${envelope.errorCode} — ${envelope.description}`,

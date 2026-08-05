@@ -64,8 +64,18 @@ export interface GdsHotel {
   nearPlaces: GdsNearPlace[];
   /** مقادیر "0"/"1" */
   facilities: Record<string, string>;
-  hotelImage: { src: string; alt: string }[];
+  /**
+   * گالری هتل — داخل خودِ getHotel می‌آید، نه از getHotelImages.
+   * دسته‌بندی دارد (نمای کلی، لابی، اتاق…) و هر عکس دو اندازه.
+   */
+  images: GdsHotelImageEntry[] | null;
   hotelGeo: { lat: string; lng: string } | null;
+}
+
+export interface GdsHotelImageEntry {
+  category: string;
+  categoryName: string;
+  images: { original: string; thumb: string } | null;
 }
 
 export interface GdsHotelImage {

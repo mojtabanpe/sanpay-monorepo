@@ -96,9 +96,11 @@
   </section>
 
   @if (loading()) {
-    <hlm-skeleton class="h-44 w-full rounded-2xl" />
-    <hlm-skeleton class="h-44 w-full rounded-2xl" />
-    <hlm-skeleton class="h-44 w-full rounded-2xl" />
+    <div class="grid grid-cols-2 gap-3 sm:gap-4">
+      @for (placeholder of [1, 2, 3, 4]; track placeholder) {
+        <hlm-skeleton class="h-60 w-full rounded-2xl" />
+      }
+    </div>
   } @else if (error()) {
     <section hlmCard>
       <div hlmCardContent class="flex flex-col items-center gap-4 py-10 text-center">
@@ -110,58 +112,16 @@
     </section>
   } @else {
 
-    @for (hotel of hotels(); track hotel.id) {
-      <button
-        type="button"
-        class="w-full text-right transition-transform active:scale-[0.99]"
-        (click)="openHotel(hotel)"
-      >
-        <section hlmCard class="overflow-hidden">
+    @if (hotels().length > 0) {
+      <p class="text-muted-foreground px-1 text-xs">
+        {{ count(hotels().length) }} هتل پیدا شد
+      </p>
+    }
 
-          <!-- تصویر هتل از سرور هتل‌یار می‌آید؛ اگر لود نشد به جای کادر خالی
-               همان placeholder را نشان می‌دهیم -->
-          @if (hotel.photo && !brokenImages().has(hotel.id)) {
-            <img
-              [src]="hotel.photo"
-              [alt]="hotel.name"
-              loading="lazy"
-              class="h-40 w-full object-cover"
-              (error)="markBroken(hotel.id)"
-            />
-          } @else {
-            <div class="bg-secondary flex h-40 w-full items-center justify-center">
-              <svg class="text-muted-foreground size-10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
-                <path d="M2 20h20M4 20V8l8-5 8 5v12" />
-              </svg>
-            </div>
-          }
-
-          <div hlmCardContent class="flex flex-col gap-2 pt-4">
-            <div class="flex items-start justify-between gap-2">
-              <h2 class="flex-1 font-bold leading-tight">{{ hotel.name }}</h2>
-              <span class="flex shrink-0 items-center gap-0.5 text-amber-500">
-                @for (star of stars(hotel.rate); track star) {
-                  <svg class="size-3.5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                    <path d="m12 2 3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01z" />
-                  </svg>
-                }
-                <span class="sr-only">{{ count(hotel.rate) }} ستاره</span>
-              </span>
-            </div>
-
-            <div class="flex flex-wrap items-center gap-2">
-              <span hlmBadge variant="secondary" class="rounded-full font-normal">{{ hotel.type }}</span>
-              @if (hotel.cityName) {
-                <span hlmBadge variant="secondary" class="rounded-full font-normal">{{ hotel.cityName }}</span>
-              }
-            </div>
-
-            <p class="text-muted-foreground text-xs leading-relaxed">{{ hotel.address }}</p>
-          </div>
-
-        </section>
-      </button>
-    } @empty {
+    <!-- همیشه دو ستون. کارت تمام‌عرض روی موبایل یعنی قاب ۳۴۳ پیکسلی برای عکسی
+         که گاهی فقط ۱۵۰ پیکسل است — تار درمی‌آید. در دو ستون قاب حدود ۱۶۰
+         پیکسل می‌شود و همان عکس تقریباً در اندازهٔ طبیعی خودش می‌نشیند. -->
+    @if (hotels().length === 0) {
       <section hlmCard>
         <div hlmCardContent class="py-10 text-center">
           <p class="text-muted-foreground text-sm">
@@ -171,6 +131,84 @@
       </section>
     }
 
+    <!-- دستهٔ اول مستقیم رندر می‌شود تا بالای صفحه فوراً چیزی داشته باشد؛
+         بقیه با `@defer (on viewport)` فقط وقتی به دید می‌رسند رندر می‌شوند.
+         جانگهدارِ هر دسته یک div سادهٔ بدون انیمیشن است — ۱۲ اسکلت در هر دسته
+         یعنی بیش از هزار عنصر متحرک در فهرست «همهٔ شهرها». -->
+    @for (chunk of chunks(); track $index) {
+      @if ($first) {
+        <ng-container *ngTemplateOutlet="cards; context: { $implicit: chunk }" />
+      } @else {
+        @defer (on viewport) {
+          <ng-container *ngTemplateOutlet="cards; context: { $implicit: chunk }" />
+        } @placeholder {
+          <div class="min-h-[60svh]" aria-hidden="true"></div>
+        }
+      }
+    }
+
   }
 
 </div>
+
+<ng-template #cards let-chunk>
+  <div class="grid grid-cols-2 gap-3 sm:gap-4">
+    @for (hotel of chunk; track hotel.id) {
+      <button
+        type="button"
+        class="h-full w-full text-right transition-transform active:scale-[0.99]"
+        (click)="openHotel(hotel)"
+      >
+        <!-- card-flush در glass.css تعریف شده: padding عمودی خودِ کارت را صفر
+             می‌کند تا تصویر از لبهٔ بالا شروع کند و نوار سفید نیفتد. -->
+        <section hlmCard class="card-flush flex h-full flex-col gap-0 overflow-hidden">
+
+          <!-- نسبت ثابت ۱۶:۱۰: جای تصویر پیش از رسیدنش رزرو می‌شود، پس فهرست
+               هنگام لود عکس‌ها نمی‌پرد. عکس‌های هتل‌یار اندازه‌های بسیار
+               متفاوتی دارند (از ۱۵۰ تا ۱۶۰۰ پیکسل) و object-cover همه را در
+               همین قاب یکدست می‌کند. -->
+          <div class="bg-secondary aspect-[16/10] w-full overflow-hidden">
+            @if (hotel.photo && !brokenImages().has(hotel.id)) {
+              <img
+                [src]="hotel.photo"
+                [alt]="hotel.name"
+                loading="lazy"
+                decoding="async"
+                class="size-full object-cover"
+                (error)="markBroken(hotel.id)"
+              />
+            } @else {
+              <div class="flex size-full items-center justify-center">
+                <svg class="text-muted-foreground size-10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+                  <path d="M2 20h20M4 20V8l8-5 8 5v12" />
+                </svg>
+              </div>
+            }
+          </div>
+
+          <!-- ستون باریک است (حدود ۱۶۰ پیکسل)، پس نام و ستاره‌ها هم‌ردیف
+               نمی‌شوند — «چمران شیراز» می‌شد «چمرا…». هر کدام سطر خودش. -->
+          <div hlmCardContent class="flex min-w-0 flex-1 flex-col gap-1.5 px-3 py-3">
+            <h2 class="line-clamp-2 text-sm font-bold leading-snug">{{ hotel.name }}</h2>
+
+            <span class="flex items-center gap-0.5 text-amber-500">
+              @for (star of stars(hotel.rate); track star) {
+                <svg class="size-3" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                  <path d="m12 2 3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01z" />
+                </svg>
+              }
+              <span class="sr-only">{{ count(hotel.rate) }} ستاره</span>
+            </span>
+
+            @if (hotel.cityName) {
+              <span hlmBadge variant="secondary" class="w-fit rounded-full font-normal">{{ hotel.cityName }}</span>
+            }
+
+            <p class="text-muted-foreground line-clamp-2 text-[11px] leading-relaxed">{{ hotel.address }}</p>
+          </div>
+
+        </section>
+      </button>
+    }
+  </div>
+</ng-template>

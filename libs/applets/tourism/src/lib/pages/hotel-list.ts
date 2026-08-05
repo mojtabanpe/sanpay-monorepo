@@ -1,5 +1,11 @@
 import { SanpayDatePickerWidth } from '@sanpay/dates';
-import { Component, computed, inject, signal } from '@angular/core';
+import {
+  Component,
+  computed,
+  inject,
+  signal,
+} from '@angular/core';
+import { NgTemplateOutlet } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { NgIcon, provideIcons } from '@ng-icons/core';
@@ -22,6 +28,7 @@ import { addDays, faNumber, isoToJalali, jalaliLong, jalaliToIso, today } from '
   selector: 'tourism-hotel-list',
   imports: [
     SanpayDatePickerWidth,
+    NgTemplateOutlet,
     FormsModule,
     NgIcon,
     HlmBadgeImports,
@@ -44,6 +51,26 @@ export class HotelListPage {
   protected readonly hotels = signal<HotelSummary[]>([]);
   protected readonly loading = signal(true);
   protected readonly error = signal<string | null>(null);
+
+  /**
+   * اسکرول تدریجی با `@defer`.
+   *
+   * «همهٔ شهرها» بیش از هزار هتل برمی‌گرداند و رندر یک‌جای آن‌ها یعنی هزار
+   * کارت و هزار درخواست تصویر — روی موبایل غیرقابل استفاده. سرور صفحه‌بندی
+   * ندارد، پس کل فهرست یک‌بار می‌آید و همین‌جا به دسته‌های کوچک تقسیم می‌شود؛
+   * قالب دستهٔ اول را مستقیم و بقیه را با `@defer (on viewport)` رندر می‌کند.
+   */
+  private static readonly CHUNK = 12;
+
+  protected readonly chunks = computed(() => {
+    const hotels = this.hotels();
+    const chunks: HotelSummary[][] = [];
+    for (let i = 0; i < hotels.length; i += HotelListPage.CHUNK) {
+      chunks.push(hotels.slice(i, i + HotelListPage.CHUNK));
+    }
+    return chunks;
+  });
+
 
   /** ۰ = همهٔ شهرها */
   protected readonly cityId = signal(0);
