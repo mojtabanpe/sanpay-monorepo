@@ -6,7 +6,8 @@
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio",
-    "prisma:seed": "node -r @swc-node/register apps/api/prisma/seed.ts"
+    "prisma:seed": "node -r @swc-node/register apps/api/prisma/seed.ts",
+    "gds:check": "node -r @swc-node/register apps/api/scripts/gds-check.ts"
   },
   "private": true,
   "dependencies": {
