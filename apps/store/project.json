@@ -20,7 +20,8 @@
             "input": "apps/store/public"
           }
         ],
-        "styles": ["apps/store/src/styles.css"]
+        "styles": ["apps/store/src/styles.css"],
+        "allowedCommonJsDependencies": ["qrcode"]
       },
       "configurations": {
         "production": {

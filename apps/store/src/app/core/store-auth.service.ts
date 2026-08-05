@@ -1,17 +1,13 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, computed, inject, signal } from '@angular/core';
+import { StoreProfile } from '@sanpay/models';
 import { firstValueFrom } from 'rxjs';
 
 const TOKEN_KEY = 'sanpay_store_token';
 const PROFILE_KEY = 'sanpay_store_profile';
 
-export interface StoreProfile {
-  id: string;
-  name: string;
-  /** کدی که در QR صندوق چاپ می‌شود */
-  code: string;
-  category: string | null;
-}
+/** از @sanpay/models می‌آید تا تعریفش با آنچه API می‌فرستد یکی بماند */
+export type { StoreProfile };
 
 interface LoginResponse {
   accessToken: string;

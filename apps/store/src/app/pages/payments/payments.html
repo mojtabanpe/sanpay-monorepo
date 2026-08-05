@@ -1,49 +1,109 @@
-<div class="mx-auto flex min-h-dvh w-full max-w-3xl flex-col gap-5 px-4 py-6">
+<div class="mx-auto flex w-full max-w-3xl flex-col gap-4 px-4 py-5">
 
-  <!-- سربرگ فروشگاه -->
-  <header class="flex items-start justify-between gap-4">
-    <div class="min-w-0">
-      <div class="flex items-center gap-2">
-        <h1 class="truncate text-lg font-bold">{{ store()?.name }}</h1>
-        <!-- وضعیت اتصال زنده -->
-        <span
-          class="inline-flex shrink-0 items-center gap-1.5 rounded-full px-2 py-0.5 text-[0.65rem] font-medium"
-          [class]="
-            live()
-              ? 'bg-emerald-100 text-emerald-700'
-              : 'bg-amber-100 text-amber-700'
-          "
-        >
-          <span
-            class="size-1.5 rounded-full"
-            [class]="live() ? 'bg-emerald-500' : 'bg-amber-500'"
-          ></span>
-          {{ live() ? 'اتصال زنده' : 'در حال اتصال…' }}
-        </span>
-      </div>
-      <p class="text-muted-foreground mt-1 text-xs">
-        کد فروشگاه:
-        <span dir="ltr" class="font-mono font-semibold">{{ store()?.code }}</span>
-        — این کد در کیو‌آر روی صندوق است.
-      </p>
-    </div>
-    <button hlmBtn variant="ghost" size="sm" class="shrink-0" (click)="logout()">
-      خروج
-    </button>
-  </header>
-
-  <!-- خلاصهٔ امروز -->
+  <!--
+    خلاصهٔ فروش امروز. ارقام از `GET /api/store/stats` می‌آیند، نه از جمعِ
+    کلاینتیِ ۵۰ رسیدِ آخر — آن نسخه در فروشگاهِ پرتردد، فروش امروز را کمتر از
+    واقع نشان می‌داد.
+  -->
   <div
-    class="rounded-2xl bg-gradient-to-l from-violet-700 via-violet-600 to-emerald-600 p-5 text-white shadow-lg"
+    class="relative overflow-hidden rounded-[1.25rem] p-5 text-white"
+    style="background-image: linear-gradient(135deg, var(--ink-900), var(--ink-700) 55%, var(--ink-600));
+           box-shadow: var(--elev-3)"
   >
-    <p class="text-xs opacity-90">فروش امروز</p>
-    <p class="mt-2 text-2xl font-bold">{{ toman(todayTotal()) }}</p>
-    <p class="mt-2 text-xs opacity-80">
-      {{ count(todayCount()) }} پرداخت ثبت‌شده
-    </p>
+    <div
+      class="pointer-events-none absolute -top-16 -left-12 size-48 rounded-full blur-3xl"
+      style="background-color: rgba(212, 160, 23, 0.28)"
+      aria-hidden="true"
+    ></div>
+
+    <div class="relative flex items-start justify-between gap-3">
+      <div class="flex items-center gap-2">
+        <span class="size-1.5 rounded-full" style="background-color: var(--gold-400)" aria-hidden="true"></span>
+        <p class="text-[13px] font-medium text-white/70">فروش امروز</p>
+      </div>
+
+      <!-- وضعیت اتصال زنده -->
+      <span
+        class="inline-flex shrink-0 items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-medium"
+        style="background-color: rgba(255, 255, 255, 0.12)"
+      >
+        <span
+          class="size-1.5 rounded-full"
+          [style.background-color]="live() ? 'var(--pos)' : 'var(--gold-400)'"
+        ></span>
+        {{ live() ? 'اتصال زنده' : 'در حال اتصال…' }}
+      </span>
+    </div>
+
+    @if (stats(); as figures) {
+      <p class="relative mt-3 text-[2rem] leading-tight font-bold tracking-tight">
+        {{ toman(figures.today.total) }}
+      </p>
+
+      <div class="relative mt-4 grid grid-cols-3 gap-3 border-t border-white/12 pt-3">
+        <div>
+          <p class="text-[10px] text-white/50">تعداد خرید امروز</p>
+          <p class="mt-0.5 text-sm font-bold">{{ count(figures.today.count) }}</p>
+        </div>
+        <div>
+          <p class="text-[10px] text-white/50">۷ روز گذشته</p>
+          <p class="mt-0.5 text-sm font-bold">{{ toman(figures.week.total) }}</p>
+        </div>
+        <div>
+          <p class="text-[10px] text-white/50">۳۰ روز گذشته</p>
+          <p class="mt-0.5 text-sm font-bold">{{ toman(figures.month.total) }}</p>
+        </div>
+      </div>
+    } @else {
+      <div class="relative mt-3 h-8 w-48 animate-pulse rounded-lg" style="background-color: rgba(255,255,255,0.14)"></div>
+    }
   </div>
 
-  <h2 class="px-1 font-bold">آخرین پرداخت‌ها</h2>
+  <!-- نمودار فروش ۷ روز گذشته -->
+  @if (stats(); as figures) {
+    <section hlmCard>
+      <div hlmCardContent class="flex flex-col gap-3">
+        <h2 class="text-sm font-bold">فروش ۷ روز گذشته</h2>
+
+        <!--
+          نمودار میله‌ای ساده با div — برای هفت عدد، آوردن یک کتابخانهٔ نمودار
+          به باندل توجیهی ندارد. جدولِ کنارش، همان داده را برای صفحه‌خوان
+          می‌گذارد، چون ارتفاع میله برای کاربر نابینا معنایی ندارد.
+        -->
+        <div class="flex h-28 items-end justify-between gap-1.5" aria-hidden="true">
+          @for (point of figures.series; track point.date) {
+            <div class="flex h-full flex-1 flex-col items-center justify-end gap-1.5">
+              <div
+                class="w-full rounded-t-[4px] transition-[height] duration-500"
+                [style.height]="barHeight(point.total)"
+                [style.background-image]="
+                  point.total > 0
+                    ? 'linear-gradient(180deg, var(--gold-400), var(--gold-500))'
+                    : 'none'
+                "
+                [style.background-color]="point.total > 0 ? '' : 'var(--muted)'"
+              ></div>
+              <span class="text-muted-foreground text-[10px]">{{ weekday(point.date) }}</span>
+            </div>
+          }
+        </div>
+
+        <table class="sr-only">
+          <caption>فروش روزانهٔ ۷ روز گذشته</caption>
+          <tbody>
+            @for (point of figures.series; track point.date) {
+              <tr>
+                <th scope="row">{{ point.date }}</th>
+                <td>{{ toman(point.total) }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+  }
+
+  <h2 class="px-1 text-sm font-bold">آخرین پرداخت‌ها</h2>
 
   @if (loading()) {
     <hlm-skeleton class="h-32 w-full rounded-2xl" />
@@ -71,16 +131,10 @@
     <!-- لیست رسیدها — تازه‌ترین بالا -->
     <ul class="flex flex-col gap-3" aria-live="polite">
       @for (receipt of receipts(); track receipt.id) {
-        <li
-          class="rounded-2xl transition-shadow"
-          [class]="
-            justArrived() === receipt.id
-              ? 'ring-2 ring-emerald-500 ring-offset-2 ring-offset-transparent'
-              : ''
-          "
-        >
+        <li class="rounded-[1.25rem] transition-shadow">
           @if (justArrived() === receipt.id) {
-            <p class="mb-1.5 px-1 text-xs font-bold text-emerald-700">
+            <p class="mb-1.5 flex items-center gap-1.5 px-1 text-xs font-bold" style="color: var(--pos-fg)">
+              <span class="size-1.5 rounded-full" style="background-color: var(--pos)" aria-hidden="true"></span>
               پرداخت جدید
             </p>
           }

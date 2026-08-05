@@ -1,0 +1,132 @@
+<!--
+  استایل چاپ. هنگام چاپ فقط `.printable` می‌ماند و بقیهٔ صفحه (سربرگ، دکمه‌ها،
+  ناوبری) حذف می‌شود، تا برگه‌ای که روی میز صندوق می‌رود تمیز باشد.
+-->
+<style>
+  @media print {
+    body * {
+      visibility: hidden;
+    }
+
+    .printable,
+    .printable * {
+      visibility: visible;
+    }
+
+    .printable {
+      position: absolute;
+      inset-block-start: 0;
+      inset-inline-start: 0;
+      width: 100%;
+      border: none !important;
+      box-shadow: none !important;
+    }
+
+    /* پس‌زمینهٔ تیره در چاپ هم باید تیره بماند وگرنه لوگو ناپیدا می‌شود */
+    .printable {
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+  }
+</style>
+
+<div class="mx-auto flex w-full max-w-md flex-col gap-4 px-4 py-6">
+
+  <div class="leading-tight">
+    <h1 class="text-xl font-bold">کد QR صندوق</h1>
+    <p class="text-muted-foreground mt-1 text-xs">
+      این برگه را چاپ کنید و روی میز صندوق بگذارید. کارمند آن را اسکن می‌کند و
+      مبلغ خرید را وارد می‌کند.
+    </p>
+  </div>
+
+  @if (error()) {
+    <div hlmAlert variant="destructive" class="flex flex-col items-center gap-3 py-6 text-center">
+      <p class="text-sm">ساخت تصویر کد QR ممکن نشد.</p>
+      <button type="button" hlmBtn variant="outline" size="sm" (click)="retry()">
+        تلاش دوباره
+      </button>
+    </div>
+  } @else {
+
+    <!-- برگهٔ چاپ‌شدنی -->
+    <div
+      class="printable flex flex-col items-center gap-4 rounded-[1.25rem] bg-white p-6 text-center"
+      style="border: 1px solid var(--hairline); box-shadow: var(--elev-2)"
+    >
+      <div class="leading-tight">
+        <p class="text-base font-bold" style="color: var(--ink-900)">
+          {{ store()?.name }}
+        </p>
+        <p class="mt-1 text-[11px]" style="color: var(--ink-400)">
+          پرداخت با اعتبار رفاهی جهان‌فولاد سیرجان
+        </p>
+      </div>
+
+      @if (dataUrl(); as src) {
+        <!--
+          NgOptimizedImage عمداً استفاده نشده: با data-URI کار نمی‌کند.
+          عرض/ارتفاع صریح تا هنگام بارگذاری، جای تصویر رزرو شود (بدون پرش چیدمان).
+        -->
+        <img
+          [src]="src"
+          width="256"
+          height="256"
+          alt="کد QR فروشگاه {{ store()?.name }}"
+          class="size-64 max-w-full rounded-xl"
+        />
+      } @else {
+        <div class="size-64 max-w-full animate-pulse rounded-xl" style="background-color: var(--muted)"></div>
+      }
+
+      <div class="flex flex-col items-center gap-1">
+        <p class="text-[11px]" style="color: var(--ink-400)">
+          اگر دوربین کار نکرد، این کد را دستی وارد کنید:
+        </p>
+        <p
+          dir="ltr"
+          class="rounded-lg px-3 py-1.5 font-mono text-lg font-bold tracking-[0.2em]"
+          style="background-color: var(--muted); color: var(--ink-900)"
+        >{{ store()?.code }}</p>
+      </div>
+    </div>
+
+    <!-- کنش‌ها — در چاپ دیده نمی‌شوند -->
+    <div class="flex gap-2">
+      <button
+        type="button"
+        hlmBtn
+        class="flex-1"
+        [disabled]="!dataUrl() || busy()"
+        (click)="download()"
+      >
+        <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+          <path d="M7 10l5 5 5-5" />
+          <path d="M12 15V3" />
+        </svg>
+        دانلود تصویر
+      </button>
+      <button
+        type="button"
+        hlmBtn
+        variant="outline"
+        class="flex-1"
+        [disabled]="!dataUrl() || busy()"
+        (click)="print()"
+      >
+        <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M6 9V2h12v7" />
+          <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
+          <rect x="6" y="14" width="12" height="8" rx="1" />
+        </svg>
+        چاپ
+      </button>
+    </div>
+
+    <p class="text-muted-foreground text-center text-[11px] leading-relaxed">
+      کد QR شما ثابت است و تغییر نمی‌کند — یک بار چاپ کافی است. مبلغ را کارمند
+      وارد می‌کند، پس نیازی به اسکنر یا دستگاه کارت‌خوان ندارید.
+    </p>
+  }
+</div>

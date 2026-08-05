@@ -46,6 +46,13 @@ export class StoreController {
     return this.payments.recent(request.store.sub);
   }
 
+  /** آمار فروش برای داشبورد فروشنده — امروز، ۷ روز، ۳۰ روز و سری روزانه */
+  @Get('stats')
+  @UseGuards(StoreJwtGuard)
+  stats(@Req() request: StoreRequest) {
+    return this.payments.stats(request.store.sub);
+  }
+
   /**
    * استریم زندهٔ رسیدها. کلاینت با `fetch` و هدر Authorization می‌خواندش (نه
    * EventSource) تا توکن در URL نیفتد. پالس ۲۵ ثانیه‌ای اتصال را از بسته‌شدن

@@ -1,6 +1,6 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { Receipt } from '@sanpay/models';
+import { Receipt, StoreStats } from '@sanpay/models';
 import { firstValueFrom } from 'rxjs';
 import { StoreAuthService } from './store-auth.service';
 
@@ -11,6 +11,14 @@ export class StorePaymentsService {
 
   recent(): Promise<Receipt[]> {
     return firstValueFrom(this.http.get<Receipt[]>('/api/store/payments'));
+  }
+
+  /**
+   * آمار فروش. سمت سرور جمع زده می‌شود، نه از روی `recent()` — آن فقط ۵۰ رسید
+   * آخر را می‌دهد و در فروشگاه شلوغ، جمعِ امروز را کمتر از واقع نشان می‌داد.
+   */
+  stats(): Promise<StoreStats> {
+    return firstValueFrom(this.http.get<StoreStats>('/api/store/stats'));
   }
 
   /**

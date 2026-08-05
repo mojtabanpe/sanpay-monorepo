@@ -1,0 +1,70 @@
+<div class="flex min-h-dvh flex-col">
+
+  <!--
+    سربرگ چسبان. `print:hidden` تا در چاپِ صفحهٔ کد QR روی برگه نیفتد.
+  -->
+  <header
+    class="sticky top-0 z-20 print:hidden"
+    style="background-color: color-mix(in oklab, var(--background) 88%, transparent);
+           backdrop-filter: blur(12px);
+           border-bottom: 1px solid var(--hairline)"
+  >
+    <div class="mx-auto flex w-full max-w-3xl items-center justify-between gap-3 px-4 py-3">
+      <div class="flex min-w-0 items-center gap-2.5">
+        <div
+          class="flex size-9 shrink-0 items-center justify-center rounded-[0.625rem] text-white"
+          style="background-color: var(--ink-700)"
+          aria-hidden="true"
+        >
+          <svg class="size-4.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z" />
+            <path d="M3 6h18" />
+            <path d="M16 10a4 4 0 0 1-8 0" />
+          </svg>
+        </div>
+        <div class="min-w-0 leading-tight">
+          <p class="truncate text-sm font-bold">{{ store()?.name }}</p>
+          <p class="text-muted-foreground truncate text-[11px]">
+            کد فروشگاه:
+            <span dir="ltr" class="font-mono font-semibold">{{ store()?.code }}</span>
+          </p>
+        </div>
+      </div>
+
+      <button hlmBtn variant="ghost" size="sm" class="shrink-0" (click)="logout()">
+        خروج
+      </button>
+    </div>
+
+    <!--
+      ناوبری. `routerLinkActive` رنگ و زیرخط را می‌دهد؛ `aria-current` هم برای
+      صفحه‌خوان لازم است چون رنگ به‌تنهایی حالت فعال را منتقل نمی‌کند.
+    -->
+    <nav class="mx-auto w-full max-w-3xl px-4">
+      <ul class="flex gap-1">
+        <li>
+          <a
+            routerLink="/payments"
+            routerLinkActive="border-current font-bold"
+            #salesLink="routerLinkActive"
+            [attr.aria-current]="salesLink.isActive ? 'page' : null"
+            class="text-muted-foreground [&.border-current]:text-foreground inline-flex min-h-11 items-center border-b-2 border-transparent px-3 text-sm transition-colors"
+          >فروش‌ها</a>
+        </li>
+        <li>
+          <a
+            routerLink="/qr"
+            routerLinkActive="border-current font-bold"
+            #qrLink="routerLinkActive"
+            [attr.aria-current]="qrLink.isActive ? 'page' : null"
+            class="text-muted-foreground [&.border-current]:text-foreground inline-flex min-h-11 items-center border-b-2 border-transparent px-3 text-sm transition-colors"
+          >کد QR</a>
+        </li>
+      </ul>
+    </nav>
+  </header>
+
+  <main class="flex-1">
+    <router-outlet />
+  </main>
+</div>

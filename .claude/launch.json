@@ -4,20 +4,42 @@
     {
       "name": "app",
       "runtimeExecutable": "npx",
-      "runtimeArgs": ["nx", "serve", "app"],
+      "runtimeArgs": [
+        "nx",
+        "serve",
+        "app"
+      ],
       "port": 4200
     },
     {
       "name": "dashboard",
       "runtimeExecutable": "npx",
-      "runtimeArgs": ["nx", "serve", "dashboard"],
+      "runtimeArgs": [
+        "nx",
+        "serve",
+        "dashboard"
+      ],
       "port": 4300
     },
     {
       "name": "api",
       "runtimeExecutable": "npx",
-      "runtimeArgs": ["nx", "serve", "api"],
+      "runtimeArgs": [
+        "nx",
+        "serve",
+        "api"
+      ],
       "port": 3000
+    },
+    {
+      "name": "store",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": [
+        "nx",
+        "serve",
+        "store"
+      ],
+      "port": 4400
     }
   ]
 }
