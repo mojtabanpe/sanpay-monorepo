@@ -39,9 +39,24 @@ QR scanning uses the native `BarcodeDetector` when available and falls back to `
 - The client has a 60 s heartbeat watchdog: a dead backend behind the dev proxy leaves the request hanging without an error, so silence — not just a socket error — must trigger reconnect. On every reconnect the list is refetched to pick up payments missed while offline.
 - The store never receives employee wallet balances: `ReceiptLine.remainingAfter` is stripped from both the SSE payload and `GET /api/store/payments`.
 
+### Store panel pages
+
+Two pages under a shared shell (`pages/shell`) that owns the header + nav:
+
+- **فروش‌ها** (`/payments`) — live receipt feed plus sales figures from `GET /api/store/stats`. That endpoint aggregates **server-side** with day boundaries in **Asia/Tehran**; the panel used to sum "today" from the 50-row `recent()` window, which silently under-reported exactly on the busiest days, and a UTC boundary would have pushed after-midnight sales into yesterday. A receipt arriving over SSE optimistically bumps the figures so the seller sees the sale they just made.
+- **کد QR** (`/qr`) — the seller's own till QR. Rendered client-side from `SANPAY:S:<code>` with `qrcode` (dynamically imported to stay out of the sales-page bundle; error-correction **H**, because a label sits on a counter for months and picks up scuffs). Offers **download PNG** and **print** so it can be physically placed on the till, and prints the code as text as the manual-entry fallback. The print stylesheet hides everything except `.printable`.
+
 ## Design system (important — user-approved, do not regress)
 
-- **Glassmorphism, light-first.** Dark mode is opt-in via the `.dark` class only — never default to dark and never follow OS preference. Palette: violet `#7C3AED` primary, emerald `#059669` accent, lavender `#FAF5FF` background.
+- **"Ink & gold", light-first, dense.** Dark mode is opt-in via the `.dark` class only — never default to dark and never follow OS preference.
+  - **Ink navy** (`--ink-900…--ink-300`, `--primary: #172644`) is the brand *and* the primary interactive colour. Filled ink buttons on white is the premium-fintech read, and it guarantees contrast rather than fighting for it.
+  - **Gold** (`--gold-600…--gold-100`) is the single accent and means **value** — money, progress bars, the active nav item, the hero highlight. Used sparingly so it keeps meaning something.
+  - **Emerald/red/amber are semantic only**, never decoration: `--pos/-fg/-bg` (available), `--neg-fg/-bg` (spent, over limit), `--warn-fg/-bg` (scarcity).
+  - Canvas is a cool neutral `#F4F6FA`; cards are **opaque white**.
+- ⚠ **Gold is not a text colour on light surfaces** — `--gold-500` on white is ~2.1:1. Use it for fills, bars and icons; for gold *text* you must be on ink, where `--gold-300` reaches ~7:1. Text on light uses `--foreground` / `--muted-foreground` / `--pos-fg` / `--neg-fg` / `--warn-fg`.
+- **Never gradient between two near-complementary hues.** The old violet→emerald hero passed through a desaturated grey-teal at its midpoint — that muddy band was the single most "cheap-looking" thing in the app. Every gradient now stays inside one ramp (ink→ink, gold→gold).
+- **Blur is for floating layers only** (dialogs, popovers, menus, sheets), not cards. A card sits in the scroll flow over a known background, so blur bought nothing while costing a filter per list row. Cards are opaque + `--hairline` border + `--elev-1`; the hairline is what actually gives an edge on light surfaces.
+- **Don't stack padding on `hlm-card`.** The card frame already applies `py-(--card-spacing)`; adding `py-*` to the content div doubles it (64px of padding around 129px of content, measured). Let the card own vertical padding.
 - Single source of truth: `shared/ui/theme/glass.css` (imported by both apps) + `design-system/sanpay/MASTER.md`.
 - Style spartan components via CSS variables and `[data-slot=…]` overrides in `glass.css`. **Never hand-edit generated files under `shared/ui/*`** — they must stay regeneratable via `nx g @spartan-ng/cli:ui <name>` (config in `components.json`).
 - Backdrop blur only on elevated surfaces (cards, dialogs, menus, sheets…), not inputs/rows. Keep the `prefers-reduced-transparency` / `prefers-reduced-motion` fallbacks. Text contrast ≥ 4.5:1. SVG icons only, no emoji.
