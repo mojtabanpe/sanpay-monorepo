@@ -9,6 +9,7 @@ import {
   AdminProfile,
   AdminStoreRow,
   AdminWalletDefinitionRow,
+  BulkAllocateInput,
   BulkAllocateResult,
   CreateEmployeeInput,
   CreateStoreInput,
@@ -116,12 +117,7 @@ export class AdminApiService {
     );
   }
 
-  bulkAllocate(input: {
-    definitionId: string;
-    employeeIds?: string[];
-    cap: number;
-    expiresAt: string;
-  }) {
+  bulkAllocate(input: BulkAllocateInput) {
     return this.post<BulkAllocateResult>(
       '/api/admin/wallet-definitions/bulk-allocate',
       input,

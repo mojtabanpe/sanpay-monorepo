@@ -12,6 +12,7 @@ import {
   Max,
   Min,
   MinLength,
+  ValidateNested,
 } from 'class-validator';
 
 const WALLET_KINDS = ['CREDIT', 'RATION', 'TOURISM'] as const;
@@ -264,11 +265,12 @@ export class CreateWalletDefinitionDto {
   @IsString()
   icon?: string;
 
+  /** `null` صریح = نامحدود؛ `@IsOptional` هم undefined و هم null را رد می‌کند */
   @IsOptional()
   @Type(() => Number)
   @IsInt()
   @Min(0)
-  defaultCap?: number;
+  defaultCap?: number | null;
 
   @IsOptional()
   @IsArray()
@@ -294,11 +296,12 @@ export class UpdateWalletDefinitionDto {
   @IsString()
   icon?: string;
 
+  /** `null` صریح = نامحدود؛ `@IsOptional` هم undefined و هم null را رد می‌کند */
   @IsOptional()
   @Type(() => Number)
   @IsInt()
   @Min(0)
-  defaultCap?: number;
+  defaultCap?: number | null;
 
   @IsOptional()
   @IsArray()
@@ -340,6 +343,21 @@ export class UpdateAllocationDto {
   isActive?: boolean;
 }
 
+/** یک سطر از فایل تخصیص: کارمند با سقف و انقضای مخصوص خودش */
+export class BulkAllocateEntryDto {
+  @IsString()
+  @IsNotEmpty()
+  nationalCode!: string;
+
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  cap!: number;
+
+  @IsDateString()
+  expiresAt!: string;
+}
+
 export class BulkAllocateDto {
   @IsString()
   @IsNotEmpty()
@@ -350,13 +368,27 @@ export class BulkAllocateDto {
   @IsString({ each: true })
   employeeIds?: string[];
 
+  /**
+   * سطرهای آمده از فایل. اگر پر باشد، `cap`/`expiresAt`/`employeeIds` نادیده
+   * گرفته می‌شوند و تخصیص فقط به همین کارمندان با مقادیر خودشان انجام می‌شود.
+   */
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => BulkAllocateEntryDto)
+  entries?: BulkAllocateEntryDto[];
+
+  /** سقف یکسان برای همه — وقتی `entries` نیامده باشد اجباری است */
+  @IsOptional()
   @Type(() => Number)
   @IsInt()
   @Min(0)
-  cap!: number;
+  cap?: number;
 
+  /** انقضای یکسان برای همه — وقتی `entries` نیامده باشد اجباری است */
+  @IsOptional()
   @IsDateString()
-  expiresAt!: string;
+  expiresAt?: string;
 }
 
 export class AdjustAllocationDto {

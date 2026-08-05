@@ -142,7 +142,8 @@
   <section hlmCard class="w-full">
     <div hlmCardContent class="pt-6">
       <div hlmTableContainer>
-        <table hlmTable class="w-full">
+        <!-- سلول‌ها وسط‌چین: با descendant selector تا بر text-start خودِ hlmTh غلبه کند -->
+        <table hlmTable class="w-full [&_td]:text-center [&_th]:text-center">
           <thead hlmTHead>
             <tr hlmTr>
               <th hlmTh>نام</th>
@@ -163,9 +164,9 @@
                     {{ row.firstName }} {{ row.lastName }}
                   </a>
                 </td>
-                <td hlmTd dir="ltr">{{ row.nationalCode }}</td>
-                <td hlmTd dir="ltr">{{ row.personnelCode }}</td>
-                <td hlmTd dir="ltr">{{ row.phone ?? '—' }}</td>
+                <td hlmTd><span dir="ltr">{{ row.nationalCode }}</span></td>
+                <td hlmTd><span dir="ltr">{{ row.personnelCode }}</span></td>
+                <td hlmTd><span dir="ltr">{{ row.phone ?? '—' }}</span></td>
                 <td hlmTd>{{ fa(row.walletCount) }}</td>
                 <td hlmTd class="font-semibold">{{ toman(row.remaining) }}</td>
                 <td hlmTd>
@@ -173,7 +174,7 @@
                     {{ row.isActive ? 'فعال' : 'غیرفعال' }}
                   </span>
                 </td>
-                <td hlmTd class="text-left">
+                <td hlmTd>
                   <a
                     hlmBtn
                     variant="ghost"

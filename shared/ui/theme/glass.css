@@ -305,10 +305,18 @@ button[data-slot='button'].bg-primary:active:not(:disabled) {
 }
 
 /* ── Badge ─────────────────────────────────────────────────────────── */
+/*
+ * پدینگ پیش‌فرض spartan برای متن لاتین کوتاه تنظیم شده و برچسب فارسی را
+ * خفه می‌کند — «گردشگری» تقریباً به لبهٔ قرص می‌چسبد. فاصلهٔ افقی و عمودی
+ * بیشتر، به‌علاوهٔ line-height بازتر برای ارتفاع بیشترِ حروف فارسی.
+ */
 [data-slot='badge'] {
   border-radius: 999px;
   font-weight: 500;
   letter-spacing: 0;
+  padding-block: 0.25rem;
+  padding-inline: 0.625rem;
+  line-height: 1.6;
 }
 
 /* ── Progress ──────────────────────────────────────────────────────── */
@@ -393,9 +401,67 @@ button[data-slot='button'].bg-primary:active:not(:disabled) {
   background-color: var(--primary);
 }
 
+/*
+ * چک‌باکسِ تیک‌نخورده فقط یک border با رنگ --input دارد که روی سطح روشنِ
+ * کارت‌ها عملاً دیده نمی‌شود؛ کنار نام فروشگاه هیچ مربعی به چشم نمی‌آمد و
+ * معلوم نبود اصلاً چیزی برای انتخاب هست.
+ *
+ * هدف باید دکمهٔ داخلی باشد، نه خودِ `hlm-checkbox`: میزبان `display: contents`
+ * دارد و هیچ جعبه‌ای رندر نمی‌کند، پس هر border روی آن بی‌اثر است.
+ * حالت تیک‌خورده دست‌نخورده می‌ماند — spartan خودش با data-state رنگش می‌کند.
+ */
+[data-slot='checkbox'] button:not([data-state='checked']):not(
+    [data-state='indeterminate']
+  ),
+[data-slot='radio-group-item']:not([data-state='checked']) {
+  border-color: color-mix(in oklab, var(--foreground) 32%, transparent);
+  background-color: var(--input);
+}
+
+[data-slot='checkbox'] button:hover:not(:disabled):not([data-state='checked']),
+[data-slot='radio-group-item']:hover:not(:disabled):not([data-state='checked']) {
+  border-color: color-mix(in oklab, var(--primary) 60%, var(--border));
+}
+
 /* ── Calendar ──────────────────────────────────────────────────────── */
 [data-slot='calendar'] [data-slot='calendar-cell-button'] {
   border-radius: calc(var(--radius) - 0.375rem);
+}
+
+/*
+ * پاپ‌اور تاریخ به‌طور پیش‌فرض w-fit است و از اینپوتِ کنارش باریک‌تر درمی‌آید،
+ * که مثل یک منوی جدا افتاده به نظر می‌رسد. دستور SanpayDatePickerWidth
+ * (در @sanpay/dates) عرض trigger را روی --sanpay-date-picker-width می‌نویسد و
+ * اینجا به overlay اعمال می‌شود.
+ *
+ * `min-width` و نه `width`: خواسته «کمتر از اینپوت نه» است، و تقویمِ باریک‌تر
+ * از عرض طبیعی‌اش خوانا نیست. سقف ۲۴rem هم لازم است — فیلدی به عرض ۶۴۰ پیکسل
+ * اگر تقویم را کشیده کند، خانه‌های روز به مربع‌های غول‌پیکر تبدیل می‌شوند.
+ */
+.cdk-overlay-pane:has([data-slot='calendar']) {
+  min-width: clamp(
+    18rem,
+    var(--sanpay-date-picker-width, 18rem),
+    min(24rem, 100vw - 2rem)
+  );
+  max-width: calc(100vw - 2rem);
+}
+
+.cdk-overlay-pane:has([data-slot='calendar']) [data-slot='popover-content'] {
+  width: 100%;
+  max-width: none;
+}
+
+/*
+ * شبکهٔ روزها باید عرض پاپ‌اور را پر کند وگرنه در یک گوشه جمع می‌شود و بقیه
+ * سفید می‌ماند. لایهٔ داخلی hlm-calendar یک `inline-flex` است که عرضش را از
+ * محتوا می‌گیرد؛ تا آن باز نشود `w-full` روی جدول بی‌اثر است. فقط همین یک لایه
+ * دستکاری می‌شود — دست‌بردن به خودِ hlm-calendar یا سلول‌ها، ارتفاع سطرها را
+ * هم می‌کشد و تقویم را خراب می‌کند.
+ */
+.cdk-overlay-pane:has([data-slot='calendar']) [data-slot='calendar'] > div {
+  display: flex;
+  width: 100%;
 }
 
 /* ── Overlays: a short rise on open, no motion on close ────────────── */

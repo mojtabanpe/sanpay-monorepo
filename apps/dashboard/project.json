@@ -51,7 +51,10 @@
       "defaultConfiguration": "development",
       "options": {
         "port": 4300,
-        "proxyConfig": "apps/dashboard/proxy.conf.json"
+        "proxyConfig": "apps/dashboard/proxy.conf.json",
+        "prebundle": {
+          "exclude": ["@spartan-ng/brain"]
+        }
       },
       "configurations": {
         "production": {

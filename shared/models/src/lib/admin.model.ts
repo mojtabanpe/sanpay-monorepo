@@ -161,7 +161,8 @@ export interface CreateWalletDefinitionInput {
   kind: WalletKind;
   description?: string;
   icon?: string;
-  defaultCap?: number;
+  /** `null` یعنی نامحدود — هنگام تخصیص، سقف دستی وارد می‌شود */
+  defaultCap?: number | null;
   storeIds?: string[];
 }
 
@@ -184,18 +185,32 @@ export interface UpdateAllocationInput {
 }
 
 /** تخصیص گروهی یک کیف پول به چند کارمند */
+/** یک سطر فایل تخصیص: کارمند با سقف و انقضای مخصوص خودش */
+export interface BulkAllocateEntry {
+  nationalCode: string;
+  cap: number;
+  /** ISO date */
+  expiresAt: string;
+}
+
 export interface BulkAllocateInput {
   definitionId: string;
   /** خالی یعنی همهٔ کارمندان فعال */
   employeeIds?: string[];
-  cap: number;
-  expiresAt: string;
+  /** سطرهای فایل — اگر بیاید، فقط به همین‌ها و با مقادیر خودشان تخصیص می‌شود */
+  entries?: BulkAllocateEntry[];
+  /** سقف یکسان — وقتی `entries` نیامده باشد لازم است */
+  cap?: number;
+  /** انقضای یکسان — وقتی `entries` نیامده باشد لازم است */
+  expiresAt?: string;
 }
 
 export interface BulkAllocateResult {
   created: number;
   updated: number;
   skipped: number;
+  /** کد ملی‌های فایل که کارمندی با آن‌ها پیدا نشد */
+  notFound: string[];
 }
 
 // ─── پرداخت و رزرو ───────────────────────────────────────────────────────────

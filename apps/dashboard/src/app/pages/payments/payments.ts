@@ -1,6 +1,6 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { RouterModule } from '@angular/router';
-import { isoToJalali, jalaliToIso } from '@sanpay/dates';
+import { SanpayDatePickerWidth, isoToJalali, jalaliToIso } from '@sanpay/dates';
 import { AdminPaymentRow, AdminStoreRow } from '@sanpay/models';
 import { HlmBadgeImports } from '@sanpay/ui/badge';
 import { HlmButtonImports } from '@sanpay/ui/button';
@@ -18,6 +18,7 @@ import { fa, jalaliTime, toman } from '../../core/format';
 @Component({
   selector: 'app-payments',
   imports: [
+    SanpayDatePickerWidth,
     RouterModule,
     HlmBadgeImports,
     HlmButtonImports,

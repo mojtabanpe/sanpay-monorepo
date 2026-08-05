@@ -74,13 +74,27 @@ Being unlayered and imported *after* utilities in each app's `styles.css`, the o
 
 When verifying CSS changes, confirm the browser is not on a cached stylesheet (check the `<link>` hash) — and note the dev server may need a reload to pick up `shared/ui` edits.
 
+#### Styling a spartan primitive: check what actually renders a box
+
+Several hlm hosts are `display: contents` and paint nothing — `hlm-checkbox` is one. A `border`/`background` on `[data-slot='checkbox']` computes fine in devtools and is invisible on screen; the real box is the `button` inside (`[data-slot='checkbox'] button`). Before writing an override, inspect the rendered subtree and target the element that has the box, then scope to `:not([data-state='checked'])` so spartan keeps owning the checked look.
+
+Same shape of trap in `hlm-calendar`: its inner wrapper is `inline-flex`, so `w-full` on the table can't widen anything until that wrapper is opened up. Widen *only* that wrapper — forcing `display: flex`/`width` on the calendar host or the cells stretches row heights and turns the days into giant squares.
+
+#### The date-picker popover width
+
+`hlm-date-picker`'s popover is `w-fit` and comes out narrower than its own field. `brn-popover` has no trigger-width plumbing (unlike `brn-select`'s `updateTriggerWidth`), and the content lives in a CDK overlay, so CSS alone cannot know the width. `SanpayDatePickerWidth` (`@sanpay/dates`) publishes the trigger width to `--sanpay-date-picker-width` and `glass.css` applies it to `.cdk-overlay-pane:has([data-slot='calendar'])`. Add the directive to every new `<hlm-date-picker>`. It is a `min-width` clamped to 24rem — the ask is "not narrower than the input", and an unclamped 640px-wide field would otherwise produce an absurd calendar.
+
+#### `NG0203` on a spartan primitive used only from a lazy route
+
+`@spartan-ng/brain` entrypoints reached only from a lazily-loaded route get prebundled by vite in a *second* optimizer pass, which drags in a second copy of `@angular/core`; a `providedIn: 'root'` service from brain (e.g. `BrnDialogService`) is then missing from the root injector the app is actually using, and you get `NG0203`. It survives a full `.angular/cache` wipe, so it is not staleness. The dashboard's `serve` target sets `"prebundle": { "exclude": ["@spartan-ng/brain"] }` to fix it. Production builds were never affected. Note the schema has `additionalProperties: false`, so no `"//"` comment key inside that object.
+
 ### Jalali dates
 
 `@spartan-ng/brain` ships `BrnJalaliDateAdapter` + `JalaliDate` — **do not write a date adapter.** `providePersianDates()` (`shared/dates`, imported as `@sanpay/dates`) is installed in the `app.config.ts` of both the employee app and the dashboard and wires the adapter, Persian month/weekday labels, week-starts-Saturday, and Persian-digit formatting. Because it is a root provider, every applet's `hlm-calendar` / `hlm-date-picker` gets it without depending on the app.
 
 The API and هتل‌یار speak Gregorian `YYYY-MM-DD`; `JalaliDate` exists only at the display boundary. Convert with `isoToJalali` / `jalaliToIso` from `@sanpay/dates` (the tourism applet still has its own copy in `libs/applets/tourism/src/lib/format.ts`).
 
-**Known gap:** the day numbers *inside* the calendar grid render as Latin (`13`, not `۱۳`) — `hlm-calendar` interpolates `_dateAdapter.getDate(date)` directly and `BrnCalendarI18n` has no `formatDay` hook. Fixing it means editing a generated file, which the rule above forbids. The trigger, header and everything else are Persian.
+**Solved by the font:** the day numbers *inside* the calendar grid used to render Latin (`13`, not `۱۳`) — `hlm-calendar` interpolates `_dateAdapter.getDate(date)` directly and `BrnCalendarI18n` has no `formatDay` hook, so no code fix was possible without editing a generated file. Switching the app font to **Vazirmatn FD** fixed it everywhere at once (see Persian/RTL conventions below). Don't reintroduce a string-level digit converter for this.
 
 ## Module boundaries & lint tags
 
@@ -150,10 +164,14 @@ Persian/RTL admin panel for واحد رفاه, served at **4300** (dev-server pr
 - Pages: نمای کلی (stats + 14-day chart + top stores), کارمندان (+ per-employee file: allocations, cap/expiry edit, manual refund, password reset), کیف‌پول‌ها (definitions, store links, bulk allocation), فروشگاه‌ها (CRUD + QR code + panel password), پرداخت‌ها, رزرو هتل, کاربران داشبورد, تنظیمات.
 - Money edits are guarded server-side: a cap can never drop below `spent`, and a manual adjustment writes a `Transaction` (`REFUND`/`ADJUSTMENT`) so the change is traceable rather than a silent `spent` edit.
 - Bulk allocation updates an employee's existing active allocation instead of stacking a second one; an employee whose `spent` already exceeds the new cap is **skipped** and counted in the result, not clamped.
+- **Allocation from the wallets page is bulk-only and lives in a modal.** Two modes on `POST /api/admin/wallet-definitions/bulk-allocate`: without `entries`, one `cap`/`expiresAt` for every active employee; with `entries` (from an uploaded CSV/XLSX of *کد ملی، سقف، تاریخ انقضای جلالی*), only those employees, each with its own values. National codes with no matching employee come back in `result.notFound` rather than failing silently. Parsing is client-side in `apps/dashboard/src/app/core/allocation-file.ts` — Jalali→Gregorian happens there because the API only speaks `YYYY-MM-DD`; `read-excel-file/browser` is imported dynamically to keep it out of the initial bundle.
+- Wallet `defaultCap` left empty means **unlimited** (`null`), so the update DTO must accept an explicit `null` to clear a previous cap — `undefined` means "don't touch".
+- The kind picker offers only `CREDIT` and `TOURISM`. `RATION` still exists in the schema and in old rows (and keeps its label), but is no longer offered for new wallets.
 
 ## Persian/RTL conventions (`apps/app`)
 
-- Vazirmatn font, **self-hosted** via `@fontsource/vazirmatn` CSS imports in `apps/app/src/styles.css` — never add Google Fonts links (unreliable in Iran).
+- **Vazirmatn FD** («Farsi Digits»), self-hosted from `shared/ui/theme/font.css` + `shared/ui/theme/fonts/*.woff2`, imported by all three apps — never add Google Fonts links (unreliable in Iran). The woff2 files are vendored out of the `vazirmatn` npm package (`misc/Farsi-Digits/fonts/webfonts`); that package is ~13 MB and is **not** kept as a dependency, so update by re-copying from a fresh version.
+- **Every Latin digit renders as a Persian digit, font-side.** In FD the U+0030–0039 slots are drawn as ۰-۹, so numbers come out Persian even where our code can't reach — inside `hlm-calendar`'s day grid, generated spartan components, third-party text. This retired the old "calendar days render Latin" gap. DOM/`input.value` stay Latin, so parsing, validation and copy/paste are unaffected; keep using `fa()`/`toman()` for grouping and units, not for digit conversion.
 - Persian digits (۱۲۳) and amounts (۲۴٬۵۰۰٬۰۰۰ تومان), Jalali dates (۱۴۰۵/۰۶/۳۱); wrap card numbers/codes in `dir="ltr"`.
 - **Never use `•` as a separator next to a Persian digit** — «• ۲ شب» reads as «۲۰ شب». Use `—` or `،`.
 

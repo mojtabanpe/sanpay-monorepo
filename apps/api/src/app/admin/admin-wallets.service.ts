@@ -17,6 +17,18 @@ import {
   UpdateWalletDefinitionDto,
 } from './dto/admin.dto';
 
+interface AllocationTarget {
+  employeeId: string;
+  cap: bigint;
+  expiresAt: Date;
+}
+
+interface AllocationTargets {
+  rows: AllocationTarget[];
+  /** کد ملی‌هایی از فایل که کارمندی با آن‌ها ثبت نشده است */
+  notFound: string[];
+}
+
 @Injectable()
 export class AdminWalletsService {
   constructor(private readonly prisma: PrismaService) {}
@@ -88,7 +100,11 @@ export class AdminWalletsService {
         kind: dto.kind,
         description: dto.description || null,
         icon: dto.icon || null,
-        defaultCap: dto.defaultCap === undefined ? null : BigInt(dto.defaultCap),
+        // خالی گذاشتن سقف پیش‌فرض یعنی نامحدود
+        defaultCap:
+          dto.defaultCap === undefined || dto.defaultCap === null
+            ? null
+            : BigInt(dto.defaultCap),
         stores: dto.storeIds?.length
           ? { create: dto.storeIds.map((storeId) => ({ storeId })) }
           : undefined,
@@ -119,8 +135,9 @@ export class AdminWalletsService {
             ? { description: dto.description || null }
             : {}),
           ...(dto.icon !== undefined ? { icon: dto.icon || null } : {}),
+          // `null` صریح یعنی «نامحدود» و باید سقف قبلی را پاک کند
           ...(dto.defaultCap !== undefined
-            ? { defaultCap: BigInt(dto.defaultCap) }
+            ? { defaultCap: dto.defaultCap === null ? null : BigInt(dto.defaultCap) }
             : {}),
           ...(dto.isActive !== undefined ? { isActive: dto.isActive } : {}),
         },
@@ -150,6 +167,12 @@ export class AdminWalletsService {
   /**
    * تخصیص گروهی: برای هر کارمند اگر تخصیص فعالی از این کیف پول داشته باشد
    * سقف/انقضای آن به‌روز می‌شود، وگرنه تخصیص تازه ساخته می‌شود.
+   *
+   * دو حالت دارد:
+   * - `entries` (از فایل اکسل/CSV): فقط به همان کد ملی‌ها، هرکدام با سقف و
+   *   انقضای خودش. کد ملی‌ای که کارمندی نداشته باشد در `notFound` برمی‌گردد
+   *   تا واحد رفاه بفهمد کدام سطرهای فایل اعمال نشده — نه این‌که بی‌صدا رد شود.
+   * - بدون `entries`: سقف و انقضای یکسان برای همهٔ کارمندان فعال.
    */
   async bulkAllocate(dto: BulkAllocateDto): Promise<BulkAllocateResult> {
     const definition = await this.prisma.walletDefinition.findUnique({
@@ -157,21 +180,21 @@ export class AdminWalletsService {
     });
     if (!definition) throw new NotFoundException('کیف پول پیدا نشد');
 
-    const employees = await this.prisma.employee.findMany({
-      where: dto.employeeIds?.length
-        ? { id: { in: dto.employeeIds } }
-        : { isActive: true },
-      select: { id: true },
-    });
+    const targets = dto.entries?.length
+      ? await this.targetsFromEntries(dto.entries)
+      : await this.targetsFromUniformInput(dto);
 
-    const cap = BigInt(dto.cap);
-    const expiresAt = new Date(dto.expiresAt);
-    const result: BulkAllocateResult = { created: 0, updated: 0, skipped: 0 };
+    const result: BulkAllocateResult = {
+      created: 0,
+      updated: 0,
+      skipped: 0,
+      notFound: targets.notFound,
+    };
 
-    for (const employee of employees) {
+    for (const target of targets.rows) {
       const existing = await this.prisma.walletAllocation.findFirst({
         where: {
-          employeeId: employee.id,
+          employeeId: target.employeeId,
           definitionId: definition.id,
           isActive: true,
         },
@@ -179,25 +202,85 @@ export class AdminWalletsService {
 
       if (!existing) {
         await this.prisma.walletAllocation.create({
-          data: { employeeId: employee.id, definitionId: definition.id, cap, expiresAt },
+          data: {
+            employeeId: target.employeeId,
+            definitionId: definition.id,
+            cap: target.cap,
+            expiresAt: target.expiresAt,
+          },
         });
         result.created++;
         continue;
       }
 
       // سقف تازه نباید زیر خرج‌شده بیفتد — چنین کارمندی دست‌نخورده می‌ماند
-      if (cap < existing.spent) {
+      if (target.cap < existing.spent) {
         result.skipped++;
         continue;
       }
       await this.prisma.walletAllocation.update({
         where: { id: existing.id },
-        data: { cap, expiresAt },
+        data: { cap: target.cap, expiresAt: target.expiresAt },
       });
       result.updated++;
     }
 
     return result;
+  }
+
+  /** سطرهای فایل → کارمندان، با گزارش کد ملی‌های پیدانشده */
+  private async targetsFromEntries(
+    entries: NonNullable<BulkAllocateDto['entries']>,
+  ): Promise<AllocationTargets> {
+    const nationalCodes = entries.map((entry) => entry.nationalCode.trim());
+    const employees = await this.prisma.employee.findMany({
+      where: { nationalCode: { in: nationalCodes } },
+      select: { id: true, nationalCode: true },
+    });
+    const byNationalCode = new Map(
+      employees.map((employee) => [employee.nationalCode, employee.id]),
+    );
+
+    const rows: AllocationTarget[] = [];
+    const notFound: string[] = [];
+    for (const entry of entries) {
+      const employeeId = byNationalCode.get(entry.nationalCode.trim());
+      if (!employeeId) {
+        notFound.push(entry.nationalCode.trim());
+        continue;
+      }
+      rows.push({
+        employeeId,
+        cap: BigInt(entry.cap),
+        expiresAt: new Date(entry.expiresAt),
+      });
+    }
+    return { rows, notFound };
+  }
+
+  /** سقف و انقضای یکسان برای همهٔ کارمندان فعال (یا فهرست شناسه‌های داده‌شده) */
+  private async targetsFromUniformInput(
+    dto: BulkAllocateDto,
+  ): Promise<AllocationTargets> {
+    if (dto.cap === undefined || !dto.expiresAt) {
+      throw new BadRequestException('سقف اعتبار و تاریخ انقضا لازم است');
+    }
+    const employees = await this.prisma.employee.findMany({
+      where: dto.employeeIds?.length
+        ? { id: { in: dto.employeeIds } }
+        : { isActive: true },
+      select: { id: true },
+    });
+    const cap = BigInt(dto.cap);
+    const expiresAt = new Date(dto.expiresAt);
+    return {
+      rows: employees.map((employee) => ({
+        employeeId: employee.id,
+        cap,
+        expiresAt,
+      })),
+      notFound: [],
+    };
   }
 
   /** کیف پول گردشگری فروشگاه ندارد — رزرو مستقیم روی هتل‌یار انجام می‌شود */

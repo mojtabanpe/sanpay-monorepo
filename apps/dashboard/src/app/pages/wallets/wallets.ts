@@ -1,12 +1,17 @@
 import { Component, computed, inject, signal } from '@angular/core';
-import { isoToJalali, jalaliToIso } from '@sanpay/dates';
-import { AdminStoreRow, AdminWalletDefinitionRow } from '@sanpay/models';
+import { SanpayDatePickerWidth, isoToJalali, jalaliToIso } from '@sanpay/dates';
+import {
+  AdminStoreRow,
+  AdminWalletDefinitionRow,
+  BulkAllocateEntry,
+} from '@sanpay/models';
 import { HlmAlertImports } from '@sanpay/ui/alert';
 import { HlmBadgeImports } from '@sanpay/ui/badge';
 import { HlmButtonImports } from '@sanpay/ui/button';
 import { HlmCardImports } from '@sanpay/ui/card';
 import { HlmCheckboxImports } from '@sanpay/ui/checkbox';
 import { HlmDatePickerImports } from '@sanpay/ui/date-picker';
+import { HlmDialogImports } from '@sanpay/ui/dialog';
 import { HlmFieldImports } from '@sanpay/ui/field';
 import { HlmInputImports } from '@sanpay/ui/input';
 import { HlmLabelImports } from '@sanpay/ui/label';
@@ -14,23 +19,41 @@ import { HlmToggleGroupImports } from '@sanpay/ui/toggle-group';
 import { JalaliDate } from '@spartan-ng/brain/date-time';
 import { AdminApiService, apiError } from '../../core/admin-api.service';
 import { AdminAuthService } from '../../core/admin-auth.service';
-import { WALLET_KIND_LABELS, fa, isoDate, parseAmount, toman } from '../../core/format';
+import { parseAllocationFile } from '../../core/allocation-file';
+import {
+  WALLET_KIND_LABELS,
+  fa,
+  isoDate,
+  jalali,
+  parseAmount,
+  toman,
+} from '../../core/format';
 
-type Kind = 'CREDIT' | 'RATION' | 'TOURISM';
+/**
+ * فقط دو نوعی که واحد رفاه واقعاً می‌سازد. ارزاق در schema و در داده‌های قدیمی
+ * هست و برچسبش هم نگه داشته شده، اما دیگر به‌عنوان گزینهٔ ساخت پیشنهاد نمی‌شود.
+ */
+type Kind = 'CREDIT' | 'TOURISM';
 
 /**
  * تعریف کیف‌پول‌ها: نوع، سقف پیش‌فرض، فروشگاه‌های مجاز و تخصیص گروهی.
  * کیف پول گردشگری فروشگاه ندارد — انتخاب فروشگاه برایش پنهان می‌شود.
+ *
+ * تخصیص فقط گروهی است و در یک مدال باز می‌شود: یا سقف و انقضای یکسان برای همهٔ
+ * کارمندان فعال، یا یک فایل اکسل/CSV که برای هر کد ملی سقف و انقضای خودش را
+ * می‌آورد و تخصیص را به همان فهرست محدود می‌کند.
  */
 @Component({
   selector: 'app-wallets',
   imports: [
+    SanpayDatePickerWidth,
     HlmAlertImports,
     HlmBadgeImports,
     HlmButtonImports,
     HlmCardImports,
     HlmCheckboxImports,
     HlmDatePickerImports,
+    HlmDialogImports,
     HlmFieldImports,
     HlmInputImports,
     HlmLabelImports,
@@ -45,8 +68,9 @@ export class WalletsPage {
   protected readonly canWrite = this.auth.canWrite;
   protected readonly toman = toman;
   protected readonly fa = fa;
+  protected readonly jalali = jalali;
   protected readonly kindLabels = WALLET_KIND_LABELS;
-  protected readonly kinds: Kind[] = ['CREDIT', 'RATION', 'TOURISM'];
+  protected readonly kinds: Kind[] = ['CREDIT', 'TOURISM'];
 
   protected readonly definitions = signal<AdminWalletDefinitionRow[]>([]);
   protected readonly stores = signal<AdminStoreRow[]>([]);
@@ -67,12 +91,35 @@ export class WalletsPage {
     storeIds: [] as string[],
   });
 
-  /** فرم تخصیص گروهی */
+  // ─── تخصیص گروهی (مدال) ─────────────────────────────────────────────
   protected readonly bulkFor = signal<AdminWalletDefinitionRow | null>(null);
+  protected readonly bulkOpen = computed(() =>
+    this.bulkFor() ? ('open' as const) : ('closed' as const),
+  );
   protected readonly bulkCap = signal('');
   protected readonly bulkExpiry = signal(defaultExpiry());
   protected readonly bulkExpiryDate = computed(() => isoToJalali(this.bulkExpiry()));
   protected readonly minDate = isoToJalali(isoDate(new Date()));
+
+  /** سطرهای فایل آپلودشده — خالی یعنی تخصیص به همهٔ کارمندان فعال */
+  protected readonly fileEntries = signal<BulkAllocateEntry[]>([]);
+  protected readonly fileName = signal('');
+  protected readonly fileErrors = signal<string[]>([]);
+  protected readonly parsingFile = signal(false);
+  /** فقط چند سطر اول در مدال پیش‌نمایش می‌شود؛ بقیه شمرده می‌شوند */
+  protected readonly filePreview = computed(() => this.fileEntries().slice(0, 5));
+  protected readonly fileTotalCap = computed(() =>
+    this.fileEntries().reduce((sum, entry) => sum + entry.cap, 0),
+  );
+  protected readonly firstFileErrors = computed(() =>
+    this.fileErrors().slice(0, 5).join(' — '),
+  );
+  protected readonly bulkSubmitLabel = computed(() => {
+    const count = this.fileEntries().length;
+    return count
+      ? `تخصیص به ${fa(count)} کارمند`
+      : 'تخصیص به همهٔ کارمندان فعال';
+  });
 
   constructor() {
     void this.load();
@@ -155,7 +202,8 @@ export class WalletsPage {
       kind: form.kind,
       description: form.description.trim() || undefined,
       icon: form.icon.trim() || undefined,
-      defaultCap: form.defaultCap ? parseAmount(form.defaultCap) : undefined,
+      // خالی = نامحدود؛ `null` صریح لازم است تا در ویرایش، سقف قبلی پاک شود
+      defaultCap: form.defaultCap.trim() ? parseAmount(form.defaultCap) : null,
       storeIds: form.kind === 'TOURISM' ? [] : form.storeIds,
     };
 
@@ -181,31 +229,102 @@ export class WalletsPage {
     }, 'تغییر وضعیت ممکن نشد');
   }
 
+  // ─── مدال تخصیص گروهی ───────────────────────────────────────────────
+
+  protected openBulk(definition: AdminWalletDefinitionRow): void {
+    this.bulkFor.set(definition);
+    // سقف پیش‌فرض کیف پول نقطهٔ شروع منطقی است؛ نامحدود یعنی باید دستی وارد شود
+    this.bulkCap.set(
+      definition.defaultCap === null ? '' : String(definition.defaultCap),
+    );
+    this.bulkExpiry.set(defaultExpiry());
+    this.clearFile();
+    this.error.set(null);
+  }
+
+  protected closeBulk(): void {
+    this.bulkFor.set(null);
+    this.clearFile();
+  }
+
+  /** مدال با Esc یا کلیک بیرون هم بسته می‌شود — سیگنال باید همگام بماند */
+  protected onBulkStateChange(state: string): void {
+    if (state === 'closed' && this.bulkFor()) this.closeBulk();
+  }
+
+  protected clearFile(): void {
+    this.fileEntries.set([]);
+    this.fileName.set('');
+    this.fileErrors.set([]);
+  }
+
+  protected async onFilePicked(event: Event): Promise<void> {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    // مقدار input پاک می‌شود تا انتخاب دوبارهٔ همان فایل هم رویداد بدهد
+    input.value = '';
+    if (!file) return;
+
+    this.parsingFile.set(true);
+    this.error.set(null);
+    try {
+      const { entries, errors } = await parseAllocationFile(file);
+      this.fileEntries.set(entries);
+      this.fileErrors.set(errors);
+      this.fileName.set(file.name);
+      if (!entries.length) {
+        this.error.set('هیچ سطر معتبری در فایل پیدا نشد.');
+      }
+    } catch {
+      this.clearFile();
+      this.error.set('خواندن فایل ممکن نشد — فقط CSV و XLSX پشتیبانی می‌شود.');
+    } finally {
+      this.parsingFile.set(false);
+    }
+  }
+
   protected onBulkExpiryChange(date: JalaliDate | undefined): void {
     if (date) this.bulkExpiry.set(jalaliToIso(date));
   }
 
-  /** تخصیص به همهٔ کارمندان فعال — سقف کمتر از مصرف‌شده رد می‌شود */
+  /**
+   * با فایل: فقط به کد ملی‌های همان فایل، هرکدام با سقف و انقضای خودش.
+   * بدون فایل: سقف و انقضای یکسان برای همهٔ کارمندان فعال.
+   */
   protected async bulkAllocate(): Promise<void> {
     const definition = this.bulkFor();
     if (!definition) return;
-    const cap = parseAmount(this.bulkCap());
-    if (cap <= 0) {
-      this.error.set('سقف اعتبار را وارد کنید');
-      return;
+
+    const entries = this.fileEntries();
+    if (!entries.length) {
+      const cap = parseAmount(this.bulkCap());
+      if (cap <= 0) {
+        this.error.set('سقف اعتبار را وارد کنید');
+        return;
+      }
     }
+
     await this.run(async () => {
       const result = await this.api.bulkAllocate({
         definitionId: definition.id,
-        cap,
-        expiresAt: this.bulkExpiry(),
+        ...(entries.length
+          ? { entries }
+          : { cap: parseAmount(this.bulkCap()), expiresAt: this.bulkExpiry() }),
       });
-      this.bulkFor.set(null);
-      this.bulkCap.set('');
-      this.notice.set(
-        `${fa(result.created)} تخصیص تازه، ${fa(result.updated)} به‌روزرسانی، ` +
-          `${fa(result.skipped)} رد شده (سقف کمتر از مصرف).`,
-      );
+      this.closeBulk();
+
+      const parts = [
+        `${fa(result.created)} تخصیص تازه`,
+        `${fa(result.updated)} به‌روزرسانی`,
+        `${fa(result.skipped)} رد شده (سقف کمتر از مصرف)`,
+      ];
+      if (result.notFound.length) {
+        parts.push(
+          `${fa(result.notFound.length)} کد ملی پیدا نشد: ` +
+            result.notFound.slice(0, 10).join('، '),
+        );
+      }
+      this.notice.set(parts.join('، ') + '.');
     }, 'تخصیص گروهی ممکن نشد');
   }
 

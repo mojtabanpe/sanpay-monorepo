@@ -146,6 +146,7 @@
             <hlm-field>
               <label hlmFieldLabel for="fld-6">تاریخ انقضا</label>
               <hlm-date-picker
+                sanpayDatePickerWidth
                 [date]="allocExpiry()"
                 [min]="minDate"
                 (dateChange)="onAllocExpiryChange($event)"
@@ -193,6 +194,7 @@
                   <td hlmTd>
                     @if (canWrite()) {
                       <hlm-date-picker
+                sanpayDatePickerWidth
                         [date]="jalaliOf(allocation.expiresAt)"
                         (dateChange)="onRowExpiryChange(allocation.id, $event)"
                       >

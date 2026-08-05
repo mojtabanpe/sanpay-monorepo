@@ -10,7 +10,7 @@ import { HlmFieldImports } from '@sanpay/ui/field';
 import { HlmInputImports } from '@sanpay/ui/input';
 import { HlmSelectImports } from '@sanpay/ui/select';
 import { HlmTableImports } from '@sanpay/ui/table';
-import { isoToJalali, jalaliToIso } from '@sanpay/dates';
+import { SanpayDatePickerWidth, isoToJalali, jalaliToIso } from '@sanpay/dates';
 import { JalaliDate } from '@spartan-ng/brain/date-time';
 import { AdminApiService, apiError } from '../../core/admin-api.service';
 import { AdminAuthService } from '../../core/admin-auth.service';
@@ -31,6 +31,7 @@ import {
 @Component({
   selector: 'app-employee-detail',
   imports: [
+    SanpayDatePickerWidth,
     RouterModule,
     HlmAlertImports,
     HlmBadgeImports,

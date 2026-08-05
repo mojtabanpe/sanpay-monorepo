@@ -41,14 +41,14 @@
 
       <hlm-field>
         <label hlmFieldLabel for="fld-3">از تاریخ</label>
-        <hlm-date-picker id="fld-3" [date]="fromDate()" (dateChange)="onFromChange($event)">
+        <hlm-date-picker sanpayDatePickerWidth id="fld-3" [date]="fromDate()" (dateChange)="onFromChange($event)">
           <hlm-date-picker-trigger class="w-full">همه</hlm-date-picker-trigger>
         </hlm-date-picker>
       </hlm-field>
 
       <hlm-field>
         <label hlmFieldLabel for="fld-4">تا تاریخ</label>
-        <hlm-date-picker id="fld-4" [date]="toDate()" (dateChange)="onToChange($event)">
+        <hlm-date-picker sanpayDatePickerWidth id="fld-4" [date]="toDate()" (dateChange)="onToChange($event)">
           <hlm-date-picker-trigger class="w-full">همه</hlm-date-picker-trigger>
         </hlm-date-picker>
       </hlm-field>

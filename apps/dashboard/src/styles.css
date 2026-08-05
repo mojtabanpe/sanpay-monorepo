@@ -8,18 +8,14 @@
 /* Shared Sanpay glassmorphism theme (see design-system/sanpay/MASTER.md) */
 @import '../../../shared/ui/theme/glass.css';
 
-/* Self-hosted Vazirmatn (bundled; no dependency on Google Fonts). */
-@import '@fontsource/vazirmatn/300.css';
-@import '@fontsource/vazirmatn/400.css';
-@import '@fontsource/vazirmatn/500.css';
-@import '@fontsource/vazirmatn/700.css';
-@import '@fontsource/vazirmatn/800.css';
+/* Self-hosted Vazirmatn FD (ارقام لاتین با شکل فارسی رندر می‌شوند) */
+@import '../../../shared/ui/theme/font.css';
 
 /* Persian dashboard: Vazirmatn for both body and display type. */
 :root {
-  --font-sans: 'Vazirmatn', -apple-system, BlinkMacSystemFont, 'Segoe UI',
+  --font-sans: 'Vazirmatn FD', -apple-system, BlinkMacSystemFont, 'Segoe UI',
     Roboto, 'Helvetica Neue', Arial, sans-serif;
-  --font-display: 'Vazirmatn', var(--font-sans);
+  --font-display: 'Vazirmatn FD', var(--font-sans);
 }
 
 /*

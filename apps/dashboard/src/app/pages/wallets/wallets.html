@@ -29,7 +29,8 @@
           {{ editingId() ? 'ویرایش کیف پول' : 'کیف پول جدید' }}
         </h2>
         <p hlmCardDescription>
-          کیف پول گردشگری فقط برای رزرو هتل است و به فروشگاه وصل نمی‌شود.
+          کیف پول گردشگری فقط برای رزرو هتل است و به فروشگاه وصل نمی‌شود. اعتبار
+          کارمندان از دکمهٔ «تخصیص گروهی» روی کارت هر کیف پول داده می‌شود.
         </p>
       </div>
       <div hlmCardContent class="flex flex-col gap-5">
@@ -57,8 +58,13 @@
 
           <hlm-field>
             <label hlmFieldLabel for="fld-3">سقف پیش‌فرض (تومان)</label>
-            <input id="fld-3" hlmInput class="w-full" dir="ltr" [value]="form().defaultCap"
+            <input id="fld-3" hlmInput class="w-full" dir="ltr"
+              placeholder="خالی = نامحدود" [value]="form().defaultCap"
               (input)="update('defaultCap', $any($event.target).value)" />
+            <p hlmFieldDescription>
+              خالی بگذارید تا نامحدود باشد؛ سقف هر کارمند هنگام تخصیص تعیین
+              می‌شود.
+            </p>
           </hlm-field>
 
           <hlm-field>
@@ -131,7 +137,9 @@
           </div>
           <div>
             <dt class="text-muted-foreground text-xs">سقف پیش‌فرض</dt>
-            <dd>{{ toman(definition.defaultCap) }}</dd>
+            <dd>
+              {{ definition.defaultCap === null ? 'نامحدود' : toman(definition.defaultCap) }}
+            </dd>
           </div>
           <div>
             <dt class="text-muted-foreground text-xs">جمع اعتبار</dt>
@@ -163,43 +171,9 @@
             <button hlmBtn size="sm" variant="outline" (click)="toggleActive(definition)">
               {{ definition.isActive ? 'غیرفعال کردن' : 'فعال کردن' }}
             </button>
-            <button hlmBtn size="sm" variant="secondary" (click)="bulkFor.set(definition)">
+            <button hlmBtn size="sm" variant="secondary" (click)="openBulk(definition)">
               تخصیص گروهی
             </button>
-          </div>
-        }
-
-        @if (bulkFor()?.id === definition.id) {
-          <div class="bg-muted/40 mt-2 flex flex-col gap-3 rounded-2xl p-4">
-            <p class="text-sm">
-              تخصیص «{{ definition.name }}» به همهٔ کارمندان فعال — تخصیص موجود
-              به‌روزرسانی می‌شود.
-            </p>
-            <hlm-field>
-              <label hlmFieldLabel for="fld-6">سقف اعتبار (تومان)</label>
-              <input id="fld-6" hlmInput class="w-full" dir="ltr" [value]="bulkCap()"
-                (input)="bulkCap.set($any($event.target).value)" />
-            </hlm-field>
-            <hlm-field>
-              <label hlmFieldLabel for="fld-7">تاریخ انقضا</label>
-              <hlm-date-picker
-                [date]="bulkExpiryDate()"
-                [min]="minDate"
-                (dateChange)="onBulkExpiryChange($event)"
-              >
-                <hlm-date-picker-trigger class="w-full">
-                  انتخاب تاریخ
-                </hlm-date-picker-trigger>
-              </hlm-date-picker>
-            </hlm-field>
-            <div class="flex gap-2">
-              <button hlmBtn size="sm" [disabled]="saving()" (click)="bulkAllocate()">
-                اجرای تخصیص
-              </button>
-              <button hlmBtn size="sm" variant="ghost" (click)="bulkFor.set(null)">
-                انصراف
-              </button>
-            </div>
           </div>
         }
       </div>
@@ -210,3 +184,115 @@
     }
   </section>
 </div>
+
+<!-- مدال تخصیص گروهی — تنها راه دادن اعتبار به کارمندان از این صفحه -->
+<hlm-dialog [state]="bulkOpen()" (stateChanged)="onBulkStateChange($event)">
+  <hlm-dialog-content *hlmDialogPortal class="sm:max-w-2xl">
+    @if (bulkFor(); as definition) {
+      <div hlmDialogHeader>
+        <h3 hlmDialogTitle>تخصیص گروهی «{{ definition.name }}»</h3>
+        <p hlmDialogDescription>
+          بدون فایل، به همهٔ کارمندان فعال با سقف و انقضای یکسان تخصیص داده
+          می‌شود. با فایل، فقط به همان کد ملی‌ها و با مقادیر خودشان. تخصیص فعالِ
+          موجود به‌روزرسانی می‌شود، نه اضافه.
+        </p>
+      </div>
+
+      <div class="flex max-h-[60vh] flex-col gap-4 overflow-y-auto">
+        <!-- بارگذاری فایل -->
+        <div class="border-border flex flex-col gap-2 rounded-2xl border border-dashed p-4">
+          <span class="text-sm font-medium">بارگذاری فایل (اختیاری)</span>
+          <p class="text-muted-foreground text-xs">
+            اکسل یا CSV با سه ستون: کد ملی، سقف اعتبار (تومان)، تاریخ انقضای
+            جلالی — مثل ۱۴۰۵/۰۶/۳۱
+          </p>
+
+          <input
+            #fileInput
+            type="file"
+            class="hidden"
+            accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            (change)="onFilePicked($event)"
+          />
+          <div class="flex flex-wrap items-center gap-2">
+            <button
+              hlmBtn
+              size="sm"
+              variant="outline"
+              [disabled]="parsingFile()"
+              (click)="fileInput.click()"
+            >
+              {{ parsingFile() ? 'در حال خواندن…' : 'انتخاب فایل' }}
+            </button>
+            @if (fileName()) {
+              <span class="text-muted-foreground text-xs">{{ fileName() }}</span>
+              <button hlmBtn size="sm" variant="ghost" (click)="clearFile()">
+                حذف فایل
+              </button>
+            }
+          </div>
+
+          @if (fileEntries().length) {
+            <div class="flex flex-col gap-2 pt-1">
+              <p class="text-sm">
+                {{ fa(fileEntries().length) }} کارمند — جمع اعتبار
+                {{ toman(fileTotalCap()) }}
+              </p>
+              <ul class="text-muted-foreground flex flex-col gap-1 text-xs">
+                @for (entry of filePreview(); track entry.nationalCode) {
+                  <li>
+                    <span dir="ltr">{{ entry.nationalCode }}</span> —
+                    {{ toman(entry.cap) }} — تا {{ jalali(entry.expiresAt) }}
+                  </li>
+                }
+              </ul>
+              @if (fileEntries().length > filePreview().length) {
+                <p class="text-muted-foreground text-xs">
+                  و {{ fa(fileEntries().length - filePreview().length) }} سطر دیگر…
+                </p>
+              }
+            </div>
+          }
+
+          @if (fileErrors().length) {
+            <div hlmAlert variant="destructive" class="mt-1">
+              <p hlmAlertDescription>
+                {{ fa(fileErrors().length) }} سطر نادیده گرفته شد:
+                {{ firstFileErrors() }}
+              </p>
+            </div>
+          }
+        </div>
+
+        <!-- سقف و انقضای یکسان — وقتی فایلی نیست -->
+        @if (!fileEntries().length) {
+          <hlm-field>
+            <label hlmFieldLabel for="fld-6">سقف اعتبار (تومان)</label>
+            <input id="fld-6" hlmInput class="w-full" dir="ltr" [value]="bulkCap()"
+              (input)="bulkCap.set($any($event.target).value)" />
+          </hlm-field>
+          <hlm-field>
+            <label hlmFieldLabel for="fld-7">تاریخ انقضا</label>
+            <hlm-date-picker
+              sanpayDatePickerWidth
+              [date]="bulkExpiryDate()"
+              [min]="minDate"
+              (dateChange)="onBulkExpiryChange($event)"
+            >
+              <hlm-date-picker-trigger class="w-full">
+                انتخاب تاریخ
+              </hlm-date-picker-trigger>
+            </hlm-date-picker>
+          </hlm-field>
+        }
+      </div>
+
+      <div hlmDialogFooter>
+        <button hlmBtn variant="ghost" (click)="closeBulk()">انصراف</button>
+        <button hlmBtn [disabled]="saving() || parsingFile()" (click)="bulkAllocate()">
+          {{ bulkSubmitLabel() }}
+        </button>
+      </div>
+    }
+  </hlm-dialog-content>
+</hlm-dialog>

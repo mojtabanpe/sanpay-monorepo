@@ -1,3 +1,4 @@
+import { SanpayDatePickerWidth } from '@sanpay/dates';
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -20,6 +21,7 @@ import { addDays, faNumber, isoToJalali, jalaliLong, jalaliToIso, today } from '
 @Component({
   selector: 'tourism-hotel-list',
   imports: [
+    SanpayDatePickerWidth,
     FormsModule,
     NgIcon,
     HlmBadgeImports,

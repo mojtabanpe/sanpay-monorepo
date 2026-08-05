@@ -41,6 +41,7 @@
         <hlm-field class="flex-1">
           <label hlmFieldLabel>تاریخ ورود</label>
           <hlm-date-picker
+                sanpayDatePickerWidth
             [date]="checkinDate()"
             [min]="minDate"
             (dateChange)="onCheckinChange($event)"
