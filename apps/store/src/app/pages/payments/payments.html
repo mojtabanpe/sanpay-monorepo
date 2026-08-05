@@ -88,17 +88,27 @@
           }
         </div>
 
-        <table class="sr-only">
-          <caption>فروش روزانهٔ ۷ روز گذشته</caption>
-          <tbody>
-            @for (point of figures.series; track point.date) {
-              <tr>
-                <th scope="row">{{ point.date }}</th>
-                <td>{{ toman(point.total) }}</td>
-              </tr>
-            }
-          </tbody>
-        </table>
+        <!--
+          `sr-only` باید روی یک div بیرونی باشد، نه روی خودِ <table>.
+          sr-only با width/height: 1px کار می‌کند، ولی الگوریتم چیدمان جدول
+          این عرض را فقط یک «پیشنهاد» می‌گیرد و جدول تا حداقلِ عرضِ محتوا باز
+          می‌شود؛ نتیجه یک جدولِ ۱۶۱×۱۶۰ پیکسلی بود که چون position: absolute
+          هم از sr-only گرفته بود، دقیقاً روی میله‌های نمودار می‌افتاد.
+          div محدودیت ۱ پیکسل را رعایت می‌کند و محتوا را می‌بُرد.
+        -->
+        <div class="sr-only">
+          <table>
+            <caption>فروش روزانهٔ ۷ روز گذشته</caption>
+            <tbody>
+              @for (point of figures.series; track point.date) {
+                <tr>
+                  <th scope="row">{{ fullDate(point.date) }}</th>
+                  <td>{{ toman(point.total) }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
       </div>
     </section>
   }

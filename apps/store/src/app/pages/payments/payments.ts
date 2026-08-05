@@ -41,6 +41,12 @@ export class PaymentsPage implements OnDestroy {
   private readonly faWeekday = new Intl.DateTimeFormat('fa-IR', {
     weekday: 'narrow',
   });
+  /** برای جدولِ فقط-صفحه‌خوان: تاریخ جلالی خوانا، نه ISO میلادی */
+  private readonly faFullDate = new Intl.DateTimeFormat('fa-IR', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+  });
 
   constructor() {
     void this.load();
@@ -138,6 +144,14 @@ export class PaymentsPage implements OnDestroy {
 
   protected weekday(date: string): string {
     return this.faWeekday.format(new Date(`${date}T12:00:00+03:30`));
+  }
+
+  /**
+   * ظهرِ تهران، نه نیمه‌شب: با نیمه‌شب، هر انحرافِ کوچکِ منطقهٔ زمانی تاریخ را
+   * یک روز عقب یا جلو می‌بَرد.
+   */
+  protected fullDate(date: string): string {
+    return this.faFullDate.format(new Date(`${date}T12:00:00+03:30`));
   }
 
   protected toman(value: number): string {
