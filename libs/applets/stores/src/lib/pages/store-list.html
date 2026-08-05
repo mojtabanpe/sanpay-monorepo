@@ -1,23 +1,19 @@
-<div class="flex flex-col gap-4 px-4 py-6">
+<div class="flex flex-col gap-3 px-4 py-5">
 
-  <!-- سربرگ + جست‌وجو -->
-  <section hlmCard>
-    <div hlmCardContent class="flex flex-col gap-3 pt-6">
+  <!--
+    سربرگ صفحه — دیگر داخل کارت نیست. کارتِ قبلی عنوان، جست‌وجو و فیلترها را
+    با هم در یک جعبهٔ بلند می‌گذاشت که تقریباً نیمی از صفحهٔ اول را می‌خورد و
+    هم‌سطح با کارت‌های فروشگاه دیده می‌شد؛ یعنی سلسله‌مراتبی وجود نداشت.
+    عنوان روی خودِ صفحه می‌نشیند و کارت فقط برای دادهٔ فهرست می‌ماند.
+  -->
+  <div class="leading-tight">
+    <h1 class="text-xl font-bold">فروشگاه‌های طرف قرارداد</h1>
+    <p class="text-muted-foreground mt-0.5 text-xs">
+      جایی که با اعتبار خود می‌توانید خرید کنید
+    </p>
+  </div>
 
-      <div class="flex items-center gap-2.5">
-        <div class="bg-secondary text-primary flex size-10 shrink-0 items-center justify-center rounded-xl">
-          <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z" />
-            <path d="M3 6h18" />
-            <path d="M16 10a4 4 0 0 1-8 0" />
-          </svg>
-        </div>
-        <div class="leading-tight">
-          <h1 class="font-bold">فروشگاه‌های طرف قرارداد</h1>
-          <p class="text-muted-foreground text-xs">جایی که با اعتبار خود می‌توانید خرید کنید</p>
-        </div>
-      </div>
-
+  <div class="flex flex-col gap-2.5">
       <hlm-input-group>
         <hlm-input-group-addon align="inline-start">
           <ng-icon name="lucideSearch" />
@@ -47,24 +43,34 @@
       <!-- فیلتر بر اساس کیف پول: مجموعه‌ای از گزینه‌های انحصاری، پس
            toggle-group به‌جای ردیفی از دکمه‌های جدا -->
       @if (walletOptions().length > 1) {
-        <!-- spacing>0 keeps the items as separate pills; spacing=0 (default)
-             would join them into a segmented bar, which wraps badly with
-             six variable-width Persian labels -->
-        <hlm-toggle-group
-          type="single"
-          [spacing]="2"
-          [value]="walletFilter()"
-          (valueChange)="walletFilter.set($any($event) ?? '')"
-          class="w-full flex-wrap justify-start"
-        >
-          <button hlmToggleGroupItem value="" size="sm">همه</button>
-          @for (name of walletOptions(); track name) {
-            <button hlmToggleGroupItem [value]="name" size="sm">{{ name }}</button>
-          }
-        </hlm-toggle-group>
+        <!--
+          spacing>0 keeps the items as separate pills; spacing=0 (default)
+          would join them into a segmented bar, which wraps badly with
+          six variable-width Persian labels.
+
+          یک ردیفِ اسکرول‌شونده، نه wrap. با wrap شش برچسبِ فارسیِ متغیر به سه
+          سطر می‌شکست، «همه» ته سطر اول تنها می‌ماند و حدود ۱۸۰ پیکسل از بالای
+          صفحه پیش از دیدنِ اولین فروشگاه می‌رفت. اسکرول افقی همیشه یک سطر است.
+          `-mx-4 px-4` تا چیپ‌ها هنگام اسکرول تا لبهٔ صفحه بروند و بریده نشوند.
+        -->
+        <div class="-mx-4 overflow-x-auto px-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <hlm-toggle-group
+            type="single"
+            [spacing]="2"
+            [value]="walletFilter()"
+            (valueChange)="walletFilter.set($any($event) ?? '')"
+            class="w-max flex-nowrap justify-start"
+          >
+            <button hlmToggleGroupItem value="" size="sm" class="shrink-0 whitespace-nowrap">همه</button>
+            @for (name of walletOptions(); track name) {
+              <button hlmToggleGroupItem [value]="name" size="sm" class="shrink-0 whitespace-nowrap">
+                {{ name }}
+              </button>
+            }
+          </hlm-toggle-group>
+        </div>
       }
     </div>
-  </section>
 
   <!-- بارگذاری -->
   @if (loading()) {
@@ -99,46 +105,60 @@
 
     @for (store of visibleStores(); track store.id) {
       <section hlmCard>
-        <div hlmCardContent class="flex flex-col gap-3 pt-6">
+        <!-- بدون py: خودِ hlm-card با py-(--card-spacing) پدینگ عمودی دارد و
+             هر py اینجا روی آن جمع می‌شود (۶۴ پیکسل فاصله برای ۱۲۹ پیکسل محتوا). -->
+        <div hlmCardContent class="flex flex-col gap-2.5">
 
-          <div class="flex items-start justify-between gap-3">
-            <div class="leading-tight">
-              <h2 class="font-bold">{{ store.name }}</h2>
-              @if (store.category) {
-                <p class="text-muted-foreground text-xs">{{ store.category }}</p>
+          <div class="flex items-start justify-between gap-2">
+            <div class="min-w-0 leading-tight">
+              <h2 class="truncate text-[15px] font-bold">{{ store.name }}</h2>
+              <p class="text-muted-foreground mt-0.5 truncate text-[11px]">
+                @if (store.category) {
+                  {{ store.category }}
+                }
+                @if (store.category && store.address) {
+                  <!-- «،» و نه «•» — نقطه‌گلوله کنار رقم فارسی مثل صفر خوانده می‌شود -->
+                  ،
+                }
+                @if (store.address) {
+                  {{ store.address }}
+                }
+              </p>
+            </div>
+            <span
+              dir="ltr"
+              class="text-muted-foreground shrink-0 rounded-md px-1.5 py-0.5 font-mono text-[10px]"
+              style="background-color: var(--muted)"
+            >{{ store.code }}</span>
+          </div>
+
+          <!--
+            کیف‌پول‌های قابل استفاده در این فروشگاه. فقط وقتی ریز می‌شوند که
+            بیش از یکی باشند؛ با یک کیف پول، ردیفِ تکراری دقیقاً همان عددِ
+            «اعتبار قابل خرج» پایین کارت است و دو بار گفتنش کارت را بلند می‌کرد.
+          -->
+          @if (store.wallets.length > 1) {
+            <div class="flex flex-col gap-1">
+              @for (wallet of store.wallets; track wallet.allocationId) {
+                <div class="flex items-center justify-between gap-2 text-[11px]">
+                  <span class="text-muted-foreground truncate">{{ wallet.name }}</span>
+                  <span class="shrink-0 font-medium">{{ toman(wallet.remaining) }}</span>
+                </div>
               }
             </div>
-            <span hlmBadge variant="outline" dir="ltr" class="shrink-0 font-mono text-[0.65rem]">
-              {{ store.code }}
-            </span>
-          </div>
-
-          @if (store.address) {
-            <p class="text-muted-foreground flex items-start gap-1.5 text-xs">
-              <svg class="mt-0.5 size-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" />
-                <circle cx="12" cy="10" r="3" />
-              </svg>
-              {{ store.address }}
-            </p>
           }
 
-          <!-- کیف‌پول‌های قابل استفاده در این فروشگاه -->
-          <div class="flex flex-col gap-1.5">
-            @for (wallet of store.wallets; track wallet.allocationId) {
-              <div class="bg-secondary/50 flex items-center justify-between rounded-lg px-3 py-2">
-                <span class="text-xs font-medium">{{ wallet.name }}</span>
-                <span class="text-primary text-xs font-bold">{{ toman(wallet.remaining) }}</span>
-              </div>
-            }
-          </div>
-
-          <div class="flex items-center justify-between gap-3 border-t pt-3">
+          <div
+            class="flex items-center justify-between gap-3 border-t pt-2.5"
+            style="border-color: var(--hairline)"
+          >
             <div class="leading-tight">
-              <p class="text-muted-foreground text-[0.65rem]">اعتبار قابل خرج</p>
-              <p class="text-sm font-bold">{{ toman(store.totalAvailable) }}</p>
+              <p class="text-muted-foreground text-[10px]">اعتبار قابل خرج</p>
+              <p class="text-base font-bold" style="color: var(--pos-fg)">
+                {{ toman(store.totalAvailable) }}
+              </p>
             </div>
-            <button type="button" hlmBtn (click)="pay(store)">
+            <button type="button" hlmBtn size="sm" (click)="pay(store)">
               <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                 <rect width="5" height="5" x="3" y="3" rx="1" />
                 <rect width="5" height="5" x="16" y="3" rx="1" />

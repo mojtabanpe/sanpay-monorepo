@@ -1,5 +1,4 @@
 import { Component, computed, inject, signal } from '@angular/core';
-import { HlmBadgeImports } from '@sanpay/ui/badge';
 import { HlmCardImports } from '@sanpay/ui/card';
 import { HlmProgressImports } from '@sanpay/ui/progress';
 import { HlmSkeletonImports } from '@sanpay/ui/skeleton';
@@ -9,7 +8,7 @@ import { WalletService } from '@sanpay/applets/wallet';
 
 @Component({
   selector: 'app-home',
-  imports: [HlmBadgeImports, HlmCardImports, HlmProgressImports, HlmSkeletonImports],
+  imports: [HlmCardImports, HlmProgressImports, HlmSkeletonImports],
   templateUrl: './home.html',
 })
 export class HomePage {

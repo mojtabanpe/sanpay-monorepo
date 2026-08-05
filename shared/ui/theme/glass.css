@@ -1,102 +1,182 @@
 /*
- * Sanpay glassmorphism theme — single source of truth for both apps.
+ * Sanpay theme — single source of truth for all three apps.
  * Spec: design-system/sanpay/MASTER.md
- *   - Light-first, purple/green palette (violet #7C3AED + emerald #059669)
- *   - Frosted surfaces: translucent white, backdrop blur 10–20px
- *   - 1px light borders + top-edge light reflection
- *   - Soft lavender/mint gradient background, text contrast ≥ 4.5:1
- * Dark mode is opt-in via the `.dark` class on <html>.
+ *
+ * IDENTITY: "ink & gold". Light-first, high-contrast, dense.
+ *   - Ink navy (--ink-*) is the brand and the primary interactive colour.
+ *     Filled ink buttons on white is the premium-fintech read (Wise/Ramp);
+ *     it also guarantees contrast instead of fighting for it.
+ *   - Gold (--gold-*) is the single accent, reserved for VALUE — money,
+ *     progress, the active nav item, the hero highlight. Used sparingly so
+ *     it keeps meaning something.
+ *   - Emerald/red are semantic ONLY (available vs. spent/over), never decor.
+ *
+ * Replaces the previous violet+emerald scheme. That pairing was near
+ * complementary, so any gradient between the two passed through a desaturated
+ * grey-teal — the muddy hero card. Ink→ink and gold→gold gradients stay
+ * within one hue family and cannot mud out.
+ *
+ * ⚠ GOLD IS NOT A TEXT COLOUR ON LIGHT SURFACES. --gold-500 on white is
+ * ~2.1:1. Use it for fills, bars and icons on light; for gold *text* you must
+ * be on ink, where --gold-300 reaches ~7:1. Text on light surfaces uses
+ * --foreground / --muted-foreground / --pos-fg / --destructive only.
+ *
+ * Dark mode is opt-in via the `.dark` class on <html>. Never follow OS.
  */
 
 :root {
   color-scheme: light;
 
-  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
-    'Helvetica Neue', Arial, sans-serif;
-  --font-display: 'Calistoga', var(--font-sans);
+  --font-sans: 'Vazirmatn FD', 'Inter', -apple-system, BlinkMacSystemFont,
+    'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-display: var(--font-sans);
 
-  --radius: 1rem;
+  /*
+   * Radius scale. Down from a uniform 1rem — everything at 16px made cards,
+   * chips and inputs read as the same soft blob with no hierarchy. Now the
+   * container is rounder than the controls inside it.
+   */
+  --radius: 0.875rem;
+  --radius-sm: 0.5rem;
+  --radius-lg: 1.25rem;
 
-  /* Glass tokens */
-  --glass-blur: 15px;
-  --glass-border: rgba(255, 255, 255, 0.65);
-  --glass-highlight: rgba(255, 255, 255, 0.85);
-  --glass-shadow: 0 8px 32px rgba(76, 29, 149, 0.12);
+  /* ── Brand ramp: ink ─────────────────────────────────────────────── */
+  --ink-900: #0a1122;
+  --ink-800: #101b33;
+  --ink-700: #172644;
+  --ink-600: #22334f;
+  --ink-500: #3d4d6b;
+  --ink-400: #5b6b89;
+  --ink-300: #8593ab;
+
+  /* ── Accent ramp: gold ───────────────────────────────────────────── */
+  --gold-600: #b8860f;
+  --gold-500: #d4a017;
+  --gold-400: #e0b23f;
+  --gold-300: #efc766;
+  --gold-100: #fdf3dc;
+
+  /*
+   * Elevation. The old shadows were single, very diffuse and very light
+   * (32px blur at 12%), which reads as unfinished rather than raised. A real
+   * scale needs a tight contact shadow AND a wider ambient one — plus the
+   * hairline border, which is what actually gives an edge on light surfaces.
+   */
+  --hairline: rgba(10, 17, 34, 0.08);
+  --elev-1: 0 1px 2px rgba(10, 17, 34, 0.06),
+    0 1px 3px rgba(10, 17, 34, 0.04);
+  --elev-2: 0 2px 4px -1px rgba(10, 17, 34, 0.08),
+    0 8px 16px -4px rgba(10, 17, 34, 0.06);
+  --elev-3: 0 4px 8px -2px rgba(10, 17, 34, 0.1),
+    0 16px 32px -8px rgba(10, 17, 34, 0.12);
+
+  /* Glass is now reserved for genuinely floating layers, not every card. */
+  --glass-blur: 16px;
+  --glass-border: var(--hairline);
+  --glass-highlight: rgba(255, 255, 255, 0.6);
+  --glass-shadow: var(--elev-3);
   --glass-fallback: #ffffff;
 
-  /* Background glows */
-  --glow-purple: rgba(124, 58, 237, 0.16);
-  --glow-green: rgba(5, 150, 105, 0.13);
-  --glow-soft: rgba(167, 139, 250, 0.12);
+  /* Ambient background wash — one hue family, very low amplitude. */
+  --glow-a: rgba(23, 38, 68, 0.05);
+  --glow-b: rgba(212, 160, 23, 0.06);
 
-  /* Semantic tokens (consumed by the spartan/hlm Tailwind preset) */
-  --background: #faf5ff;
-  --foreground: #0f172a;
-  --card: rgba(255, 255, 255, 0.55);
-  --card-foreground: #0f172a;
-  --popover: rgba(255, 255, 255, 0.85);
-  --popover-foreground: #0f172a;
-  --primary: #7c3aed;
+  /* ── Semantic tokens (consumed by the spartan/hlm Tailwind preset) ── */
+  --background: #f4f6fa;
+  --foreground: #0a1122;
+  /*
+   * Opaque cards. The old 55%-white-on-lavender is the single biggest reason
+   * the UI looked washed out: every surface tinted toward the background, so
+   * nothing had an edge and no two planes were distinguishable.
+   */
+  --card: #ffffff;
+  --card-foreground: #0a1122;
+  --popover: rgba(255, 255, 255, 0.94);
+  --popover-foreground: #0a1122;
+  --primary: #172644;
   --primary-foreground: #ffffff;
-  --secondary: rgba(124, 58, 237, 0.1);
-  --secondary-foreground: #4c1d95;
-  --muted: rgba(15, 23, 42, 0.05);
-  --muted-foreground: #586174;
-  --accent: rgba(5, 150, 105, 0.12);
-  --accent-foreground: #065f46;
-  --destructive: #dc2626;
-  --border: rgba(15, 23, 42, 0.1);
-  --input: rgba(255, 255, 255, 0.6);
-  --ring: #7c3aed;
-  --sidebar: rgba(255, 255, 255, 0.55);
-  --sidebar-foreground: #0f172a;
-  --sidebar-primary: #7c3aed;
+  --secondary: #eef1f7;
+  --secondary-foreground: #172644;
+  --muted: #eef1f7;
+  --muted-foreground: #5b6b89;
+  --accent: #fdf3dc;
+  --accent-foreground: #7a5906;
+  --destructive: #d92d20;
+  --border: rgba(10, 17, 34, 0.1);
+  --input: #ffffff;
+  --ring: #172644;
+  --sidebar: #ffffff;
+  --sidebar-foreground: #0a1122;
+  --sidebar-primary: #172644;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: rgba(5, 150, 105, 0.12);
-  --sidebar-accent-foreground: #065f46;
-  --sidebar-border: rgba(15, 23, 42, 0.1);
-  --sidebar-ring: #7c3aed;
+  --sidebar-accent: #eef1f7;
+  --sidebar-accent-foreground: #172644;
+  --sidebar-border: rgba(10, 17, 34, 0.1);
+  --sidebar-ring: #172644;
+
+  /* Money semantics. -fg variants are the AA-safe text colours on light. */
+  --pos: #0e9f6e;
+  --pos-fg: #05714d;
+  --pos-bg: #e7f7f0;
+  --neg-fg: #b42318;
+  --neg-bg: #fdecea;
 }
 
-/* Opt-in dark mode: same purple/green identity on a deep aubergine base. */
+/*
+ * Opt-in dark mode: the same ink & gold identity, with ink promoted from
+ * accent to substrate. Gold gets brighter here because it finally has a dark
+ * ground to sit on — --gold-300 on --ink-900 is ~7:1.
+ */
 :root.dark {
   color-scheme: dark;
 
-  --glass-border: rgba(255, 255, 255, 0.16);
-  --glass-highlight: rgba(255, 255, 255, 0.18);
-  --glass-shadow: 0 8px 32px rgba(2, 6, 23, 0.45);
-  --glass-fallback: #221b33;
+  --hairline: rgba(255, 255, 255, 0.1);
+  --elev-1: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --elev-2: 0 2px 4px -1px rgba(0, 0, 0, 0.45),
+    0 8px 16px -4px rgba(0, 0, 0, 0.4);
+  --elev-3: 0 4px 8px -2px rgba(0, 0, 0, 0.5),
+    0 16px 32px -8px rgba(0, 0, 0, 0.55);
 
-  --glow-purple: rgba(139, 92, 246, 0.28);
-  --glow-green: rgba(16, 185, 129, 0.18);
-  --glow-soft: rgba(167, 139, 250, 0.14);
+  --glass-border: var(--hairline);
+  --glass-highlight: rgba(255, 255, 255, 0.12);
+  --glass-shadow: var(--elev-3);
+  --glass-fallback: #101b33;
 
-  --background: #171122;
-  --foreground: #f4f2fa;
-  --card: rgba(255, 255, 255, 0.07);
-  --card-foreground: #f4f2fa;
-  --popover: rgba(23, 17, 34, 0.85);
-  --popover-foreground: #f4f2fa;
-  --primary: #a78bfa;
-  --primary-foreground: #22114d;
-  --secondary: rgba(255, 255, 255, 0.1);
-  --secondary-foreground: #f4f2fa;
-  --muted: rgba(255, 255, 255, 0.07);
-  --muted-foreground: #b5aecb;
-  --accent: rgba(16, 185, 129, 0.2);
-  --accent-foreground: #d3f5e8;
-  --destructive: #f87171;
-  --border: rgba(255, 255, 255, 0.14);
-  --input: rgba(255, 255, 255, 0.1);
-  --ring: #a78bfa;
-  --sidebar: rgba(23, 17, 34, 0.6);
-  --sidebar-foreground: #f4f2fa;
-  --sidebar-primary: #a78bfa;
-  --sidebar-primary-foreground: #22114d;
-  --sidebar-accent: rgba(16, 185, 129, 0.2);
-  --sidebar-accent-foreground: #d3f5e8;
+  --glow-a: rgba(96, 130, 190, 0.1);
+  --glow-b: rgba(212, 160, 23, 0.09);
+
+  --background: #070d1a;
+  --foreground: #eef2f9;
+  --card: #101b33;
+  --card-foreground: #eef2f9;
+  --popover: rgba(16, 27, 51, 0.96);
+  --popover-foreground: #eef2f9;
+  --primary: #efc766;
+  --primary-foreground: #0a1122;
+  --secondary: #172644;
+  --secondary-foreground: #eef2f9;
+  --muted: #172644;
+  --muted-foreground: #8593ab;
+  --accent: #22334f;
+  --accent-foreground: #efc766;
+  --destructive: #f97066;
+  --border: rgba(255, 255, 255, 0.12);
+  --input: #172644;
+  --ring: #efc766;
+  --sidebar: #101b33;
+  --sidebar-foreground: #eef2f9;
+  --sidebar-primary: #efc766;
+  --sidebar-primary-foreground: #0a1122;
+  --sidebar-accent: #22334f;
+  --sidebar-accent-foreground: #efc766;
   --sidebar-border: rgba(255, 255, 255, 0.12);
-  --sidebar-ring: #a78bfa;
+  --sidebar-ring: #efc766;
+
+  --pos: #31c48d;
+  --pos-fg: #7ce0b6;
+  --pos-bg: rgba(14, 159, 110, 0.16);
+  --neg-fg: #fda29b;
+  --neg-bg: rgba(217, 45, 32, 0.18);
 }
 
 @layer base {
@@ -123,16 +203,21 @@
     z-index: -1;
     pointer-events: none;
     background-image:
-      radial-gradient(1100px 750px at 12% -10%, var(--glow-purple), transparent 60%),
-      radial-gradient(950px 700px at 88% 112%, var(--glow-green), transparent 60%),
-      radial-gradient(750px 550px at 72% 18%, var(--glow-soft), transparent 55%);
+      radial-gradient(1100px 750px at 12% -10%, var(--glow-a), transparent 62%),
+      radial-gradient(900px 680px at 88% 108%, var(--glow-b), transparent 60%);
   }
 
+  /*
+   * Persian headings: no positive letter-spacing. Arabic-script glyphs are
+   * cursive-joined, and tracking visually breaks the connections apart.
+   */
   h1,
   h2,
   h3 {
     font-family: var(--font-display);
-    letter-spacing: 0.01em;
+    letter-spacing: 0;
+    font-weight: 700;
+    line-height: 1.45;
   }
 }
 
@@ -155,10 +240,27 @@
  * ═══════════════════════════════════════════════════════════════════════
  */
 /*
- * Frosted glass surfaces. Blur is applied only to elevated/floating
- * surfaces (not inputs/rows) to keep rendering cheap.
+ * ── Surfaces ─────────────────────────────────────────────────────────
+ * Two tiers, deliberately separated.
+ *
+ * A card is *attached* to the page — it sits in the scroll flow and is
+ * always over the same background. Blurring it bought nothing (there is
+ * nothing interesting behind it) while costing an expensive filter on
+ * every row of a long list, and the translucency is what made every plane
+ * bleed into the next. Cards are now opaque with a hairline + tight
+ * elevation, which is what actually reads as "crisp".
  */
-[data-slot='card'],
+[data-slot='card'] {
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius);
+  box-shadow: var(--elev-1);
+  background-color: var(--card);
+}
+
+/*
+ * Floating layers genuinely overlap arbitrary content, so blur does real
+ * work here: it separates the layer from whatever it covers.
+ */
 [data-slot='dialog-content'],
 [data-slot='alert-dialog-content'],
 [data-slot='popover-content'],
@@ -170,13 +272,25 @@
 [data-slot='sheet-content'],
 [data-slot='drawer-content'],
 [data-slot='sidebar-container'],
-[data-slot='alert'],
-[data-slot='tabs-list'],
 hlm-select-content div[role='listbox'] {
-  backdrop-filter: blur(var(--glass-blur)) saturate(150%);
-  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(150%);
+  backdrop-filter: blur(var(--glass-blur)) saturate(140%);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(140%);
   border: 1px solid var(--glass-border);
   box-shadow: var(--glass-shadow), inset 0 1px 0 var(--glass-highlight);
+}
+
+/* An alert is inline, not floating — flat tinted block, no blur, no shadow. */
+[data-slot='alert'] {
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius);
+  box-shadow: none;
+}
+
+/* A tab bar is a control, not a surface. */
+[data-slot='tabs-list'] {
+  background-color: var(--muted);
+  border: 1px solid var(--hairline);
+  box-shadow: none;
 }
 
 /*
@@ -336,9 +450,15 @@ button[data-slot='button'].bg-primary:active:not(:disabled) {
 }
 
 /* ── Progress ──────────────────────────────────────────────────────── */
+/*
+ * A wallet bar shows remaining VALUE, so it is gold — the one thing gold is
+ * for. The track is ink-tinted rather than gold-tinted so the filled portion
+ * stays legible at low percentages. Gradient stays inside the gold ramp: the
+ * old violet→emerald blend is exactly what turned to mud.
+ */
 [data-slot='progress'] {
   border-radius: 999px;
-  background-color: color-mix(in oklab, var(--primary) 12%, transparent);
+  background-color: color-mix(in oklab, var(--ink-700) 10%, transparent);
   overflow: hidden;
 }
 
@@ -346,10 +466,10 @@ button[data-slot='button'].bg-primary:active:not(:disabled) {
   border-radius: 999px;
   background-image: linear-gradient(
     90deg,
-    var(--primary),
-    color-mix(in oklab, var(--primary) 55%, var(--accent-foreground))
+    var(--gold-500),
+    var(--gold-400)
   );
-  transition: transform 400ms cubic-bezier(0.4, 0, 0.2, 1);
+  transition: transform 400ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 /* ── Tabs ──────────────────────────────────────────────────────────── */
@@ -366,7 +486,9 @@ button[data-slot='button'].bg-primary:active:not(:disabled) {
 }
 
 [data-slot='tabs-trigger'][data-state='active'] {
-  box-shadow: 0 2px 8px rgba(76, 29, 149, 0.14);
+  background-color: var(--card);
+  color: var(--foreground);
+  box-shadow: var(--elev-1);
 }
 
 /*
@@ -382,6 +504,20 @@ button[data-slot='button'].bg-primary:active:not(:disabled) {
   background-color: var(--input);
   transition: background-color 180ms ease, color 180ms ease,
     border-color 180ms ease;
+}
+
+/*
+ * A filter chip is not a button. Spartan's `sm` still pads like a control,
+ * which made a six-item filter row taller than the cards it filters. Trim the
+ * horizontal padding and drop the weight so the row reads as metadata —
+ * height stays at the 38px touch target, only the bulk goes.
+ */
+[data-slot='toggle-group-item'][data-size='sm'],
+[data-slot='toggle-group-item'].h-7,
+[data-slot='toggle-group-item'].h-8 {
+  padding-inline: 0.75rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
 }
 
 /* Pill shape only for standalone toggles and *spaced* groups — a
@@ -514,8 +650,10 @@ button[data-slot='button'].bg-primary:active:not(:disabled) {
 }
 
 /* Fallback for users who opt out of transparency effects. */
+/*
+ * Cards, alerts and tab bars are opaque already and are not listed here.
+ */
 @media (prefers-reduced-transparency: reduce) {
-  [data-slot='card'],
   [data-slot='dialog-content'],
   [data-slot='alert-dialog-content'],
   [data-slot='popover-content'],
@@ -527,8 +665,6 @@ button[data-slot='button'].bg-primary:active:not(:disabled) {
   [data-slot='sheet-content'],
   [data-slot='drawer-content'],
   [data-slot='sidebar-container'],
-  [data-slot='alert'],
-  [data-slot='tabs-list'],
   hlm-select-content div[role='listbox'] {
     backdrop-filter: none;
     -webkit-backdrop-filter: none;

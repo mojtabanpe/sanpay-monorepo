@@ -23,19 +23,44 @@
     </section>
   } @else {
 
-    <!-- خلاصهٔ اعتبار رفاهی -->
+    <!--
+      خلاصهٔ اعتبار رفاهی.
+      گرادیان فقط داخل خانوادهٔ رنگی «ink» می‌ماند. نسخهٔ قبلی از بنفش به سبز
+      می‌رفت و چون این دو تقریباً مکمل‌اند، وسط گرادیان به خاکستریِ گِل‌آلود
+      می‌افتاد. درخشش طلایی روی آن، تنها لهجهٔ رنگی کارت است.
+    -->
     <div
-      class="relative w-full overflow-hidden rounded-2xl bg-gradient-to-l from-violet-700 via-violet-600 to-emerald-600 p-6 text-white shadow-xl"
+      class="relative w-full overflow-hidden rounded-[1.25rem] p-5 text-white"
+      style="background-image: linear-gradient(135deg, var(--ink-900), var(--ink-700) 55%, var(--ink-600));
+             box-shadow: var(--elev-3)"
     >
-      <div class="absolute -top-10 -left-10 size-40 rounded-full bg-white/15 blur-2xl"></div>
-      <div class="flex items-center justify-between">
-        <p class="text-sm font-medium opacity-90">مجموع اعتبار رفاهی</p>
-        <p class="text-xs opacity-75">جهان‌فولاد سیرجان</p>
+      <div
+        class="pointer-events-none absolute -top-16 -left-12 size-48 rounded-full blur-3xl"
+        style="background-color: rgba(212, 160, 23, 0.28)"
+        aria-hidden="true"
+      ></div>
+
+      <div class="relative flex items-start justify-between gap-3">
+        <div class="flex items-center gap-2">
+          <span class="size-1.5 rounded-full" style="background-color: var(--gold-400)" aria-hidden="true"></span>
+          <p class="text-[13px] font-medium text-white/70">مجموع اعتبار رفاهی</p>
+        </div>
+        <p class="text-[11px] text-white/50">جهان‌فولاد سیرجان</p>
       </div>
-      <p class="mt-5 text-2xl font-bold">{{ toman(totalRemaining()) }}</p>
-      <p class="mt-4 text-xs opacity-80">
-        قابل استفاده در {{ count(wallets().length) }} کیف پول فعال
+
+      <p class="relative mt-3 text-[2rem] leading-tight font-bold tracking-tight">
+        {{ toman(totalRemaining()) }}
       </p>
+
+      <div class="relative mt-4 flex items-center gap-2 border-t border-white/12 pt-3">
+        <svg class="size-3.5 text-white/45" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <rect x="2" y="5" width="20" height="14" rx="2" />
+          <path d="M2 10h20" />
+        </svg>
+        <p class="text-[11px] text-white/65">
+          قابل استفاده در {{ count(wallets().length) }} کیف پول فعال
+        </p>
+      </div>
     </div>
 
     <!-- کیف‌پول‌ها -->
@@ -43,12 +68,14 @@
 
     @for (wallet of wallets(); track wallet.id) {
       <section hlmCard>
-        <div hlmCardContent class="flex flex-col gap-4 pt-6">
+        <!-- بدون py: hlm-card خودش py-(--card-spacing) دارد و py اینجا روی آن جمع می‌شود -->
+        <div hlmCardContent class="flex flex-col gap-3">
 
           <!-- عنوان و انقضا -->
-          <div class="flex items-center gap-3">
+          <div class="flex items-center gap-2.5">
             <div
-              class="bg-secondary text-primary flex size-11 shrink-0 items-center justify-center rounded-xl"
+              class="text-primary flex size-9 shrink-0 items-center justify-center rounded-[0.625rem]"
+              style="background-color: var(--muted)"
             >
               @switch (wallet.icon) {
                 @case ('food') {
@@ -92,33 +119,49 @@
                 }
               }
             </div>
-            <div class="flex-1 leading-tight">
-              <h3 class="font-bold">{{ wallet.name }}</h3>
-              <p class="text-muted-foreground mt-1 text-xs">انقضا: {{ date(wallet.expiresAt) }}</p>
+            <div class="min-w-0 flex-1 leading-tight">
+              <h3 class="truncate text-[15px] font-bold">{{ wallet.name }}</h3>
+              <p class="text-muted-foreground mt-0.5 text-[11px]">
+                انقضا: {{ date(wallet.expiresAt) }}
+              </p>
             </div>
-            <span hlmBadge variant="secondary">٪{{ count(percentRemaining(wallet)) }} مانده</span>
+            <!--
+              درصد مانده روی تراز رنگیِ «مانده» می‌نشیند، نه بج خاکستری. بج
+              خاکستریِ قبلی روی کارت سفید تقریباً محو بود و هیچ معنایی منتقل
+              نمی‌کرد؛ حالا کم‌بودن اعتبار خودش را نشان می‌دهد.
+            -->
+            <span
+              class="shrink-0 rounded-full px-2 py-0.5 text-[11px] font-bold"
+              [style.background-color]="percentRemaining(wallet) <= 20 ? 'var(--neg-bg)' : 'var(--pos-bg)'"
+              [style.color]="percentRemaining(wallet) <= 20 ? 'var(--neg-fg)' : 'var(--pos-fg)'"
+            >٪{{ count(percentRemaining(wallet)) }}</span>
           </div>
 
           <!-- مانده / سقف -->
-          <div class="flex flex-col gap-2">
+          <div class="flex flex-col gap-1.5">
+            <div class="flex items-baseline justify-between gap-2">
+              <p class="text-lg leading-none font-bold">{{ toman(wallet.remaining) }}</p>
+              <p class="text-muted-foreground text-[11px]">از {{ toman(wallet.cap) }}</p>
+            </div>
             <hlm-progress [value]="percentRemaining(wallet)">
               <hlm-progress-indicator />
             </hlm-progress>
-            <div class="flex items-center justify-between text-xs">
-              <span class="text-muted-foreground">
-                مانده:
-                <span class="text-foreground font-bold">{{ toman(wallet.remaining) }}</span>
-              </span>
-              <span class="text-muted-foreground">سقف: {{ toman(wallet.cap) }}</span>
-            </div>
           </div>
 
-          <!-- فروشگاه‌های قابل استفاده -->
-          <div class="flex flex-wrap gap-2">
-            @for (store of wallet.stores; track store) {
-              <span hlmBadge variant="secondary" class="rounded-full font-normal">{{ store }}</span>
-            }
-          </div>
+          <!--
+            فروشگاه‌های قابل استفاده. چیپ‌های تخت و کم‌وزن‌اند تا با دکمه اشتباه
+            نشوند — این‌ها برچسب‌اند، نه چیزی که بشود لمسش کرد.
+          -->
+          @if (wallet.stores.length) {
+            <div class="flex flex-wrap gap-1.5 border-t pt-3" style="border-color: var(--hairline)">
+              @for (store of wallet.stores; track store) {
+                <span
+                  class="text-muted-foreground rounded-md px-1.5 py-0.5 text-[11px]"
+                  style="background-color: var(--muted)"
+                >{{ store }}</span>
+              }
+            </div>
+          }
 
         </div>
       </section>

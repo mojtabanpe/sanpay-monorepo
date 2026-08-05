@@ -4,7 +4,6 @@ import { Router } from '@angular/router';
 import { NgIcon, provideIcons } from '@ng-icons/core';
 import { lucideSearch, lucideX } from '@ng-icons/lucide';
 import { EmployeeStore } from '@sanpay/models';
-import { HlmBadgeImports } from '@sanpay/ui/badge';
 import { HlmButtonImports } from '@sanpay/ui/button';
 import { HlmCardImports } from '@sanpay/ui/card';
 import { HlmInputGroupImports } from '@sanpay/ui/input-group';
@@ -22,7 +21,6 @@ type WalletFilter = string;
   imports: [
     FormsModule,
     NgIcon,
-    HlmBadgeImports,
     HlmButtonImports,
     HlmCardImports,
     HlmInputGroupImports,
