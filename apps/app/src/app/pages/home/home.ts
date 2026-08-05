@@ -60,4 +60,24 @@ export class HomePage {
   protected percentRemaining(wallet: Wallet): number {
     return wallet.cap === 0 ? 0 : Math.round((wallet.remaining / wallet.cap) * 100);
   }
+
+  /**
+   * رنگ دستهٔ کیف پول (توکن‌های --cat-* در glass.css).
+   *
+   * فهرست خانه پنج-شش کیف پول است که همه با یک جعبهٔ آیکنِ خاکستریِ یکسان
+   * نمایش داده می‌شدند؛ برای پیدا کردن «ورزش» باید عنوان‌ها را می‌خواندی.
+   * رنگ دسته اینجا تزئین نیست، راهِ تفکیک است.
+   *
+   * `icon` از سرور رشتهٔ آزاد است، پس هر مقدار ناشناخته به ink برمی‌گردد
+   * (نه به یک رنگ تصادفی) تا دستهٔ تازه‌ای که اضافه شود، بی‌سروصدا رنگِ
+   * دستهٔ دیگری را قرض نگیرد.
+   */
+  protected categoryVar(wallet: Wallet, suffix: '' | '-fg' | '-bg'): string {
+    const known = ['food', 'grocery', 'sport', 'health', 'travel', 'gift'];
+    const icon = wallet.icon ?? '';
+    if (!known.includes(icon)) {
+      return suffix === '-bg' ? 'var(--muted)' : 'var(--ink-700)';
+    }
+    return `var(--cat-${icon}${suffix})`;
+  }
 }

@@ -16,6 +16,24 @@
   --font-sans: 'Vazirmatn FD', -apple-system, BlinkMacSystemFont, 'Segoe UI',
     Roboto, 'Helvetica Neue', Arial, sans-serif;
   --font-display: 'Vazirmatn FD', var(--font-sans);
+
+  /*
+   * ── برند داشبورد: نیلیِ اداری ──────────────────────────────────────
+   * پنل واحد رفاه ابزار کار است، نه اپ مصرفی: ساعت‌ها جلوی چشم می‌ماند و
+   * پر از جدول است. نیلیِ آرام به‌جای فیروزه‌ایِ سرزندهٔ اپ کارمند — و
+   * زمینهٔ خنکِ کمی سردتر، چون off-whiteِ گرم زیر جدول‌های پهن، کاغذی و
+   * کدر به نظر می‌رسد.
+   */
+  --brand: #3538cd;
+  --brand-fg: #ffffff;
+  --brand-soft: #eceafd;
+  --background: #f5f6f8;
+}
+
+:root.dark {
+  --brand: #a5b4fc;
+  --brand-fg: #1e1b4b;
+  --brand-soft: rgba(99, 102, 241, 0.18);
 }
 
 /*

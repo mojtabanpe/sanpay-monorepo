@@ -81,8 +81,31 @@
   --glow-a: rgba(23, 38, 68, 0.05);
   --glow-b: rgba(212, 160, 23, 0.06);
 
-  /* ── Semantic tokens (consumed by the spartan/hlm Tailwind preset) ── */
-  --background: #f4f6fa;
+  /*
+   * ── Semantic tokens (consumed by the spartan/hlm Tailwind preset) ──
+   *
+   * PER-APP BRAND: `--primary`, `--ring`, `--background` and the
+   * `--brand-*` trio below are the designated override points. Each app's
+   * own `styles.css` sets them AFTER importing this file, so the three
+   * panels read as siblings rather than as one product — while the
+   * structural scale (ink, elevation, radius, spacing, semantics, the
+   * category spectrum) stays shared and identical everywhere.
+   *
+   * Override the brand, never the scale.
+   *
+   * The values here are the neutral fallback (ink), used by anything that
+   * imports the theme without declaring its own brand.
+   */
+  --brand: #172644;
+  --brand-fg: #ffffff;
+  --brand-soft: #eef1f7;
+
+  /*
+   * زمینه گرم شد. #F4F6FA تهِ آبی داشت و خاکستریِ سرد، تصویرِ «کلینیکی» و
+   * بی‌روح می‌دهد — همان چیزی که کل صفحه را مرده نشان می‌داد. یک off-white
+   * گرم، همان ساختار را نگه می‌دارد ولی صفحه نفس می‌کشد.
+   */
+  --background: #f7f6f3;
   --foreground: #0a1122;
   /*
    * Opaque cards. The old 55%-white-on-lavender is the single biggest reason
@@ -93,26 +116,64 @@
   --card-foreground: #0a1122;
   --popover: rgba(255, 255, 255, 0.94);
   --popover-foreground: #0a1122;
-  --primary: #172644;
-  --primary-foreground: #ffffff;
-  --secondary: #eef1f7;
-  --secondary-foreground: #172644;
-  --muted: #eef1f7;
+  /* هرچه به برند وابسته است از --brand مشتق می‌شود تا هر اپ با
+     بازنویسی یک توکن، همهٔ این‌ها را با هم عوض کند. */
+  --primary: var(--brand);
+  --primary-foreground: var(--brand-fg);
+  --secondary: var(--brand-soft);
+  --secondary-foreground: var(--brand);
+  --muted: #f0eeea;
   --muted-foreground: #5b6b89;
-  --accent: #fdf3dc;
-  --accent-foreground: #7a5906;
+  --accent: var(--brand-soft);
+  --accent-foreground: var(--brand);
   --destructive: #d92d20;
   --border: rgba(10, 17, 34, 0.1);
   --input: #ffffff;
-  --ring: #172644;
+  --ring: var(--brand);
   --sidebar: #ffffff;
   --sidebar-foreground: #0a1122;
-  --sidebar-primary: #172644;
-  --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #eef1f7;
-  --sidebar-accent-foreground: #172644;
+  --sidebar-primary: var(--brand);
+  --sidebar-primary-foreground: var(--brand-fg);
+  --sidebar-accent: var(--brand-soft);
+  --sidebar-accent-foreground: var(--brand);
   --sidebar-border: rgba(10, 17, 34, 0.1);
-  --sidebar-ring: #172644;
+  --sidebar-ring: var(--brand);
+
+  /*
+   * ── Category spectrum ────────────────────────────────────────────────
+   * هر دستهٔ کیف پول رنگ خودش را دارد. این تنها جایی است که رنگِ آزاد در
+   * سامانه مجاز است، و دلیلش کارکردی است نه تزئینی: صفحهٔ خانه فهرستی از
+   * پنج-شش کیف پول است که با آیکن خاکستریِ یکسان از هم تفکیک نمی‌شدند و
+   * کاربر مجبور بود هر بار عنوان‌ها را بخواند.
+   *
+   * قرارداد سه‌تایی برای هر دسته:
+   *   --cat-*-fg     متن و آیکن روی سطح روشن (همه ≥ ۴٫۵:۱ روی سفید)
+   *   --cat-*-bg     پس‌زمینهٔ کم‌رمق برای چیپ/جعبهٔ آیکن
+   *   --cat-*        رنگ پر برای نوار پیشرفت و نقطه‌ها (گرافیک، نه متن)
+   */
+  --cat-food-fg: #b45309;
+  --cat-food-bg: #fef3e2;
+  --cat-food: #f59e0b;
+
+  --cat-grocery-fg: #05714d;
+  --cat-grocery-bg: #e7f7f0;
+  --cat-grocery: #10b981;
+
+  --cat-sport-fg: #0369a1;
+  --cat-sport-bg: #e6f4fd;
+  --cat-sport: #0ea5e9;
+
+  --cat-health-fg: #be123c;
+  --cat-health-bg: #ffe9ee;
+  --cat-health: #f43f5e;
+
+  --cat-travel-fg: #6d28d9;
+  --cat-travel-bg: #f3edff;
+  --cat-travel: #8b5cf6;
+
+  --cat-gift-fg: #a21caf;
+  --cat-gift-bg: #fcebff;
+  --cat-gift: #d946ef;
 
   /* Money semantics. -fg variants are the AA-safe text colours on light. */
   --pos: #0e9f6e;
@@ -152,32 +213,37 @@
   --glow-a: rgba(96, 130, 190, 0.1);
   --glow-b: rgba(212, 160, 23, 0.09);
 
+  /* در تاریکی، برندِ روشنِ هر اپ از خودش می‌آید؛ اینجا فقط fallback است. */
+  --brand: #efc766;
+  --brand-fg: #0a1122;
+  --brand-soft: #22334f;
+
   --background: #070d1a;
   --foreground: #eef2f9;
   --card: #101b33;
   --card-foreground: #eef2f9;
   --popover: rgba(16, 27, 51, 0.96);
   --popover-foreground: #eef2f9;
-  --primary: #efc766;
-  --primary-foreground: #0a1122;
+  --primary: var(--brand);
+  --primary-foreground: var(--brand-fg);
   --secondary: #172644;
   --secondary-foreground: #eef2f9;
   --muted: #172644;
   --muted-foreground: #8593ab;
-  --accent: #22334f;
-  --accent-foreground: #efc766;
+  --accent: var(--brand-soft);
+  --accent-foreground: var(--brand);
   --destructive: #f97066;
   --border: rgba(255, 255, 255, 0.12);
   --input: #172644;
-  --ring: #efc766;
+  --ring: var(--brand);
   --sidebar: #101b33;
   --sidebar-foreground: #eef2f9;
-  --sidebar-primary: #efc766;
-  --sidebar-primary-foreground: #0a1122;
-  --sidebar-accent: #22334f;
-  --sidebar-accent-foreground: #efc766;
+  --sidebar-primary: var(--brand);
+  --sidebar-primary-foreground: var(--brand-fg);
+  --sidebar-accent: var(--brand-soft);
+  --sidebar-accent-foreground: var(--brand);
   --sidebar-border: rgba(255, 255, 255, 0.12);
-  --sidebar-ring: #efc766;
+  --sidebar-ring: var(--brand);
 
   --pos: #31c48d;
   --pos-fg: #7ce0b6;
@@ -186,6 +252,28 @@
   --neg-bg: rgba(217, 45, 32, 0.18);
   --warn-fg: #efc766;
   --warn-bg: rgba(212, 160, 23, 0.18);
+
+  /*
+   * روی زمینهٔ تیره، -fg ها باید روشن شوند و -bg ها از «کم‌رمقِ روشن» به
+   * «شفافِ رنگی» تبدیل شوند؛ نسخهٔ روشن روی ink مثل لکهٔ سفید دیده می‌شد.
+   */
+  --cat-food-fg: #fcd34d;
+  --cat-food-bg: rgba(245, 158, 11, 0.18);
+
+  --cat-grocery-fg: #6ee7b7;
+  --cat-grocery-bg: rgba(16, 185, 129, 0.18);
+
+  --cat-sport-fg: #7dd3fc;
+  --cat-sport-bg: rgba(14, 165, 233, 0.18);
+
+  --cat-health-fg: #fda4af;
+  --cat-health-bg: rgba(244, 63, 94, 0.18);
+
+  --cat-travel-fg: #c4b5fd;
+  --cat-travel-bg: rgba(139, 92, 246, 0.2);
+
+  --cat-gift-fg: #f0abfc;
+  --cat-gift-bg: rgba(217, 70, 239, 0.2);
 }
 
 @layer base {
@@ -471,12 +559,21 @@ button[data-slot='button'].bg-primary:active:not(:disabled) {
   overflow: hidden;
 }
 
+/*
+ * `--progress-color` را می‌شود سر فراخوانی روی همان کارت ست کرد تا نوار،
+ * رنگ دستهٔ کیف پول را بگیرد؛ اگر ست نشود طلاییِ پیش‌فرض می‌ماند.
+ * روشن‌ترکردن ۱۸٪ در انتهای گرادیان، داخل همان رنگ می‌ماند و گِل نمی‌کند.
+ */
 [data-slot='progress-indicator'] {
   border-radius: 999px;
   background-image: linear-gradient(
     90deg,
-    var(--gold-500),
-    var(--gold-400)
+    var(--progress-color, var(--gold-500)),
+    color-mix(
+      in oklab,
+      var(--progress-color, var(--gold-500)) 82%,
+      white
+    )
   );
   transition: transform 400ms cubic-bezier(0.16, 1, 0.3, 1);
 }

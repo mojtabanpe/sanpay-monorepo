@@ -16,4 +16,20 @@
   --font-sans: 'Vazirmatn FD', -apple-system, BlinkMacSystemFont, 'Segoe UI',
     Roboto, 'Helvetica Neue', Arial, sans-serif;
   --font-display: 'Vazirmatn FD', var(--font-sans);
+
+  /*
+   * ── برند پنل فروشگاه: سبزِ فروش ────────────────────────────────────
+   * تنها کاری که فروشنده اینجا می‌کند تماشای پول ورودی است، پس برند همان
+   * رنگِ «مثبت» است. عمداً با --pos هم‌خانواده ولی سیرتر انتخاب شده تا
+   * دکمه‌ها با مبلغ‌های سبزِ رسیدها یکی به نظر نرسند.
+   */
+  --brand: #047857;
+  --brand-fg: #ffffff;
+  --brand-soft: #e3f5ed;
+}
+
+:root.dark {
+  --brand: #6ee7b7;
+  --brand-fg: #022c22;
+  --brand-soft: rgba(16, 185, 129, 0.18);
 }

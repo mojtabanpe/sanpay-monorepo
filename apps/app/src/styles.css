@@ -16,4 +16,25 @@
   --font-sans: 'Vazirmatn FD', -apple-system, BlinkMacSystemFont, 'Segoe UI',
     Roboto, 'Helvetica Neue', Arial, sans-serif;
   --font-display: 'Vazirmatn FD', var(--font-sans);
+
+  /*
+   * ── برند اپ کارمند: فیروزه‌ای ──────────────────────────────────────
+   * این اپ را کارمند هر روز برای خرید روزمره باز می‌کند، پس باید گرم و
+   * زنده باشد نه اداری. فیروزه‌ای روی زمینهٔ گرم، هم سرزنده است و هم با
+   * طیفِ دسته‌ها (کهربایی، سبز، آبی، صورتی، بنفش) قاطی نمی‌شود — چیزی که
+   * اگر برند را هم آبی یا سبز می‌گذاشتیم اتفاق می‌افتاد.
+   *
+   * فقط --brand بازنویسی می‌شود؛ primary/ring/secondary/accent همه از آن
+   * مشتق‌اند. مقیاس ساختاری (ink، elevation، radius، طیف دسته‌ها) مشترک
+   * می‌ماند — «برند را عوض کن، مقیاس را نه».
+   */
+  --brand: #0f766e;
+  --brand-fg: #ffffff;
+  --brand-soft: #e6f4f1;
+}
+
+:root.dark {
+  --brand: #5eead4;
+  --brand-fg: #04302c;
+  --brand-soft: rgba(45, 212, 191, 0.18);
 }

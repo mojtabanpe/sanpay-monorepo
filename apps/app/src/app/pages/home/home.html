@@ -73,9 +73,11 @@
 
           <!-- عنوان و انقضا -->
           <div class="flex items-center gap-2.5">
+            <!-- رنگ دسته: تفکیک بصری کیف‌پول‌ها، نه تزئین -->
             <div
-              class="text-primary flex size-9 shrink-0 items-center justify-center rounded-[0.625rem]"
-              style="background-color: var(--muted)"
+              class="flex size-9 shrink-0 items-center justify-center rounded-[0.625rem]"
+              [style.background-color]="categoryVar(wallet, '-bg')"
+              [style.color]="categoryVar(wallet, '-fg')"
             >
               @switch (wallet.icon) {
                 @case ('food') {
@@ -143,7 +145,10 @@
               <p class="text-lg leading-none font-bold">{{ toman(wallet.remaining) }}</p>
               <p class="text-muted-foreground text-[11px]">از {{ toman(wallet.cap) }}</p>
             </div>
-            <hlm-progress [value]="percentRemaining(wallet)">
+            <hlm-progress
+              [value]="percentRemaining(wallet)"
+              [style.--progress-color]="categoryVar(wallet, '')"
+            >
               <hlm-progress-indicator />
             </hlm-progress>
           </div>
