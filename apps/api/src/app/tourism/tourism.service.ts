@@ -78,10 +78,8 @@ export class TourismService {
   /**
    * جست‌وجوی اتاق‌های خالی — تاریخ گذشته همین‌جا رد می‌شود، نه در GDS.
    *
-   * TODO(هتل‌یار): روی حساب دموی فعلی این همیشه خالی برمی‌گردد (با
-   * `status: true`)، یعنی هیچ ظرفیت و نرخی تعریف نشده و صفحهٔ هتل همیشه
-   * «اتاق خالی وجود ندارد» نشان می‌دهد. پارامترها بررسی شدند و مشکل از سمت
-   * ما نیست. تا رفع، جست‌وجو فقط با `GDS_MODE=mock` قابل توسعه است.
+   * «همیشه خالی برمی‌گردد» حل شد: علت نبودِ `hotelCapacityType` در بدنه بود، نه
+   * خالی‌بودن حساب دمو. `GdsHttpClient.searchHotel` آن را اضافه می‌کند.
    */
   async search(dto: SearchHotelsDto): Promise<HotelAvailability[]> {
     this.assertFutureDate(dto.checkin);

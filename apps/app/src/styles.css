@@ -38,3 +38,30 @@
   --brand-fg: #04302c;
   --brand-soft: rgba(45, 212, 191, 0.18);
 }
+
+/*
+ * ── تبِ فعال در ناوبری پایین ────────────────────────────────────────
+ * قبلاً حالت فعال فقط `text-primary` بود در برابر `text-muted-foreground`.
+ * کلاس درست اعمال می‌شد (فیروزه‌ای در برابر خاکستری‌آبی، اندازه‌گیری شد)، ولی
+ * در ۰٫۶۵rem و با همان ضخامت، دو رنگِ هم‌روشنایی عملاً یکی دیده می‌شدند.
+ * پس تفاوت را از «فقط رنگ» به رنگ + وزن + یک قرص پس‌زمینه زیر آیکن بردیم؛
+ * شکل عوض می‌شود، نه فقط پرچمِ رنگ — این برای کوررنگی هم امن‌تر است.
+ */
+[data-slot='tab'] [data-slot='tab-icon'] {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  block-size: 1.75rem;
+  inline-size: 2.75rem;
+  border-radius: var(--radius);
+  transition: background-color 150ms ease, color 150ms ease;
+}
+
+[data-slot='tab'].is-active {
+  color: var(--brand);
+  font-weight: 700;
+}
+
+[data-slot='tab'].is-active [data-slot='tab-icon'] {
+  background-color: var(--brand-soft);
+}

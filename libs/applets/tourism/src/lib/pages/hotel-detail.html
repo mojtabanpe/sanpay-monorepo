@@ -47,21 +47,40 @@
         </svg>
       </button>
 
-      @if (h.images.length > 1) {
-        <div class="absolute bottom-3 left-1/2 flex -translate-x-1/2 gap-1.5">
-          @for (image of h.images; track image; let i = $index) {
-            <button
-              type="button"
-              class="size-2 rounded-full transition-colors"
-              [class]="i === activeImage() ? 'bg-white' : 'bg-white/50'"
-              [attr.aria-label]="'تصویر ' + count(i + 1)"
-              [attr.aria-current]="i === activeImage() ? 'true' : null"
-              (click)="activeImage.set(i)"
-            ></button>
-          }
-        </div>
-      }
     </div>
+
+    <!-- نوار بندانگشتی زیر تصویر اصلی. جای نقطه‌های قبلی را گرفت: نقطه‌ها فقط
+         می‌گفتند «چند تا هست»، ولی بندانگشتی نشان می‌دهد «چه چیزی هست»، و روی
+         موبایل هدف لمسی درست‌وحسابی است نه دایرهٔ ۸ پیکسلی.
+         بیش از چهار تصویر پشت «+N» جمع می‌شود تا ارتفاع بالای صفحه ثابت بماند. -->
+    @if (h.images.length > 1) {
+      <div class="grid grid-cols-4 gap-1.5 px-4">
+        @for (image of thumbs(); track image; let i = $index) {
+          @let isLastCollapsed = hiddenImageCount() > 0 && i === thumbs().length - 1;
+          <button
+            type="button"
+            class="relative block w-full aspect-[4/3] overflow-hidden rounded-lg transition-opacity"
+            [class]="i === activeImage() && !isLastCollapsed ? 'ring-primary ring-2' : 'opacity-90'"
+            [attr.aria-label]="
+              isLastCollapsed
+                ? 'نمایش ' + count(hiddenImageCount()) + ' تصویر دیگر'
+                : 'تصویر ' + count(i + 1)
+            "
+            [attr.aria-current]="i === activeImage() && !isLastCollapsed ? 'true' : null"
+            (click)="isLastCollapsed ? galleryOpen.set(true) : activeImage.set(i)"
+          >
+            <img [src]="image" [alt]="h.name" decoding="async" class="absolute inset-0 size-full object-cover" />
+            @if (isLastCollapsed) {
+              <span
+                class="absolute inset-0 flex items-center justify-center bg-black/55 text-sm font-bold text-white"
+              >
+                {{ count(hiddenImageCount()) }}+
+              </span>
+            }
+          </button>
+        }
+      </div>
+    }
 
     <div class="flex flex-col gap-4 px-4">
 
@@ -209,6 +228,44 @@
       }
 
     </div>
+
+    <!-- مدال گالری کامل. «+N» به‌جای باز کردن همهٔ بندانگشتی‌ها در نوار، اینجا
+         را باز می‌کند تا بالای صفحه دست‌نخورده بماند و تصویرها در اندازهٔ
+         قابل دیدن نشان داده شوند. انتخاب هر تصویر آن را به کادر اصلی می‌برد. -->
+    <hlm-dialog [state]="galleryState()" (stateChanged)="onGalleryStateChange($event)">
+      <!-- عرض روی خودِ محتوا ست می‌شود، نه با برداشتن max-width: پنل CDK
+           عرضش را از محتوا می‌گیرد و محتوا `w-full` از پنل می‌خواست، پس هر دو
+           به عرض ذاتیِ گرید جمع می‌شدند (۳۳۱ پیکسل در ویوپورت ۶۱۲). -->
+      <hlm-dialog-content *hlmDialogPortal class="w-[min(550px,100vw)] max-w-none sm:max-w-none">
+        <div hlmDialogHeader>
+          <h3 hlmDialogTitle>تصویرهای {{ h.name }}</h3>
+          <p hlmDialogDescription>
+            {{ count(h.images.length) }} تصویر — برای دیدن در کادر اصلی، روی تصویر بزنید.
+          </p>
+        </div>
+
+        <!-- اسکرول و گرید عمداً روی دو عنصر جدا هستند. وقتی `max-h` و `grid` روی
+             یک عنصر بودند، ارتفاعِ قطعیِ ظرف بین ردیف‌های `auto` تقسیم می‌شد
+             (۸۱ پیکسل به‌جای ۹۲) ولی کاشی‌ها ارتفاع `aspect-ratio` خود را نگه
+             می‌داشتند، پس ردیف‌ها روی هم می‌افتادند و فاصله بلعیده می‌شد. -->
+        <div class="max-h-[65vh] overflow-y-auto">
+          <div class="grid grid-cols-2 gap-3 sm:grid-cols-3">
+          @for (image of h.images; track image; let i = $index) {
+            <button
+              type="button"
+              class="relative block w-full aspect-[4/3] overflow-hidden rounded-lg transition-opacity"
+              [class]="i === activeImage() ? 'ring-primary ring-2' : ''"
+              [attr.aria-label]="'تصویر ' + count(i + 1)"
+              [attr.aria-current]="i === activeImage() ? 'true' : null"
+              (click)="pickImage(i)"
+            >
+              <img [src]="image" [alt]="h.name" decoding="async" class="absolute inset-0 size-full object-cover" />
+            </button>
+          }
+          </div>
+        </div>
+      </hlm-dialog-content>
+    </hlm-dialog>
   }
 
 </div>

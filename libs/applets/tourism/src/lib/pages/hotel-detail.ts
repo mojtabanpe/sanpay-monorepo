@@ -4,6 +4,7 @@ import { HotelDetail, RoomOffer } from '@sanpay/models';
 import { HlmBadgeImports } from '@sanpay/ui/badge';
 import { HlmButtonImports } from '@sanpay/ui/button';
 import { HlmCardImports } from '@sanpay/ui/card';
+import { HlmDialogImports } from '@sanpay/ui/dialog';
 import { HlmSkeletonImports } from '@sanpay/ui/skeleton';
 import { firstValueFrom } from 'rxjs';
 import { TourismService } from '../data-access/tourism.service';
@@ -36,6 +37,7 @@ const FACILITY_LABELS: Record<string, string> = {
     HlmBadgeImports,
     HlmButtonImports,
     HlmCardImports,
+    HlmDialogImports,
     HlmSkeletonImports,
   ],
   templateUrl: './hotel-detail.html',
@@ -54,6 +56,37 @@ export class HotelDetailPage {
   protected readonly roomsError = signal<string | null>(null);
 
   protected readonly activeImage = signal(0);
+
+  /**
+   * چهار بندانگشتی نشان داده می‌شود و بقیه پشت «+N» جمع می‌شوند. سقف چهارتاست
+   * تا ارتفاع بالای صفحه ثابت بماند و اطلاعات هتل زیر خط تا نیفتد؛ «+N» بقیه را
+   * در یک مدال باز می‌کند نه پشت‌سرهم در همین نوار.
+   */
+  private static readonly THUMB_LIMIT = 4;
+
+  protected readonly thumbs = computed(() =>
+    (this.hotel()?.images ?? []).slice(0, HotelDetailPage.THUMB_LIMIT),
+  );
+
+  /** تعداد تصویرهای جامانده — صفر یعنی «+N» لازم نیست */
+  protected readonly hiddenImageCount = computed(() =>
+    Math.max(0, (this.hotel()?.images ?? []).length - HotelDetailPage.THUMB_LIMIT),
+  );
+
+  protected readonly galleryOpen = signal(false);
+  protected readonly galleryState = computed(() =>
+    this.galleryOpen() ? ('open' as const) : ('closed' as const),
+  );
+
+  protected onGalleryStateChange(state: string): void {
+    if (state === 'closed') this.galleryOpen.set(false);
+  }
+
+  /** انتخاب از داخل مدال: تصویر اصلی عوض شود و مدال بسته شود */
+  protected pickImage(index: number): void {
+    this.activeImage.set(index);
+    this.galleryOpen.set(false);
+  }
 
   private readonly hotelId = Number(this.route.snapshot.paramMap.get('hotelId'));
   protected readonly checkin =

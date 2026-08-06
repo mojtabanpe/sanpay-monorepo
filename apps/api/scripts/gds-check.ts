@@ -104,6 +104,8 @@ async function main() {
     isForeigner: 0,
     detail: 1,
     commission: 0,
+    // بدون این، پاسخ همیشه خالی است — توضیح در GdsHttpClient.searchHotel
+    hotelCapacityType: 10,
   });
   console.log(`✓ searchHotel (${checkin}) — ${results.length} نتیجه`);
   console.log('\nاتصال به هتل‌یار سالم است.');

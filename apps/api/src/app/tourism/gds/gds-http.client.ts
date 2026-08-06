@@ -100,10 +100,22 @@ export class GdsHttpClient extends GdsClient {
     return response?.list ?? [];
   }
 
+  /**
+   * `hotelCapacityType` در مستند نسخهٔ ۶.۳ و کالکشن Postman نیست ولی **اجباری
+   * است**: بدون آن هتل‌یار `status: true` با آرایهٔ خالی برمی‌گرداند — دقیقاً
+   * همان «همیشه اتاق خالی نیست» که مدت‌ها به حساب دمو گذاشته می‌شد.
+   *
+   * معنایش را هتل‌یار نگفته؛ اندازه‌گیری روی حساب دمو (۲ هتل در تهران) نشان داد
+   * تعداد نتیجه = min(کل، مقدار − ۱): ‏۱ و ۰ و ۱- هیچ، ۲ یکی، و از ۳ به بالا همه.
+   * پس رفتارش شبیه سقف تعداد نتیجه است. مقدار ۱۰ همانی است که خودشان داده‌اند و
+   * روی دمو کامل جواب می‌دهد، ولی اگر روی حساب واقعی شهری با هتل‌های زیاد نتیجه
+   * را بریده دید، اول همین را بالا ببر.
+   */
   async searchHotel(params: GdsSearchParams): Promise<GdsSearchResult[]> {
     return this.call<GdsSearchResult[]>('searchHotel', {
       ...params,
       commission: 0,
+      hotelCapacityType: 10,
     });
   }
 
