@@ -2,7 +2,7 @@
 
 Welfare/credit platform for the employees of **شرکت جهان‌فولاد سیرجان** (Jahan Foolad Sirjan), built by **شرکت طرح و توسعه دیار مانا**. Employees receive purchase credit for contracted stores plus welfare credits; stores get their own panel; employees log in from the app's home page. Functional scope: `~/Downloads/jahan-foolad.pdf` (Persian proposal — virtual credit card, QR one-time-code purchases, contracted stores, rations/ارزاق distribution, reporting; phase 2 adds travel services).
 
-**Current workflow: full-stack.** Design is approved; pages are being wired to the real API. Employee auth is JWT-based and uses the **national code (کد ملی)** as the login identifier (`POST /api/auth/login`); the app dev-server proxies `/api` to `localhost:3000`. Seed data: `npm run prisma:seed` (demo employee `3060123456` / `12345678`, dashboard admin `admin` / `admin1234`). Remaining mock-only pages should be migrated to API data as they are touched.
+**Current workflow: full-stack.** Design is approved; pages are being wired to the real API. Employee auth is JWT-based and uses the **national code (کد ملی)** as the login identifier (`POST /api/auth/login`); the app dev-server proxies `/api` to `localhost:3000`. Seed data: `pnpm prisma:seed` (demo employee `3060123456` / `12345678`, dashboard admin `admin` / `admin1234`). Remaining mock-only pages should be migrated to API data as they are touched.
 
 ## Projects
 
@@ -151,7 +151,7 @@ Two lint rules are turned off for the generated spartan libs in the hand-owned `
 - `@nx/dependency-checks` — the generator emits identical `peerDependencies` regardless of what a component imports, so fixing it would mean hand-editing generated `package.json` files.
 - `@angular-eslint/component-selector`, scoped to `hlm-carousel-next.ts` / `hlm-carousel-previous.ts` — generated source uses attribute selectors on a host element (`button[hlmCarouselNext]`).
 
-**After `nx g @spartan-ng/cli:ui <name>`** the regenerated component's `project.json` and `eslint.config.mjs` are overwritten, dropping its `tags` and its `...uiOverrides` spread. Re-add both, then re-run `npx nx run-many -t lint`.
+**After `nx g @spartan-ng/cli:ui <name>`** the regenerated component's `project.json` and `eslint.config.mjs` are overwritten, dropping its `tags` and its `...uiOverrides` spread. Re-add both, then re-run `pnpm nx run-many -t lint`.
 
 ## Applets (`libs/applets/*`)
 
@@ -174,7 +174,7 @@ Employee-app features live as **applets**, not as pages inside `apps/app`. An ap
 Employees book hotels with a **`TOURISM` wallet** — hotels are *not* stores and never appear in the QR/store flow. A `TOURISM` `WalletDefinition` has no `WalletDefinitionStore` rows; `TourismService` rejects any other wallet kind.
 
 - Upstream is the هتل‌یار / WorldGDS API (spec: `~/Downloads/GDS Document V6.3.pdf`, Postman collection in `~/Downloads/GDS-Demo.postman_collection.json`). Everything is POST with `sessionId` **in the body** and `APIKEY` in the header; **errors come back with HTTP 200** and `status: false`, so `status` must be checked, not the status code. Most numbers arrive as strings — normalized in `tourism.mapper.ts`.
-- `GdsClient` (abstract, `apps/api/src/app/tourism/gds/gds.types.ts`) has two implementations: `GdsHttpClient` (real; caches the session — `expiredTime` from `login` when it is shorter than an hour, else an hour — and retries once on error 1104/1107) and `GdsMockClient`. **`GDS_MODE=live` selects the real client; anything else (including an unset variable) falls back to the mock**, so a half-filled `.env` never half-connects to هتل‌یار. Demo credentials for `https://apidemo.worldgds.com` are in place — copy `.env.example` to `.env`, fill `GDS_API_KEY` / `GDS_USERNAME` / `GDS_PASSWORD`, and verify with `npm run gds:check` (login → getCity → getHotel → searchHotel, no booking). The demo host is reachable from Iran only. **`searchHotel` needs `hotelCapacityType` in the body even though the v6.3 spec and the Postman collection never mention it** — without it every search comes back `status: true` with an empty array, which looked for a long time like the demo account simply had no capacity. See the comment on `GdsHttpClient.searchHotel` for the measured semantics. Mock images are inline SVG data URIs on purpose: external CDNs are unreliable in Iran. Mock hotel `362` returns `Pending` (offline capacity) and its room `9802` is full, so both paths stay testable.
+- `GdsClient` (abstract, `apps/api/src/app/tourism/gds/gds.types.ts`) has two implementations: `GdsHttpClient` (real; caches the session — `expiredTime` from `login` when it is shorter than an hour, else an hour — and retries once on error 1104/1107) and `GdsMockClient`. **`GDS_MODE=live` selects the real client; anything else (including an unset variable) falls back to the mock**, so a half-filled `.env` never half-connects to هتل‌یار. Demo credentials for `https://apidemo.worldgds.com` are in place — copy `.env.example` to `.env`, fill `GDS_API_KEY` / `GDS_USERNAME` / `GDS_PASSWORD`, and verify with `pnpm gds:check` (login → getCity → getHotel → searchHotel, no booking). The demo host is reachable from Iran only. **`searchHotel` needs `hotelCapacityType` in the body even though the v6.3 spec and the Postman collection never mention it** — without it every search comes back `status: true` with an empty array, which looked for a long time like the demo account simply had no capacity. See the comment on `GdsHttpClient.searchHotel` for the measured semantics. Mock images are inline SVG data URIs on purpose: external CDNs are unreliable in Iran. Mock hotel `362` returns `Pending` (offline capacity) and its room `9802` is full, so both paths stay testable.
 - **Booking order matters:** validate → book at هتل‌یار → *then* debit the wallet. Debiting first would burn credit on any network error. The `HotelBooking` row is written **before** the GDS call with `transactionId: null`, so a booking that succeeded upstream but failed locally is findable rather than silent.
 - `statusCode: '1'` → `CONFIRMED` (online capacity), `'0'` → `PENDING` (offline; هتل‌یار confirms later via webhook).
 
@@ -248,19 +248,24 @@ Must pass AXE and meet WCAG AA: focus management, ≥4.5:1 contrast, correct ARI
 
 ## Backend (`apps/api`)
 
-- Prisma 7 layout: config in `prisma.config.ts` (root), schema in `apps/api/prisma/schema.prisma` (datasource has **no `url`** — it lives in the config), client generated to `apps/api/src/generated/prisma` (gitignored; run `npm run prisma:generate` after schema changes).
+- Prisma 7 layout: config in `prisma.config.ts` (root), schema in `apps/api/prisma/schema.prisma` (datasource has **no `url`** — it lives in the config), client generated to `apps/api/src/generated/prisma` (gitignored; run `pnpm prisma:generate` after schema changes).
 - Runtime connection uses the `@prisma/adapter-pg` driver adapter inside `PrismaService` (`apps/api/src/app/prisma/`), a `@Global()` module. `DATABASE_URL` comes from `.env` (gitignored).
-- Scripts: `npm run prisma:generate | prisma:migrate | prisma:studio`.
+- Scripts: `pnpm prisma:generate | prisma:migrate | prisma:studio`.
 
 ## Commands
 
+**The package manager is pnpm** (pinned by `packageManager` in `package.json`; there is no `package-lock.json`). Install with `pnpm install`, run everything through `pnpm` / `pnpm nx` — never `npm install`, which would create a second lockfile and a hoisted `node_modules` that hides missing dependencies.
+
+pnpm 10 refuses to run a dependency's install scripts unless it is listed under `onlyBuiltDependencies` in **`pnpm-workspace.yaml`**. Every entry there needs its postinstall to fetch or compile a native binary (nx, prisma, esbuild, swc, bcrypt, lmdb…), so a new dependency that ships one must be added to that list — pnpm prints an "Ignored build scripts" warning naming it, and `pnpm rebuild` runs the scripts for already-installed packages.
+
 ```bash
-npx nx serve app        # employee app  → http://localhost:4200
-npx nx serve dashboard  # dashboard     → http://localhost:4300
-npx nx serve store      # store panel   → http://localhost:4400  (demo: olympic / store1234)
-npx nx serve api        # NestJS API    → http://localhost:3000/api
-npx nx run-many -t build test lint
-npx nx g @spartan-ng/cli:ui <name>   # add/regen a spartan primitive
+pnpm install             # install deps (--frozen-lockfile in CI)
+pnpm nx serve app        # employee app  → http://localhost:4200
+pnpm nx serve dashboard  # dashboard     → http://localhost:4300
+pnpm nx serve store      # store panel   → http://localhost:4400  (demo: olympic / store1234)
+pnpm nx serve api        # NestJS API    → http://localhost:3000/api
+pnpm nx run-many -t build test lint
+pnpm nx g @spartan-ng/cli:ui <name>   # add/regen a spartan primitive
 ```
 
 <!-- nx configuration start-->

@@ -1,7 +1,7 @@
 /**
  * چک اتصال به هتل‌یار (WorldGDS) با اعتبارنامه‌های .env
  *
- *   npm run gds:check
+ *   pnpm gds:check
  *
  * خطاهای هتل‌یار با HTTP 200 و `status: false` برمی‌گردند، پس این اسکریپت هم
  * مثل GdsHttpClient به `status` نگاه می‌کند نه به کد وضعیت HTTP. هدف فقط

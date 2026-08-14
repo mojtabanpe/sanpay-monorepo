@@ -1,0 +1,15 @@
+# pnpm 10 blocks dependency lifecycle scripts unless they are listed here.
+# Every entry below needs its postinstall to fetch/build a native binary or
+# engine — without them nx, prisma, esbuild, swc and bcrypt fail at runtime.
+onlyBuiltDependencies:
+  - '@parcel/watcher'
+  - '@prisma/engines'
+  - '@swc/core'
+  - bcrypt
+  - esbuild
+  - less
+  - lmdb
+  - msgpackr-extract
+  - nx
+  - prisma
+  - unrs-resolver

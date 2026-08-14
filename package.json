@@ -10,6 +10,7 @@
     "gds:check": "node -r @swc-node/register apps/api/scripts/gds-check.ts"
   },
   "private": true,
+  "packageManager": "pnpm@10.24.0",
   "dependencies": {
     "@angular-devkit/build-angular": "22.0.6",
     "@angular/cdk": "^22.0.5",
