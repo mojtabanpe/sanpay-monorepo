@@ -1,11 +1,14 @@
 <div class="flex flex-col gap-4 px-4 py-6">
 
   @if (loading()) {
-    <!-- اسکلت بارگذاری -->
-    <hlm-skeleton class="h-40 w-full rounded-2xl" />
+    <!-- اسکلت بارگذاری. شعاع پیش‌فرض اسکلت `--radius` است و با کارت‌ها جور
+         درمی‌آید؛ فقط کارت خلاصه که `--radius-lg` دارد استثنا می‌شود. با
+         `style` و نه کلاس: قاعدهٔ glass.css بی‌لایه است و کلاسِ سر فراخوانی
+         به آن نمی‌رسد. -->
+    <hlm-skeleton class="h-40 w-full" style="border-radius: var(--radius-lg)" />
     <hlm-skeleton class="mt-2 h-6 w-40" />
-    <hlm-skeleton class="h-52 w-full rounded-xl" />
-    <hlm-skeleton class="h-52 w-full rounded-xl" />
+    <hlm-skeleton class="h-52 w-full" />
+    <hlm-skeleton class="h-52 w-full" />
   } @else if (error()) {
     <!-- خطا -->
     <section hlmCard>
@@ -53,7 +56,8 @@
       </p>
 
       <div class="relative mt-4 flex items-center gap-2 border-t border-white/12 pt-3">
-        <svg class="size-3.5 text-white/45" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <!-- ۱٫۵ و نه ۲: آیکن باید وزن نوریِ متنِ کنارش را بگیرد و آن متن ۴۰۰ است -->
+        <svg class="size-3.5 text-white/45" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <rect x="2" y="5" width="20" height="14" rx="2" />
           <path d="M2 10h20" />
         </svg>

@@ -5,7 +5,7 @@
     <div hlmCardContent class="flex flex-col gap-3 pt-6">
 
       <div class="flex items-center gap-2">
-        <div class="bg-secondary text-primary flex size-10 shrink-0 items-center justify-center rounded-xl">
+        <div class="bg-secondary text-primary flex size-10 shrink-0 items-center justify-center rounded-[0.625rem]">
           <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <path d="M2 20h20" />
             <path d="M4 20V8l8-5 8 5v12" />
@@ -29,7 +29,7 @@
             <hlm-select-value />
           </hlm-select-trigger>
           <hlm-select-content *hlmSelectPortal>
-            <hlm-select-item [value]="0">همهٔ شهرها</hlm-select-item>
+            <hlm-select-item value="">همهٔ شهرها</hlm-select-item>
             @for (city of cities(); track city.id) {
               <hlm-select-item [value]="city.id">{{ city.name }}</hlm-select-item>
             }
@@ -98,7 +98,7 @@
   @if (loading()) {
     <div class="grid grid-cols-2 gap-3 sm:gap-4">
       @for (placeholder of [1, 2, 3, 4]; track placeholder) {
-        <hlm-skeleton class="h-60 w-full rounded-2xl" />
+        <hlm-skeleton class="h-60 w-full" />
       }
     </div>
   } @else if (error()) {
@@ -156,7 +156,7 @@
     @for (hotel of chunk; track hotel.id) {
       <button
         type="button"
-        class="h-full w-full text-right transition-transform active:scale-[0.99]"
+        class="h-full w-full text-right transition-transform active:scale-[0.96]"
         (click)="openHotel(hotel)"
       >
         <!-- card-flush در glass.css تعریف شده: padding عمودی خودِ کارت را صفر

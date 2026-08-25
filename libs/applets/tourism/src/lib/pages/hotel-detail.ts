@@ -88,7 +88,7 @@ export class HotelDetailPage {
     this.galleryOpen.set(false);
   }
 
-  private readonly hotelId = Number(this.route.snapshot.paramMap.get('hotelId'));
+  private readonly hotelId = this.route.snapshot.paramMap.get('hotelId') ?? '';
   protected readonly checkin =
     this.route.snapshot.queryParamMap.get('checkin') ?? addDays(new Date().toISOString().slice(0, 10), 1);
   protected readonly nights = Number(

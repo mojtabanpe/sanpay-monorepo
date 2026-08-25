@@ -72,8 +72,8 @@ export class HotelListPage {
   });
 
 
-  /** ۰ = همهٔ شهرها */
-  protected readonly cityId = signal(0);
+  /** رشتهٔ خالی = همهٔ شهرها */
+  protected readonly cityId = signal('');
   protected readonly checkin = signal(addDays(today(), 1));
   protected readonly nights = signal(1);
 
@@ -82,7 +82,7 @@ export class HotelListPage {
   protected readonly minDate = isoToJalali(today());
 
   /** هتل‌هایی که تصویرشان لود نشد — به‌جای کادر خالی، آیکون جایگزین می‌گیرند */
-  protected readonly brokenImages = signal(new Set<number>());
+  protected readonly brokenImages = signal(new Set<string>());
 
   protected readonly checkout = computed(() =>
     addDays(this.checkin(), this.nights()),
@@ -120,13 +120,13 @@ export class HotelListPage {
    * برچسبی که روی دکمهٔ select می‌نشیند. بدون این، مقدار خام (`0`) نمایش
    * داده می‌شود. تابع پیکانی است تا `this` به کامپوننت بسته بماند.
    */
-  protected readonly cityLabel = (id: number): string =>
-    id === 0
+  protected readonly cityLabel = (id: string): string =>
+    !id
       ? 'همهٔ شهرها'
       : (this.cities().find((city) => city.id === id)?.name ?? '');
 
-  protected onCityChange(value: number): void {
-    this.cityId.set(value ?? 0);
+  protected onCityChange(value: string): void {
+    this.cityId.set(value ?? '');
     void this.load();
   }
 
@@ -145,7 +145,7 @@ export class HotelListPage {
     });
   }
 
-  protected markBroken(hotelId: number): void {
+  protected markBroken(hotelId: string): void {
     this.brokenImages.update((set) => new Set(set).add(hotelId));
   }
 

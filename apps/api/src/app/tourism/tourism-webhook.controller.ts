@@ -1,6 +1,6 @@
 import { Body, Controller, HttpCode, Post, UseGuards } from '@nestjs/common';
 import { GdsWebhookGuard } from './gds-webhook.guard';
-import { GdsWebhookEventPayload } from './gds/gds.types';
+import { GdsWebhookEventPayload } from './providers/hotelyar/gds.types';
 import {
   TourismWebhookService,
   WebhookResult,

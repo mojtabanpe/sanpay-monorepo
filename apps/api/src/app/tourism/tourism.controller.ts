@@ -35,16 +35,12 @@ export class TourismController {
 
   /** `cityId` نداده = همهٔ شهرها */
   @Get('hotels')
-  hotels(
-    @Query('cityId', new ParseIntPipe({ optional: true })) cityId?: number,
-  ): Promise<HotelSummary[]> {
-    return this.tourism.hotels(cityId ?? -1);
+  hotels(@Query('cityId') cityId?: string): Promise<HotelSummary[]> {
+    return this.tourism.hotels(cityId || null);
   }
 
   @Get('hotels/:hotelId')
-  hotel(
-    @Param('hotelId', ParseIntPipe) hotelId: number,
-  ): Promise<HotelDetail> {
+  hotel(@Param('hotelId') hotelId: string): Promise<HotelDetail> {
     return this.tourism.hotel(hotelId);
   }
 
@@ -58,8 +54,8 @@ export class TourismController {
   @Get('quote')
   quote(
     @Req() request: Request,
-    @Query('hotelId', ParseIntPipe) hotelId: number,
-    @Query('roomId', ParseIntPipe) roomId: number,
+    @Query('hotelId') hotelId: string,
+    @Query('roomId') roomId: string,
     @Query('checkin') checkin: string,
     @Query('nights', ParseIntPipe) nights: number,
   ): Promise<BookingQuote> {

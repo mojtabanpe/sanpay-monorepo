@@ -24,18 +24,15 @@ export class SearchHotelsDto {
   @Max(30, { message: 'حداکثر ۳۰ شب قابل رزرو است' })
   nights!: number;
 
-  /** ۰ یعنی همهٔ هتل‌های شهر */
+  /** شناسهٔ مبهم هتل؛ ندادن یعنی همهٔ هتل‌ها */
   @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  @Min(0)
-  hotelId = 0;
+  @IsString()
+  hotelId?: string;
 
-  /** ‎-۱ یعنی همهٔ شهرها */
+  /** شناسهٔ مبهم شهر؛ ندادن یعنی همهٔ شهرها */
   @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  cityId = -1;
+  @IsString()
+  cityId?: string;
 
   /** حداقل تعداد ستاره؛ ۰ یعنی بدون فیلتر */
   @IsOptional()
@@ -71,15 +68,13 @@ export class BookingGuestDto {
 }
 
 export class CreateBookingDto {
-  @Type(() => Number)
-  @IsInt()
-  @Min(1)
-  hotelId!: number;
+  @IsString()
+  @IsNotEmpty({ message: 'هتل انتخاب نشده است' })
+  hotelId!: string;
 
-  @Type(() => Number)
-  @IsInt()
-  @Min(1)
-  roomId!: number;
+  @IsString()
+  @IsNotEmpty({ message: 'اتاق انتخاب نشده است' })
+  roomId!: string;
 
   @Matches(ISO_DATE, { message: 'تاریخ ورود باید به شکل YYYY-MM-DD باشد' })
   checkin!: string;

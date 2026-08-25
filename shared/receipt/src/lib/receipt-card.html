@@ -1,12 +1,24 @@
 @let r = receipt();
 
+<!--
+  کارت مات با hairline و ارتفاعِ مقیاس، مثل هر کارت دیگر سامانه. نسخهٔ قبلی
+  نیمه‌شفاف و بلوردار بود: رسید در جریان اسکرول می‌نشیند (نه شناور)، پس بلور
+  چیزی نمی‌خرید و در فید زندهٔ پنل فروشگاه به ازای هر ردیف یک فیلتر هزینه
+  می‌داد. `white/60` و `black/10` هم هاردکد بودند و در حالت تیره می‌شکستند.
+-->
 <article
-  class="overflow-hidden rounded-2xl border border-white/50 bg-white/60 shadow-sm backdrop-blur-xl"
-  [class.shadow-lg]="!compact()"
+  class="overflow-hidden"
+  style="
+    border-radius: var(--radius);
+    border: 1px solid var(--hairline);
+    background-color: var(--card);
+  "
+  [style.box-shadow]="compact() ? 'var(--elev-1)' : 'var(--elev-2)'"
 >
   <!-- سربرگ: فروشگاه + مبلغ کل -->
   <header
-    class="flex items-start justify-between gap-3 border-b border-dashed border-black/10 px-4 py-3"
+    class="flex items-start justify-between gap-3 border-b border-dashed px-4 py-3"
+    style="border-color: var(--hairline)"
     [class.py-4]="!compact()"
   >
     <div class="min-w-0">
@@ -42,7 +54,7 @@
 
   <!-- تفکیک کیف‌پول‌ها -->
   @if (isSplit() || variant() === 'employee') {
-    <div class="border-t border-dashed border-black/10 px-4 py-3">
+    <div class="border-t border-dashed px-4 py-3" style="border-color: var(--hairline)">
       <p class="text-muted-foreground mb-2 text-[0.65rem]">
         {{ isSplit() ? 'کسر از کیف‌پول‌ها' : 'کسر از کیف پول' }}
       </p>

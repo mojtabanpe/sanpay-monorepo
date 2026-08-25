@@ -6,11 +6,11 @@ import {
   RoomOffer,
   TourismCity,
 } from '@sanpay/models';
-import {
-  GdsCity,
-  GdsHotel,
-  GdsSearchResult,
-} from './gds/gds.types';
+import { encodeId } from '../provider-id';
+import { GdsCity, GdsHotel, GdsSearchResult } from './gds.types';
+
+/** پیشوند شناسه‌های این تأمین‌کننده */
+const HY = 'hy' as const;
 
 /**
  * تبدیل خروجی خام GDS به مدل‌های اپ.
@@ -21,7 +21,7 @@ import {
  */
 
 export function toCity(city: GdsCity): TourismCity {
-  return { id: Number(city.id), name: city.description };
+  return { id: encodeId(HY, city.id), name: city.description };
 }
 
 export function toHotelSummary(
@@ -30,11 +30,11 @@ export function toHotelSummary(
 ): HotelSummary {
   const cityId = Number(hotel.city);
   return {
-    id: Number(hotel.id),
+    id: encodeId(HY, hotel.id),
     name: hotel.description,
     rate: Number(hotel.rate) || 0,
     type: hotel.type,
-    cityId,
+    cityId: encodeId(HY, cityId),
     cityName: cityNames.get(cityId) ?? '',
     address: hotel.address1 ?? '',
     photo: photosOf(hotel)[0] ?? null,
@@ -95,7 +95,7 @@ export function toHotelDetail(
 
 export function toAvailability(result: GdsSearchResult): HotelAvailability {
   return {
-    hotelId: result.hotelId,
+    hotelId: encodeId(HY, result.hotelId),
     hotelName: result.hotelName,
     checkin: result.checkin,
     checkout: result.checkout,
@@ -103,7 +103,7 @@ export function toAvailability(result: GdsSearchResult): HotelAvailability {
     rooms: (result.room ?? [])
       .map(
         (room): RoomOffer => ({
-          roomId: room.roomId,
+          roomId: encodeId(HY, room.roomId),
           roomType: room.roomType || room.description || roomTypeName(room.nameCode),
           capacity: Number(room.capacity) || 1,
           breakfast: Number(room.breakfast) === 1,

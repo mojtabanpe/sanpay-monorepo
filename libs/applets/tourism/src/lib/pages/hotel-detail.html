@@ -1,11 +1,12 @@
 <div class="flex flex-col gap-4 pb-6">
 
   @if (loading()) {
-    <hlm-skeleton class="aspect-[16/10] max-h-72 w-full" />
+    <!-- گالری تمام‌عرض است و گوشهٔ گرد ندارد، پس اسکلتش هم نباید داشته باشد -->
+    <hlm-skeleton class="aspect-[16/10] max-h-72 w-full" style="border-radius: 0" />
     <div class="flex flex-col gap-3 px-4">
       <hlm-skeleton class="h-7 w-56" />
       <hlm-skeleton class="h-4 w-40" />
-      <hlm-skeleton class="h-32 w-full rounded-xl" />
+      <hlm-skeleton class="h-32 w-full" />
     </div>
   } @else if (error()) {
     <section hlmCard class="mx-4 mt-6">
@@ -38,7 +39,7 @@
 
       <button
         type="button"
-        class="absolute top-4 right-4 flex size-9 items-center justify-center rounded-full bg-white/80 backdrop-blur-md transition-transform active:scale-95"
+        class="absolute top-4 right-4 flex size-9 items-center justify-center rounded-full bg-white/80 backdrop-blur-md transition-transform active:scale-[0.96]"
         aria-label="بازگشت"
         (click)="back()"
       >
@@ -159,8 +160,8 @@
       </div>
 
       @if (roomsLoading()) {
-        <hlm-skeleton class="h-28 w-full rounded-xl" />
-        <hlm-skeleton class="h-28 w-full rounded-xl" />
+        <hlm-skeleton class="h-28 w-full" />
+        <hlm-skeleton class="h-28 w-full" />
       } @else if (roomsError()) {
         <section hlmCard>
           <div hlmCardContent class="flex flex-col items-center gap-4 py-8 text-center">

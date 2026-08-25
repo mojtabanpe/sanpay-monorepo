@@ -75,7 +75,7 @@
   <!-- بارگذاری -->
   @if (loading()) {
     @for (placeholder of [1, 2, 3]; track placeholder) {
-      <div hlmSkeleton class="h-28 w-full rounded-xl"></div>
+      <div hlmSkeleton class="h-28 w-full"></div>
     }
   } @else if (error()) {
     <section hlmCard>

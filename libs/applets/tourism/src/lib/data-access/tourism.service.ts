@@ -15,7 +15,8 @@ export interface HotelSearchFilters {
   /** YYYY-MM-DD */
   checkin: string;
   nights: number;
-  cityId: number;
+  /** شناسهٔ مبهم شهر؛ خالی یعنی همهٔ شهرها */
+  cityId: string;
   /** حداقل ستاره؛ ۰ یعنی بدون فیلتر */
   rate: number;
   /** تعداد نفرات هر اتاق */
@@ -31,19 +32,20 @@ export class TourismService {
   }
 
   /** فهرست هتل‌ها؛ `cityId` ندهید یعنی همهٔ شهرها */
-  hotels(cityId?: number): Observable<HotelSummary[]> {
-    const params =
-      cityId && cityId > 0 ? new HttpParams().set('cityId', cityId) : undefined;
+  hotels(cityId?: string): Observable<HotelSummary[]> {
+    const params = cityId ? new HttpParams().set('cityId', cityId) : undefined;
     return this.http.get<HotelSummary[]>('/api/tourism/hotels', { params });
   }
 
-  hotel(hotelId: number): Observable<HotelDetail> {
-    return this.http.get<HotelDetail>(`/api/tourism/hotels/${hotelId}`);
+  hotel(hotelId: string): Observable<HotelDetail> {
+    return this.http.get<HotelDetail>(
+      `/api/tourism/hotels/${encodeURIComponent(hotelId)}`,
+    );
   }
 
   /** اتاق‌های خالی یک هتل در تاریخ مشخص */
   availability(
-    hotelId: number,
+    hotelId: string,
     checkin: string,
     nights: number,
     capacity = 2,
@@ -52,23 +54,25 @@ export class TourismService {
       checkin,
       nights,
       hotelId,
-      cityId: -1,
       rate: 0,
       capacity,
     });
   }
 
   search(filters: HotelSearchFilters): Observable<HotelAvailability[]> {
+    // شناسهٔ خالی حذف می‌شود، نه اینکه رشتهٔ خالی برود — بک‌اند «نبودن» را
+    // «همهٔ شهرها» می‌فهمد
+    const { cityId, ...rest } = filters;
     return this.http.post<HotelAvailability[]>('/api/tourism/search', {
-      ...filters,
-      hotelId: 0,
+      ...rest,
+      ...(cityId ? { cityId } : {}),
     });
   }
 
   /** پیش‌فاکتور اتاق + کیف‌پول‌های گردشگری قابل استفاده */
   quote(
-    hotelId: number,
-    roomId: number,
+    hotelId: string,
+    roomId: string,
     checkin: string,
     nights: number,
   ): Observable<BookingQuote> {

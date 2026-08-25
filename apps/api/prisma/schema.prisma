@@ -169,33 +169,53 @@ model Payment {
 // ─── رزرو هتل (گردشگری) ───────────────────────────────────────────────────────
 
 enum BookingStatus {
-  /// ظرفیت آنلاین قطعی — هتل‌یار statusCode=1 برگردانده
+  /// رزرو قطعی است
   CONFIRMED
-  /// ظرفیت آفلاین — هتل‌یار بعداً از طریق webhook تأیید یا رد می‌کند
+  /// اتاق نگه داشته شده و منتظر نهایی‌سازی ماست (اقامت۲۴؛ holdExpiresAt دارد)
+  HOLD
+  /// ظرفیت آفلاین — تأمین‌کننده بعداً از طریق webhook تأیید یا رد می‌کند
   PENDING
+  /// کنسلی درخواست شده و جریمه‌اش اعلام شده، منتظر تأیید کارمند
+  CANCELING
+  /// تغییر درخواست شده و هزینه‌اش اعلام شده، منتظر تأیید کارمند
+  MODIFYING
   REJECTED
   CANCELED
 }
 
+/// تأمین‌کنندهٔ هتل. مقدارها همان پیشوند شناسه‌های مبهم‌اند (`hy:…` / `eg:…`).
+enum HotelProviderKey {
+  /// هتل‌یار / WorldGDS — همهٔ شهرها به‌جز مشهد
+  hy
+  /// اقامت۲۴ / GRS — مشهد
+  eg
+}
+
 /// رزرو هتل با اعتبار گردشگری. هتل‌ها فروشگاه نیستند: رزرو مستقیماً روی API
-/// هتل‌یار انجام می‌شود و فقط در صورت موفقیت، اعتبار کارمند کم می‌شود.
+/// تأمین‌کننده انجام می‌شود و فقط در صورت موفقیت، اعتبار کارمند کم می‌شود.
 /// تسویهٔ ریالی با هتل‌یار جداگانه و شبانه انجام می‌شود (settledAt).
 model HotelBooking {
   id           String        @id @default(uuid())
-  /// شمارهٔ پیگیری داخلی — همان externalId که به هتل‌یار فرستاده می‌شود
+  /// شمارهٔ پیگیری داخلی — همان کد پیگیری که به تأمین‌کننده فرستاده می‌شود
   referenceNo  String        @unique
-  /// شناسهٔ رزرو در سامانهٔ هتل‌یار (response.reserve.info.id)
-  gdsReserveId String?
+  /// کدام تأمین‌کننده این رزرو را دارد
+  provider     HotelProviderKey
+  /// شناسهٔ رزرو نزد تأمین‌کننده — با آن confirm/cancel می‌زنیم و webhook را تطبیق می‌دهیم
+  providerReserveId String?
   status       BookingStatus @default(PENDING)
+  /// مهلت نهایی‌سازی در وضعیت HOLD
+  holdExpiresAt DateTime?
 
   employeeId   String
   allocationId String
   /// تراکنش کسر اعتبار — تا وقتی رزرو در هتل‌یار موفق نشده null است
   transactionId String?      @unique
 
-  hotelId    Int
+  /// شناسهٔ مبهم هتل («eg:740») — provider داخلش کدگذاری شده
+  hotelId    String
   hotelName  String
-  roomId     Int
+  /// شناسهٔ مبهم اتاق («eg:740:12:5») — برای اقامت۲۴ شامل نرخ‌نامه هم هست
+  roomId     String
   roomType   String
   checkin    DateTime
   nights     Int
@@ -203,19 +223,21 @@ model HotelBooking {
   guestIdNo  String
   /// مبلغ کسرشده از کیف پول (تومان)
   amount     BigInt
-  /// مبلغی که باید به هتل‌یار پرداخت شود (تومان) — مبنای تسویهٔ شبانه
+  /// مبلغی که باید به تأمین‌کننده پرداخت شود (تومان) — مبنای تسویهٔ شبانه
   payable    BigInt
 
-  /// زمان تسویه با هتل‌یار از طریق پرداخت‌یار (null = تسویه‌نشده)
+  /// زمان تسویه با تأمین‌کننده از طریق پرداخت‌یار (null = تسویه‌نشده)
   settledAt DateTime?
   /// شناسهٔ دستهٔ تسویهٔ شبانه
   settlementBatchId String?
 
-  /// زمان رد/کنسل‌شدن از سمت هتل‌یار (از طریق webhook)
+  /// زمان رد/کنسل‌شدن از سمت تأمین‌کننده (از طریق webhook یا درخواست خودمان)
   canceledAt DateTime?
   /// مبلغی که بابت رد یا کنسلی به کیف پول برگشت (تومان)
   refundedAmount BigInt?
-  /// توضیح هتل‌یار دربارهٔ رد یا تغییر رزرو — در اپ به کارمند نشان داده می‌شود
+  /// جریمهٔ کنسلیِ اعلام‌شده در وضعیت CANCELING (تومان) — نزد تأمین‌کننده می‌ماند
+  cancellationFee BigInt?
+  /// توضیح تأمین‌کننده دربارهٔ رد یا تغییر رزرو — در اپ به کارمند نشان داده می‌شود
   statusNote String?
 
   createdAt DateTime @default(now())
@@ -228,7 +250,7 @@ model HotelBooking {
 
   @@index([employeeId, createdAt])
   @@index([settledAt])
-  @@index([gdsReserveId])
+  @@index([provider, providerReserveId])
 }
 
 /// لاگ خام رویدادهای webhook هتل‌یار.

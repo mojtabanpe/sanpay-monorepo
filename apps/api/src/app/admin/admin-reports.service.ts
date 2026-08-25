@@ -1,10 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import {
+  BookingStatus,
   AdminBookingRow,
   AdminOverview,
   AdminPaymentRow,
   Paginated,
 } from '@sanpay/models';
+import { PROVIDER_NAMES } from '../tourism/providers/provider-id';
 import { PrismaService } from '../prisma/prisma.service';
 import { BookingQueryDto, PaymentQueryDto } from './dto/admin.dto';
 import { paymentRowInclude, toPaymentRow } from './payment-row';
@@ -211,7 +213,7 @@ export class AdminReportsService {
 
     const where = {
       ...(query.status
-        ? { status: query.status as 'CONFIRMED' | 'PENDING' | 'REJECTED' | 'CANCELED' }
+        ? { status: query.status as BookingStatus }
         : {}),
       ...(q
         ? {
@@ -240,6 +242,7 @@ export class AdminReportsService {
         id: booking.id,
         referenceNo: booking.referenceNo,
         status: booking.status,
+        providerName: PROVIDER_NAMES[booking.provider] ?? '',
         hotelName: booking.hotelName,
         roomType: booking.roomType,
         checkin: booking.checkin.toISOString(),

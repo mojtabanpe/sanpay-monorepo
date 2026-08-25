@@ -1,3 +1,5 @@
+import { BookingStatus } from './tourism.model';
+
 /**
  * مدل‌های داشبورد مدیریت (`apps/dashboard`).
  * همهٔ مبالغ تومان و اعداد صحیح‌اند؛ تاریخ‌ها ISO string.
@@ -228,7 +230,10 @@ export interface AdminPaymentRow {
 export interface AdminBookingRow {
   id: string;
   referenceNo: string;
-  status: 'CONFIRMED' | 'PENDING' | 'REJECTED' | 'CANCELED';
+  /** همان اتحادیهٔ رزرو کارمند — تکرارش اینجا باعث شد افزودن HOLD از قلم بیفتد */
+  status: BookingStatus;
+  /** نام تأمین‌کننده («هتل‌یار» / «اقامت۲۴») */
+  providerName: string;
   hotelName: string;
   roomType: string;
   checkin: string;

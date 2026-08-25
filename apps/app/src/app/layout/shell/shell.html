@@ -2,7 +2,12 @@
 <div class="mx-auto flex min-h-dvh w-full max-w-[550px] flex-col">
 
   <!-- هدر -->
-  <header class="sticky top-0 z-40 border-b border-white/40 bg-white/40 backdrop-blur-xl">
+  <!-- خط جداکنندهٔ hairline، نه `border-white/40`: سفیدِ ۴۰٪ روی زمینهٔ گرمِ
+       #f7f6f3 عملاً نامرئی بود و هدرِ شناور هیچ لبه‌ای نداشت. -->
+  <header
+    class="sticky top-0 z-40 border-b bg-white/40 backdrop-blur-xl"
+    style="border-color: var(--hairline)"
+  >
     <div class="flex h-14 items-center justify-between px-4">
       <div class="flex items-center gap-2.5">
         <div
@@ -36,7 +41,8 @@
 
   <!-- ناوبری پایین — fixed و هم‌عرض ظرف -->
   <nav
-    class="fixed bottom-0 left-1/2 z-50 w-full max-w-[550px] -translate-x-1/2 border-t border-white/40 bg-white/90 backdrop-blur-xl"
+    class="fixed bottom-0 left-1/2 z-50 w-full max-w-[550px] -translate-x-1/2 border-t bg-white/90 backdrop-blur-xl"
+    style="border-color: var(--hairline)"
     aria-label="ناوبری اصلی"
   >
     <div class="flex h-16 items-center">
@@ -80,7 +86,8 @@
       <div class="flex flex-1 justify-center">
         <a
           routerLink="/qr"
-          class="flex size-14 -translate-y-4 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/30 transition-transform active:scale-95"
+          class="flex size-14 -translate-y-4 items-center justify-center rounded-full bg-primary text-primary-foreground transition-transform active:scale-[0.96]"
+          style="box-shadow: var(--elev-2), 0 4px 16px color-mix(in oklab, var(--primary) 32%, transparent)"
           aria-label="تولید کد خرید"
         >
           <svg class="size-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">

@@ -42,8 +42,8 @@ export class BookingPage {
   protected readonly allocationId = signal('');
 
   private readonly params = this.route.snapshot.queryParamMap;
-  private readonly hotelId = Number(this.params.get('hotelId'));
-  private readonly roomId = Number(this.params.get('roomId'));
+  private readonly hotelId = this.params.get('hotelId') ?? '';
+  private readonly roomId = this.params.get('roomId') ?? '';
   private readonly checkin = this.params.get('checkin') ?? '';
   private readonly nights = Number(this.params.get('nights') ?? 1);
 

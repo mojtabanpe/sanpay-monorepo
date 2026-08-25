@@ -4,7 +4,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import {
   GdsReserveReport,
   GdsWebhookEventPayload,
-} from './gds/gds.types';
+} from './providers/hotelyar/gds.types';
 
 /** نتیجه‌ای که به هتل‌یار برمی‌گردانیم — فقط برای لاگ خودشان */
 export interface WebhookResult {
@@ -222,14 +222,14 @@ export class TourismWebhookService {
 
   /**
    * تطبیق رویداد با رزرو ما: اول شناسهٔ هتل‌یار، بعد `externalId` که همان
-   * شمارهٔ پیگیری خودمان است — رزروی که ثبتش نیمه‌کاره مانده gdsReserveId ندارد.
+   * شمارهٔ پیگیری خودمان است — رزروی که ثبتش نیمه‌کاره مانده providerReserveId ندارد.
    */
   private async findBooking(
     reservationId: string,
     report: GdsReserveReport | undefined,
   ): Promise<HotelBooking | null> {
     const byReserveId = await this.prisma.hotelBooking.findFirst({
-      where: { gdsReserveId: reservationId },
+      where: { provider: 'hy', providerReserveId: reservationId },
       orderBy: { createdAt: 'desc' },
     });
     if (byReserveId) {

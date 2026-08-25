@@ -376,6 +376,25 @@ hlm-select-content div[role='listbox'] {
   box-shadow: var(--glass-shadow), inset 0 1px 0 var(--glass-highlight);
 }
 
+/*
+ * ── Images ───────────────────────────────────────────────────────────
+ * یک خط ۱ پیکسلی خیلی کم‌رمق دور هر تصویر. عکس‌های هتل‌یار روشن و کم‌کنتراست‌اند
+ * و لبه‌شان روی کارت سفید گم می‌شود، پس کاشی شناور به نظر می‌رسد.
+ *
+ * عمداً مشکیِ خالص در روشن و سفیدِ خالص در تاریک — نه یک خاکستریِ ته‌رنگ‌دار
+ * (slate/zinc): آن ته‌رنگ، رنگِ سطحِ زیرش را می‌گیرد و مثل کثیفی روی لبهٔ عکس
+ * دیده می‌شود. `outline` و نه `border` تا در layout جا نگیرد، و offset منفی تا
+ * داخل قاب بنشیند و شعاعِ ظرفِ overflow-hidden را دنبال کند.
+ */
+img {
+  outline: 1px solid oklch(0 0 0 / 0.1);
+  outline-offset: -1px;
+}
+
+:root.dark img {
+  outline-color: oklch(1 0 0 / 0.1);
+}
+
 /* An alert is inline, not floating — flat tinted block, no blur, no shadow. */
 [data-slot='alert'] {
   border: 1px solid var(--hairline);
@@ -484,13 +503,19 @@ button[data-slot='button'].bg-primary:active:not(:disabled) {
  * sized up here rather than by hand-editing every call site.
  * No blur: these are inset surfaces, not elevated ones.
  */
+/*
+ * شعاع کنترل‌ها با دکمه یکی است. قبلاً `calc(var(--radius) - 0.25rem)` بود
+ * (۱۰ پیکسل) در حالی که hlm-button روی `rounded-lg` = ۱۴ پیکسل می‌نشیند؛ در
+ * صفحهٔ ورود، اینپوت و دکمهٔ زیرش هم‌عرض و هم‌ارتفاع‌اند و دو گوشهٔ متفاوت
+ * داشتند. یک فرم باید یک شعاع داشته باشد.
+ */
 [data-slot='input'],
 [data-slot='textarea'],
 [data-slot='select-trigger'],
 [data-slot='date-picker-trigger'] > button,
 [data-slot='input-group'] {
   min-height: 2.75rem;
-  border-radius: calc(var(--radius) - 0.25rem);
+  border-radius: var(--radius);
   background-color: var(--input);
   border-color: var(--border);
   box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.04);
@@ -738,20 +763,49 @@ button[data-slot='button'].bg-primary:active:not(:disabled) {
 }
 
 /* ── Skeleton ──────────────────────────────────────────────────────── */
+/*
+ * شعاع اینجا ست می‌شود و نه سر فراخوانی. `hlm-skeleton` خودش `rounded-md`
+ * دارد و چون هر دو utility بی‌لایه‌اند، برنده به ترتیبِ تولیدشدهٔ Tailwind
+ * بستگی دارد نه به نیت نویسنده: اندازه‌گیری شد که `rounded-lg`، `rounded-2xl`،
+ * `rounded-full` و حتی `rounded-[20px]` همگی به `rounded-md` می‌بازند و فقط
+ * `rounded-sm`/`rounded-xl` برنده می‌شوند. نتیجه این بود که هیچ اسکلتی شعاع
+ * کارتی را که جایش را گرفته بود نداشت (۱۱٫۲ یا ۱۹٫۶ در برابر ۱۴) و هر فهرست
+ * موقع رسیدن داده گوشه‌هایش می‌پرید. اگر جایی شعاع دیگری لازم بود، با
+ * `style="border-radius: …"` سر فراخوانی — نه با کلاس، که می‌بازد.
+ */
 [data-slot='skeleton'] {
+  border-radius: var(--radius);
+  position: relative;
+  overflow: hidden;
+  /* spartan خودش `motion-safe:animate-pulse` دارد. قبلاً میان‌بُرِ `animation`
+     همین‌جا آن را بی‌صدا خاموش می‌کرد؛ حالا که انیمیشن به ::after رفته، باید
+     صریح خاموش شود وگرنه ضربانِ opacity و درخشش با هم می‌دوند. */
+  animation: none;
+}
+
+/*
+ * درخشش روی یک شبه‌المان و با `transform` حرکت می‌کند، نه با
+ * `background-position`. آن یکی روی GPU کامپوزیت نمی‌شود و برای هر اسکلتِ
+ * روی صفحه هر فریم یک repaint می‌داد — در فهرستی که چند اسکلت هم‌زمان دارد
+ * دقیقاً همان‌جایی که صفحه باید سبک باشد.
+ */
+[data-slot='skeleton']::after {
+  content: '';
+  position: absolute;
+  inset: 0;
   background-image: linear-gradient(
     90deg,
     transparent,
     color-mix(in oklab, var(--primary) 8%, transparent),
     transparent
   );
-  background-size: 200% 100%;
+  transform: translateX(-100%);
   animation: sanpay-shimmer 1.6s ease-in-out infinite;
 }
 
 @keyframes sanpay-shimmer {
   to {
-    background-position: -200% 0;
+    transform: translateX(100%);
   }
 }
 
@@ -789,7 +843,7 @@ button[data-slot='button'].bg-primary:active:not(:disabled) {
   [data-slot='select-content'],
   [data-slot='dropdown-menu'],
   [data-slot='dialog-content'],
-  [data-slot='skeleton'] {
+  [data-slot='skeleton']::after {
     animation: none;
   }
 

@@ -11,7 +11,12 @@ import { faNumber, jalali, toman } from '../format';
 
 const STATUS_LABELS: Record<BookingStatus, string> = {
   CONFIRMED: 'قطعی',
+  // HOLD در عمل به کارمند نمی‌رسد — رزرو در همان درخواست نهایی می‌شود — ولی
+  // اگر رکوردی نیمه‌کاره مانده باشد باید برچسب صادقانه‌ای داشته باشد
+  HOLD: 'در حال نهایی‌سازی',
   PENDING: 'در انتظار تأیید',
+  CANCELING: 'در انتظار تأیید لغو',
+  MODIFYING: 'در انتظار تأیید تغییر',
   REJECTED: 'رد شده',
   CANCELED: 'لغو شده',
 };

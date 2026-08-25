@@ -1,8 +1,8 @@
 <div class="flex flex-col gap-4 px-4 py-6">
 
   @if (loading()) {
-    <hlm-skeleton class="h-32 w-full rounded-xl" />
-    <hlm-skeleton class="h-64 w-full rounded-xl" />
+    <hlm-skeleton class="h-32 w-full" />
+    <hlm-skeleton class="h-64 w-full" />
   } @else if (receipt(); as r) {
 
     <!-- ─── رسید رزرو ─── -->
@@ -104,7 +104,7 @@
         @for (wallet of q.wallets; track wallet.allocationId) {
           <button
             type="button"
-            class="flex items-center gap-3 rounded-xl border p-3 text-right transition-colors"
+            class="flex items-center gap-3 rounded-md border p-3 text-right transition-colors"
             [class]="
               wallet.allocationId === allocationId()
                 ? 'border-primary bg-secondary'
@@ -212,7 +212,7 @@
     </section>
 
     @if (error()) {
-      <p class="rounded-xl bg-red-50 px-4 py-3 text-xs leading-relaxed text-red-700">
+      <p class="rounded-md bg-red-50 px-4 py-3 text-xs leading-relaxed text-red-700">
         {{ error() }}
       </p>
     }

@@ -116,8 +116,8 @@
   <h2 class="px-1 text-sm font-bold">آخرین پرداخت‌ها</h2>
 
   @if (loading()) {
-    <hlm-skeleton class="h-32 w-full rounded-2xl" />
-    <hlm-skeleton class="h-32 w-full rounded-2xl" />
+    <hlm-skeleton class="h-32 w-full" />
+    <hlm-skeleton class="h-32 w-full" />
   } @else if (error()) {
     <div class="flex flex-col items-center gap-3 py-10 text-center">
       <p class="text-muted-foreground text-sm">دریافت لیست پرداخت‌ها ممکن نشد.</p>

@@ -1,24 +1,28 @@
 /**
- * مدل‌های گردشگری — نمای ساده‌شدهٔ خروجی هتل‌یار/WorldGDS که به اپ کارمند
- * می‌رسد. جزئیات خام GDS (policy، halfDay، package و …) در بک‌اند می‌ماند و
- * فقط چیزی که در UI نمایش داده می‌شود اینجا مدل شده است.
+ * مدل‌های گردشگری — نمای ساده‌شدهٔ خروجی تأمین‌کننده‌های هتل که به اپ کارمند
+ * می‌رسد. جزئیات خام هر API در بک‌اند می‌ماند و فقط چیزی که در UI نمایش داده
+ * می‌شود اینجا مدل شده است.
+ *
+ * **همهٔ شناسه‌ها رشته‌های مبهم‌اند** (`"hy:1234"`، `"eg:740:12:5"`). تأمین‌کننده
+ * داخلشان کدگذاری شده تا بک‌اند بداند درخواست را کجا بفرستد. اپ هیچ‌وقت این
+ * رشته را پارس نمی‌کند و فقط همان چیزی را که گرفته پس می‌دهد.
  */
 
 /** یک شهر قابل انتخاب در جست‌وجوی هتل */
 export interface TourismCity {
-  id: number;
+  id: string;
   name: string;
 }
 
 /** هتل در فهرست — بدون قیمت و ظرفیت */
 export interface HotelSummary {
-  id: number;
+  id: string;
   name: string;
   /** تعداد ستاره (۰ تا ۵) */
   rate: number;
   /** نوع اقامتگاه: هتل، هتل‌آپارتمان، … */
   type: string;
-  cityId: number;
+  cityId: string;
   cityName: string;
   address: string;
   /** تصویر شاخص */
@@ -48,7 +52,7 @@ export interface HotelDetail extends HotelSummary {
 
 /** یک اتاق قابل رزرو در بازهٔ تاریخ جست‌وجو شده */
 export interface RoomOffer {
-  roomId: number;
+  roomId: string;
   /** نام نوع اتاق («اتاق یک تخته») */
   roomType: string;
   /** ظرفیت نفرات */
@@ -67,7 +71,7 @@ export interface RoomOffer {
 
 /** نتیجهٔ جست‌وجوی اتاق‌های یک هتل برای تاریخ مشخص */
 export interface HotelAvailability {
-  hotelId: number;
+  hotelId: string;
   hotelName: string;
   /** ISO date (YYYY-MM-DD) */
   checkin: string;
@@ -88,7 +92,7 @@ export interface TourismWallet {
 
 /** پیش‌فاکتور رزرو: قیمت + کیف‌پول‌های قابل استفاده */
 export interface BookingQuote {
-  hotelId: number;
+  hotelId: string;
   hotelName: string;
   room: RoomOffer;
   checkin: string;
@@ -109,8 +113,8 @@ export interface BookingGuest {
 }
 
 export interface CreateBookingInput {
-  hotelId: number;
-  roomId: number;
+  hotelId: string;
+  roomId: string;
   /** ISO date (YYYY-MM-DD) */
   checkin: string;
   nights: number;
@@ -121,10 +125,22 @@ export interface CreateBookingInput {
 
 /**
  * وضعیت رزرو.
- * `CONFIRMED` = ظرفیت آنلاین قطعی (statusCode 1 در GDS)،
- * `PENDING` = ظرفیت آفلاین، هتل‌یار بعداً تأیید می‌کند (statusCode 0).
+ *
+ * - `CONFIRMED` قطعی است.
+ * - `HOLD` اتاق نگه داشته شده و منتظر نهایی‌سازی ماست (فقط اقامت۲۴؛ مهلت دارد).
+ * - `PENDING` ظرفیت آفلاین — تأمین‌کننده یا هتل باید تأیید کند.
+ * - `CANCELING` کنسلی درخواست شده و جریمه‌اش اعلام شده، منتظر تأیید کارمند.
+ * - `MODIFYING` تغییر درخواست شده و هزینه‌اش اعلام شده، منتظر تأیید کارمند.
+ * - `REJECTED` / `CANCELED` وضعیت‌های نهایی.
  */
-export type BookingStatus = 'CONFIRMED' | 'PENDING' | 'REJECTED' | 'CANCELED';
+export type BookingStatus =
+  | 'CONFIRMED'
+  | 'HOLD'
+  | 'PENDING'
+  | 'CANCELING'
+  | 'MODIFYING'
+  | 'REJECTED'
+  | 'CANCELED';
 
 /** رسید رزرو — چیزی که بعد از پرداخت به کارمند نشان داده می‌شود */
 export interface BookingReceipt {
@@ -132,6 +148,8 @@ export interface BookingReceipt {
   /** شمارهٔ پیگیری داخلی سان‌پی (۸ رقمی) */
   referenceNo: string;
   status: BookingStatus;
+  /** نام تأمین‌کننده برای نمایش در رسید («هتل‌یار» / «اقامت۲۴») */
+  providerName: string;
   hotelName: string;
   roomType: string;
   checkin: string;
@@ -147,5 +165,9 @@ export interface BookingReceipt {
   statusNote?: string | null;
   /** مبلغ برگشت‌خورده به کیف پول بابت رد یا کنسلی (تومان) */
   refundedAmount?: number | null;
+  /** جریمهٔ کنسلیِ اعلام‌شده در وضعیت CANCELING (تومان) */
+  cancellationFee?: number | null;
+  /** مهلت نهایی‌سازی در وضعیت HOLD (ISO) */
+  holdExpiresAt?: string | null;
   createdAt: string;
 }
