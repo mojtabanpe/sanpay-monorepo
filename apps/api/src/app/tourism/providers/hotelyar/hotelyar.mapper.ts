@@ -80,12 +80,16 @@ export function toHotelDetail(
         value === '1',
       ]),
     ),
-    nearPlaces: (hotel.nearPlaces ?? []).map(
-      (place): NearPlace => ({
-        title: place.title,
-        distance: place.distance,
-      }),
-    ),
+    nearPlaces: (hotel.nearPlaces ?? []).map((place): NearPlace => ({
+      title: place.title,
+      distance: place.distance,
+    })),
+    reviews: (hotel.reviews ?? []).map((review) => ({
+      author: review.author,
+      rating: Math.min(5, Math.max(0, Number(review.rating) || 0)),
+      comment: review.comment,
+      reviewedAt: review.reviewedAt ?? null,
+    })),
     images: gallery.length > 0 ? gallery : photosOf(hotel),
     geo: hotel.hotelGeo
       ? { lat: Number(hotel.hotelGeo.lat), lng: Number(hotel.hotelGeo.lng) }
@@ -101,19 +105,18 @@ export function toAvailability(result: GdsSearchResult): HotelAvailability {
     checkout: result.checkout,
     nights: nightsBetween(result.checkin, result.checkout),
     rooms: (result.room ?? [])
-      .map(
-        (room): RoomOffer => ({
-          roomId: encodeId(HY, room.roomId),
-          roomType: room.roomType || room.description || roomTypeName(room.nameCode),
-          capacity: Number(room.capacity) || 1,
-          breakfast: Number(room.breakfast) === 1,
-          extraBed: Number(room.extraBed) || 0,
-          // realFreeCapacity وقتی هتل پکیج تعریف کرده باشد معتبرتر است
-          freeCapacity: Number(room.realFreeCapacity ?? room.freeCapacity) || 0,
-          price: room.price,
-          rackRate: room.rackRate,
-        }),
-      )
+      .map((room): RoomOffer => ({
+        roomId: encodeId(HY, room.roomId),
+        roomType:
+          room.roomType || room.description || roomTypeName(room.nameCode),
+        capacity: Number(room.capacity) || 1,
+        breakfast: Number(room.breakfast) === 1,
+        extraBed: Number(room.extraBed) || 0,
+        // realFreeCapacity وقتی هتل پکیج تعریف کرده باشد معتبرتر است
+        freeCapacity: Number(room.realFreeCapacity ?? room.freeCapacity) || 0,
+        price: room.price,
+        rackRate: room.rackRate,
+      }))
       // اتاق پر یا بدون قیمت به کارمند نشان داده نمی‌شود
       .filter((room) => room.freeCapacity > 0 && room.price > 0),
   };

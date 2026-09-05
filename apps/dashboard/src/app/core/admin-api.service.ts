@@ -2,6 +2,7 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import {
   AdminBookingRow,
+  AdminCompanyRow,
   AdminEmployeeDetail,
   AdminEmployeeRow,
   AdminOverview,
@@ -11,11 +12,15 @@ import {
   AdminWalletDefinitionRow,
   BulkAllocateInput,
   BulkAllocateResult,
+  ImportEmployeesInput,
+  ImportEmployeesResult,
   CreateEmployeeInput,
+  CreateCompanyInput,
   CreateStoreInput,
   CreateWalletDefinitionInput,
   Paginated,
   UpdateEmployeeInput,
+  UpdateCompanyInput,
   UpdateStoreInput,
   UpdateWalletDefinitionInput,
 } from '@sanpay/models';
@@ -33,6 +38,19 @@ export class AdminApiService {
     return this.get<AdminOverview>('/api/admin/overview');
   }
 
+  // ─── شرکت‌ها ──────────────────────────────────────────────────────────────
+  companies(query: Query = {}) {
+    return this.get<Paginated<AdminCompanyRow>>('/api/admin/companies', query);
+  }
+
+  createCompany(input: CreateCompanyInput) {
+    return this.post<AdminCompanyRow>('/api/admin/companies', input);
+  }
+
+  updateCompany(id: string, input: UpdateCompanyInput) {
+    return this.patch<AdminCompanyRow>(`/api/admin/companies/${id}`, input);
+  }
+
   // ─── کارمندان ─────────────────────────────────────────────────────────
   employees(query: Query = {}) {
     return this.get<Paginated<AdminEmployeeRow>>('/api/admin/employees', query);
@@ -44,6 +62,13 @@ export class AdminApiService {
 
   createEmployee(input: CreateEmployeeInput) {
     return this.post<AdminEmployeeRow>('/api/admin/employees', input);
+  }
+
+  importEmployees(input: ImportEmployeesInput) {
+    return this.post<ImportEmployeesResult>(
+      '/api/admin/employees/import',
+      input,
+    );
   }
 
   updateEmployee(id: string, input: UpdateEmployeeInput) {
@@ -90,9 +115,12 @@ export class AdminApiService {
   }
 
   resetStorePassword(id: string, password: string) {
-    return this.post<{ ok: boolean }>(`/api/admin/stores/${id}/reset-password`, {
-      password,
-    });
+    return this.post<{ ok: boolean }>(
+      `/api/admin/stores/${id}/reset-password`,
+      {
+        password,
+      },
+    );
   }
 
   // ─── کیف‌پول‌ها ───────────────────────────────────────────────────────
@@ -155,9 +183,12 @@ export class AdminApiService {
   }
 
   resetAdminPassword(id: string, password: string) {
-    return this.post<{ ok: boolean }>(`/api/admin/admins/${id}/reset-password`, {
-      password,
-    });
+    return this.post<{ ok: boolean }>(
+      `/api/admin/admins/${id}/reset-password`,
+      {
+        password,
+      },
+    );
   }
 
   // ─── پایه ─────────────────────────────────────────────────────────────
@@ -183,6 +214,7 @@ export class AdminApiService {
 export function apiError(caught: unknown, fallback: string): string {
   const message = (caught as { error?: { message?: unknown } })?.error?.message;
   if (typeof message === 'string') return message;
-  if (Array.isArray(message) && typeof message[0] === 'string') return message[0];
+  if (Array.isArray(message) && typeof message[0] === 'string')
+    return message[0];
   return fallback;
 }

@@ -1,65 +1,191 @@
-<main class="mx-auto flex min-h-dvh w-full max-w-[550px] flex-col items-center justify-center gap-8 px-4 py-10">
-
-  <!-- برند -->
+<main
+  class="mx-auto flex min-h-dvh w-full max-w-[550px] flex-col items-center justify-center gap-8 px-4 py-10"
+>
   <div class="flex flex-col items-center gap-3 text-center">
-    <div
-      class="flex size-14 items-center justify-center rounded-2xl bg-primary text-lg font-bold text-primary-foreground"
-    >
-      ج‌ف
-    </div>
+    <img
+      src="/brand/sanpay-logo-clean-v2.png"
+      alt="صن‌پی"
+      width="1898"
+      height="576"
+      decoding="sync"
+      fetchpriority="high"
+      class="h-auto w-44 object-contain outline-none"
+    />
     <div class="leading-tight">
       <p class="text-lg font-bold">جهان‌فولاد سیرجان</p>
       <p class="text-muted-foreground text-sm">سامانه رفاهی پرسنل</p>
     </div>
   </div>
 
-  <!-- کارت ورود -->
   <section hlmCard class="w-full max-w-md">
     <div hlmCardHeader>
       <h1 hlmCardTitle class="text-xl">ورود کارکنان</h1>
-      <p hlmCardDescription>
-        با کد ملی و رمز عبور خود وارد سامانه شوید.
-      </p>
+      <p hlmCardDescription>روش ورود خود را انتخاب کنید.</p>
     </div>
     <div hlmCardContent class="flex flex-col gap-5">
+      <div
+        class="bg-muted grid grid-cols-2 gap-1 rounded-lg p-1"
+        aria-label="روش ورود"
+      >
+        <button
+          hlmBtn
+          size="sm"
+          [variant]="mode() === 'password' ? 'default' : 'ghost'"
+          (click)="setMode('password')"
+        >
+          رمز عبور
+        </button>
+        <button
+          hlmBtn
+          size="sm"
+          [variant]="mode() === 'otp' ? 'default' : 'ghost'"
+          (click)="setMode('otp')"
+        >
+          کد یک‌بارمصرف
+        </button>
+      </div>
+
+      @if (mode() === 'password') {
       <div class="flex flex-col gap-2">
-        <label hlmLabel for="national-code">کد ملی</label>
+        <label hlmLabel for="password-national-code">کد ملی</label>
         <input
           hlmInput
-          id="national-code"
+          id="password-national-code"
           inputmode="numeric"
+          autocomplete="username"
           maxlength="10"
           placeholder="مثلاً ۳۰۶۰۱۲۳۴۵۶"
-          #nationalCodeInput
+          #passwordNationalCode
         />
       </div>
       <div class="flex flex-col gap-2">
-        <div class="flex items-center justify-between">
-          <label hlmLabel for="password">رمز عبور</label>
-          <a class="text-primary text-xs hover:underline" href="#login"
-            >فراموشی رمز عبور</a
-          >
-        </div>
+        <label hlmLabel for="password">رمز عبور</label>
         <input
           hlmInput
           id="password"
           type="password"
+          autocomplete="current-password"
           placeholder="••••••••"
           #passwordInput
-          (keyup.enter)="onSubmit(nationalCodeInput, passwordInput)"
+          (keyup.enter)="passwordLogin(passwordNationalCode, passwordInput)"
         />
       </div>
-      @if (error(); as message) {
-        <p class="text-destructive text-sm" role="alert">{{ message }}</p>
-      }
       <button
         hlmBtn
         class="w-full"
         [disabled]="loading()"
-        (click)="onSubmit(nationalCodeInput, passwordInput)"
+        (click)="passwordLogin(passwordNationalCode, passwordInput)"
       >
-        {{ loading() ? 'در حال ورود…' : 'ورود به سامانه' }}
+        {{ loading() ? 'در حال ورود…' : 'ورود با رمز عبور' }}
       </button>
+      <button hlmBtn variant="link" size="sm" (click)="setMode('otp')">
+        رمز ندارید یا فراموش کرده‌اید؟ ورود با OTP
+      </button>
+      } @else if (otpStep() === 'identity') {
+      <p class="text-muted-foreground text-sm">
+        شماره موبایل باید همان شماره‌ای باشد که شرکت برای شما ثبت کرده است.
+      </p>
+      <div class="flex flex-col gap-2">
+        <label hlmLabel for="otp-national-code">کد ملی</label>
+        <input
+          hlmInput
+          id="otp-national-code"
+          inputmode="numeric"
+          autocomplete="username"
+          maxlength="10"
+          #otpNationalCodeInput
+        />
+      </div>
+      <div class="flex flex-col gap-2">
+        <label hlmLabel for="otp-phone">شماره موبایل</label>
+        <input
+          hlmInput
+          id="otp-phone"
+          dir="ltr"
+          inputmode="tel"
+          autocomplete="tel"
+          maxlength="11"
+          placeholder="09123456789"
+          #otpPhoneInput
+          (keyup.enter)="requestOtp(otpNationalCodeInput, otpPhoneInput)"
+        />
+      </div>
+      <button
+        hlmBtn
+        class="w-full"
+        [disabled]="loading()"
+        (click)="requestOtp(otpNationalCodeInput, otpPhoneInput)"
+      >
+        {{ loading() ? 'در حال ارسال…' : 'ارسال کد ورود' }}
+      </button>
+      } @else if (otpStep() === 'code') {
+      <p class="text-muted-foreground text-sm">
+        کد ۶ رقمی ارسال‌شده به {{ otpPhone() }} را وارد کنید.
+      </p>
+      <div class="flex flex-col gap-2">
+        <label hlmLabel for="otp-code">کد یک‌بارمصرف</label>
+        <input
+          hlmInput
+          id="otp-code"
+          dir="ltr"
+          inputmode="numeric"
+          autocomplete="one-time-code"
+          maxlength="6"
+          class="text-center text-lg tracking-[0.4em]"
+          #otpCodeInput
+          (keyup.enter)="verifyOtp(otpCodeInput)"
+        />
+      </div>
+      <button
+        hlmBtn
+        class="w-full"
+        [disabled]="loading()"
+        (click)="verifyOtp(otpCodeInput)"
+      >
+        {{ loading() ? 'در حال بررسی…' : 'تأیید و ورود' }}
+      </button>
+      <button hlmBtn variant="ghost" size="sm" (click)="editIdentity()">
+        اصلاح کد ملی یا موبایل
+      </button>
+      } @else {
+      <p class="text-muted-foreground text-sm">
+        این اولین ورود شماست. یک رمز حداقل ۸ کاراکتری تعیین کنید.
+      </p>
+      <div class="flex flex-col gap-2">
+        <label hlmLabel for="new-password">رمز عبور جدید</label>
+        <input
+          hlmInput
+          id="new-password"
+          type="password"
+          autocomplete="new-password"
+          #newPasswordInput
+        />
+      </div>
+      <div class="flex flex-col gap-2">
+        <label hlmLabel for="confirm-password">تکرار رمز عبور</label>
+        <input
+          hlmInput
+          id="confirm-password"
+          type="password"
+          autocomplete="new-password"
+          #confirmPasswordInput
+          (keyup.enter)="setInitialPassword(newPasswordInput, confirmPasswordInput)"
+        />
+      </div>
+      <button
+        hlmBtn
+        class="w-full"
+        [disabled]="loading()"
+        (click)="setInitialPassword(newPasswordInput, confirmPasswordInput)"
+      >
+        {{ loading() ? 'در حال ثبت…' : 'ثبت رمز و ورود' }}
+      </button>
+      } @if (notice(); as message) {
+      <p class="text-primary text-sm" role="status">{{ message }}</p>
+      } @if (error(); as message) {
+      <p class="text-destructive text-sm" role="alert">{{ message }}</p>
+      }
+
       <hlm-separator />
       <p class="text-muted-foreground text-center text-sm">
         فروشگاه طرف قرارداد هستید؟
@@ -73,5 +199,4 @@
   <p class="text-muted-foreground text-center text-xs">
     © ۱۴۰۴ شرکت جهان‌فولاد سیرجان — طراحی و توسعه: شرکت طرح و توسعه دیار مانا
   </p>
-
 </main>

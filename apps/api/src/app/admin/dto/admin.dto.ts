@@ -1,6 +1,7 @@
 import { Type } from 'class-transformer';
 import {
   IsArray,
+  ArrayMaxSize,
   IsBoolean,
   IsDateString,
   IsIn,
@@ -17,6 +18,7 @@ import {
 
 const WALLET_KINDS = ['CREDIT', 'RATION', 'TOURISM'] as const;
 const ADMIN_ROLES = ['SUPER_ADMIN', 'ADMIN', 'VIEWER'] as const;
+const ORGANIZATIONAL_RANKS = ['MANAGER', 'DEPUTY', 'HEAD', 'EMPLOYEE'] as const;
 
 export class AdminLoginDto {
   @IsString()
@@ -102,6 +104,27 @@ export class ListQueryDto {
   @IsOptional()
   @IsIn(['true', 'false'])
   active?: string;
+
+  @IsOptional()
+  @IsString()
+  companyId?: string;
+}
+
+export class CreateCompanyDto {
+  @IsString()
+  @IsNotEmpty()
+  name!: string;
+}
+
+export class UpdateCompanyDto {
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
+  name?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  isActive?: boolean;
 }
 
 export class PaymentQueryDto extends ListQueryDto {
@@ -145,14 +168,60 @@ export class CreateEmployeeDto {
   @IsNotEmpty()
   lastName!: string;
 
-  @IsOptional()
   @IsString()
-  phone?: string;
+  @IsNotEmpty()
+  companyId!: string;
 
-  @IsOptional()
+  @IsIn(ORGANIZATIONAL_RANKS)
+  organizationalRank!: (typeof ORGANIZATIONAL_RANKS)[number];
+
   @IsString()
-  @MinLength(8)
-  password?: string;
+  @Matches(/^09\d{9}$/, {
+    message: 'شماره موبایل باید با ۰۹ شروع شود و ۱۱ رقم باشد',
+  })
+  phone!: string;
+}
+
+export class ImportEmployeeEntryDto {
+  @Type(() => Number)
+  @IsInt()
+  @Min(2)
+  rowNumber!: number;
+
+  @IsString()
+  @Matches(/^\d{10}$/)
+  nationalCode!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  personnelCode!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  firstName!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  lastName!: string;
+
+  @IsString()
+  @Matches(/^09\d{9}$/)
+  phone!: string;
+
+  @IsIn(ORGANIZATIONAL_RANKS)
+  organizationalRank!: (typeof ORGANIZATIONAL_RANKS)[number];
+}
+
+export class ImportEmployeesDto {
+  @IsString()
+  @IsNotEmpty()
+  companyId!: string;
+
+  @IsArray()
+  @ArrayMaxSize(5000)
+  @ValidateNested({ each: true })
+  @Type(() => ImportEmployeeEntryDto)
+  entries!: ImportEmployeeEntryDto[];
 }
 
 export class UpdateEmployeeDto {
@@ -178,6 +247,16 @@ export class UpdateEmployeeDto {
 
   @IsOptional()
   @IsString()
+  @IsNotEmpty()
+  companyId?: string;
+
+  @IsOptional()
+  @IsIn(ORGANIZATIONAL_RANKS)
+  organizationalRank?: (typeof ORGANIZATIONAL_RANKS)[number];
+
+  @IsOptional()
+  @IsString()
+  @Matches(/^09\d{9}$/)
   phone?: string;
 
   @IsOptional()
@@ -206,6 +285,15 @@ export class CreateStoreDto {
   @IsOptional()
   @IsString()
   address?: string;
+
+  @IsString()
+  @Matches(/^IR\d{24}$/, { message: 'شماره شبا باید با IR و ۲۴ رقم وارد شود' })
+  settlementIban!: string;
+
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
+  settlementOwnerName?: string;
 
   @IsString()
   @Matches(/^[a-zA-Z0-9._-]{3,32}$/)
@@ -241,6 +329,15 @@ export class UpdateStoreDto {
 
   @IsOptional()
   @IsString()
+  @Matches(/^IR\d{24}$/, { message: 'شماره شبا باید با IR و ۲۴ رقم وارد شود' })
+  settlementIban?: string;
+
+  @IsOptional()
+  @IsString()
+  settlementOwnerName?: string;
+
+  @IsOptional()
+  @IsString()
   @Matches(/^[a-zA-Z0-9._-]{3,32}$/)
   username?: string;
 
@@ -253,6 +350,10 @@ export class CreateWalletDefinitionDto {
   @IsString()
   @IsNotEmpty()
   name!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  companyId!: string;
 
   @IsIn(WALLET_KINDS)
   kind!: (typeof WALLET_KINDS)[number];
@@ -283,6 +384,11 @@ export class UpdateWalletDefinitionDto {
   @IsString()
   @IsNotEmpty()
   name?: string;
+
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
+  companyId?: string;
 
   @IsOptional()
   @IsIn(WALLET_KINDS)
@@ -343,11 +449,14 @@ export class UpdateAllocationDto {
   isActive?: boolean;
 }
 
-/** یک سطر از فایل تخصیص: کارمند با سقف و انقضای مخصوص خودش */
+/** یک سطر از فایل تخصیص: کارمند با رده، سقف و انقضای مخصوص خودش */
 export class BulkAllocateEntryDto {
   @IsString()
   @IsNotEmpty()
   nationalCode!: string;
+
+  @IsIn(ORGANIZATIONAL_RANKS)
+  organizationalRank!: (typeof ORGANIZATIONAL_RANKS)[number];
 
   @Type(() => Number)
   @IsInt()

@@ -32,10 +32,7 @@ export class ProfileService {
     const live = allocations.filter((a) => a.cap - a.spent > 0n);
 
     return {
-      totalRemaining: live.reduce(
-        (sum, a) => sum + Number(a.cap - a.spent),
-        0,
-      ),
+      totalRemaining: live.reduce((sum, a) => sum + Number(a.cap - a.spent), 0),
       walletCount: live.length,
       // allocations از قبل بر اساس expiresAt مرتب است
       nextExpiry: live[0]?.expiresAt.toISOString() ?? null,
@@ -72,6 +69,7 @@ export class ProfileService {
       amount: Number(payment.amount),
       createdAt: payment.createdAt.toISOString(),
       lines: payment.transactions.map((transaction) => ({
+        allocationId: transaction.allocationId,
         walletName: transaction.allocation.definition.name,
         icon: transaction.allocation.definition.icon,
         amount: Number(transaction.amount),

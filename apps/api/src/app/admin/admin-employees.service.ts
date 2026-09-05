@@ -8,7 +8,9 @@ import {
   AdminEmployeeDetail,
   AdminEmployeeRow,
   AdminPaymentRow,
+  ImportEmployeesResult,
   Paginated,
+  OrganizationalRank,
   WalletKind,
 } from '@sanpay/models';
 import * as bcrypt from 'bcrypt';
@@ -16,6 +18,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import {
   CreateAllocationDto,
   CreateEmployeeDto,
+  ImportEmployeesDto,
   ListQueryDto,
   UpdateAllocationDto,
   UpdateEmployeeDto,
@@ -33,6 +36,7 @@ export class AdminEmployeesService {
 
     const where = {
       ...(query.active ? { isActive: query.active === 'true' } : {}),
+      ...(query.companyId ? { companyId: query.companyId } : {}),
       ...(q
         ? {
             OR: [
@@ -41,6 +45,11 @@ export class AdminEmployeesService {
               { nationalCode: { contains: q } },
               { personnelCode: { contains: q } },
               { phone: { contains: q } },
+              {
+                company: {
+                  name: { contains: q, mode: 'insensitive' as const },
+                },
+              },
             ],
           }
         : {}),
@@ -53,7 +62,7 @@ export class AdminEmployeesService {
         orderBy: { createdAt: 'desc' },
         skip: (page - 1) * pageSize,
         take: pageSize,
-        include: { allocations: { where: activeAllocation() } },
+        include: { company: true, allocations: { where: activeAllocation() } },
       }),
     ]);
 
@@ -69,6 +78,7 @@ export class AdminEmployeesService {
     const employee = await this.prisma.employee.findUnique({
       where: { id },
       include: {
+        company: true,
         allocations: {
           include: { definition: true },
           orderBy: { createdAt: 'desc' },
@@ -84,7 +94,9 @@ export class AdminEmployeesService {
       include: {
         store: true,
         employee: true,
-        transactions: { include: { allocation: { include: { definition: true } } } },
+        transactions: {
+          include: { allocation: { include: { definition: true } } },
+        },
       },
     });
 
@@ -120,6 +132,7 @@ export class AdminEmployeesService {
   }
 
   async create(dto: CreateEmployeeDto): Promise<AdminEmployeeRow> {
+    await this.mustHaveActiveCompany(dto.companyId);
     const clash = await this.prisma.employee.findFirst({
       where: {
         OR: [
@@ -132,29 +145,126 @@ export class AdminEmployeesService {
       throw new BadRequestException('کد ملی یا کد پرسنلی تکراری است');
     }
 
-    // رمز اولیه اگر داده نشود کد ملی است — کارمند در اولین ورود عوضش می‌کند
     const employee = await this.prisma.employee.create({
       data: {
         nationalCode: dto.nationalCode,
         personnelCode: dto.personnelCode,
         firstName: dto.firstName,
         lastName: dto.lastName,
-        phone: dto.phone || null,
-        passwordHash: await bcrypt.hash(dto.password || dto.nationalCode, 10),
+        phone: dto.phone,
+        companyId: dto.companyId,
+        organizationalRank: dto.organizationalRank,
+        passwordHash: null,
       },
+      include: { company: true },
     });
     return toRow({ ...employee, allocations: [] });
   }
 
+  async import(dto: ImportEmployeesDto): Promise<ImportEmployeesResult> {
+    await this.mustHaveActiveCompany(dto.companyId);
+    const rejected: ImportEmployeesResult['rejected'] = [];
+    const accepted: ImportEmployeesDto['entries'] = [];
+    const nationalCodes = new Set<string>();
+    const personnelCodes = new Set<string>();
+
+    for (const entry of dto.entries) {
+      if (
+        nationalCodes.has(entry.nationalCode) ||
+        personnelCodes.has(entry.personnelCode)
+      ) {
+        rejected.push({
+          rowNumber: entry.rowNumber,
+          nationalCode: entry.nationalCode,
+          reason: 'کد ملی یا کد پرسنلی در خود فایل تکراری است',
+        });
+        continue;
+      }
+      nationalCodes.add(entry.nationalCode);
+      personnelCodes.add(entry.personnelCode);
+      accepted.push(entry);
+    }
+
+    const existing = await this.prisma.employee.findMany({
+      where: {
+        OR: [
+          { nationalCode: { in: accepted.map((entry) => entry.nationalCode) } },
+          {
+            personnelCode: {
+              in: accepted.map((entry) => entry.personnelCode),
+            },
+          },
+        ],
+      },
+      select: { nationalCode: true, personnelCode: true },
+    });
+    const existingNationalCodes = new Set(
+      existing.map((row) => row.nationalCode),
+    );
+    const existingPersonnelCodes = new Set(
+      existing.map((row) => row.personnelCode),
+    );
+    const creatable = accepted.filter((entry) => {
+      if (
+        existingNationalCodes.has(entry.nationalCode) ||
+        existingPersonnelCodes.has(entry.personnelCode)
+      ) {
+        rejected.push({
+          rowNumber: entry.rowNumber,
+          nationalCode: entry.nationalCode,
+          reason: 'کد ملی یا کد پرسنلی قبلاً ثبت شده است',
+        });
+        return false;
+      }
+      return true;
+    });
+
+    if (creatable.length) {
+      await this.prisma.employee.createMany({
+        data: creatable.map((entry) => ({
+          nationalCode: entry.nationalCode,
+          personnelCode: entry.personnelCode,
+          firstName: entry.firstName,
+          lastName: entry.lastName,
+          phone: entry.phone,
+          companyId: dto.companyId,
+          organizationalRank: entry.organizationalRank,
+          passwordHash: null,
+        })),
+      });
+    }
+
+    return { created: creatable.length, rejected };
+  }
+
   async update(id: string, dto: UpdateEmployeeDto): Promise<AdminEmployeeRow> {
     await this.mustExist(id);
+    if (dto.companyId) {
+      await this.mustHaveActiveCompany(dto.companyId);
+      const incompatibleAllocation =
+        await this.prisma.walletAllocation.findFirst({
+          where: {
+            employeeId: id,
+            definition: { companyId: { not: dto.companyId } },
+          },
+          select: { id: true },
+        });
+      if (incompatibleAllocation) {
+        throw new BadRequestException(
+          'تا زمانی که کارمند کیف‌پول شرکت قبلی را دارد، شرکت او قابل تغییر نیست',
+        );
+      }
+    }
     const employee = await this.prisma.employee.update({
       where: { id },
       data: {
         ...dto,
         ...(dto.phone !== undefined ? { phone: dto.phone || null } : {}),
       },
-      include: { allocations: { where: activeAllocation() } },
+      include: {
+        company: true,
+        allocations: { where: activeAllocation() },
+      },
     });
     return toRow(employee);
   }
@@ -171,11 +281,18 @@ export class AdminEmployeesService {
   // ─── تخصیص کیف پول ──────────────────────────────────────────────────────
 
   async addAllocation(employeeId: string, dto: CreateAllocationDto) {
-    await this.mustExist(employeeId);
-    const definition = await this.prisma.walletDefinition.findUnique({
-      where: { id: dto.definitionId },
-    });
+    const [employee, definition] = await Promise.all([
+      this.mustExist(employeeId),
+      this.prisma.walletDefinition.findUnique({
+        where: { id: dto.definitionId },
+      }),
+    ]);
     if (!definition) throw new NotFoundException('کیف پول پیدا نشد');
+    if (definition.companyId !== employee.companyId) {
+      throw new BadRequestException(
+        'کیف پول و کارمند باید مربوط به یک شرکت باشند',
+      );
+    }
 
     const allocation = await this.prisma.walletAllocation.create({
       data: {
@@ -196,9 +313,7 @@ export class AdminEmployeesService {
     if (!existing) throw new NotFoundException('تخصیص پیدا نشد');
     // سقف نباید زیر مبلغ خرج‌شده برود، وگرنه مانده منفی می‌شود
     if (dto.cap !== undefined && BigInt(dto.cap) < existing.spent) {
-      throw new BadRequestException(
-        'سقف نمی‌تواند کمتر از مبلغ مصرف‌شده باشد',
-      );
+      throw new BadRequestException('سقف نمی‌تواند کمتر از مبلغ مصرف‌شده باشد');
     }
 
     const allocation = await this.prisma.walletAllocation.update({
@@ -221,13 +336,17 @@ export class AdminEmployeesService {
     if (amount === 0) throw new BadRequestException('مبلغ نمی‌تواند صفر باشد');
 
     return this.prisma.$transaction(async (tx) => {
-      const allocation = await tx.walletAllocation.findUnique({ where: { id } });
+      const allocation = await tx.walletAllocation.findUnique({
+        where: { id },
+      });
       if (!allocation) throw new NotFoundException('تخصیص پیدا نشد');
 
       const delta = BigInt(-amount); // افزایش مانده = کاهش spent
       const spent = allocation.spent + delta;
       if (spent < 0n || spent > allocation.cap) {
-        throw new BadRequestException('مبلغ اصلاح خارج از محدودهٔ این کیف پول است');
+        throw new BadRequestException(
+          'مبلغ اصلاح خارج از محدودهٔ این کیف پول است',
+        );
       }
 
       const updated = await tx.walletAllocation.update({
@@ -255,6 +374,15 @@ export class AdminEmployeesService {
     if (!employee) throw new NotFoundException('کارمند پیدا نشد');
     return employee;
   }
+
+  private async mustHaveActiveCompany(id: string): Promise<void> {
+    const company = await this.prisma.company.findFirst({
+      where: { id, isActive: true },
+      select: { id: true },
+    });
+    if (!company)
+      throw new BadRequestException('شرکت معتبر و فعال انتخاب کنید');
+  }
 }
 
 function activeAllocation() {
@@ -268,9 +396,12 @@ function toRow(employee: {
   firstName: string;
   lastName: string;
   phone: string | null;
+  company: { id: string; name: string };
+  organizationalRank: string;
   isActive: boolean;
   createdAt: Date;
   allocations: Array<{ cap: bigint; spent: bigint }>;
+  passwordHash: string | null;
 }): AdminEmployeeRow {
   return {
     id: employee.id,
@@ -279,6 +410,8 @@ function toRow(employee: {
     firstName: employee.firstName,
     lastName: employee.lastName,
     phone: employee.phone,
+    company: { id: employee.company.id, name: employee.company.name },
+    organizationalRank: employee.organizationalRank as OrganizationalRank,
     isActive: employee.isActive,
     createdAt: employee.createdAt.toISOString(),
     walletCount: employee.allocations.length,
@@ -286,6 +419,7 @@ function toRow(employee: {
       (sum, a) => sum + Number(a.cap - a.spent),
       0,
     ),
+    hasPassword: employee.passwordHash !== null,
   };
 }
 

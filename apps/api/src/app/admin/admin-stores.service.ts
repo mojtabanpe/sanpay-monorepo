@@ -65,6 +65,8 @@ export class AdminStoresService {
         category: store.category,
         phone: store.phone,
         address: store.address,
+        settlementIban: store.settlementIban,
+        settlementOwnerName: store.settlementOwnerName,
         username: store.username,
         isActive: store.isActive,
         createdAt: store.createdAt.toISOString(),
@@ -95,6 +97,8 @@ export class AdminStoresService {
         category: dto.category || null,
         phone: dto.phone || null,
         address: dto.address || null,
+        settlementIban: dto.settlementIban,
+        settlementOwnerName: dto.settlementOwnerName || null,
         username: dto.username,
         passwordHash: await bcrypt.hash(dto.password, 10),
       },
@@ -111,6 +115,12 @@ export class AdminStoresService {
         ...(dto.category !== undefined ? { category: dto.category || null } : {}),
         ...(dto.phone !== undefined ? { phone: dto.phone || null } : {}),
         ...(dto.address !== undefined ? { address: dto.address || null } : {}),
+        ...(dto.settlementIban !== undefined
+          ? { settlementIban: dto.settlementIban }
+          : {}),
+        ...(dto.settlementOwnerName !== undefined
+          ? { settlementOwnerName: dto.settlementOwnerName || null }
+          : {}),
       },
     });
     return this.one(id);
@@ -142,6 +152,8 @@ export class AdminStoresService {
       category: store.category,
       phone: store.phone,
       address: store.address,
+      settlementIban: store.settlementIban,
+      settlementOwnerName: store.settlementOwnerName,
       username: store.username,
       isActive: store.isActive,
       createdAt: store.createdAt.toISOString(),

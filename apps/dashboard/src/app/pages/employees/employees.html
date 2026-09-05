@@ -7,93 +7,207 @@
       </p>
     </div>
     @if (canWrite()) {
+    <div class="flex gap-2">
+      <button hlmBtn variant="outline" (click)="importOpen.set(!importOpen())">
+        {{ importOpen() ? 'بستن ورود اکسل' : 'ورود از اکسل' }}
+      </button>
       <button hlmBtn (click)="showForm.set(!showForm())">
         {{ showForm() ? 'بستن فرم' : 'کارمند جدید' }}
       </button>
+    </div>
     }
   </header>
 
   @if (showForm()) {
-    <section hlmCard>
-      <div hlmCardHeader>
-        <h2 hlmCardTitle>ثبت کارمند</h2>
-        <p hlmCardDescription>
-          اگر رمز خالی بماند، کد ملی به‌عنوان رمز اولیه ثبت می‌شود.
-        </p>
+  <section hlmCard>
+    <div hlmCardHeader>
+      <h2 hlmCardTitle>ثبت کارمند</h2>
+      <p hlmCardDescription>
+        کارمند بدون رمز ثبت می‌شود و در اولین ورود با OTP برای خودش رمز تعیین
+        می‌کند.
+      </p>
+    </div>
+    <div hlmCardContent class="grid gap-4 md:grid-cols-4">
+      <hlm-field>
+        <label hlmFieldLabel for="fld-1">نام</label>
+        <input
+          hlmInput
+          class="w-full"
+          [value]="form().firstName"
+          (input)="update('firstName', $any($event.target).value)"
+        />
+      </hlm-field>
+      <hlm-field>
+        <label hlmFieldLabel for="employee-company">شرکت</label>
+        <hlm-select
+          [value]="form().companyId"
+          [itemToString]="companyLabel"
+          (valueChange)="update('companyId', $any($event))"
+        >
+          <hlm-select-trigger id="employee-company" class="w-full"
+            ><hlm-select-value
+          /></hlm-select-trigger>
+          <hlm-select-content *hlmSelectPortal>
+            @for (company of companies(); track company.id) {
+            <hlm-select-item [value]="company.id"
+              >{{ company.name }}</hlm-select-item
+            >
+            }
+          </hlm-select-content>
+        </hlm-select>
+      </hlm-field>
+      <hlm-field>
+        <label hlmFieldLabel for="employee-rank">ردهٔ سازمانی</label>
+        <hlm-select
+          [value]="form().organizationalRank"
+          [itemToString]="rankLabel"
+          (valueChange)="update('organizationalRank', $any($event))"
+        >
+          <hlm-select-trigger id="employee-rank" class="w-full"
+            ><hlm-select-value
+          /></hlm-select-trigger>
+          <hlm-select-content *hlmSelectPortal>
+            @for (rank of ranks; track rank) {
+            <hlm-select-item [value]="rank"
+              >{{ rankLabels[rank] }}</hlm-select-item
+            >
+            }
+          </hlm-select-content>
+        </hlm-select>
+      </hlm-field>
+      <hlm-field>
+        <label hlmFieldLabel for="fld-2">نام خانوادگی</label>
+        <input
+          hlmInput
+          class="w-full"
+          [value]="form().lastName"
+          (input)="update('lastName', $any($event.target).value)"
+        />
+      </hlm-field>
+      <hlm-field>
+        <label hlmFieldLabel for="fld-3">کد ملی</label>
+        <input
+          hlmInput
+          class="w-full"
+          dir="ltr"
+          [value]="form().nationalCode"
+          (input)="update('nationalCode', $any($event.target).value)"
+        />
+      </hlm-field>
+      <hlm-field>
+        <label hlmFieldLabel for="fld-4">کد پرسنلی</label>
+        <input
+          hlmInput
+          class="w-full"
+          dir="ltr"
+          [value]="form().personnelCode"
+          (input)="update('personnelCode', $any($event.target).value)"
+        />
+      </hlm-field>
+      <hlm-field>
+        <label hlmFieldLabel for="fld-5">موبایل</label>
+        <input
+          hlmInput
+          class="w-full"
+          dir="ltr"
+          [value]="form().phone"
+          (input)="update('phone', $any($event.target).value)"
+        />
+      </hlm-field>
+      @if (formError()) {
+      <div hlmAlert variant="destructive" class="md:col-span-4">
+        <p hlmAlertDescription>{{ formError() }}</p>
       </div>
-      <div hlmCardContent class="grid gap-4 md:grid-cols-3">
-        <hlm-field>
-          <label hlmFieldLabel for="fld-1">نام</label>
-          <input
-            hlmInput
-            class="w-full"
-            [value]="form().firstName"
-            (input)="update('firstName', $any($event.target).value)"
-          />
-        </hlm-field>
-        <hlm-field>
-          <label hlmFieldLabel for="fld-2">نام خانوادگی</label>
-          <input
-            hlmInput
-            class="w-full"
-            [value]="form().lastName"
-            (input)="update('lastName', $any($event.target).value)"
-          />
-        </hlm-field>
-        <hlm-field>
-          <label hlmFieldLabel for="fld-3">کد ملی</label>
-          <input
-            hlmInput
-            class="w-full"
-            dir="ltr"
-            [value]="form().nationalCode"
-            (input)="update('nationalCode', $any($event.target).value)"
-          />
-        </hlm-field>
-        <hlm-field>
-          <label hlmFieldLabel for="fld-4">کد پرسنلی</label>
-          <input
-            hlmInput
-            class="w-full"
-            dir="ltr"
-            [value]="form().personnelCode"
-            (input)="update('personnelCode', $any($event.target).value)"
-          />
-        </hlm-field>
-        <hlm-field>
-          <label hlmFieldLabel for="fld-5">موبایل</label>
-          <input
-            hlmInput
-            class="w-full"
-            dir="ltr"
-            [value]="form().phone"
-            (input)="update('phone', $any($event.target).value)"
-          />
-        </hlm-field>
-        <hlm-field>
-          <label hlmFieldLabel for="fld-6">رمز اولیه (اختیاری)</label>
-          <input
-            hlmInput
-            class="w-full"
-            dir="ltr"
-            [value]="form().password"
-            (input)="update('password', $any($event.target).value)"
-          />
-        </hlm-field>
+      }
 
-        @if (formError()) {
-          <div hlmAlert variant="destructive" class="md:col-span-3">
-            <p hlmAlertDescription>{{ formError() }}</p>
-          </div>
-        }
-
-        <div class="md:col-span-3">
-          <button hlmBtn [disabled]="saving()" (click)="create()">
-            {{ saving() ? 'در حال ثبت…' : 'ثبت کارمند' }}
+      <div class="md:col-span-4">
+        <button
+          hlmBtn
+          [disabled]="saving() || !form().companyId || !form().phone"
+          (click)="create()"
+        >
+          {{ saving() ? 'در حال ثبت…' : 'ثبت کارمند' }}
+        </button>
+      </div>
+    </div>
+  </section>
+  } @if (importOpen()) {
+  <section hlmCard>
+    <div hlmCardHeader>
+      <h2 hlmCardTitle>ورود گروهی کارمندان</h2>
+      <p hlmCardDescription>
+        فایل CSV یا XLSX با ستون‌های کد ملی، کد پرسنلی، نام، نام خانوادگی،
+        موبایل و رده سازمانی انتخاب کنید. همهٔ ردیف‌ها به شرکت انتخاب‌شده مربوط
+        می‌شوند.
+      </p>
+    </div>
+    <div hlmCardContent class="flex flex-col gap-4">
+      <div class="grid gap-4 md:grid-cols-2">
+        <hlm-field>
+          <label hlmFieldLabel for="import-company">شرکت</label>
+          <hlm-select
+            [value]="importCompanyId()"
+            [itemToString]="companyLabel"
+            (valueChange)="importCompanyId.set($any($event))"
+          >
+            <hlm-select-trigger id="import-company" class="w-full"
+              ><hlm-select-value
+            /></hlm-select-trigger>
+            <hlm-select-content *hlmSelectPortal>
+              @for (company of companies(); track company.id) {
+              <hlm-select-item [value]="company.id"
+                >{{ company.name }}</hlm-select-item
+              >
+              }
+            </hlm-select-content>
+          </hlm-select>
+        </hlm-field>
+        <hlm-field>
+          <label hlmFieldLabel for="employee-file">فایل کارمندان</label>
+          <input
+            #employeeFile
+            id="employee-file"
+            class="sr-only"
+            type="file"
+            accept=".csv,.xlsx"
+            (change)="selectImportFile($event)"
+          />
+          <button
+            hlmBtn
+            variant="outline"
+            class="justify-start"
+            (click)="employeeFile.click()"
+          >
+            {{ importFileName() || 'انتخاب فایل اکسل یا CSV' }}
           </button>
+        </hlm-field>
+      </div>
+
+      @if (importEntries().length) {
+      <p class="text-sm">
+        {{ fa(importEntries().length) }} ردیف معتبر آمادهٔ ثبت است.
+      </p>
+      } @if (importNotice()) {
+      <div hlmAlert><p hlmAlertDescription>{{ importNotice() }}</p></div>
+      } @if (importErrors().length) {
+      <div hlmAlert variant="destructive">
+        <div hlmAlertDescription class="max-h-40 overflow-auto">
+          @for (message of importErrors(); track $index) {
+          <p>{{ message }}</p>
+          }
         </div>
       </div>
-    </section>
+      }
+      <button
+        hlmBtn
+        class="self-start"
+        [disabled]="importing() || !importCompanyId() || !importEntries().length"
+        (click)="importEmployees()"
+      >
+        {{ importing() ? 'در حال ثبت…' : 'ثبت کارمندان فایل' }}
+      </button>
+    </div>
+  </section>
   }
 
   <!-- جست‌وجو و فیلتر -->
@@ -136,7 +250,7 @@
   </div>
 
   @if (error()) {
-    <p class="text-destructive text-sm">{{ error() }}</p>
+  <p class="text-destructive text-sm">{{ error() }}</p>
   }
 
   <section hlmCard class="w-full">
@@ -150,6 +264,9 @@
               <th hlmTh>کد ملی</th>
               <th hlmTh>کد پرسنلی</th>
               <th hlmTh>موبایل</th>
+              <th hlmTh>شرکت</th>
+              <th hlmTh>رده</th>
+              <th hlmTh>ورود</th>
               <th hlmTh>کیف‌پول فعال</th>
               <th hlmTh>ماندهٔ اعتبار</th>
               <th hlmTh>وضعیت</th>
@@ -158,48 +275,56 @@
           </thead>
           <tbody hlmTBody>
             @for (row of rows(); track row.id) {
-              <tr hlmTr>
-                <td hlmTd class="font-medium">
-                  <a class="text-primary" [routerLink]="['/employees', row.id]">
-                    {{ row.firstName }} {{ row.lastName }}
-                  </a>
-                </td>
-                <td hlmTd><span dir="ltr">{{ row.nationalCode }}</span></td>
-                <td hlmTd><span dir="ltr">{{ row.personnelCode }}</span></td>
-                <td hlmTd><span dir="ltr">{{ row.phone ?? '—' }}</span></td>
-                <td hlmTd>{{ fa(row.walletCount) }}</td>
-                <td hlmTd class="font-semibold">{{ toman(row.remaining) }}</td>
-                <td hlmTd>
-                  <span hlmBadge [variant]="row.isActive ? 'default' : 'secondary'">
-                    {{ row.isActive ? 'فعال' : 'غیرفعال' }}
-                  </span>
-                </td>
-                <td hlmTd>
-                  <a
-                    hlmBtn
-                    variant="ghost"
-                    size="sm"
-                    [routerLink]="['/employees', row.id]"
-                    >جزئیات</a
-                  >
-                  @if (canWrite()) {
-                    <button
-                      hlmBtn
-                      variant="ghost"
-                      size="sm"
-                      (click)="toggleActive(row)"
-                    >
-                      {{ row.isActive ? 'غیرفعال' : 'فعال' }}
-                    </button>
-                  }
-                </td>
-              </tr>
+            <tr hlmTr>
+              <td hlmTd class="font-medium">
+                <a class="text-primary" [routerLink]="['/employees', row.id]">
+                  {{ row.firstName }} {{ row.lastName }}
+                </a>
+              </td>
+              <td hlmTd><span dir="ltr">{{ row.nationalCode }}</span></td>
+              <td hlmTd><span dir="ltr">{{ row.personnelCode }}</span></td>
+              <td hlmTd><span dir="ltr">{{ row.phone ?? '—' }}</span></td>
+              <td hlmTd>{{ row.company.name }}</td>
+              <td hlmTd>{{ rankLabels[row.organizationalRank] }}</td>
+              <td hlmTd>
+                {{ row.hasPassword ? 'رمز دارد' : 'در انتظار اولین ورود' }}
+              </td>
+              <td hlmTd>{{ fa(row.walletCount) }}</td>
+              <td hlmTd class="font-semibold">{{ toman(row.remaining) }}</td>
+              <td hlmTd>
+                <span
+                  hlmBadge
+                  [variant]="row.isActive ? 'default' : 'secondary'"
+                >
+                  {{ row.isActive ? 'فعال' : 'غیرفعال' }}
+                </span>
+              </td>
+              <td hlmTd>
+                <a
+                  hlmBtn
+                  variant="ghost"
+                  size="sm"
+                  [routerLink]="['/employees', row.id]"
+                  >جزئیات</a
+                >
+                @if (canWrite()) {
+                <button
+                  hlmBtn
+                  variant="ghost"
+                  size="sm"
+                  (click)="toggleActive(row)"
+                >
+                  {{ row.isActive ? 'غیرفعال' : 'فعال' }}
+                </button>
+                }
+              </td>
+            </tr>
             } @empty {
-              <tr hlmTr>
-                <td hlmTd colspan="8" class="text-muted-foreground text-center">
-                  {{ loading() ? 'در حال بارگذاری…' : 'کارمندی پیدا نشد.' }}
-                </td>
-              </tr>
+            <tr hlmTr>
+              <td hlmTd colspan="11" class="text-muted-foreground text-center">
+                {{ loading() ? 'در حال بارگذاری…' : 'کارمندی پیدا نشد.' }}
+              </td>
+            </tr>
             }
           </tbody>
         </table>

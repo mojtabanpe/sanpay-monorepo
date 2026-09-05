@@ -9,6 +9,6 @@ import { classes } from '@sanpay/ui/utils';
 })
 export class HlmComboboxChipInput {
 	constructor() {
-		classes(() => 'placeholder:text-muted-foreground min-w-16 flex-1 outline-none');
+		classes(() => 'placeholder:text-muted-foreground/55 min-w-16 flex-1 outline-none');
 	}
 }

@@ -22,6 +22,11 @@ export const appRoutes: Route[] = [
           import('./pages/overview/overview').then((m) => m.OverviewPage),
       },
       {
+        path: 'companies',
+        loadComponent: () =>
+          import('./pages/companies/companies').then((m) => m.CompaniesPage),
+      },
+      {
         path: 'employees',
         loadComponent: () =>
           import('./pages/employees/employees').then((m) => m.EmployeesPage),

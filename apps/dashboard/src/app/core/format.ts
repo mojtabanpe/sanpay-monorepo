@@ -65,6 +65,13 @@ export const WALLET_KIND_LABELS: Record<string, string> = {
   TOURISM: 'گردشگری',
 };
 
+export const ORGANIZATIONAL_RANK_LABELS: Record<string, string> = {
+  MANAGER: 'مدیر',
+  DEPUTY: 'معاون',
+  HEAD: 'رییس',
+  EMPLOYEE: 'کارمند',
+};
+
 export const BOOKING_STATUS_LABELS: Record<string, string> = {
   CONFIRMED: 'قطعی',
   PENDING: 'در انتظار تأیید',

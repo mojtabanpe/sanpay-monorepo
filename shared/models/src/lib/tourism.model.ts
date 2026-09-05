@@ -39,12 +39,21 @@ export interface NearPlace {
   distance: string;
 }
 
+/** نظر یک مسافر دربارهٔ هتل؛ ممکن است تأمین‌کننده‌ای نظری برنگرداند. */
+export interface HotelReview {
+  author: string;
+  rating: number;
+  comment: string;
+  reviewedAt?: string | null;
+}
+
 export interface HotelDetail extends HotelSummary {
   description: string;
   checkInTimeFrom: string;
   checkOutTimeFrom: string;
   facilities: HotelFacilities;
   nearPlaces: NearPlace[];
+  reviews: HotelReview[];
   /** گالری تصاویر */
   images: string[];
   geo: { lat: number; lng: number } | null;
@@ -112,6 +121,12 @@ export interface BookingGuest {
   mobile: string;
 }
 
+/** مشخصات کامل یک مسافر که کاربر قبلاً برای او رزرو ثبت کرده است. */
+export interface PreviousTraveler extends BookingGuest {
+  /** آخرین زمانی که این مشخصات در یک رزرو استفاده شده است. */
+  lastUsedAt: string;
+}
+
 export interface CreateBookingInput {
   hotelId: string;
   roomId: string;
@@ -145,7 +160,7 @@ export type BookingStatus =
 /** رسید رزرو — چیزی که بعد از پرداخت به کارمند نشان داده می‌شود */
 export interface BookingReceipt {
   id: string;
-  /** شمارهٔ پیگیری داخلی سان‌پی (۸ رقمی) */
+  /** شمارهٔ پیگیری داخلی صن‌پی (۸ رقمی) */
   referenceNo: string;
   status: BookingStatus;
   /** نام تأمین‌کننده برای نمایش در رسید («هتل‌یار» / «اقامت۲۴») */

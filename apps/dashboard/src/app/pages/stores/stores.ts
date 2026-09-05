@@ -54,6 +54,8 @@ export class StoresPage {
     category: '',
     phone: '',
     address: '',
+    settlementIban: '',
+    settlementOwnerName: '',
     username: '',
     password: '',
   });
@@ -65,6 +67,8 @@ export class StoresPage {
     category: '',
     phone: '',
     address: '',
+    settlementIban: '',
+    settlementOwnerName: '',
   });
 
   constructor() {
@@ -116,6 +120,8 @@ export class StoresPage {
       category: row.category ?? '',
       phone: row.phone ?? '',
       address: row.address ?? '',
+      settlementIban: row.settlementIban ?? '',
+      settlementOwnerName: row.settlementOwnerName ?? '',
     });
   }
 
@@ -128,6 +134,8 @@ export class StoresPage {
         category: form.category.trim() || undefined,
         phone: form.phone.trim() || undefined,
         address: form.address.trim() || undefined,
+        settlementIban: form.settlementIban.replace(/\s/g, '').toUpperCase(),
+        settlementOwnerName: form.settlementOwnerName.trim() || undefined,
         username: form.username.trim().toLowerCase(),
         password: form.password,
       });
@@ -138,6 +146,8 @@ export class StoresPage {
         category: '',
         phone: '',
         address: '',
+        settlementIban: '',
+        settlementOwnerName: '',
         username: '',
         password: '',
       });
@@ -153,6 +163,8 @@ export class StoresPage {
         category: form.category.trim(),
         phone: form.phone.trim(),
         address: form.address.trim(),
+        settlementIban: form.settlementIban.replace(/\s/g, '').toUpperCase(),
+        settlementOwnerName: form.settlementOwnerName.trim(),
       });
       this.editingId.set(null);
       this.notice.set('فروشگاه به‌روزرسانی شد.');

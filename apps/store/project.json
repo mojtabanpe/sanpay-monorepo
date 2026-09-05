@@ -51,7 +51,7 @@
       "executor": "@angular/build:dev-server",
       "defaultConfiguration": "development",
       "options": {
-        "port": 4400,
+        "port": 6400,
         "proxyConfig": "apps/store/proxy.conf.json"
       },
       "configurations": {

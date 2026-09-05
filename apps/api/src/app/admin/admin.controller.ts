@@ -12,6 +12,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { AdminAuthService } from './admin-auth.service';
+import { AdminCompaniesService } from './admin-companies.service';
 import { AdminEmployeesService } from './admin-employees.service';
 import { AdminJwtGuard, AdminRequest } from './admin-jwt.guard';
 import { AdminReportsService } from './admin-reports.service';
@@ -25,7 +26,9 @@ import {
   ChangeAdminPasswordDto,
   CreateAdminDto,
   CreateAllocationDto,
+  CreateCompanyDto,
   CreateEmployeeDto,
+  ImportEmployeesDto,
   CreateStoreDto,
   CreateWalletDefinitionDto,
   ListQueryDto,
@@ -33,6 +36,7 @@ import {
   SetPasswordDto,
   UpdateAdminDto,
   UpdateAllocationDto,
+  UpdateCompanyDto,
   UpdateEmployeeDto,
   UpdateStoreDto,
   UpdateWalletDefinitionDto,
@@ -100,6 +104,29 @@ export class AdminUsersController {
   }
 }
 
+@Controller('admin/companies')
+@UseGuards(AdminJwtGuard)
+export class AdminCompaniesController {
+  constructor(private readonly companies: AdminCompaniesService) {}
+
+  @Get()
+  list(@Query() query: ListQueryDto) {
+    return this.companies.list(query);
+  }
+
+  @Post()
+  @Roles(...WRITE_ROLES)
+  create(@Body() dto: CreateCompanyDto) {
+    return this.companies.create(dto);
+  }
+
+  @Patch(':id')
+  @Roles(...WRITE_ROLES)
+  update(@Param('id') id: string, @Body() dto: UpdateCompanyDto) {
+    return this.companies.update(id, dto);
+  }
+}
+
 @Controller('admin/employees')
 @UseGuards(AdminJwtGuard)
 export class AdminEmployeesController {
@@ -119,6 +146,13 @@ export class AdminEmployeesController {
   @Roles(...WRITE_ROLES)
   create(@Body() dto: CreateEmployeeDto) {
     return this.employees.create(dto);
+  }
+
+  @Post('import')
+  @HttpCode(HttpStatus.OK)
+  @Roles(...WRITE_ROLES)
+  import(@Body() dto: ImportEmployeesDto) {
+    return this.employees.import(dto);
   }
 
   @Patch(':id')

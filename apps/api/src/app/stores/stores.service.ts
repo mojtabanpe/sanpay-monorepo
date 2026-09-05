@@ -11,9 +11,13 @@ export class StoresService {
    * مبنا همان قاعدهٔ checkout است: تخصیص فعال، منقضی‌نشده و با ماندهٔ مثبت.
    * فروشگاهی که هیچ کیف پول قابل خرجی ندارد اصلاً برنمی‌گردد.
    */
-  async forEmployee(employeeId: string): Promise<EmployeeStore[]> {
+  async forEmployee(
+    employeeId: string,
+    allocationId?: string,
+  ): Promise<EmployeeStore[]> {
     const allocations = await this.prisma.walletAllocation.findMany({
       where: {
+        ...(allocationId ? { id: allocationId } : {}),
         employeeId,
         isActive: true,
         expiresAt: { gt: new Date() },

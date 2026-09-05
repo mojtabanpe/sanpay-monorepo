@@ -55,6 +55,11 @@ export class ProfileHomePage {
     return `${profile.firstName.charAt(0)}${profile.lastName.charAt(0)}`;
   });
 
+  protected readonly rankLabel = computed(() => {
+    const rank = this.profile()?.organizationalRank;
+    return rank ? ORGANIZATIONAL_RANK_LABELS[rank] : '';
+  });
+
   /** روزهای مانده تا نزدیک‌ترین انقضا — منفی/تهی یعنی چیزی برای نمایش نیست */
   protected readonly expiryDays = computed(() => {
     const iso = this.summary()?.nextExpiry;
@@ -125,6 +130,13 @@ export class ProfileHomePage {
   protected readonly count = faNumber;
   protected readonly jalali = jalali;
 }
+
+const ORGANIZATIONAL_RANK_LABELS: Record<string, string> = {
+  MANAGER: 'مدیر',
+  DEPUTY: 'معاون',
+  HEAD: 'رییس',
+  EMPLOYEE: 'کارمند',
+};
 
 /** ورودی فارسی/عربی کاربر را به رقم لاتین تبدیل می‌کند تا اعتبارسنجی درست کار کند */
 function toEnglishDigits(value: string): string {

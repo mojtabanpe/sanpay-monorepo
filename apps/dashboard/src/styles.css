@@ -5,7 +5,7 @@
 
 @import '@spartan-ng/brain/hlm-tailwind-preset.css';
 
-/* Shared Sanpay glassmorphism theme (see design-system/sanpay/MASTER.md) */
+/* Shared sanpay glassmorphism theme (see design-system/sanpay/MASTER.md) */
 @import '../../../shared/ui/theme/glass.css';
 
 /* Self-hosted Vazirmatn FD (ارقام لاتین با شکل فارسی رندر می‌شوند) */

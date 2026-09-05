@@ -1,0 +1,132 @@
+<div class="flex w-full flex-col gap-5">
+  <header class="flex flex-wrap items-end justify-between gap-3">
+    <div>
+      <h1 class="text-2xl font-bold">شرکت‌ها</h1>
+      <p class="text-muted-foreground text-sm">
+        {{ fa(total()) }} شرکت — هر کارمند و کیف‌پول حتماً به یک شرکت وصل است
+      </p>
+    </div>
+    @if (canWrite()) {
+    <button hlmBtn (click)="startCreate()">شرکت جدید</button>
+    }
+  </header>
+
+  @if (error()) {
+  <div hlmAlert variant="destructive">
+    <p hlmAlertDescription>{{ error() }}</p>
+  </div>
+  } @if (notice()) {
+  <div hlmAlert><p hlmAlertDescription>{{ notice() }}</p></div>
+  } @if (showForm() && canWrite()) {
+  <section hlmCard>
+    <div hlmCardHeader>
+      <h2 hlmCardTitle>{{ editingId() ? 'ویرایش شرکت' : 'ثبت شرکت' }}</h2>
+    </div>
+    <div hlmCardContent class="flex flex-wrap items-end gap-3">
+      <hlm-field class="w-full sm:w-96">
+        <label hlmFieldLabel for="company-name">نام شرکت</label>
+        <input
+          id="company-name"
+          hlmInput
+          class="w-full"
+          [value]="name()"
+          (input)="name.set($any($event.target).value)"
+          (keyup.enter)="save()"
+        />
+      </hlm-field>
+      <button hlmBtn [disabled]="saving() || !name().trim()" (click)="save()">
+        ذخیره
+      </button>
+      <button hlmBtn variant="ghost" (click)="showForm.set(false)">
+        انصراف
+      </button>
+    </div>
+  </section>
+  }
+
+  <div class="flex flex-wrap gap-3">
+    <input
+      hlmInput
+      class="w-full sm:w-80"
+      placeholder="جست‌وجوی نام شرکت…"
+      [value]="query()"
+      (input)="query.set($any($event.target).value)"
+      (keyup.enter)="search()"
+    />
+    <button hlmBtn variant="secondary" (click)="search()">جست‌وجو</button>
+  </div>
+
+  <section hlmCard>
+    <div hlmCardContent class="pt-6">
+      <div hlmTableContainer>
+        <table hlmTable class="w-full [&_td]:text-center [&_th]:text-center">
+          <thead hlmTHead>
+            <tr hlmTr>
+              <th hlmTh>نام شرکت</th>
+              <th hlmTh>کارمندان</th>
+              <th hlmTh>کیف‌پول‌ها</th>
+              <th hlmTh>وضعیت</th>
+              <th hlmTh></th>
+            </tr>
+          </thead>
+          <tbody hlmTBody>
+            @for (company of rows(); track company.id) {
+            <tr hlmTr>
+              <td hlmTd class="font-medium">{{ company.name }}</td>
+              <td hlmTd>{{ fa(company.employeeCount) }}</td>
+              <td hlmTd>{{ fa(company.walletCount) }}</td>
+              <td hlmTd>
+                <span
+                  hlmBadge
+                  [variant]="company.isActive ? 'default' : 'secondary'"
+                >
+                  {{ company.isActive ? 'فعال' : 'غیرفعال' }}
+                </span>
+              </td>
+              <td hlmTd>
+                @if (canWrite()) {
+                <button
+                  hlmBtn
+                  variant="ghost"
+                  size="sm"
+                  (click)="startEdit(company)"
+                >
+                  ویرایش
+                </button>
+                <button
+                  hlmBtn
+                  variant="ghost"
+                  size="sm"
+                  (click)="toggleActive(company)"
+                >
+                  {{ company.isActive ? 'غیرفعال' : 'فعال' }}
+                </button>
+                }
+              </td>
+            </tr>
+            } @empty {
+            <tr hlmTr>
+              <td hlmTd colspan="5" class="text-muted-foreground text-center">
+                {{ loading() ? 'در حال بارگذاری…' : 'شرکتی پیدا نشد.' }}
+              </td>
+            </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      <div class="flex items-center justify-between pt-4">
+        <span class="text-muted-foreground text-sm"
+          >صفحهٔ {{ fa(page()) }} از {{ fa(pageCount()) }}</span
+        >
+        <div class="flex gap-2">
+          <button hlmBtn variant="outline" size="sm" (click)="changePage(-1)">
+            قبلی
+          </button>
+          <button hlmBtn variant="outline" size="sm" (click)="changePage(1)">
+            بعدی
+          </button>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>

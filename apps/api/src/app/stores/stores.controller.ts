@@ -1,4 +1,4 @@
-import { Controller, Get, Req, UseGuards } from '@nestjs/common';
+import { Controller, Get, Query, Req, UseGuards } from '@nestjs/common';
 import { Request } from 'express';
 import { JwtPayload } from '../auth/auth.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -11,7 +11,10 @@ export class StoresController {
 
   /** فروشگاه‌های قابل استفاده با کیف‌پول‌های کارمند */
   @Get()
-  list(@Req() request: Request & { user: JwtPayload }) {
-    return this.stores.forEmployee(request.user.sub);
+  list(
+    @Req() request: Request & { user: JwtPayload },
+    @Query('allocationId') allocationId?: string,
+  ) {
+    return this.stores.forEmployee(request.user.sub, allocationId);
   }
 }

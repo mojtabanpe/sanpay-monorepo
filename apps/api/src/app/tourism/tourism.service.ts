@@ -7,6 +7,7 @@ import {
 import {
   BookingQuote,
   BookingReceipt,
+  PreviousTraveler,
   BookingStatus,
   HotelAvailability,
   HotelDetail,
@@ -51,7 +52,11 @@ export class TourismService {
     }
 
     const lists = await Promise.all(
-      this.providers.all().map((provider) => this.safe(provider.key, () => provider.hotels(null))),
+      this.providers
+        .all()
+        .map((provider) =>
+          this.safe(provider.key, () => provider.hotels(null)),
+        ),
     );
 
     // شهرهای مشهدِ هتل‌یار نباید در فهرست «همهٔ شهرها» بیایند، وگرنه کارمند
@@ -98,7 +103,9 @@ export class TourismService {
     const results = await Promise.all(
       this.providers
         .all()
-        .map((provider) => this.safe(provider.key, () => provider.search(params))),
+        .map((provider) =>
+          this.safe(provider.key, () => provider.search(params)),
+        ),
     );
 
     return results.flat();
@@ -210,6 +217,9 @@ export class TourismService {
         nights: quote.nights,
         guestName: `${dto.guest.firstName} ${dto.guest.lastName}`,
         guestIdNo: dto.guest.nationalCode,
+        guestFirstName: dto.guest.firstName,
+        guestLastName: dto.guest.lastName,
+        guestMobile: dto.guest.mobile,
         amount: BigInt(quote.amount),
         payable: BigInt(quote.amount),
       },
@@ -273,6 +283,47 @@ export class TourismService {
   }
 
   /**
+   * آخرین مشخصات یکتای مسافرانی که این کارمند قبلاً برایشان رزرو کرده است.
+   * رزروهای قدیمی که شمارهٔ موبایل نداشتند عمداً برگردانده نمی‌شوند، چون فرم
+   * کامل رزرو را نمی‌توان با دادهٔ ناقص پر کرد.
+   */
+  async previousTravelers(employeeId: string): Promise<PreviousTraveler[]> {
+    const bookings = await this.prisma.hotelBooking.findMany({
+      where: {
+        employeeId,
+        guestFirstName: { not: null },
+        guestLastName: { not: null },
+        guestMobile: { not: null },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 50,
+      select: {
+        guestFirstName: true,
+        guestLastName: true,
+        guestIdNo: true,
+        guestMobile: true,
+        createdAt: true,
+      },
+    });
+
+    const travelers = new Map<string, PreviousTraveler>();
+    for (const booking of bookings) {
+      const { guestFirstName, guestLastName, guestMobile } = booking;
+      if (!guestFirstName || !guestLastName || !guestMobile) continue;
+      if (travelers.has(booking.guestIdNo)) continue;
+      travelers.set(booking.guestIdNo, {
+        firstName: guestFirstName,
+        lastName: guestLastName,
+        nationalCode: booking.guestIdNo,
+        mobile: guestMobile,
+        lastUsedAt: booking.createdAt.toISOString(),
+      });
+      if (travelers.size === 10) break;
+    }
+    return [...travelers.values()];
+  }
+
+  /**
    * نهایی‌سازی رزروِ HOLD بعد از کسر اعتبار.
    *
    * اگر این مرحله شکست بخورد، اعتبار کم شده ولی رزروی نداریم — پس **پول برگشت
@@ -319,7 +370,13 @@ export class TourismService {
     amount: number,
     hotelName: string,
     referenceNo: string,
-    reserved: { status: string; reserveRef: string; payable: number | null; expiresAt: Date | null; message: string | null },
+    reserved: {
+      status: string;
+      reserveRef: string;
+      payable: number | null;
+      expiresAt: Date | null;
+      message: string | null;
+    },
   ) {
     return this.prisma.$transaction(async (tx) => {
       const current = await tx.walletAllocation.findUniqueOrThrow({

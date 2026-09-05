@@ -4,336 +4,385 @@
   </a>
 
   @if (error()) {
-    <div hlmAlert variant="destructive">
-      <p hlmAlertDescription>{{ error() }}</p>
+  <div hlmAlert variant="destructive">
+    <p hlmAlertDescription>{{ error() }}</p>
+  </div>
+  } @if (notice()) {
+  <div hlmAlert>
+    <p hlmAlertDescription>{{ notice() }}</p>
+  </div>
+  } @if (employee(); as employee) {
+  <header class="flex flex-wrap items-end justify-between gap-3">
+    <div>
+      <h1 class="text-2xl font-bold">
+        {{ employee.firstName }} {{ employee.lastName }}
+        <span hlmBadge [variant]="employee.isActive ? 'default' : 'secondary'">
+          {{ employee.isActive ? 'فعال' : 'غیرفعال' }}
+        </span>
+      </h1>
+      <p class="text-muted-foreground text-sm">
+        کد ملی <span dir="ltr">{{ employee.nationalCode }}</span> — کد پرسنلی
+        <span dir="ltr">{{ employee.personnelCode }}</span>
+      </p>
+      <p class="text-muted-foreground text-sm">
+        {{ employee.company.name }} — {{ rankLabels[employee.organizationalRank]
+        }}
+      </p>
     </div>
-  }
-  @if (notice()) {
-    <div hlmAlert>
-      <p hlmAlertDescription>{{ notice() }}</p>
-    </div>
-  }
-
-  @if (employee(); as employee) {
-    <header class="flex flex-wrap items-end justify-between gap-3">
-      <div>
-        <h1 class="text-2xl font-bold">
-          {{ employee.firstName }} {{ employee.lastName }}
-          <span hlmBadge [variant]="employee.isActive ? 'default' : 'secondary'">
-            {{ employee.isActive ? 'فعال' : 'غیرفعال' }}
-          </span>
-        </h1>
-        <p class="text-muted-foreground text-sm">
-          کد ملی <span dir="ltr">{{ employee.nationalCode }}</span> — کد پرسنلی
-          <span dir="ltr">{{ employee.personnelCode }}</span>
-        </p>
-      </div>
-      @if (canWrite()) {
-        <div class="flex gap-2">
-          <button hlmBtn variant="outline" (click)="editing.set(!editing())">
-            ویرایش اطلاعات
-          </button>
-          <button hlmBtn variant="secondary" (click)="toggleActive()">
-            {{ employee.isActive ? 'غیرفعال کردن' : 'فعال کردن' }}
-          </button>
-        </div>
-      }
-    </header>
-
-    <!-- خلاصهٔ اعتبار -->
-    <section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-      <div hlmCard class="p-5">
-        <p class="text-muted-foreground text-sm">ماندهٔ اعتبار</p>
-        <p class="mt-1 text-xl font-bold">{{ toman(totals().remaining) }}</p>
-      </div>
-      <div hlmCard class="p-5">
-        <p class="text-muted-foreground text-sm">سقف اعتبار فعال</p>
-        <p class="mt-1 text-xl font-bold">{{ toman(totals().cap) }}</p>
-      </div>
-      <div hlmCard class="p-5">
-        <p class="text-muted-foreground text-sm">جمع خرید</p>
-        <p class="mt-1 text-xl font-bold">{{ toman(employee.totalSpent) }}</p>
-      </div>
-      <div hlmCard class="p-5">
-        <p class="text-muted-foreground text-sm">موبایل</p>
-        <p class="mt-1 text-xl font-bold" dir="ltr">{{ employee.phone ?? '—' }}</p>
-      </div>
-    </section>
-
-    @if (editing() && canWrite()) {
-      <section hlmCard>
-        <div hlmCardHeader>
-          <h2 hlmCardTitle>ویرایش اطلاعات</h2>
-        </div>
-        <div hlmCardContent class="grid gap-4 md:grid-cols-4">
-          <hlm-field>
-            <label hlmFieldLabel for="fld-1">نام</label>
-            <input
-              hlmInput
-              class="w-full"
-              [value]="editForm().firstName"
-              (input)="updateEdit('firstName', $any($event.target).value)"
-            />
-          </hlm-field>
-          <hlm-field>
-            <label hlmFieldLabel for="fld-2">نام خانوادگی</label>
-            <input
-              hlmInput
-              class="w-full"
-              [value]="editForm().lastName"
-              (input)="updateEdit('lastName', $any($event.target).value)"
-            />
-          </hlm-field>
-          <hlm-field>
-            <label hlmFieldLabel for="fld-3">موبایل</label>
-            <input
-              hlmInput
-              class="w-full"
-              dir="ltr"
-              [value]="editForm().phone"
-              (input)="updateEdit('phone', $any($event.target).value)"
-            />
-          </hlm-field>
-          <div class="flex items-end">
-            <button hlmBtn [disabled]="saving()" (click)="saveProfile()">ذخیره</button>
-          </div>
-        </div>
-      </section>
-    }
-
-    <!-- کیف‌پول‌ها -->
-    <section hlmCard>
-      <div hlmCardHeader>
-        <h2 hlmCardTitle>کیف‌پول‌های کارمند</h2>
-        <p hlmCardDescription>
-          سقف، مانده و انقضای هر تخصیص — تغییرها بلافاصله در اپ کارمند دیده می‌شود.
-        </p>
-      </div>
-      <div hlmCardContent class="flex flex-col gap-5">
-        @if (canWrite()) {
-          <div class="bg-muted/40 grid gap-4 rounded-md p-4 md:grid-cols-4">
-            <hlm-field>
-              <label hlmFieldLabel for="fld-4">کیف پول</label>
-              <hlm-select
-                [value]="allocForm().definitionId"
-                [itemToString]="definitionLabel"
-                (valueChange)="updateAlloc('definitionId', $any($event))"
-              >
-                <hlm-select-trigger class="w-full">
-                  <hlm-select-value />
-                </hlm-select-trigger>
-                <hlm-select-content *hlmSelectPortal>
-                  @for (definition of definitions(); track definition.id) {
-                    <hlm-select-item [value]="definition.id">
-                      {{ definition.name }} — {{ kindLabels[definition.kind] }}
-                    </hlm-select-item>
-                  }
-                </hlm-select-content>
-              </hlm-select>
-            </hlm-field>
-
-            <hlm-field>
-              <label hlmFieldLabel for="fld-5">سقف (تومان)</label>
-              <input
-                hlmInput
-                class="w-full"
-                dir="ltr"
-                [value]="allocForm().cap"
-                (input)="updateAlloc('cap', $any($event.target).value)"
-              />
-            </hlm-field>
-
-            <hlm-field>
-              <label hlmFieldLabel for="fld-6">تاریخ انقضا</label>
-              <hlm-date-picker
-                sanpayDatePickerWidth
-                [date]="allocExpiry()"
-                [min]="minDate"
-                (dateChange)="onAllocExpiryChange($event)"
-              >
-                <hlm-date-picker-trigger class="w-full">
-                  انتخاب تاریخ
-                </hlm-date-picker-trigger>
-              </hlm-date-picker>
-            </hlm-field>
-
-            <div class="flex items-end">
-              <button hlmBtn [disabled]="saving()" (click)="addAllocation()">
-                تخصیص کیف پول
-              </button>
-            </div>
-          </div>
-        }
-
-        <div hlmTableContainer>
-          <table hlmTable class="w-full">
-            <thead hlmTHead>
-              <tr hlmTr>
-                <th hlmTh>کیف پول</th>
-                <th hlmTh>نوع</th>
-                <th hlmTh>سقف</th>
-                <th hlmTh>مصرف‌شده</th>
-                <th hlmTh>مانده</th>
-                <th hlmTh>انقضا</th>
-                <th hlmTh>وضعیت</th>
-                @if (canWrite()) {
-                  <th hlmTh>تغییر سقف</th>
-                  <th hlmTh>برگشت مبلغ</th>
-                  <th hlmTh></th>
-                }
-              </tr>
-            </thead>
-            <tbody hlmTBody>
-              @for (allocation of employee.allocations; track allocation.id) {
-                <tr hlmTr>
-                  <td hlmTd class="font-medium">{{ allocation.definitionName }}</td>
-                  <td hlmTd>{{ kindLabels[allocation.kind] }}</td>
-                  <td hlmTd>{{ toman(allocation.cap) }}</td>
-                  <td hlmTd>{{ toman(allocation.spent) }}</td>
-                  <td hlmTd class="font-semibold">{{ toman(allocation.remaining) }}</td>
-                  <td hlmTd>
-                    @if (canWrite()) {
-                      <hlm-date-picker
-                sanpayDatePickerWidth
-                        [date]="jalaliOf(allocation.expiresAt)"
-                        (dateChange)="onRowExpiryChange(allocation.id, $event)"
-                      >
-                        <hlm-date-picker-trigger class="w-40">
-                          {{ jalali(allocation.expiresAt) }}
-                        </hlm-date-picker-trigger>
-                      </hlm-date-picker>
-                    } @else {
-                      {{ jalali(allocation.expiresAt) }}
-                    }
-                  </td>
-                  <td hlmTd>
-                    <span
-                      hlmBadge
-                      [variant]="allocation.isActive ? 'default' : 'secondary'"
-                      >{{ allocation.isActive ? 'فعال' : 'غیرفعال' }}</span
-                    >
-                  </td>
-                  @if (canWrite()) {
-                    <td hlmTd>
-                      <input
-                        hlmInput
-                        #capInput
-                        class="w-32"
-                        dir="ltr"
-                        [value]="allocation.cap"
-                        (keyup.enter)="setCap(allocation.id, capInput.value)"
-                      />
-                    </td>
-                    <td hlmTd>
-                      <input
-                        hlmInput
-                        #refundInput
-                        class="w-32"
-                        dir="ltr"
-                        placeholder="مبلغ"
-                        (keyup.enter)="refund(allocation.id, refundInput.value)"
-                      />
-                    </td>
-                    <td hlmTd>
-                      <button
-                        hlmBtn
-                        variant="ghost"
-                        size="sm"
-                        (click)="toggleAllocation(allocation.id, allocation.isActive)"
-                      >
-                        {{ allocation.isActive ? 'غیرفعال' : 'فعال' }}
-                      </button>
-                    </td>
-                  }
-                </tr>
-              } @empty {
-                <tr hlmTr>
-                  <td hlmTd colspan="10" class="text-muted-foreground text-center">
-                    کیف پولی تخصیص داده نشده است.
-                  </td>
-                </tr>
-              }
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </section>
-
-    <!-- بازنشانی رمز -->
     @if (canWrite()) {
-      <section hlmCard>
-        <div hlmCardHeader>
-          <h2 hlmCardTitle>بازنشانی رمز عبور</h2>
-          <p hlmCardDescription>
-            رمز تازه را به کارمند اعلام کنید؛ خودش می‌تواند از پروفایل عوضش کند.
-          </p>
-        </div>
-        <div hlmCardContent class="flex flex-wrap items-end gap-3">
-          <hlm-field class="w-64">
-            <label hlmFieldLabel for="fld-7">رمز جدید</label>
-            <input
-              hlmInput
-              class="w-full"
-              dir="ltr"
-              [value]="newPassword()"
-              (input)="newPassword.set($any($event.target).value)"
-            />
-          </hlm-field>
-          <button hlmBtn variant="secondary" [disabled]="saving()" (click)="resetPassword()">
-            بازنشانی رمز
+    <div class="flex gap-2">
+      <button hlmBtn variant="outline" (click)="editing.set(!editing())">
+        ویرایش اطلاعات
+      </button>
+      <button hlmBtn variant="secondary" (click)="toggleActive()">
+        {{ employee.isActive ? 'غیرفعال کردن' : 'فعال کردن' }}
+      </button>
+    </div>
+    }
+  </header>
+
+  <!-- خلاصهٔ اعتبار -->
+  <section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <div hlmCard class="p-5">
+      <p class="text-muted-foreground text-sm">ماندهٔ اعتبار</p>
+      <p class="mt-1 text-xl font-bold">{{ toman(totals().remaining) }}</p>
+    </div>
+    <div hlmCard class="p-5">
+      <p class="text-muted-foreground text-sm">سقف اعتبار فعال</p>
+      <p class="mt-1 text-xl font-bold">{{ toman(totals().cap) }}</p>
+    </div>
+    <div hlmCard class="p-5">
+      <p class="text-muted-foreground text-sm">جمع خرید</p>
+      <p class="mt-1 text-xl font-bold">{{ toman(employee.totalSpent) }}</p>
+    </div>
+    <div hlmCard class="p-5">
+      <p class="text-muted-foreground text-sm">موبایل</p>
+      <p class="mt-1 text-xl font-bold" dir="ltr">
+        {{ employee.phone ?? '—' }}
+      </p>
+    </div>
+  </section>
+
+  @if (editing() && canWrite()) {
+  <section hlmCard>
+    <div hlmCardHeader>
+      <h2 hlmCardTitle>ویرایش اطلاعات</h2>
+    </div>
+    <div hlmCardContent class="grid gap-4 md:grid-cols-5">
+      <hlm-field>
+        <label hlmFieldLabel for="fld-1">نام</label>
+        <input
+          hlmInput
+          class="w-full"
+          [value]="editForm().firstName"
+          (input)="updateEdit('firstName', $any($event.target).value)"
+        />
+      </hlm-field>
+      <hlm-field>
+        <label hlmFieldLabel for="edit-company">شرکت</label>
+        <hlm-select
+          [value]="editForm().companyId"
+          [itemToString]="companyLabel"
+          (valueChange)="updateEdit('companyId', $any($event))"
+        >
+          <hlm-select-trigger id="edit-company" class="w-full"
+            ><hlm-select-value
+          /></hlm-select-trigger>
+          <hlm-select-content *hlmSelectPortal>
+            @for (company of companies(); track company.id) {
+            <hlm-select-item [value]="company.id"
+              >{{ company.name }}</hlm-select-item
+            >
+            }
+          </hlm-select-content>
+        </hlm-select>
+      </hlm-field>
+      <hlm-field>
+        <label hlmFieldLabel for="edit-rank">ردهٔ سازمانی</label>
+        <hlm-select
+          [value]="editForm().organizationalRank"
+          [itemToString]="rankLabel"
+          (valueChange)="updateEdit('organizationalRank', $any($event))"
+        >
+          <hlm-select-trigger id="edit-rank" class="w-full"
+            ><hlm-select-value
+          /></hlm-select-trigger>
+          <hlm-select-content *hlmSelectPortal>
+            @for (rank of ranks; track rank) {
+            <hlm-select-item [value]="rank"
+              >{{ rankLabels[rank] }}</hlm-select-item
+            >
+            }
+          </hlm-select-content>
+        </hlm-select>
+      </hlm-field>
+      <hlm-field>
+        <label hlmFieldLabel for="fld-2">نام خانوادگی</label>
+        <input
+          hlmInput
+          class="w-full"
+          [value]="editForm().lastName"
+          (input)="updateEdit('lastName', $any($event.target).value)"
+        />
+      </hlm-field>
+      <hlm-field>
+        <label hlmFieldLabel for="fld-3">موبایل</label>
+        <input
+          hlmInput
+          class="w-full"
+          dir="ltr"
+          [value]="editForm().phone"
+          (input)="updateEdit('phone', $any($event.target).value)"
+        />
+      </hlm-field>
+      <div class="flex items-end">
+        <button hlmBtn [disabled]="saving()" (click)="saveProfile()">
+          ذخیره
+        </button>
+      </div>
+    </div>
+  </section>
+  }
+
+  <!-- کیف‌پول‌ها -->
+  <section hlmCard>
+    <div hlmCardHeader>
+      <h2 hlmCardTitle>کیف‌پول‌های کارمند</h2>
+      <p hlmCardDescription>
+        سقف، مانده و انقضای هر تخصیص — تغییرها بلافاصله در اپ کارمند دیده
+        می‌شود.
+      </p>
+    </div>
+    <div hlmCardContent class="flex flex-col gap-5">
+      @if (canWrite()) {
+      <div class="bg-muted/40 grid gap-4 rounded-md p-4 md:grid-cols-4">
+        <hlm-field>
+          <label hlmFieldLabel for="fld-4">کیف پول</label>
+          <hlm-select
+            [value]="allocForm().definitionId"
+            [itemToString]="definitionLabel"
+            (valueChange)="updateAlloc('definitionId', $any($event))"
+          >
+            <hlm-select-trigger class="w-full">
+              <hlm-select-value />
+            </hlm-select-trigger>
+            <hlm-select-content *hlmSelectPortal>
+              @for (definition of definitions(); track definition.id) {
+              <hlm-select-item [value]="definition.id">
+                {{ definition.name }} — {{ kindLabels[definition.kind] }}
+              </hlm-select-item>
+              }
+            </hlm-select-content>
+          </hlm-select>
+        </hlm-field>
+
+        <hlm-field>
+          <label hlmFieldLabel for="fld-5">سقف (تومان)</label>
+          <input
+            hlmInput
+            class="w-full"
+            dir="ltr"
+            [value]="allocForm().cap"
+            (input)="updateAlloc('cap', $any($event.target).value)"
+          />
+        </hlm-field>
+
+        <hlm-field>
+          <label hlmFieldLabel for="fld-6">تاریخ انقضا</label>
+          <hlm-date-picker
+            sanpayDatePickerWidth
+            [date]="allocExpiry()"
+            [min]="minDate"
+            (dateChange)="onAllocExpiryChange($event)"
+          >
+            <hlm-date-picker-trigger class="w-full">
+              انتخاب تاریخ
+            </hlm-date-picker-trigger>
+          </hlm-date-picker>
+        </hlm-field>
+
+        <div class="flex items-end">
+          <button hlmBtn [disabled]="saving()" (click)="addAllocation()">
+            تخصیص کیف پول
           </button>
         </div>
-      </section>
-    }
+      </div>
+      }
 
-    <!-- تاریخچهٔ خرید -->
-    <section hlmCard>
-      <div hlmCardHeader>
-        <h2 hlmCardTitle>تاریخچهٔ خرید</h2>
-        <p hlmCardDescription>۵۰ خرید آخر</p>
-      </div>
-      <div hlmCardContent>
-        <div hlmTableContainer>
-          <table hlmTable class="w-full">
-            <thead hlmTHead>
-              <tr hlmTr>
-                <th hlmTh>شمارهٔ رسید</th>
-                <th hlmTh>فروشگاه</th>
-                <th hlmTh>کیف‌پول‌ها</th>
-                <th hlmTh>مبلغ</th>
-                <th hlmTh>زمان</th>
-              </tr>
-            </thead>
-            <tbody hlmTBody>
-              @for (payment of employee.payments; track payment.id) {
-                <tr hlmTr>
-                  <td hlmTd dir="ltr">{{ payment.receiptNo }}</td>
-                  <td hlmTd>{{ payment.store.name }}</td>
-                  <td hlmTd>
-                    <span class="flex flex-wrap gap-1">
-                      @for (line of payment.lines; track line.walletName) {
-                        <span hlmBadge variant="secondary"
-                          >{{ line.walletName }} — {{ toman(line.amount) }}</span
-                        >
-                      }
-                    </span>
-                  </td>
-                  <td hlmTd class="font-semibold">{{ toman(payment.amount) }}</td>
-                  <td hlmTd class="text-muted-foreground text-xs">
-                    {{ jalaliTime(payment.createdAt) }}
-                  </td>
-                </tr>
-              } @empty {
-                <tr hlmTr>
-                  <td hlmTd colspan="5" class="text-muted-foreground text-center">
-                    خریدی ثبت نشده است.
-                  </td>
-                </tr>
+      <div hlmTableContainer>
+        <table hlmTable class="w-full">
+          <thead hlmTHead>
+            <tr hlmTr>
+              <th hlmTh>کیف پول</th>
+              <th hlmTh>نوع</th>
+              <th hlmTh>سقف</th>
+              <th hlmTh>مصرف‌شده</th>
+              <th hlmTh>مانده</th>
+              <th hlmTh>انقضا</th>
+              <th hlmTh>وضعیت</th>
+              @if (canWrite()) {
+              <th hlmTh>تغییر سقف</th>
+              <th hlmTh>برگشت مبلغ</th>
+              <th hlmTh></th>
               }
-            </tbody>
-          </table>
-        </div>
+            </tr>
+          </thead>
+          <tbody hlmTBody>
+            @for (allocation of employee.allocations; track allocation.id) {
+            <tr hlmTr>
+              <td hlmTd class="font-medium">{{ allocation.definitionName }}</td>
+              <td hlmTd>{{ kindLabels[allocation.kind] }}</td>
+              <td hlmTd>{{ toman(allocation.cap) }}</td>
+              <td hlmTd>{{ toman(allocation.spent) }}</td>
+              <td hlmTd class="font-semibold">
+                {{ toman(allocation.remaining) }}
+              </td>
+              <td hlmTd>
+                @if (canWrite()) {
+                <hlm-date-picker
+                  sanpayDatePickerWidth
+                  [date]="jalaliOf(allocation.expiresAt)"
+                  (dateChange)="onRowExpiryChange(allocation.id, $event)"
+                >
+                  <hlm-date-picker-trigger class="w-40">
+                    {{ jalali(allocation.expiresAt) }}
+                  </hlm-date-picker-trigger>
+                </hlm-date-picker>
+                } @else { {{ jalali(allocation.expiresAt) }} }
+              </td>
+              <td hlmTd>
+                <span
+                  hlmBadge
+                  [variant]="allocation.isActive ? 'default' : 'secondary'"
+                  >{{ allocation.isActive ? 'فعال' : 'غیرفعال' }}</span
+                >
+              </td>
+              @if (canWrite()) {
+              <td hlmTd>
+                <input
+                  hlmInput
+                  #capInput
+                  class="w-32"
+                  dir="ltr"
+                  [value]="allocation.cap"
+                  (keyup.enter)="setCap(allocation.id, capInput.value)"
+                />
+              </td>
+              <td hlmTd>
+                <input
+                  hlmInput
+                  #refundInput
+                  class="w-32"
+                  dir="ltr"
+                  placeholder="مبلغ"
+                  (keyup.enter)="refund(allocation.id, refundInput.value)"
+                />
+              </td>
+              <td hlmTd>
+                <button
+                  hlmBtn
+                  variant="ghost"
+                  size="sm"
+                  (click)="toggleAllocation(allocation.id, allocation.isActive)"
+                >
+                  {{ allocation.isActive ? 'غیرفعال' : 'فعال' }}
+                </button>
+              </td>
+              }
+            </tr>
+            } @empty {
+            <tr hlmTr>
+              <td hlmTd colspan="10" class="text-muted-foreground text-center">
+                کیف پولی تخصیص داده نشده است.
+              </td>
+            </tr>
+            }
+          </tbody>
+        </table>
       </div>
-    </section>
+    </div>
+  </section>
+
+  <!-- بازنشانی رمز -->
+  @if (canWrite()) {
+  <section hlmCard>
+    <div hlmCardHeader>
+      <h2 hlmCardTitle>بازنشانی رمز عبور</h2>
+      <p hlmCardDescription>
+        رمز تازه را به کارمند اعلام کنید؛ خودش می‌تواند از پروفایل عوضش کند.
+      </p>
+    </div>
+    <div hlmCardContent class="flex flex-wrap items-end gap-3">
+      <hlm-field class="w-64">
+        <label hlmFieldLabel for="fld-7">رمز جدید</label>
+        <input
+          hlmInput
+          class="w-full"
+          dir="ltr"
+          [value]="newPassword()"
+          (input)="newPassword.set($any($event.target).value)"
+        />
+      </hlm-field>
+      <button
+        hlmBtn
+        variant="secondary"
+        [disabled]="saving()"
+        (click)="resetPassword()"
+      >
+        بازنشانی رمز
+      </button>
+    </div>
+  </section>
+  }
+
+  <!-- تاریخچهٔ خرید -->
+  <section hlmCard>
+    <div hlmCardHeader>
+      <h2 hlmCardTitle>تاریخچهٔ خرید</h2>
+      <p hlmCardDescription>۵۰ خرید آخر</p>
+    </div>
+    <div hlmCardContent>
+      <div hlmTableContainer>
+        <table hlmTable class="w-full">
+          <thead hlmTHead>
+            <tr hlmTr>
+              <th hlmTh>شمارهٔ رسید</th>
+              <th hlmTh>فروشگاه</th>
+              <th hlmTh>کیف‌پول‌ها</th>
+              <th hlmTh>مبلغ</th>
+              <th hlmTh>زمان</th>
+            </tr>
+          </thead>
+          <tbody hlmTBody>
+            @for (payment of employee.payments; track payment.id) {
+            <tr hlmTr>
+              <td hlmTd dir="ltr">{{ payment.receiptNo }}</td>
+              <td hlmTd>{{ payment.store.name }}</td>
+              <td hlmTd>
+                <span class="flex flex-wrap gap-1">
+                  @for (line of payment.lines; track line.walletName) {
+                  <span hlmBadge variant="secondary"
+                    >{{ line.walletName }} — {{ toman(line.amount) }}</span
+                  >
+                  }
+                </span>
+              </td>
+              <td hlmTd class="font-semibold">{{ toman(payment.amount) }}</td>
+              <td hlmTd class="text-muted-foreground text-xs">
+                {{ jalaliTime(payment.createdAt) }}
+              </td>
+            </tr>
+            } @empty {
+            <tr hlmTr>
+              <td hlmTd colspan="5" class="text-muted-foreground text-center">
+                خریدی ثبت نشده است.
+              </td>
+            </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
   }
 </div>

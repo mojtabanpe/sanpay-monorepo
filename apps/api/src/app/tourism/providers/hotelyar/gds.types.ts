@@ -47,6 +47,13 @@ export interface GdsNearPlace {
   distance: string;
 }
 
+export interface GdsHotelReview {
+  author: string;
+  rating: number;
+  comment: string;
+  reviewedAt?: string | null;
+}
+
 export interface GdsHotel {
   id: string;
   description: string;
@@ -62,6 +69,8 @@ export interface GdsHotel {
   room: GdsHotelRoom[];
   hotelDescription: string;
   nearPlaces: GdsNearPlace[];
+  /** در API واقعی اختیاری است و بعضی حساب‌ها آن را برنمی‌گردانند. */
+  reviews?: GdsHotelReview[] | null;
   /** مقادیر "0"/"1" */
   facilities: Record<string, string>;
   /**

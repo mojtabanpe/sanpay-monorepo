@@ -1,6 +1,11 @@
 import { Component, computed, inject, input, signal } from '@angular/core';
 import { RouterModule } from '@angular/router';
-import { AdminEmployeeDetail, AdminWalletDefinitionRow } from '@sanpay/models';
+import {
+  AdminCompanyRow,
+  AdminEmployeeDetail,
+  AdminWalletDefinitionRow,
+  OrganizationalRank,
+} from '@sanpay/models';
 import { HlmAlertImports } from '@sanpay/ui/alert';
 import { HlmBadgeImports } from '@sanpay/ui/badge';
 import { HlmButtonImports } from '@sanpay/ui/button';
@@ -16,6 +21,7 @@ import { AdminApiService, apiError } from '../../core/admin-api.service';
 import { AdminAuthService } from '../../core/admin-auth.service';
 import {
   WALLET_KIND_LABELS,
+  ORGANIZATIONAL_RANK_LABELS,
   fa,
   isoDate,
   jalali,
@@ -58,16 +64,30 @@ export class EmployeeDetailPage {
   protected readonly jalali = jalali;
   protected readonly jalaliTime = jalaliTime;
   protected readonly kindLabels = WALLET_KIND_LABELS;
+  protected readonly rankLabels = ORGANIZATIONAL_RANK_LABELS;
+  protected readonly ranks: OrganizationalRank[] = [
+    'MANAGER',
+    'DEPUTY',
+    'HEAD',
+    'EMPLOYEE',
+  ];
 
   protected readonly employee = signal<AdminEmployeeDetail | null>(null);
   protected readonly definitions = signal<AdminWalletDefinitionRow[]>([]);
+  protected readonly companies = signal<AdminCompanyRow[]>([]);
   protected readonly error = signal<string | null>(null);
   protected readonly notice = signal<string | null>(null);
   protected readonly saving = signal(false);
 
   /** فرم ویرایش اطلاعات */
   protected readonly editing = signal(false);
-  protected readonly editForm = signal({ firstName: '', lastName: '', phone: '' });
+  protected readonly editForm = signal({
+    firstName: '',
+    lastName: '',
+    phone: '',
+    companyId: '',
+    organizationalRank: 'EMPLOYEE' as OrganizationalRank,
+  });
 
   /** فرم تخصیص کیف پول */
   protected readonly allocForm = signal({
@@ -104,7 +124,8 @@ export class EmployeeDetailPage {
   protected readonly totals = computed(() => {
     const allocations = this.employee()?.allocations ?? [];
     const active = allocations.filter(
-      (allocation) => allocation.isActive && new Date(allocation.expiresAt) > new Date(),
+      (allocation) =>
+        allocation.isActive && new Date(allocation.expiresAt) > new Date(),
     );
     return {
       cap: active.reduce((sum, a) => sum + a.cap, 0),
@@ -120,19 +141,34 @@ export class EmployeeDetailPage {
     this.definitions().find((definition) => definition.id === value)?.name ??
     'انتخاب کیف پول';
 
+  protected readonly companyLabel = (value: unknown): string =>
+    this.companies().find((company) => company.id === value)?.name ??
+    'انتخاب شرکت';
+
+  protected readonly rankLabel = (value: unknown): string =>
+    ORGANIZATIONAL_RANK_LABELS[String(value)] ?? 'انتخاب رده';
+
   protected async load(): Promise<void> {
     this.error.set(null);
     try {
-      const [employee, definitions] = await Promise.all([
-        this.api.employee(this.id()),
-        this.api.walletDefinitions({ active: 'true', pageSize: 200 }),
+      const employee = await this.api.employee(this.id());
+      const [definitions, companies] = await Promise.all([
+        this.api.walletDefinitions({
+          active: 'true',
+          companyId: employee.company.id,
+          pageSize: 200,
+        }),
+        this.api.companies({ active: 'true', pageSize: 200 }),
       ]);
       this.employee.set(employee);
       this.definitions.set(definitions.items);
+      this.companies.set(companies.items);
       this.editForm.set({
         firstName: employee.firstName,
         lastName: employee.lastName,
         phone: employee.phone ?? '',
+        companyId: employee.company.id,
+        organizationalRank: employee.organizationalRank,
       });
     } catch (caught) {
       this.error.set(apiError(caught, 'خواندن اطلاعات کارمند ممکن نشد'));
@@ -154,6 +190,8 @@ export class EmployeeDetailPage {
         firstName: form.firstName.trim(),
         lastName: form.lastName.trim(),
         phone: form.phone.trim(),
+        companyId: form.companyId,
+        organizationalRank: form.organizationalRank,
       });
       this.editing.set(false);
       this.notice.set('اطلاعات کارمند به‌روزرسانی شد.');
@@ -164,7 +202,9 @@ export class EmployeeDetailPage {
     const employee = this.employee();
     if (!employee) return;
     await this.run(async () => {
-      await this.api.updateEmployee(employee.id, { isActive: !employee.isActive });
+      await this.api.updateEmployee(employee.id, {
+        isActive: !employee.isActive,
+      });
       this.notice.set(
         employee.isActive ? 'کارمند غیرفعال شد.' : 'کارمند فعال شد.',
       );
@@ -212,7 +252,10 @@ export class EmployeeDetailPage {
     }, 'تغییر سقف ممکن نشد');
   }
 
-  protected async setExpiry(allocationId: string, value: string): Promise<void> {
+  protected async setExpiry(
+    allocationId: string,
+    value: string,
+  ): Promise<void> {
     if (!value) return;
     await this.run(async () => {
       await this.api.updateAllocation(allocationId, { expiresAt: value });
@@ -237,13 +280,20 @@ export class EmployeeDetailPage {
       return;
     }
     await this.run(async () => {
-      await this.api.adjustAllocation(allocationId, amount, 'برگشت دستی از داشبورد');
+      await this.api.adjustAllocation(
+        allocationId,
+        amount,
+        'برگشت دستی از داشبورد',
+      );
       this.notice.set('مبلغ به کیف پول برگشت داده شد.');
     }, 'برگشت مبلغ ممکن نشد');
   }
 
   /** اجرای یک عملیات با مدیریت خطا و بارگذاری دوباره */
-  private async run(action: () => Promise<void>, fallback: string): Promise<void> {
+  private async run(
+    action: () => Promise<void>,
+    fallback: string,
+  ): Promise<void> {
     if (this.saving()) return;
     this.saving.set(true);
     this.error.set(null);

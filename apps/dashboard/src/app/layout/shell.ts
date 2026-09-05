@@ -19,11 +19,7 @@ interface NavItem {
  */
 @Component({
   selector: 'app-shell',
-  imports: [
-    RouterModule,
-    HlmButtonImports,
-    HlmSeparatorImports,
-  ],
+  imports: [RouterModule, HlmButtonImports, HlmSeparatorImports],
   templateUrl: './shell.html',
 })
 export class Shell {
@@ -56,6 +52,11 @@ const NAV: NavItem[] = [
     path: '/overview',
     label: 'نمای کلی',
     icon: 'M3 12l9-9 9 9M5 10v10h14V10',
+  },
+  {
+    path: '/companies',
+    label: 'شرکت‌ها',
+    icon: 'M3 21h18M5 21V5a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v16M9 7h2M9 11h2M9 15h2M15 9h4v12',
   },
   {
     path: '/employees',

@@ -15,6 +15,7 @@ import {
   HotelAvailability,
   HotelDetail,
   HotelSummary,
+  PreviousTraveler,
   TourismCity,
 } from '@sanpay/models';
 import { Request } from 'express';
@@ -79,6 +80,11 @@ export class TourismController {
   @Get('bookings')
   myBookings(@Req() request: Request): Promise<BookingReceipt[]> {
     return this.tourism.myBookings(employeeId(request));
+  }
+
+  @Get('travelers')
+  previousTravelers(@Req() request: Request): Promise<PreviousTraveler[]> {
+    return this.tourism.previousTravelers(employeeId(request));
   }
 }
 

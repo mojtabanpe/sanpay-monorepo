@@ -1,272 +1,479 @@
 <div class="flex flex-col gap-4 pb-6">
-
   @if (loading()) {
-    <!-- گالری تمام‌عرض است و گوشهٔ گرد ندارد، پس اسکلتش هم نباید داشته باشد -->
-    <hlm-skeleton class="aspect-[16/10] max-h-72 w-full" style="border-radius: 0" />
-    <div class="flex flex-col gap-3 px-4">
-      <hlm-skeleton class="h-7 w-56" />
-      <hlm-skeleton class="h-4 w-40" />
-      <hlm-skeleton class="h-32 w-full" />
-    </div>
+  <!-- گالری تمام‌عرض است و گوشهٔ گرد ندارد، پس اسکلتش هم نباید داشته باشد -->
+  <hlm-skeleton
+    class="aspect-[16/10] max-h-72 w-full"
+    style="border-radius: 0"
+  />
+  <div class="flex flex-col gap-3 px-4">
+    <hlm-skeleton class="h-7 w-56" />
+    <hlm-skeleton class="h-4 w-40" />
+    <hlm-skeleton class="h-32 w-full" />
+  </div>
   } @else if (error()) {
-    <section hlmCard class="mx-4 mt-6">
-      <div hlmCardContent class="flex flex-col items-center gap-4 py-10 text-center">
-        <p class="text-muted-foreground text-sm">{{ error() }}</p>
-        <button class="text-primary text-sm font-medium hover:underline" (click)="load()">
-          تلاش دوباره
-        </button>
-      </div>
-    </section>
+  <section hlmCard class="mx-4 mt-6">
+    <div
+      hlmCardContent
+      class="flex flex-col items-center gap-4 py-10 text-center"
+    >
+      <p class="text-muted-foreground text-sm">{{ error() }}</p>
+      <button
+        class="text-primary text-sm font-medium hover:underline"
+        (click)="load()"
+      >
+        تلاش دوباره
+      </button>
+    </div>
+  </section>
   } @else if (hotel(); as h) {
 
-    <!-- گالری. نسبت ثابت است تا جای تصویر پیش از رسیدنش رزرو شود و صفحه هنگام
+  <!-- گالری. نسبت ثابت است تا جای تصویر پیش از رسیدنش رزرو شود و صفحه هنگام
          لود نپرد؛ max-h جلوی قدکشیدنش را روی نمایشگر پهن می‌گیرد. -->
-    <div class="bg-secondary relative aspect-[16/10] max-h-72 w-full overflow-hidden">
-      @if (h.images.length > 0) {
-        <img
-          [src]="h.images[activeImage()]"
-          [alt]="h.name"
-          decoding="async"
-          class="size-full object-cover"
-        />
-      } @else {
-        <div class="flex size-full items-center justify-center">
-          <svg class="text-muted-foreground size-12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
-            <path d="M2 20h20M4 20V8l8-5 8 5v12" />
-          </svg>
-        </div>
-      }
-
-      <button
-        type="button"
-        class="absolute top-4 right-4 flex size-9 items-center justify-center rounded-full bg-white/80 backdrop-blur-md transition-transform active:scale-[0.96]"
-        aria-label="بازگشت"
-        (click)="back()"
+  <div
+    class="bg-secondary relative aspect-[16/10] max-h-72 w-full overflow-hidden"
+  >
+    @if (h.images.length > 0) {
+    <img
+      [src]="h.images[activeImage()]"
+      [alt]="h.name"
+      decoding="async"
+      class="size-full object-cover"
+    />
+    } @else {
+    <div class="flex size-full items-center justify-center">
+      <svg
+        class="text-muted-foreground size-12"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="1.5"
+        aria-hidden="true"
       >
-        <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <path d="m9 18 6-6-6-6" />
-        </svg>
-      </button>
-
+        <path d="M2 20h20M4 20V8l8-5 8 5v12" />
+      </svg>
     </div>
+    }
 
-    <!-- نوار بندانگشتی زیر تصویر اصلی. جای نقطه‌های قبلی را گرفت: نقطه‌ها فقط
+    <button
+      type="button"
+      class="absolute top-4 right-4 flex size-9 items-center justify-center rounded-full bg-white/80 backdrop-blur-md transition-transform active:scale-[0.96]"
+      aria-label="بازگشت"
+      (click)="back()"
+    >
+      <svg
+        class="size-5"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        aria-hidden="true"
+      >
+        <path d="m9 18 6-6-6-6" />
+      </svg>
+    </button>
+  </div>
+
+  <!-- نوار بندانگشتی زیر تصویر اصلی. جای نقطه‌های قبلی را گرفت: نقطه‌ها فقط
          می‌گفتند «چند تا هست»، ولی بندانگشتی نشان می‌دهد «چه چیزی هست»، و روی
          موبایل هدف لمسی درست‌وحسابی است نه دایرهٔ ۸ پیکسلی.
          بیش از چهار تصویر پشت «+N» جمع می‌شود تا ارتفاع بالای صفحه ثابت بماند. -->
-    @if (h.images.length > 1) {
-      <div class="grid grid-cols-4 gap-1.5 px-4">
-        @for (image of thumbs(); track image; let i = $index) {
-          @let isLastCollapsed = hiddenImageCount() > 0 && i === thumbs().length - 1;
-          <button
-            type="button"
-            class="relative block w-full aspect-[4/3] overflow-hidden rounded-lg transition-opacity"
-            [class]="i === activeImage() && !isLastCollapsed ? 'ring-primary ring-2' : 'opacity-90'"
-            [attr.aria-label]="
+  @if (h.images.length > 1) {
+  <div class="grid grid-cols-4 gap-1.5 px-4">
+    @for (image of thumbs(); track image; let i = $index) { @let isLastCollapsed
+    = hiddenImageCount() > 0 && i === thumbs().length - 1;
+    <button
+      type="button"
+      class="relative block w-full aspect-[4/3] overflow-hidden rounded-lg transition-opacity"
+      [class]="i === activeImage() && !isLastCollapsed ? 'ring-primary ring-2' : 'opacity-90'"
+      [attr.aria-label]="
               isLastCollapsed
                 ? 'نمایش ' + count(hiddenImageCount()) + ' تصویر دیگر'
                 : 'تصویر ' + count(i + 1)
             "
-            [attr.aria-current]="i === activeImage() && !isLastCollapsed ? 'true' : null"
-            (click)="isLastCollapsed ? galleryOpen.set(true) : activeImage.set(i)"
-          >
-            <img [src]="image" [alt]="h.name" decoding="async" class="absolute inset-0 size-full object-cover" />
-            @if (isLastCollapsed) {
-              <span
-                class="absolute inset-0 flex items-center justify-center bg-black/55 text-sm font-bold text-white"
-              >
-                {{ count(hiddenImageCount()) }}+
-              </span>
-            }
-          </button>
-        }
-      </div>
+      [attr.aria-current]="i === activeImage() && !isLastCollapsed ? 'true' : null"
+      (click)="isLastCollapsed ? galleryOpen.set(true) : activeImage.set(i)"
+    >
+      <img
+        [src]="image"
+        [alt]="h.name"
+        decoding="async"
+        class="absolute inset-0 size-full object-cover"
+      />
+      @if (isLastCollapsed) {
+      <span
+        class="absolute inset-0 flex items-center justify-center bg-black/55 text-sm font-bold text-white"
+      >
+        {{ count(hiddenImageCount()) }}+
+      </span>
+      }
+    </button>
     }
+  </div>
+  }
 
-    <div class="flex flex-col gap-4 px-4">
-
-      <!-- عنوان -->
-      <div class="flex flex-col gap-2">
-        <div class="flex items-start justify-between gap-2">
-          <h1 class="flex-1 text-lg font-bold leading-tight">{{ h.name }}</h1>
-          <span class="flex shrink-0 items-center gap-0.5" style="color: var(--gold-500)">
-            @for (star of stars(h.rate); track star) {
-              <svg class="size-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                <path d="m12 2 3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01z" />
-              </svg>
-            }
-            <span class="sr-only">{{ count(h.rate) }} ستاره</span>
-          </span>
-        </div>
-        <p class="text-muted-foreground text-xs leading-relaxed">{{ h.address }}</p>
-        <div class="flex flex-wrap gap-2">
-          <span hlmBadge variant="secondary" class="rounded-full font-normal">{{ h.type }}</span>
-          @if (h.cityName) {
-            <span hlmBadge variant="secondary" class="rounded-full font-normal">{{ h.cityName }}</span>
+  <div class="flex flex-col gap-4 px-4">
+    <!-- عنوان -->
+    <div class="flex flex-col gap-2">
+      <div class="flex items-start justify-between gap-2">
+        <h1 class="flex-1 text-lg font-bold leading-tight">{{ h.name }}</h1>
+        <span
+          class="flex shrink-0 items-center gap-0.5"
+          style="color: var(--gold-500)"
+        >
+          @for (star of stars(h.rate); track star) {
+          <svg
+            class="size-4"
+            viewBox="0 0 24 24"
+            fill="currentColor"
+            aria-hidden="true"
+          >
+            <path
+              d="m12 2 3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01z"
+            />
+          </svg>
           }
-          @if (h.checkInTimeFrom) {
-            <span hlmBadge variant="secondary" class="rounded-full font-normal" dir="ltr">
-              {{ h.checkInTimeFrom }} — {{ h.checkOutTimeFrom }}
-            </span>
-          }
-        </div>
+          <span class="sr-only">{{ count(h.rate) }} ستاره</span>
+        </span>
       </div>
-
-      <!-- امکانات -->
-      @if (facilities().length > 0) {
-        <section hlmCard>
-          <div hlmCardContent class="flex flex-col gap-3 pt-6">
-            <h2 class="text-sm font-bold">امکانات هتل</h2>
-            <div class="flex flex-wrap gap-2">
-              @for (facility of facilities(); track facility) {
-                <span hlmBadge variant="secondary" class="rounded-full font-normal">{{ facility }}</span>
-              }
-            </div>
-          </div>
-        </section>
-      }
-
-      <!-- توضیحات -->
-      @if (h.description) {
-        <section hlmCard>
-          <div hlmCardContent class="flex flex-col gap-2 pt-6">
-            <h2 class="text-sm font-bold">دربارهٔ هتل</h2>
-            <p class="text-muted-foreground text-xs leading-loose whitespace-pre-line">
-              {{ h.description }}
-            </p>
-          </div>
-        </section>
-      }
-
-      <!-- مکان‌های نزدیک -->
-      @if (h.nearPlaces.length > 0) {
-        <section hlmCard>
-          <div hlmCardContent class="flex flex-col gap-3 pt-6">
-            <h2 class="text-sm font-bold">مکان‌های نزدیک</h2>
-            @for (place of h.nearPlaces; track place.title) {
-              <div class="flex items-start justify-between gap-3 text-xs">
-                <span class="flex-1">{{ place.title }}</span>
-                <span class="text-muted-foreground shrink-0">{{ place.distance }}</span>
-              </div>
-            }
-          </div>
-        </section>
-      }
-
-      <!-- اتاق‌ها -->
-      <div class="mt-2 flex items-center justify-between px-1">
-        <h2 class="font-bold">اتاق‌های موجود</h2>
-        <span class="text-muted-foreground text-xs">{{ stayLabel() }}</span>
-      </div>
-
-      @if (roomsLoading()) {
-        <hlm-skeleton class="h-28 w-full" />
-        <hlm-skeleton class="h-28 w-full" />
-      } @else if (roomsError()) {
-        <section hlmCard>
-          <div hlmCardContent class="flex flex-col items-center gap-4 py-8 text-center">
-            <p class="text-muted-foreground text-sm">{{ roomsError() }}</p>
-            <button class="text-primary text-sm font-medium hover:underline" (click)="loadRooms()">
-              تلاش دوباره
-            </button>
-          </div>
-        </section>
-      } @else {
-        @for (room of rooms(); track room.roomId) {
-          <section hlmCard>
-            <div hlmCardContent class="flex flex-col gap-3 pt-6">
-
-              <div class="flex items-start justify-between gap-2">
-                <div class="flex-1 leading-tight">
-                  <h3 class="text-sm font-bold">{{ room.roomType }}</h3>
-                  <p class="text-muted-foreground mt-1 text-xs">
-                    ظرفیت {{ count(room.capacity) }} نفر@if (room.extraBed > 0) {<!--
-                      -->، تا {{ count(room.extraBed) }} تخت اضافه
-                    }
-                  </p>
-                </div>
-                @if (room.breakfast) {
-                  <span hlmBadge variant="secondary" class="shrink-0 rounded-full font-normal">
-                    با صبحانه
-                  </span>
-                }
-              </div>
-
-              <div class="flex items-end justify-between gap-3">
-                <div class="leading-tight">
-                  @if (discount(room) > 0) {
-                    <p class="text-muted-foreground text-xs line-through">
-                      {{ toman(room.rackRate) }}
-                    </p>
-                  }
-                  <p class="text-base font-bold">{{ toman(room.price) }}</p>
-                  <p class="text-muted-foreground text-[0.65rem]">
-                    برای {{ count(nights) }} شب
-                  </p>
-                </div>
-                <button hlmBtn size="sm" (click)="selectRoom(room)">
-                  انتخاب اتاق
-                </button>
-              </div>
-
-              @if (room.freeCapacity <= 3) {
-                <p class="text-xs font-medium" style="color: var(--warn-fg)">
-                  فقط {{ count(room.freeCapacity) }} اتاق باقی مانده
-                </p>
-              }
-
-            </div>
-          </section>
-        } @empty {
-          <section hlmCard>
-            <div hlmCardContent class="py-10 text-center">
-              <p class="text-muted-foreground text-sm">
-                برای این تاریخ اتاق خالی وجود ندارد. تاریخ دیگری را امتحان کنید.
-              </p>
-            </div>
-          </section>
+      <div class="flex items-start justify-between gap-3">
+        <p class="text-muted-foreground flex-1 text-xs leading-relaxed">
+          {{ h.address }}
+        </p>
+        @if (directionsUrl(h); as mapUrl) {
+        <a
+          hlmBtn
+          variant="outline"
+          size="sm"
+          class="shrink-0"
+          [href]="mapUrl"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <ng-icon name="lucideNavigation" />
+          مسیریاب
+        </a>
         }
-      }
-
+      </div>
+      <div class="flex flex-wrap gap-2">
+        <span hlmBadge variant="secondary" class="rounded-full font-normal"
+          >{{ h.type }}</span
+        >
+        @if (h.cityName) {
+        <span hlmBadge variant="secondary" class="rounded-full font-normal"
+          >{{ h.cityName }}</span
+        >
+        } @if (h.checkInTimeFrom) {
+        <span
+          hlmBadge
+          variant="secondary"
+          class="rounded-full font-normal"
+          dir="ltr"
+        >
+          {{ h.checkInTimeFrom }} — {{ h.checkOutTimeFrom }}
+        </span>
+        }
+      </div>
     </div>
 
-    <!-- مدال گالری کامل. «+N» به‌جای باز کردن همهٔ بندانگشتی‌ها در نوار، اینجا
-         را باز می‌کند تا بالای صفحه دست‌نخورده بماند و تصویرها در اندازهٔ
-         قابل دیدن نشان داده شوند. انتخاب هر تصویر آن را به کادر اصلی می‌برد. -->
-    <hlm-dialog [state]="galleryState()" (stateChanged)="onGalleryStateChange($event)">
-      <!-- عرض روی خودِ محتوا ست می‌شود، نه با برداشتن max-width: پنل CDK
-           عرضش را از محتوا می‌گیرد و محتوا `w-full` از پنل می‌خواست، پس هر دو
-           به عرض ذاتیِ گرید جمع می‌شدند (۳۳۱ پیکسل در ویوپورت ۶۱۲). -->
-      <hlm-dialog-content *hlmDialogPortal class="w-[min(550px,100vw)] max-w-none sm:max-w-none">
-        <div hlmDialogHeader>
-          <h3 hlmDialogTitle>تصویرهای {{ h.name }}</h3>
-          <p hlmDialogDescription>
-            {{ count(h.images.length) }} تصویر — برای دیدن در کادر اصلی، روی تصویر بزنید.
-          </p>
+    <!-- امکانات -->
+    <section hlmCard>
+      <div hlmCardHeader>
+        <h2 hlmCardTitle class="text-sm">امکانات هتل</h2>
+        <p hlmCardDescription>خدمات و امکانات موجود در اقامتگاه</p>
+      </div>
+      <div hlmCardContent>
+        @if (facilities().length > 0) {
+        <div class="grid grid-cols-2 gap-2">
+          @for (facility of facilities(); track facility) {
+          <div
+            class="bg-muted flex min-h-11 items-center gap-2 rounded-xl px-3 py-2 text-xs"
+          >
+            <ng-icon name="lucideCheck" class="text-primary shrink-0" />
+            <span>{{ facility }}</span>
+          </div>
+          }
+        </div>
+        } @else {
+        <p class="text-muted-foreground py-3 text-center text-xs">
+          اطلاعات امکانات این هتل از طرف تأمین‌کننده اعلام نشده است.
+        </p>
+        }
+      </div>
+    </section>
+
+    <!-- توضیحات -->
+    @if (h.description) {
+    <section hlmCard>
+      <div hlmCardContent class="flex flex-col gap-2 pt-6">
+        <h2 class="text-sm font-bold">دربارهٔ هتل</h2>
+        <p
+          class="text-muted-foreground text-xs leading-loose whitespace-pre-line"
+        >
+          {{ h.description }}
+        </p>
+      </div>
+    </section>
+    }
+
+    <!-- نظرات کاربران -->
+    <section hlmCard>
+      <div hlmCardHeader>
+        <div class="flex items-center justify-between gap-3">
+          <div>
+            <h2 hlmCardTitle class="text-sm">نظرات کاربران</h2>
+            <p hlmCardDescription>
+              تجربهٔ مسافرانی که در این هتل اقامت داشته‌اند
+            </p>
+          </div>
+          @if (h.reviews.length > 0) {
+          <div
+            class="flex shrink-0 items-center gap-1"
+            aria-label="میانگین امتیاز کاربران"
+          >
+            <ng-icon name="lucideStar" class="text-primary" />
+            <span class="text-sm font-bold">{{ count(reviewAverage()) }}</span>
+            <span class="text-muted-foreground text-xs">از ۵</span>
+          </div>
+          }
+        </div>
+      </div>
+      <div hlmCardContent>
+        @if (h.reviews.length > 0) {
+        <div class="flex flex-col gap-4">
+          @for (review of h.reviews.slice(0, 3); track $index) {
+          <article class="flex flex-col gap-2">
+            <div class="flex items-center justify-between gap-3">
+              <div class="min-w-0">
+                <h3 class="truncate text-xs font-bold">{{ review.author }}</h3>
+                @if (review.reviewedAt) {
+                <p class="text-muted-foreground mt-0.5 text-[11px]">
+                  {{ date(review.reviewedAt) }}
+                </p>
+                }
+              </div>
+              <span hlmBadge variant="secondary" class="shrink-0 rounded-full">
+                {{ count(review.rating) }} از ۵
+              </span>
+            </div>
+            <p class="text-muted-foreground text-xs leading-relaxed">
+              {{ review.comment }}
+            </p>
+          </article>
+          }
+        </div>
+        } @else {
+        <p class="text-muted-foreground py-3 text-center text-xs">
+          هنوز نظری برای این هتل ثبت نشده است.
+        </p>
+        }
+      </div>
+    </section>
+
+    <!-- مکان‌های نزدیک -->
+    @if (h.nearPlaces.length > 0) {
+    <section hlmCard>
+      <div hlmCardHeader>
+        <h2 hlmCardTitle class="text-sm">مکان‌های نزدیک</h2>
+        <p hlmCardDescription>مراکز مهم و دیدنی اطراف هتل</p>
+      </div>
+      <div hlmCardContent class="flex flex-col gap-3">
+        @for (place of nearPlacesPreview(); track place.title) {
+        <div class="flex min-h-11 items-center gap-3 text-xs">
+          <div
+            class="bg-muted text-muted-foreground flex size-9 shrink-0 items-center justify-center rounded-xl"
+          >
+            <ng-icon name="lucideMapPin" />
+          </div>
+          <span class="min-w-0 flex-1 font-medium">{{ place.title }}</span>
+          <span class="text-muted-foreground shrink-0 text-[11px]"
+            >{{ place.distance }}</span
+          >
+        </div>
+        } @if (h.nearPlaces.length > 5) {
+        <button
+          hlmBtn
+          variant="outline"
+          class="mt-1 w-full"
+          (click)="nearPlacesOpen.set(true)"
+        >
+          نمایش همهٔ {{ count(h.nearPlaces.length) }} مکان
+        </button>
+        }
+      </div>
+    </section>
+    }
+
+    <!-- اتاق‌ها -->
+    <div class="mt-2 flex items-center justify-between px-1">
+      <h2 class="font-bold">اتاق‌های موجود</h2>
+      <span class="text-muted-foreground text-xs">{{ stayLabel() }}</span>
+    </div>
+
+    @if (roomsLoading()) {
+    <hlm-skeleton class="h-28 w-full" />
+    <hlm-skeleton class="h-28 w-full" />
+    } @else if (roomsError()) {
+    <section hlmCard>
+      <div
+        hlmCardContent
+        class="flex flex-col items-center gap-4 py-8 text-center"
+      >
+        <p class="text-muted-foreground text-sm">{{ roomsError() }}</p>
+        <button
+          class="text-primary text-sm font-medium hover:underline"
+          (click)="loadRooms()"
+        >
+          تلاش دوباره
+        </button>
+      </div>
+    </section>
+    } @else { @for (room of rooms(); track room.roomId) {
+    <section hlmCard>
+      <div hlmCardContent class="flex flex-col gap-3 pt-6">
+        <div class="flex items-start justify-between gap-2">
+          <div class="flex-1 leading-tight">
+            <h3 class="text-sm font-bold">{{ room.roomType }}</h3>
+            <p class="text-muted-foreground mt-1 text-xs">
+              ظرفیت {{ count(room.capacity) }} نفر@if (room.extraBed > 0) {<!--
+                      -->، تا {{ count(room.extraBed) }} تخت اضافه }
+            </p>
+          </div>
+          @if (room.breakfast) {
+          <span
+            hlmBadge
+            variant="secondary"
+            class="shrink-0 rounded-full font-normal"
+          >
+            با صبحانه
+          </span>
+          }
         </div>
 
-        <!-- اسکرول و گرید عمداً روی دو عنصر جدا هستند. وقتی `max-h` و `grid` روی
+        <div class="flex items-end justify-between gap-3">
+          <div class="leading-tight">
+            @if (discount(room) > 0) {
+            <p class="text-muted-foreground text-xs line-through">
+              {{ toman(room.rackRate) }}
+            </p>
+            }
+            <p class="text-base font-bold">{{ toman(room.price) }}</p>
+            <p class="text-muted-foreground text-[0.65rem]">
+              برای {{ count(nights) }} شب
+            </p>
+          </div>
+          <button hlmBtn size="sm" (click)="selectRoom(room)">
+            انتخاب اتاق
+          </button>
+        </div>
+
+        @if (room.freeCapacity <= 3) {
+        <p class="text-xs font-medium" style="color: var(--warn-fg)">
+          فقط {{ count(room.freeCapacity) }} اتاق باقی مانده
+        </p>
+        }
+      </div>
+    </section>
+    } @empty {
+    <section hlmCard>
+      <div hlmCardContent class="py-10 text-center">
+        <p class="text-muted-foreground text-sm">
+          برای این تاریخ اتاق خالی وجود ندارد. تاریخ دیگری را امتحان کنید.
+        </p>
+      </div>
+    </section>
+    } }
+  </div>
+
+  <!-- مدال گالری کامل. «+N» به‌جای باز کردن همهٔ بندانگشتی‌ها در نوار، اینجا
+         را باز می‌کند تا بالای صفحه دست‌نخورده بماند و تصویرها در اندازهٔ
+         قابل دیدن نشان داده شوند. انتخاب هر تصویر آن را به کادر اصلی می‌برد. -->
+  <hlm-dialog
+    [state]="galleryState()"
+    (stateChanged)="onGalleryStateChange($event)"
+  >
+    <!-- عرض روی خودِ محتوا ست می‌شود، نه با برداشتن max-width: پنل CDK
+           عرضش را از محتوا می‌گیرد و محتوا `w-full` از پنل می‌خواست، پس هر دو
+           به عرض ذاتیِ گرید جمع می‌شدند (۳۳۱ پیکسل در ویوپورت ۶۱۲). -->
+    <hlm-dialog-content
+      *hlmDialogPortal
+      class="w-[min(550px,100vw)] max-w-none sm:max-w-none"
+    >
+      <div hlmDialogHeader>
+        <h3 hlmDialogTitle>تصویرهای {{ h.name }}</h3>
+        <p hlmDialogDescription>
+          {{ count(h.images.length) }} تصویر — برای دیدن در کادر اصلی، روی تصویر
+          بزنید.
+        </p>
+      </div>
+
+      <!-- اسکرول و گرید عمداً روی دو عنصر جدا هستند. وقتی `max-h` و `grid` روی
              یک عنصر بودند، ارتفاعِ قطعیِ ظرف بین ردیف‌های `auto` تقسیم می‌شد
              (۸۱ پیکسل به‌جای ۹۲) ولی کاشی‌ها ارتفاع `aspect-ratio` خود را نگه
              می‌داشتند، پس ردیف‌ها روی هم می‌افتادند و فاصله بلعیده می‌شد. -->
-        <div class="max-h-[65vh] overflow-y-auto">
-          <div class="grid grid-cols-2 gap-3 sm:grid-cols-3">
+      <div class="max-h-[65vh] overflow-y-auto">
+        <div class="grid grid-cols-2 gap-3 sm:grid-cols-3">
           @for (image of h.images; track image; let i = $index) {
-            <button
-              type="button"
-              class="relative block w-full aspect-[4/3] overflow-hidden rounded-lg transition-opacity"
-              [class]="i === activeImage() ? 'ring-primary ring-2' : ''"
-              [attr.aria-label]="'تصویر ' + count(i + 1)"
-              [attr.aria-current]="i === activeImage() ? 'true' : null"
-              (click)="pickImage(i)"
-            >
-              <img [src]="image" [alt]="h.name" decoding="async" class="absolute inset-0 size-full object-cover" />
-            </button>
+          <button
+            type="button"
+            class="relative block w-full aspect-[4/3] overflow-hidden rounded-lg transition-opacity"
+            [class]="i === activeImage() ? 'ring-primary ring-2' : ''"
+            [attr.aria-label]="'تصویر ' + count(i + 1)"
+            [attr.aria-current]="i === activeImage() ? 'true' : null"
+            (click)="pickImage(i)"
+          >
+            <img
+              [src]="image"
+              [alt]="h.name"
+              decoding="async"
+              class="absolute inset-0 size-full object-cover"
+            />
+          </button>
           }
-          </div>
         </div>
-      </hlm-dialog-content>
-    </hlm-dialog>
-  }
+      </div>
+    </hlm-dialog-content>
+  </hlm-dialog>
 
+  <!-- Sheet رفتاری فوکوس، Escape و بازگرداندن فوکوس را مدیریت می‌کند. -->
+  <hlm-sheet
+    side="bottom"
+    [state]="nearPlacesSheetState()"
+    (stateChanged)="onNearPlacesStateChange($event)"
+  >
+    <hlm-sheet-content
+      *hlmSheetPortal
+      class="max-h-[75dvh] rounded-t-2xl pb-[max(1rem,env(safe-area-inset-bottom))]"
+    >
+      <div hlmSheetHeader>
+        <h3 hlmSheetTitle>همهٔ مکان‌های نزدیک</h3>
+        <p hlmSheetDescription>
+          {{ count(h.nearPlaces.length) }} مکان اطراف {{ h.name }}
+        </p>
+      </div>
+      <div class="overscroll-contain overflow-y-auto px-4 pb-4">
+        <div class="flex flex-col gap-2">
+          @for (place of h.nearPlaces; track place.title) {
+          <div
+            class="bg-muted flex min-h-14 items-center gap-3 rounded-xl px-3 py-2"
+          >
+            <div
+              class="bg-background text-muted-foreground flex size-9 shrink-0 items-center justify-center rounded-lg"
+            >
+              <ng-icon name="lucideMapPin" />
+            </div>
+            <span class="min-w-0 flex-1 text-sm font-medium"
+              >{{ place.title }}</span
+            >
+            <span class="text-muted-foreground shrink-0 text-xs"
+              >{{ place.distance }}</span
+            >
+          </div>
+          }
+        </div>
+      </div>
+    </hlm-sheet-content>
+  </hlm-sheet>
+  }
 </div>

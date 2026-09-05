@@ -50,7 +50,7 @@
       "executor": "@angular/build:dev-server",
       "defaultConfiguration": "development",
       "options": {
-        "port": 4300,
+        "port": 6300,
         "proxyConfig": "apps/dashboard/proxy.conf.json",
         "prebundle": {
           "exclude": ["@spartan-ng/brain"]

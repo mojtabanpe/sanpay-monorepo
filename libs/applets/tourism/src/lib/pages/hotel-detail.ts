@@ -1,11 +1,19 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
+import { NgIcon, provideIcons } from '@ng-icons/core';
+import {
+  lucideCheck,
+  lucideMapPin,
+  lucideNavigation,
+  lucideStar,
+} from '@ng-icons/lucide';
 import { HotelDetail, RoomOffer } from '@sanpay/models';
 import { HlmBadgeImports } from '@sanpay/ui/badge';
 import { HlmButtonImports } from '@sanpay/ui/button';
 import { HlmCardImports } from '@sanpay/ui/card';
 import { HlmDialogImports } from '@sanpay/ui/dialog';
 import { HlmSkeletonImports } from '@sanpay/ui/skeleton';
+import { HlmSheetImports } from '@sanpay/ui/sheet';
 import { firstValueFrom } from 'rxjs';
 import { TourismService } from '../data-access/tourism.service';
 import { addDays, faNumber, jalaliLong, toman } from '../format';
@@ -38,7 +46,17 @@ const FACILITY_LABELS: Record<string, string> = {
     HlmButtonImports,
     HlmCardImports,
     HlmDialogImports,
+    HlmSheetImports,
     HlmSkeletonImports,
+    NgIcon,
+  ],
+  viewProviders: [
+    provideIcons({
+      lucideCheck,
+      lucideMapPin,
+      lucideNavigation,
+      lucideStar,
+    }),
   ],
   templateUrl: './hotel-detail.html',
 })
@@ -70,7 +88,10 @@ export class HotelDetailPage {
 
   /** تعداد تصویرهای جامانده — صفر یعنی «+N» لازم نیست */
   protected readonly hiddenImageCount = computed(() =>
-    Math.max(0, (this.hotel()?.images ?? []).length - HotelDetailPage.THUMB_LIMIT),
+    Math.max(
+      0,
+      (this.hotel()?.images ?? []).length - HotelDetailPage.THUMB_LIMIT,
+    ),
   );
 
   protected readonly galleryOpen = signal(false);
@@ -82,6 +103,19 @@ export class HotelDetailPage {
     if (state === 'closed') this.galleryOpen.set(false);
   }
 
+  protected readonly nearPlacesOpen = signal(false);
+  protected readonly nearPlacesSheetState = computed(() =>
+    this.nearPlacesOpen() ? ('open' as const) : ('closed' as const),
+  );
+
+  protected readonly nearPlacesPreview = computed(() =>
+    (this.hotel()?.nearPlaces ?? []).slice(0, 5),
+  );
+
+  protected onNearPlacesStateChange(state: string): void {
+    if (state === 'closed') this.nearPlacesOpen.set(false);
+  }
+
   /** انتخاب از داخل مدال: تصویر اصلی عوض شود و مدال بسته شود */
   protected pickImage(index: number): void {
     this.activeImage.set(index);
@@ -90,7 +124,8 @@ export class HotelDetailPage {
 
   private readonly hotelId = this.route.snapshot.paramMap.get('hotelId') ?? '';
   protected readonly checkin =
-    this.route.snapshot.queryParamMap.get('checkin') ?? addDays(new Date().toISOString().slice(0, 10), 1);
+    this.route.snapshot.queryParamMap.get('checkin') ??
+    addDays(new Date().toISOString().slice(0, 10), 1);
   protected readonly nights = Number(
     this.route.snapshot.queryParamMap.get('nights') ?? 1,
   );
@@ -104,9 +139,17 @@ export class HotelDetailPage {
   /** فقط امکانات موجود، با برچسب فارسی */
   protected readonly facilities = computed(() =>
     Object.entries(this.hotel()?.facilities ?? {})
-      .filter(([key, enabled]) => enabled && FACILITY_LABELS[key])
-      .map(([key]) => FACILITY_LABELS[key]),
+      .filter(([, enabled]) => enabled)
+      .map(([key]) => FACILITY_LABELS[key] ?? key),
   );
+
+  protected readonly reviewAverage = computed(() => {
+    const reviews = this.hotel()?.reviews ?? [];
+    if (!reviews.length) return 0;
+    return (
+      reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length
+    );
+  });
 
   constructor() {
     void this.load();
@@ -159,6 +202,12 @@ export class HotelDetailPage {
     return Array.from({ length: rate }, (_, index) => index);
   }
 
+  protected directionsUrl(hotel: HotelDetail): string | null {
+    if (!hotel.geo) return null;
+    const destination = encodeURIComponent(`${hotel.geo.lat},${hotel.geo.lng}`);
+    return `https://www.google.com/maps/dir/?api=1&destination=${destination}&travelmode=driving`;
+  }
+
   /** درصد تخفیف نسبت به قیمت بورد هتل — صفر یعنی تخفیفی نیست */
   protected discount(room: RoomOffer): number {
     if (room.rackRate <= room.price) return 0;
@@ -167,4 +216,5 @@ export class HotelDetailPage {
 
   protected readonly toman = toman;
   protected readonly count = faNumber;
+  protected readonly date = jalaliLong;
 }

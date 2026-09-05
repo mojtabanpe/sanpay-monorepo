@@ -1,16 +1,16 @@
-# Sanpay
+# sanpay
 
 Welfare/credit platform for the employees of **شرکت جهان‌فولاد سیرجان** (Jahan Foolad Sirjan), built by **شرکت طرح و توسعه دیار مانا**. Employees receive purchase credit for contracted stores plus welfare credits; stores get their own panel; employees log in from the app's home page. Functional scope: `~/Downloads/jahan-foolad.pdf` (Persian proposal — virtual credit card, QR one-time-code purchases, contracted stores, rations/ارزاق distribution, reporting; phase 2 adds travel services).
 
-**Current workflow: full-stack.** Design is approved; pages are being wired to the real API. Employee auth is JWT-based and uses the **national code (کد ملی)** as the login identifier (`POST /api/auth/login`); the app dev-server proxies `/api` to `localhost:3000`. Seed data: `pnpm prisma:seed` (demo employee `3060123456` / `12345678`, dashboard admin `admin` / `admin1234`). Remaining mock-only pages should be migrated to API data as they are touched.
+**Current workflow: full-stack.** Design is approved; pages are being wired to the real API. Employee auth is JWT-based and uses the **national code (کد ملی)** as the login identifier (`POST /api/auth/login`); the app dev-server proxies `/api` to `localhost:6500`. Seed data: `pnpm prisma:seed` (demo employee `3060123456` / `12345678`, dashboard admin `admin` / `admin1234`). Remaining mock-only pages should be migrated to API data as they are touched.
 
 ## Projects
 
 | Project     | Path             | What it is                                                                                                                     |
 | ----------- | ---------------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| `app`       | `apps/app`       | Employee-facing app. **Persian, RTL** (`lang="fa" dir="rtl"`). Serve: port **4200**                                            |
-| `dashboard` | `apps/dashboard` | Admin/management dashboard. **Persian, RTL**, full page width (no `max-w` on content). Serve: port **4300**                    |
-| `store`     | `apps/store`     | Contracted-store panel. **Persian, RTL.** Store login + live payment feed. Serve: port **4400**                                |
+| `app`       | `apps/app`       | Employee-facing app. **Persian, RTL** (`lang="fa" dir="rtl"`). Serve: port **6200**                                            |
+| `dashboard` | `apps/dashboard` | Admin/management dashboard. **Persian, RTL**, full page width (no `max-w` on content). Serve: port **6300**                    |
+| `store`     | `apps/store`     | Contracted-store panel. **Persian, RTL.** Store login + live payment feed. Serve: port **6400**                                |
 | `api`       | `apps/api`       | NestJS + Prisma 7 + PostgreSQL                                                                                                 |
 | `ui`        | `shared/ui`      | Shared spartan/ui library — all 57 primitives as secondary entrypoints: `import { HlmButtonImports } from '@sanpay/ui/button'` |
 | `models`    | `shared/models`  | Shared domain models (TypeScript interfaces) used by app + dashboard: `import { Wallet } from '@sanpay/models'`                |
@@ -188,11 +188,11 @@ Employees book hotels with a **`TOURISM` wallet** — hotels are *not* stores an
 - Matching is by `gdsReserveId`, falling back to `report.externalId` (= our `referenceNo`) for bookings whose GDS id never got written. An event with no matching booking is archived with an error and still answered 200 — endless retries for a payload we cannot act on help no one; the raw body is there for manual review.
 - A late `reserve` for an already `REJECTED`/`CANCELED` booking is ignored: final status and the refund must not roll back.
 - **Not** implemented: no request-body signature (هتل‌یار sends none) and no re-poll of `report` to reconcile events lost while the API was down.
-- Settlement with هتل‌یار (~2 AM, via a پرداخت‌یار) is **not implemented**. The data is in place: `HotelBooking.payable` (sum of `hotelPrice` = our debt, not what the employee paid), `settledAt`, `settlementBatchId`.
+- Settlement runs at 02:00 Asia/Tehran through Toman Corporate Banking. Store payments are grouped per store; hotel bookings are grouped per provider (هتل‌یار / اقامت۲۴). See `docs/tomanpay/corporate-banking-integration.md`.
 
 ## Dashboard (`apps/dashboard`)
 
-Persian/RTL admin panel for واحد رفاه, served at **4300** (dev-server proxies `/api` to `localhost:3000`, same as the app). **Full page width by design:** the shell is a fixed 64-wide sidebar plus a `flex-1` main with no `max-w` — wide tables are the point. Wide tables scroll inside `[data-slot=table-container]`, so the page body never scrolls horizontally (rules live in `apps/dashboard/src/styles.css`).
+Persian/RTL admin panel for واحد رفاه, served at **6300** (dev-server proxies `/api` to `localhost:6500`, same as the app). **Full page width by design:** the shell is a fixed 64-wide sidebar plus a `flex-1` main with no `max-w` — wide tables are the point. Wide tables scroll inside `[data-slot=table-container]`, so the page body never scrolls horizontally (rules live in `apps/dashboard/src/styles.css`).
 
 - Auth is a third, separate identity: `Admin` model, `POST /api/admin/auth/login` (username/password), token carries `role: 'admin'` + `scope` (the admin's role). `JwtAuthGuard` (employee) rejects it because it has no `nationalCode`, `StoreJwtGuard` because `role !== 'store'`. Seed admin: `admin` / `admin1234`.
 - Roles: `SUPER_ADMIN` (also manages dashboard users), `ADMIN`, `VIEWER` (**read-only** — enforced server-side by `@Roles(...WRITE_ROLES)` on every writing route, and mirrored in the UI by `AdminAuthService.canWrite`). Never rely on the UI check alone.
@@ -260,10 +260,11 @@ pnpm 10 refuses to run a dependency's install scripts unless it is listed under 
 
 ```bash
 pnpm install             # install deps (--frozen-lockfile in CI)
-pnpm nx serve app        # employee app  → http://localhost:4200
-pnpm nx serve dashboard  # dashboard     → http://localhost:4300
-pnpm nx serve store      # store panel   → http://localhost:4400  (demo: olympic / store1234)
-pnpm nx serve api        # NestJS API    → http://localhost:3000/api
+pnpm nx serve app        # employee app  → http://localhost:6200
+pnpm nx serve dashboard  # dashboard     → http://localhost:6300
+pnpm nx serve store      # store panel   → http://localhost:6400  (demo: olympic / store1234)
+pnpm nx serve api        # NestJS API    → http://localhost:6500/api
+pnpm serve               # run all four apps in parallel, on the ports above
 pnpm nx run-many -t build test lint
 pnpm nx g @spartan-ng/cli:ui <name>   # add/regen a spartan primitive
 ```

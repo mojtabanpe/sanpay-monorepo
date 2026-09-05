@@ -6,7 +6,7 @@
 
 ---
 
-**Project:** Sanpay
+**Project:** sanpay
 **Generated:** 2026-07-18 17:24:50
 **Category:** SaaS (General)
 

@@ -7,6 +7,21 @@ export interface EmployeeProfile {
   firstName: string;
   lastName: string;
   phone: string | null;
+  company: { id: string; name: string };
+  organizationalRank: import('./admin.model').OrganizationalRank;
+}
+
+export interface EmployeeAuthResponse {
+  accessToken: string;
+  employee: EmployeeProfile;
+  requiresPasswordSetup: boolean;
+}
+
+export interface OtpRequestResult {
+  sent: boolean;
+  expiresInSeconds: number;
+  retryAfterSeconds: number;
+  message?: string;
 }
 
 /** خلاصهٔ وضعیت اعتبار برای کارت بالای صفحهٔ پروفایل */
@@ -32,5 +47,11 @@ export interface PaymentHistoryItem {
   amount: number;
   createdAt: string;
   /** تفکیک به‌ازای هر کیف پول */
-  lines: Array<{ walletName: string; icon: string | null; amount: number }>;
+  lines: Array<{
+    /** شناسهٔ تخصیص کیف پول برای فیلتر دقیق سابقه در خانه */
+    allocationId: string;
+    walletName: string;
+    icon: string | null;
+    amount: number;
+  }>;
 }

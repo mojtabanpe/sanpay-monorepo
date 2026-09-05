@@ -68,6 +68,19 @@
           <input id="fld-7" hlmInput class="w-full" dir="ltr" [value]="form().password"
             (input)="update('password', $any($event.target).value)" />
         </hlm-field>
+        <hlm-field>
+          <label hlmFieldLabel for="fld-iban">شماره شبای تسویه</label>
+          <input id="fld-iban" hlmInput class="w-full" dir="ltr"
+            placeholder="IR000000000000000000000000"
+            [value]="form().settlementIban"
+            (input)="update('settlementIban', $any($event.target).value)" />
+        </hlm-field>
+        <hlm-field>
+          <label hlmFieldLabel for="fld-owner">نام صاحب حساب</label>
+          <input id="fld-owner" hlmInput class="w-full"
+            [value]="form().settlementOwnerName"
+            (input)="update('settlementOwnerName', $any($event.target).value)" />
+        </hlm-field>
         <div class="flex items-end">
           <button hlmBtn [disabled]="saving()" (click)="create()">ثبت فروشگاه</button>
         </div>
@@ -100,6 +113,7 @@
               <th hlmTh>کیف‌پول‌ها</th>
               <th hlmTh>تعداد خرید</th>
               <th hlmTh>جمع فروش</th>
+              <th hlmTh>تسویه</th>
               <th hlmTh>وضعیت</th>
               @if (canWrite()) {
                 <th hlmTh>رمز جدید</th>
@@ -117,6 +131,11 @@
                 <td hlmTd>{{ fa(row.walletCount) }}</td>
                 <td hlmTd>{{ fa(row.paymentCount) }}</td>
                 <td hlmTd class="font-semibold">{{ toman(row.totalAmount) }}</td>
+                <td hlmTd>
+                  <span hlmBadge [variant]="row.settlementIban ? 'default' : 'destructive'">
+                    {{ row.settlementIban ? 'شبا ثبت شده' : 'بدون شبا' }}
+                  </span>
+                </td>
                 <td hlmTd>
                   <span hlmBadge [variant]="row.isActive ? 'default' : 'secondary'">
                     {{ row.isActive ? 'فعال' : 'غیرفعال' }}
@@ -146,7 +165,7 @@
 
               @if (editingId() === row.id) {
                 <tr hlmTr>
-                  <td hlmTd colspan="10">
+                  <td hlmTd colspan="11">
                     <div class="bg-muted/40 grid gap-4 rounded-md p-4 md:grid-cols-4">
                       <hlm-field>
                         <label hlmFieldLabel for="fld-8">نام</label>
@@ -168,6 +187,18 @@
                         <input id="fld-11" hlmInput class="w-full" [value]="editForm().address"
                           (input)="updateEdit('address', $any($event.target).value)" />
                       </hlm-field>
+                      <hlm-field>
+                        <label hlmFieldLabel for="fld-edit-iban">شماره شبای تسویه</label>
+                        <input id="fld-edit-iban" hlmInput class="w-full" dir="ltr"
+                          [value]="editForm().settlementIban"
+                          (input)="updateEdit('settlementIban', $any($event.target).value)" />
+                      </hlm-field>
+                      <hlm-field>
+                        <label hlmFieldLabel for="fld-edit-owner">نام صاحب حساب</label>
+                        <input id="fld-edit-owner" hlmInput class="w-full"
+                          [value]="editForm().settlementOwnerName"
+                          (input)="updateEdit('settlementOwnerName', $any($event.target).value)" />
+                      </hlm-field>
                       <div class="flex items-end gap-2 md:col-span-4">
                         <button hlmBtn [disabled]="saving()" (click)="saveEdit(row.id)">
                           ذخیره
@@ -182,7 +213,7 @@
               }
             } @empty {
               <tr hlmTr>
-                <td hlmTd colspan="10" class="text-muted-foreground text-center">
+                <td hlmTd colspan="11" class="text-muted-foreground text-center">
                   {{ loading() ? 'در حال بارگذاری…' : 'فروشگاهی پیدا نشد.' }}
                 </td>
               </tr>

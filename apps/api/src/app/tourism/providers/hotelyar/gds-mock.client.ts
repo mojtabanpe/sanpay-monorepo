@@ -45,7 +45,9 @@ export class GdsMockClient extends GdsClient {
 
   constructor() {
     super();
-    this.logger.warn('کلاینت هتل‌یار در حالت ماک است — هیچ رزرو واقعی ثبت نمی‌شود');
+    this.logger.warn(
+      'کلاینت هتل‌یار در حالت ماک است — هیچ رزرو واقعی ثبت نمی‌شود',
+    );
   }
 
   async getCities(): Promise<GdsCity[]> {
@@ -59,7 +61,16 @@ export class GdsMockClient extends GdsClient {
   }
 
   async getHotel(hotelId: number): Promise<GdsHotel | null> {
-    return HOTELS.find((hotel) => Number(hotel.id) === hotelId) ?? null;
+    const hotel = HOTELS.find((item) => Number(item.id) === hotelId);
+    if (!hotel) return null;
+    return {
+      ...hotel,
+      nearPlaces: [
+        ...hotel.nearPlaces,
+        ...(MOCK_NEAR_PLACES[hotel.city] ?? []),
+      ],
+      reviews: MOCK_REVIEWS,
+    };
   }
 
   async getHotelImages(hotelId: number): Promise<GdsHotelImage[]> {
@@ -215,6 +226,65 @@ function addDays(isoDate: string, days: number): string {
   return date.toISOString().slice(0, 10);
 }
 
+const MOCK_REVIEWS = [
+  {
+    author: 'مریم احمدی',
+    rating: 5,
+    comment: 'اتاق تمیز بود و برخورد کارکنان بسیار محترمانه بود.',
+    reviewedAt: '2026-07-18',
+  },
+  {
+    author: 'علی رضایی',
+    rating: 4,
+    comment:
+      'موقعیت هتل و دسترسی به مرکز شهر خوب بود؛ صبحانه تنوع مناسبی داشت.',
+    reviewedAt: '2026-06-29',
+  },
+  {
+    author: 'سارا محمدی',
+    rating: 4,
+    comment: 'اقامت آرام و خوبی داشتیم و اتاق مطابق تصاویر بود.',
+    reviewedAt: '2026-05-12',
+  },
+];
+
+const MOCK_NEAR_PLACES: Record<
+  string,
+  Array<{ id: string; title: string; distance: string }>
+> = {
+  '1': [
+    { id: 't1', title: 'پارک ملت', distance: '۸ دقیقه با ماشین' },
+    { id: 't2', title: 'بازار تجریش', distance: '۱۵ دقیقه با ماشین' },
+    { id: 't3', title: 'کاخ سعدآباد', distance: '۱۸ دقیقه با ماشین' },
+    { id: 't4', title: 'دربند', distance: '۲۰ دقیقه با ماشین' },
+  ],
+  '2': [
+    { id: 'm1', title: 'پارک کوهسنگی', distance: '۱۲ دقیقه با ماشین' },
+    { id: 'm2', title: 'بازار رضا', distance: '۱۸ دقیقه با ماشین' },
+    { id: 'm3', title: 'آرامگاه فردوسی', distance: '۳۰ دقیقه با ماشین' },
+    { id: 'm4', title: 'طرقبه', distance: '۳۵ دقیقه با ماشین' },
+    { id: 'm5', title: 'شاندیز', distance: '۴۰ دقیقه با ماشین' },
+  ],
+  '3': [
+    { id: 'i1', title: 'کاخ هشت‌بهشت', distance: '۶ دقیقه پیاده' },
+    { id: 'i2', title: 'پل خواجو', distance: '۱۰ دقیقه با ماشین' },
+    { id: 'i3', title: 'کلیسای وانک', distance: '۱۲ دقیقه با ماشین' },
+    { id: 'i4', title: 'منارجنبان', distance: '۲۰ دقیقه با ماشین' },
+  ],
+  '4': [
+    { id: 's1', title: 'بازار وکیل', distance: '۷ دقیقه پیاده' },
+    { id: 's2', title: 'مسجد نصیرالملک', distance: '۱۰ دقیقه پیاده' },
+    { id: 's3', title: 'باغ ارم', distance: '۱۵ دقیقه با ماشین' },
+    { id: 's4', title: 'سعدیه', distance: '۱۸ دقیقه با ماشین' },
+  ],
+  '5': [
+    { id: 'k1', title: 'اسکله تفریحی', distance: '۸ دقیقه با ماشین' },
+    { id: 'k2', title: 'شهر زیرزمینی کاریز', distance: '۱۲ دقیقه با ماشین' },
+    { id: 'k3', title: 'کشتی یونانی', distance: '۲۰ دقیقه با ماشین' },
+    { id: 'k4', title: 'پارک دلفین‌ها', distance: '۱۵ دقیقه با ماشین' },
+  ],
+};
+
 const CITIES: GdsCity[] = [
   { id: '1', description: 'تهران', province: '1' },
   { id: '2', description: 'مشهد', province: '2' },
@@ -303,15 +373,56 @@ const HOTELS: GdsHotel[] = [
     hotelDescription:
       'هتل پنج ستارهٔ پارسیان استقلال، با دو برج شرقی و غربی، یکی از بزرگ‌ترین هتل‌های بین‌المللی تهران است و در شمال شهر، نزدیک بزرگراه چمران قرار دارد.',
     nearPlaces: [
-      { id: '295', title: 'نمایشگاه بین‌المللی تهران', distance: '۱۴ دقیقه با ماشین (۸.۴ کیلومتر)' },
-      { id: '296', title: 'فرودگاه امام خمینی', distance: '۱ ساعت و ۲ دقیقه با ماشین (۷۵.۷ کیلومتر)' },
-      { id: '297', title: 'برج میلاد', distance: '۲۰ دقیقه با ماشین (۱۱ کیلومتر)' },
+      {
+        id: '295',
+        title: 'نمایشگاه بین‌المللی تهران',
+        distance: '۱۴ دقیقه با ماشین (۸.۴ کیلومتر)',
+      },
+      {
+        id: '296',
+        title: 'فرودگاه امام خمینی',
+        distance: '۱ ساعت و ۲ دقیقه با ماشین (۷۵.۷ کیلومتر)',
+      },
+      {
+        id: '297',
+        title: 'برج میلاد',
+        distance: '۲۰ دقیقه با ماشین (۱۱ کیلومتر)',
+      },
     ],
     facilities: FACILITIES_FULL,
     images: [
-      { category: '1', categoryName: 'نمای کلی', images: { original: placeholder('استقلال تهران — نمای بیرونی', '#6d28d9', '#4c1d95'), thumb: placeholder('استقلال تهران — نمای بیرونی', '#6d28d9', '#4c1d95') } },
-      { category: '1', categoryName: 'نمای کلی', images: { original: placeholder('استقلال تهران — لابی', '#7c3aed', '#5b21b6'), thumb: placeholder('استقلال تهران — لابی', '#7c3aed', '#5b21b6') } },
-      { category: '1', categoryName: 'نمای کلی', images: { original: placeholder('استقلال تهران — اتاق', '#8b5cf6', '#6d28d9'), thumb: placeholder('استقلال تهران — اتاق', '#8b5cf6', '#6d28d9') } },
+      {
+        category: '1',
+        categoryName: 'نمای کلی',
+        images: {
+          original: placeholder(
+            'استقلال تهران — نمای بیرونی',
+            '#6d28d9',
+            '#4c1d95',
+          ),
+          thumb: placeholder(
+            'استقلال تهران — نمای بیرونی',
+            '#6d28d9',
+            '#4c1d95',
+          ),
+        },
+      },
+      {
+        category: '1',
+        categoryName: 'نمای کلی',
+        images: {
+          original: placeholder('استقلال تهران — لابی', '#7c3aed', '#5b21b6'),
+          thumb: placeholder('استقلال تهران — لابی', '#7c3aed', '#5b21b6'),
+        },
+      },
+      {
+        category: '1',
+        categoryName: 'نمای کلی',
+        images: {
+          original: placeholder('استقلال تهران — اتاق', '#8b5cf6', '#6d28d9'),
+          thumb: placeholder('استقلال تهران — اتاق', '#8b5cf6', '#6d28d9'),
+        },
+      },
     ],
     hotelGeo: { lat: '35.792954', lng: '51.355962' },
   },
@@ -350,13 +461,35 @@ const HOTELS: GdsHotel[] = [
     hotelDescription:
       'هتل قصر طلایی مشهد از لوکس‌ترین هتل‌های شهر با دسترسی آسان به حرم مطهر و مجموعه‌ای کامل از امکانات رفاهی و تفریحی است.',
     nearPlaces: [
-      { id: '401', title: 'حرم مطهر رضوی', distance: '۱۵ دقیقه با ماشین (۷ کیلومتر)' },
-      { id: '402', title: 'فرودگاه شهید هاشمی‌نژاد', distance: '۲۵ دقیقه با ماشین (۱۴ کیلومتر)' },
+      {
+        id: '401',
+        title: 'حرم مطهر رضوی',
+        distance: '۱۵ دقیقه با ماشین (۷ کیلومتر)',
+      },
+      {
+        id: '402',
+        title: 'فرودگاه شهید هاشمی‌نژاد',
+        distance: '۲۵ دقیقه با ماشین (۱۴ کیلومتر)',
+      },
     ],
     facilities: FACILITIES_FULL,
     images: [
-      { category: '1', categoryName: 'نمای کلی', images: { original: placeholder('قصر طلایی مشهد — نما', '#b45309', '#78350f'), thumb: placeholder('قصر طلایی مشهد — نما', '#b45309', '#78350f') } },
-      { category: '1', categoryName: 'نمای کلی', images: { original: placeholder('قصر طلایی مشهد — لابی', '#d97706', '#92400e'), thumb: placeholder('قصر طلایی مشهد — لابی', '#d97706', '#92400e') } },
+      {
+        category: '1',
+        categoryName: 'نمای کلی',
+        images: {
+          original: placeholder('قصر طلایی مشهد — نما', '#b45309', '#78350f'),
+          thumb: placeholder('قصر طلایی مشهد — نما', '#b45309', '#78350f'),
+        },
+      },
+      {
+        category: '1',
+        categoryName: 'نمای کلی',
+        images: {
+          original: placeholder('قصر طلایی مشهد — لابی', '#d97706', '#92400e'),
+          thumb: placeholder('قصر طلایی مشهد — لابی', '#d97706', '#92400e'),
+        },
+      },
     ],
     hotelGeo: { lat: '36.316', lng: '59.529' },
   },
@@ -395,13 +528,31 @@ const HOTELS: GdsHotel[] = [
     hotelDescription:
       'هتل عباسی، کاروانسرای دوران صفوی، قدیمی‌ترین هتل ایران و از زیباترین بناهای تاریخی اصفهان با باغ مرکزی چشم‌نواز است.',
     nearPlaces: [
-      { id: '501', title: 'میدان نقش جهان', distance: '۸ دقیقه پیاده (۶۰۰ متر)' },
+      {
+        id: '501',
+        title: 'میدان نقش جهان',
+        distance: '۸ دقیقه پیاده (۶۰۰ متر)',
+      },
       { id: '502', title: 'سی‌وسه پل', distance: '۱۲ دقیقه پیاده (۹۰۰ متر)' },
     ],
     facilities: FACILITIES_FULL,
     images: [
-      { category: '1', categoryName: 'نمای کلی', images: { original: placeholder('هتل عباسی — باغ مرکزی', '#047857', '#064e3b'), thumb: placeholder('هتل عباسی — باغ مرکزی', '#047857', '#064e3b') } },
-      { category: '1', categoryName: 'نمای کلی', images: { original: placeholder('هتل عباسی — اتاق سنتی', '#059669', '#065f46'), thumb: placeholder('هتل عباسی — اتاق سنتی', '#059669', '#065f46') } },
+      {
+        category: '1',
+        categoryName: 'نمای کلی',
+        images: {
+          original: placeholder('هتل عباسی — باغ مرکزی', '#047857', '#064e3b'),
+          thumb: placeholder('هتل عباسی — باغ مرکزی', '#047857', '#064e3b'),
+        },
+      },
+      {
+        category: '1',
+        categoryName: 'نمای کلی',
+        images: {
+          original: placeholder('هتل عباسی — اتاق سنتی', '#059669', '#065f46'),
+          thumb: placeholder('هتل عباسی — اتاق سنتی', '#059669', '#065f46'),
+        },
+      },
     ],
     hotelGeo: { lat: '32.652', lng: '51.669' },
   },
@@ -441,12 +592,30 @@ const HOTELS: GdsHotel[] = [
       'هتل‌آپارتمان جهان کیش با واحدهای مجهز به آشپزخانه، مناسب اقامت خانوادگی و در فاصلهٔ کوتاه از ساحل مرجانی است.',
     nearPlaces: [
       { id: '601', title: 'ساحل مرجان', distance: '۵ دقیقه پیاده (۴۰۰ متر)' },
-      { id: '602', title: 'بازار پردیس', distance: '۱۰ دقیقه با ماشین (۵ کیلومتر)' },
+      {
+        id: '602',
+        title: 'بازار پردیس',
+        distance: '۱۰ دقیقه با ماشین (۵ کیلومتر)',
+      },
     ],
     facilities: FACILITIES_BASIC,
     images: [
-      { category: '1', categoryName: 'نمای کلی', images: { original: placeholder('جهان کیش — نمای ساحلی', '#0369a1', '#0c4a6e'), thumb: placeholder('جهان کیش — نمای ساحلی', '#0369a1', '#0c4a6e') } },
-      { category: '1', categoryName: 'نمای کلی', images: { original: placeholder('جهان کیش — آپارتمان', '#0284c7', '#075985'), thumb: placeholder('جهان کیش — آپارتمان', '#0284c7', '#075985') } },
+      {
+        category: '1',
+        categoryName: 'نمای کلی',
+        images: {
+          original: placeholder('جهان کیش — نمای ساحلی', '#0369a1', '#0c4a6e'),
+          thumb: placeholder('جهان کیش — نمای ساحلی', '#0369a1', '#0c4a6e'),
+        },
+      },
+      {
+        category: '1',
+        categoryName: 'نمای کلی',
+        images: {
+          original: placeholder('جهان کیش — آپارتمان', '#0284c7', '#075985'),
+          thumb: placeholder('جهان کیش — آپارتمان', '#0284c7', '#075985'),
+        },
+      },
     ],
     hotelGeo: { lat: '26.539', lng: '53.980' },
   },
@@ -490,8 +659,22 @@ const HOTELS: GdsHotel[] = [
     ],
     facilities: FACILITIES_FULL,
     images: [
-      { category: '1', categoryName: 'نمای کلی', images: { original: placeholder('زندیه شیراز — نما', '#be185d', '#831843'), thumb: placeholder('زندیه شیراز — نما', '#be185d', '#831843') } },
-      { category: '1', categoryName: 'نمای کلی', images: { original: placeholder('زندیه شیراز — حیاط', '#db2777', '#9d174d'), thumb: placeholder('زندیه شیراز — حیاط', '#db2777', '#9d174d') } },
+      {
+        category: '1',
+        categoryName: 'نمای کلی',
+        images: {
+          original: placeholder('زندیه شیراز — نما', '#be185d', '#831843'),
+          thumb: placeholder('زندیه شیراز — نما', '#be185d', '#831843'),
+        },
+      },
+      {
+        category: '1',
+        categoryName: 'نمای کلی',
+        images: {
+          original: placeholder('زندیه شیراز — حیاط', '#db2777', '#9d174d'),
+          thumb: placeholder('زندیه شیراز — حیاط', '#db2777', '#9d174d'),
+        },
+      },
     ],
     hotelGeo: { lat: '29.616', lng: '52.531' },
   },

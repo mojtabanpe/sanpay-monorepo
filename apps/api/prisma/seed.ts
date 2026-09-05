@@ -11,16 +11,24 @@ async function main() {
   const employeePassword = await bcrypt.hash('12345678', 10);
   const storePassword = await bcrypt.hash('store1234', 10);
 
+  const company = await prisma.company.upsert({
+    where: { name: 'جهان‌فولاد سیرجان' },
+    update: { isActive: true },
+    create: { name: 'جهان‌فولاد سیرجان' },
+  });
+
   // ─── کارمند نمونه ───────────────────────────────────────────────
   const employee = await prisma.employee.upsert({
     where: { nationalCode: '3060123456' },
-    update: {},
+    update: { companyId: company.id, organizationalRank: 'EMPLOYEE' },
     create: {
       nationalCode: '3060123456',
       personnelCode: '12345',
       firstName: 'علی',
       lastName: 'رضایی',
       phone: '09131234567',
+      companyId: company.id,
+      organizationalRank: 'EMPLOYEE',
       passwordHash: employeePassword,
     },
   });
@@ -34,14 +42,54 @@ async function main() {
     name: string;
     category: string;
   }> = [
-    { username: 'coop', code: 'COOP2385', name: 'تعاونی مصرف کارکنان', category: 'خواربار' },
-    { username: 'pegah', code: 'PGAH7429', name: 'لبنیات پگاه سیرجان', category: 'لبنیات' },
-    { username: 'ajil', code: 'AJIL5836', name: 'آجیل‌سرای مرکزی', category: 'آجیل و خشکبار' },
-    { username: 'fruit', code: 'FRUT9264', name: 'میوه‌سرای سیرجان', category: 'میوه و تره‌بار' },
-    { username: 'zagros', code: 'ZGRS4718', name: 'پروتئین زاگرس', category: 'گوشت و پروتئین' },
-    { username: 'olympic', code: 'OLMP3652', name: 'ورزشی المپیک', category: 'لوازم ورزشی' },
-    { username: 'iranmod', code: 'IRMD8473', name: 'پوشاک ایران‌مد', category: 'پوشاک' },
-    { username: 'didgan', code: 'DDGN6195', name: 'عینک دیدگان', category: 'عینک' },
+    {
+      username: 'coop',
+      code: 'COOP2385',
+      name: 'تعاونی مصرف کارکنان',
+      category: 'خواربار',
+    },
+    {
+      username: 'pegah',
+      code: 'PGAH7429',
+      name: 'لبنیات پگاه سیرجان',
+      category: 'لبنیات',
+    },
+    {
+      username: 'ajil',
+      code: 'AJIL5836',
+      name: 'آجیل‌سرای مرکزی',
+      category: 'آجیل و خشکبار',
+    },
+    {
+      username: 'fruit',
+      code: 'FRUT9264',
+      name: 'میوه‌سرای سیرجان',
+      category: 'میوه و تره‌بار',
+    },
+    {
+      username: 'zagros',
+      code: 'ZGRS4718',
+      name: 'پروتئین زاگرس',
+      category: 'گوشت و پروتئین',
+    },
+    {
+      username: 'olympic',
+      code: 'OLMP3652',
+      name: 'ورزشی المپیک',
+      category: 'لوازم ورزشی',
+    },
+    {
+      username: 'iranmod',
+      code: 'IRMD8473',
+      name: 'پوشاک ایران‌مد',
+      category: 'پوشاک',
+    },
+    {
+      username: 'didgan',
+      code: 'DDGN6195',
+      name: 'عینک دیدگان',
+      category: 'عینک',
+    },
   ];
 
   const stores: Record<string, { id: string }> = {};
@@ -129,12 +177,18 @@ async function main() {
     });
     if (!definition) {
       definition = await prisma.walletDefinition.create({
-        data: { name: w.name, icon: w.icon, kind: w.kind, defaultCap: w.cap },
+        data: {
+          name: w.name,
+          companyId: company.id,
+          icon: w.icon,
+          kind: w.kind,
+          defaultCap: w.cap,
+        },
       });
     } else {
       definition = await prisma.walletDefinition.update({
         where: { id: definition.id },
-        data: { icon: w.icon, kind: w.kind },
+        data: { companyId: company.id, icon: w.icon, kind: w.kind },
       });
     }
 

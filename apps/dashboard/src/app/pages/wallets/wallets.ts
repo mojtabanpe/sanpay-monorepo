@@ -2,6 +2,7 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { SanpayDatePickerWidth, isoToJalali, jalaliToIso } from '@sanpay/dates';
 import {
   AdminStoreRow,
+  AdminCompanyRow,
   AdminWalletDefinitionRow,
   BulkAllocateEntry,
 } from '@sanpay/models';
@@ -15,6 +16,7 @@ import { HlmDialogImports } from '@sanpay/ui/dialog';
 import { HlmFieldImports } from '@sanpay/ui/field';
 import { HlmInputImports } from '@sanpay/ui/input';
 import { HlmLabelImports } from '@sanpay/ui/label';
+import { HlmSelectImports } from '@sanpay/ui/select';
 import { HlmToggleGroupImports } from '@sanpay/ui/toggle-group';
 import { JalaliDate } from '@spartan-ng/brain/date-time';
 import { AdminApiService, apiError } from '../../core/admin-api.service';
@@ -22,6 +24,7 @@ import { AdminAuthService } from '../../core/admin-auth.service';
 import { parseAllocationFile } from '../../core/allocation-file';
 import {
   WALLET_KIND_LABELS,
+  ORGANIZATIONAL_RANK_LABELS,
   fa,
   isoDate,
   jalali,
@@ -57,6 +60,7 @@ type Kind = 'CREDIT' | 'TOURISM';
     HlmFieldImports,
     HlmInputImports,
     HlmLabelImports,
+    HlmSelectImports,
     HlmToggleGroupImports,
   ],
   templateUrl: './wallets.html',
@@ -70,9 +74,11 @@ export class WalletsPage {
   protected readonly fa = fa;
   protected readonly jalali = jalali;
   protected readonly kindLabels = WALLET_KIND_LABELS;
+  protected readonly rankLabels = ORGANIZATIONAL_RANK_LABELS;
   protected readonly kinds: Kind[] = ['CREDIT', 'TOURISM'];
 
   protected readonly definitions = signal<AdminWalletDefinitionRow[]>([]);
+  protected readonly companies = signal<AdminCompanyRow[]>([]);
   protected readonly stores = signal<AdminStoreRow[]>([]);
   protected readonly loading = signal(false);
   protected readonly saving = signal(false);
@@ -89,7 +95,12 @@ export class WalletsPage {
     icon: '',
     defaultCap: '',
     storeIds: [] as string[],
+    companyId: '',
   });
+
+  protected readonly companyLabel = (value: unknown): string =>
+    this.companies().find((company) => company.id === value)?.name ??
+    'انتخاب شرکت';
 
   // ─── تخصیص گروهی (مدال) ─────────────────────────────────────────────
   protected readonly bulkFor = signal<AdminWalletDefinitionRow | null>(null);
@@ -98,7 +109,9 @@ export class WalletsPage {
   );
   protected readonly bulkCap = signal('');
   protected readonly bulkExpiry = signal(defaultExpiry());
-  protected readonly bulkExpiryDate = computed(() => isoToJalali(this.bulkExpiry()));
+  protected readonly bulkExpiryDate = computed(() =>
+    isoToJalali(this.bulkExpiry()),
+  );
   protected readonly minDate = isoToJalali(isoDate(new Date()));
 
   /** سطرهای فایل آپلودشده — خالی یعنی تخصیص به همهٔ کارمندان فعال */
@@ -107,7 +120,9 @@ export class WalletsPage {
   protected readonly fileErrors = signal<string[]>([]);
   protected readonly parsingFile = signal(false);
   /** فقط چند سطر اول در مدال پیش‌نمایش می‌شود؛ بقیه شمرده می‌شوند */
-  protected readonly filePreview = computed(() => this.fileEntries().slice(0, 5));
+  protected readonly filePreview = computed(() =>
+    this.fileEntries().slice(0, 5),
+  );
   protected readonly fileTotalCap = computed(() =>
     this.fileEntries().reduce((sum, entry) => sum + entry.cap, 0),
   );
@@ -129,12 +144,14 @@ export class WalletsPage {
     this.loading.set(true);
     this.error.set(null);
     try {
-      const [definitions, stores] = await Promise.all([
+      const [definitions, stores, companies] = await Promise.all([
         this.api.walletDefinitions({ pageSize: 200 }),
         this.api.stores({ pageSize: 200 }),
+        this.api.companies({ active: 'true', pageSize: 200 }),
       ]);
       this.definitions.set(definitions.items);
       this.stores.set(stores.items);
+      this.companies.set(companies.items);
     } catch (caught) {
       this.error.set(apiError(caught, 'خواندن کیف‌پول‌ها ممکن نشد'));
     } finally {
@@ -178,6 +195,7 @@ export class WalletsPage {
       icon: '',
       defaultCap: '',
       storeIds: [],
+      companyId: '',
     });
     this.showForm.set(true);
   }
@@ -189,8 +207,10 @@ export class WalletsPage {
       kind: definition.kind as Kind,
       description: definition.description ?? '',
       icon: definition.icon ?? '',
-      defaultCap: definition.defaultCap === null ? '' : String(definition.defaultCap),
+      defaultCap:
+        definition.defaultCap === null ? '' : String(definition.defaultCap),
       storeIds: definition.stores.map((store) => store.id),
+      companyId: definition.company.id,
     });
     this.showForm.set(true);
   }
@@ -199,6 +219,7 @@ export class WalletsPage {
     const form = this.form();
     const payload = {
       name: form.name.trim(),
+      companyId: form.companyId,
       kind: form.kind,
       description: form.description.trim() || undefined,
       icon: form.icon.trim() || undefined,
@@ -221,7 +242,9 @@ export class WalletsPage {
     }, 'ذخیرهٔ کیف پول ممکن نشد');
   }
 
-  protected async toggleActive(definition: AdminWalletDefinitionRow): Promise<void> {
+  protected async toggleActive(
+    definition: AdminWalletDefinitionRow,
+  ): Promise<void> {
     await this.run(async () => {
       await this.api.updateWalletDefinition(definition.id, {
         isActive: !definition.isActive,
@@ -288,7 +311,8 @@ export class WalletsPage {
   }
 
   /**
-   * با فایل: فقط به کد ملی‌های همان فایل، هرکدام با سقف و انقضای خودش.
+   * با فایل: فقط به کد ملی‌های همان فایل، پس از تطبیق ردهٔ سازمانی، هرکدام با
+   * سقف و انقضای خودش.
    * بدون فایل: سقف و انقضای یکسان برای همهٔ کارمندان فعال.
    */
   protected async bulkAllocate(): Promise<void> {
@@ -324,11 +348,26 @@ export class WalletsPage {
             result.notFound.slice(0, 10).join('، '),
         );
       }
+      if (result.rankMismatches.length) {
+        parts.push(
+          `${fa(result.rankMismatches.length)} رده ناسازگار: ` +
+            result.rankMismatches
+              .slice(0, 10)
+              .map(
+                (item) =>
+                  `${item.nationalCode} (${this.rankLabels[item.fileRank]} در فایل، ${this.rankLabels[item.employeeRank]} در سامانه)`,
+              )
+              .join('، '),
+        );
+      }
       this.notice.set(parts.join('، ') + '.');
     }, 'تخصیص گروهی ممکن نشد');
   }
 
-  private async run(action: () => Promise<void>, fallback: string): Promise<void> {
+  private async run(
+    action: () => Promise<void>,
+    fallback: string,
+  ): Promise<void> {
     if (this.saving()) return;
     this.saving.set(true);
     this.error.set(null);

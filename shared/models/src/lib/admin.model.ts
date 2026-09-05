@@ -26,6 +26,24 @@ export interface Paginated<T> {
 }
 
 export type WalletKind = 'CREDIT' | 'RATION' | 'TOURISM';
+export type OrganizationalRank = 'MANAGER' | 'DEPUTY' | 'HEAD' | 'EMPLOYEE';
+
+export interface AdminCompanyRow {
+  id: string;
+  name: string;
+  isActive: boolean;
+  createdAt: string;
+  employeeCount: number;
+  walletCount: number;
+}
+
+export interface CreateCompanyInput {
+  name: string;
+}
+
+export type UpdateCompanyInput = Partial<CreateCompanyInput> & {
+  isActive?: boolean;
+};
 
 // ─── نمای کلی ────────────────────────────────────────────────────────────────
 
@@ -63,12 +81,16 @@ export interface AdminEmployeeRow {
   firstName: string;
   lastName: string;
   phone: string | null;
+  company: { id: string; name: string };
+  organizationalRank: OrganizationalRank;
   isActive: boolean;
   createdAt: string;
   /** تعداد کیف‌پول‌های فعال و منقضی‌نشده */
   walletCount: number;
   /** جمع ماندهٔ کیف‌پول‌های فعال (تومان) */
   remaining: number;
+  /** آیا کارمند پس از ورود با OTP برای خودش رمز تعیین کرده است؟ */
+  hasPassword: boolean;
 }
 
 export interface AdminAllocationRow {
@@ -97,14 +119,38 @@ export interface CreateEmployeeInput {
   personnelCode: string;
   firstName: string;
   lastName: string;
-  phone?: string;
-  /** رمز اولیه — اگر خالی باشد کد ملی استفاده می‌شود */
-  password?: string;
+  phone: string;
+  companyId: string;
+  organizationalRank: OrganizationalRank;
 }
 
-export type UpdateEmployeeInput = Partial<
-  Omit<CreateEmployeeInput, 'password'>
-> & { isActive?: boolean };
+export type UpdateEmployeeInput = Partial<CreateEmployeeInput> & {
+  isActive?: boolean;
+};
+
+export interface EmployeeImportEntry {
+  rowNumber: number;
+  nationalCode: string;
+  personnelCode: string;
+  firstName: string;
+  lastName: string;
+  phone: string;
+  organizationalRank: OrganizationalRank;
+}
+
+export interface ImportEmployeesInput {
+  companyId: string;
+  entries: EmployeeImportEntry[];
+}
+
+export interface ImportEmployeesResult {
+  created: number;
+  rejected: Array<{
+    rowNumber: number;
+    nationalCode?: string;
+    reason: string;
+  }>;
+}
 
 // ─── فروشگاه ─────────────────────────────────────────────────────────────────
 
@@ -115,6 +161,8 @@ export interface AdminStoreRow {
   category: string | null;
   phone: string | null;
   address: string | null;
+  settlementIban: string | null;
+  settlementOwnerName: string | null;
   username: string;
   isActive: boolean;
   createdAt: string;
@@ -132,6 +180,9 @@ export interface CreateStoreInput {
   category?: string;
   phone?: string;
   address?: string;
+  /** شبای ۲۶ نویسه‌ای مقصد تسویه (IR + 24 رقم) */
+  settlementIban: string;
+  settlementOwnerName?: string;
   username: string;
   password: string;
 }
@@ -145,6 +196,7 @@ export type UpdateStoreInput = Partial<Omit<CreateStoreInput, 'password'>> & {
 export interface AdminWalletDefinitionRow {
   id: string;
   name: string;
+  company: { id: string; name: string };
   kind: WalletKind;
   description: string | null;
   icon: string | null;
@@ -160,6 +212,7 @@ export interface AdminWalletDefinitionRow {
 
 export interface CreateWalletDefinitionInput {
   name: string;
+  companyId: string;
   kind: WalletKind;
   description?: string;
   icon?: string;
@@ -168,9 +221,10 @@ export interface CreateWalletDefinitionInput {
   storeIds?: string[];
 }
 
-export type UpdateWalletDefinitionInput = Partial<CreateWalletDefinitionInput> & {
-  isActive?: boolean;
-};
+export type UpdateWalletDefinitionInput =
+  Partial<CreateWalletDefinitionInput> & {
+    isActive?: boolean;
+  };
 
 export interface CreateAllocationInput {
   employeeId: string;
@@ -187,9 +241,10 @@ export interface UpdateAllocationInput {
 }
 
 /** تخصیص گروهی یک کیف پول به چند کارمند */
-/** یک سطر فایل تخصیص: کارمند با سقف و انقضای مخصوص خودش */
+/** یک سطر فایل تخصیص: کارمند با رده، سقف و انقضای مخصوص خودش */
 export interface BulkAllocateEntry {
   nationalCode: string;
+  organizationalRank: OrganizationalRank;
   cap: number;
   /** ISO date */
   expiresAt: string;
@@ -213,6 +268,12 @@ export interface BulkAllocateResult {
   skipped: number;
   /** کد ملی‌های فایل که کارمندی با آن‌ها پیدا نشد */
   notFound: string[];
+  /** ردیف‌هایی که ردهٔ فایل با ردهٔ ثبت‌شدهٔ کارمند هم‌خوان نیست */
+  rankMismatches: Array<{
+    nationalCode: string;
+    fileRank: OrganizationalRank;
+    employeeRank: OrganizationalRank;
+  }>;
 }
 
 // ─── پرداخت و رزرو ───────────────────────────────────────────────────────────

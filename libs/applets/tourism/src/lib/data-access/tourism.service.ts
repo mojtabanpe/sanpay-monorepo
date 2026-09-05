@@ -7,6 +7,7 @@ import {
   HotelAvailability,
   HotelDetail,
   HotelSummary,
+  PreviousTraveler,
   TourismCity,
 } from '@sanpay/models';
 import { Observable } from 'rxjs';
@@ -90,5 +91,9 @@ export class TourismService {
 
   myBookings(): Observable<BookingReceipt[]> {
     return this.http.get<BookingReceipt[]>('/api/tourism/bookings');
+  }
+
+  previousTravelers(): Observable<PreviousTraveler[]> {
+    return this.http.get<PreviousTraveler[]>('/api/tourism/travelers');
   }
 }

@@ -20,7 +20,8 @@ export const authInterceptor: HttpInterceptorFn = (request, next) => {
       if (
         error instanceof HttpErrorResponse &&
         error.status === 401 &&
-        !request.url.includes('/auth/login')
+        !request.url.includes('/auth/login') &&
+        !request.url.includes('/auth/otp/')
       ) {
         auth.logout();
         router.navigate(['/login']);

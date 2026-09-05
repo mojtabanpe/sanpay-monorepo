@@ -27,6 +27,12 @@ export class JwtAuthGuard implements CanActivate {
       if (!payload.nationalCode) {
         throw new UnauthorizedException();
       }
+      if (
+        payload.requiresPasswordSetup &&
+        !request.url.includes('/auth/set-initial-password')
+      ) {
+        throw new UnauthorizedException('ابتدا رمز عبور خود را تعیین کنید');
+      }
       (request as Request & { user: JwtPayload }).user = payload;
       return true;
     } catch {

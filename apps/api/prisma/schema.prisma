@@ -1,32 +1,79 @@
 generator client {
-  provider = "prisma-client"
-  output   = "../src/generated/prisma"
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "cjs"
 }
 
 datasource db {
   provider = "postgresql"
 }
 
+// ─── شرکت و ردهٔ سازمانی ─────────────────────────────────────────────────────────────
+
+model Company {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  employees         Employee[]
+  walletDefinitions WalletDefinition[]
+}
+
+enum OrganizationalRank {
+  /// مدیر
+  MANAGER
+  /// معاون
+  DEPUTY
+  /// رییس
+  HEAD
+  /// کارمند
+  EMPLOYEE
+}
+
 // ─── کارمند ───────────────────────────────────────────────────────────────────
 
 model Employee {
-  id            String   @id @default(uuid())
+  id                 String             @id @default(uuid())
   /// کد ملی — شناسهٔ ورود به سامانه
-  nationalCode  String   @unique
-  personnelCode String   @unique
-  firstName     String
-  lastName      String
-  phone         String?
-  passwordHash  String
-  isActive      Boolean  @default(true)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  nationalCode       String             @unique
+  personnelCode      String             @unique
+  firstName          String
+  lastName           String
+  phone              String?
+  companyId          String
+  organizationalRank OrganizationalRank
+  /// تا پیش از اولین ورود با OTP خالی است
+  passwordHash       String?
+  isActive           Boolean            @default(true)
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
 
+  company       Company            @relation(fields: [companyId], references: [id], onDelete: Restrict)
   allocations   WalletAllocation[]
   purchaseCodes PurchaseCode[]
   transactions  Transaction[]
   payments      Payment[]
   hotelBookings HotelBooking[]
+  otp           EmployeeOtp?
+
+  @@index([companyId])
+}
+
+/// آخرین کد ورود کارمند؛ کد خام هرگز ذخیره نمی‌شود.
+model EmployeeOtp {
+  id         String   @id @default(uuid())
+  employeeId String   @unique
+  codeHash   String
+  expiresAt  DateTime
+  attempts   Int      @default(0)
+  sentAt     DateTime @default(now())
+  createdAt  DateTime @default(now())
+
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@index([expiresAt])
 }
 
 // ─── کیف پول ──────────────────────────────────────────────────────────────────
@@ -44,6 +91,7 @@ enum WalletKind {
 /// اعتبار هر کارمند از این تعریف، در WalletAllocation با سقف و انقضای خودش نگهداری می‌شود.
 model WalletDefinition {
   id          String     @id @default(uuid())
+  companyId   String
   name        String
   kind        WalletKind @default(CREDIT)
   description String?
@@ -51,12 +99,15 @@ model WalletDefinition {
   icon        String?
   /// سقف پیش‌فرض تخصیص‌ها (تومان) — قابل بازنویسی به‌ازای هر کارمند
   defaultCap  BigInt?
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  isActive    Boolean    @default(true)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
 
+  company     Company                 @relation(fields: [companyId], references: [id], onDelete: Restrict)
   stores      WalletDefinitionStore[]
   allocations WalletAllocation[]
+
+  @@index([companyId])
 }
 
 /// تخصیص یک کیف پول به یک کارمند: سقف اعتبار، مصرف‌شده و تاریخ انقضا.
@@ -87,24 +138,29 @@ model WalletAllocation {
 // ─── فروشگاه ──────────────────────────────────────────────────────────────────
 
 model Store {
-  id           String   @id @default(uuid())
-  name         String
+  id                  String   @id @default(uuid())
+  name                String
   /// کد کوتاه فروشگاه — محتوای QR ثابتِ چاپ‌شده روی صندوق و قابل تایپ دستی
-  code         String   @unique
+  code                String   @unique
   /// دسته‌بندی (آجیل، میوه، پروتئین، عینک، …)
-  category     String?
-  phone        String?
-  address      String?
+  category            String?
+  phone               String?
+  address             String?
+  /// شبای مقصد تسویهٔ شبانه در تومان
+  settlementIban      String?
+  /// نام صاحب حساب برای ثبت در آیتم انتقال
+  settlementOwnerName String?
   /// ورود پنل فروشگاه
-  username     String   @unique
-  passwordHash String
-  isActive     Boolean  @default(true)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  username            String   @unique
+  passwordHash        String
+  isActive            Boolean  @default(true)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
 
   walletDefinitions WalletDefinitionStore[]
   transactions      Transaction[]
   payments          Payment[]
+  settlementItems   SettlementItem[]
 }
 
 /// رابطهٔ چند-به-چند: هر کیف پول در کدام فروشگاه‌ها قابل استفاده است
@@ -112,8 +168,8 @@ model WalletDefinitionStore {
   definitionId String
   storeId      String
 
-  definition   WalletDefinition @relation(fields: [definitionId], references: [id])
-  store        Store            @relation(fields: [storeId], references: [id])
+  definition WalletDefinition @relation(fields: [definitionId], references: [id])
+  store      Store            @relation(fields: [storeId], references: [id])
 
   @@id([definitionId, storeId])
 }
@@ -149,21 +205,25 @@ model PurchaseCode {
 /// یک پرداخت در صندوق فروشگاه: کارمند QR ثابت فروشگاه را اسکن می‌کند، مبلغ را
 /// وارد می‌کند و مبلغ می‌تواند بین چند کیف پول شکسته شود. هر سطر یک Transaction است.
 model Payment {
-  id         String   @id @default(uuid())
+  id               String    @id @default(uuid())
   /// شمارهٔ رسید — چیزی که کارمند به فروشنده نشان می‌دهد و در پنل فروشگاه دیده می‌شود
-  receiptNo  String   @unique
-  employeeId String
-  storeId    String
+  receiptNo        String    @unique
+  employeeId       String
+  storeId          String
   /// جمع کل پرداخت (تومان)
-  amount     BigInt
-  createdAt  DateTime @default(now())
+  amount           BigInt
+  settlementItemId String?
+  settledAt        DateTime?
+  createdAt        DateTime  @default(now())
 
-  employee     Employee      @relation(fields: [employeeId], references: [id])
-  store        Store         @relation(fields: [storeId], references: [id])
-  transactions Transaction[]
+  employee       Employee        @relation(fields: [employeeId], references: [id])
+  store          Store           @relation(fields: [storeId], references: [id])
+  transactions   Transaction[]
+  settlementItem SettlementItem? @relation(fields: [settlementItemId], references: [id], onDelete: Restrict)
 
   @@index([storeId, createdAt])
   @@index([employeeId, createdAt])
+  @@index([settlementItemId])
 }
 
 // ─── رزرو هتل (گردشگری) ───────────────────────────────────────────────────────
@@ -195,62 +255,146 @@ enum HotelProviderKey {
 /// تأمین‌کننده انجام می‌شود و فقط در صورت موفقیت، اعتبار کارمند کم می‌شود.
 /// تسویهٔ ریالی با هتل‌یار جداگانه و شبانه انجام می‌شود (settledAt).
 model HotelBooking {
-  id           String        @id @default(uuid())
+  id                String           @id @default(uuid())
   /// شمارهٔ پیگیری داخلی — همان کد پیگیری که به تأمین‌کننده فرستاده می‌شود
-  referenceNo  String        @unique
+  referenceNo       String           @unique
   /// کدام تأمین‌کننده این رزرو را دارد
-  provider     HotelProviderKey
+  provider          HotelProviderKey
   /// شناسهٔ رزرو نزد تأمین‌کننده — با آن confirm/cancel می‌زنیم و webhook را تطبیق می‌دهیم
   providerReserveId String?
-  status       BookingStatus @default(PENDING)
+  status            BookingStatus    @default(PENDING)
   /// مهلت نهایی‌سازی در وضعیت HOLD
-  holdExpiresAt DateTime?
+  holdExpiresAt     DateTime?
 
-  employeeId   String
-  allocationId String
+  employeeId    String
+  allocationId  String
   /// تراکنش کسر اعتبار — تا وقتی رزرو در هتل‌یار موفق نشده null است
-  transactionId String?      @unique
+  transactionId String? @unique
 
   /// شناسهٔ مبهم هتل («eg:740») — provider داخلش کدگذاری شده
-  hotelId    String
-  hotelName  String
+  hotelId        String
+  hotelName      String
   /// شناسهٔ مبهم اتاق («eg:740:12:5») — برای اقامت۲۴ شامل نرخ‌نامه هم هست
-  roomId     String
-  roomType   String
-  checkin    DateTime
-  nights     Int
-  guestName  String
-  guestIdNo  String
+  roomId         String
+  roomType       String
+  checkin        DateTime
+  nights         Int
+  guestName      String
+  guestIdNo      String
+  /// فیلدهای تفکیک‌شده برای انتخاب دوبارهٔ مسافر در رزروهای بعدی
+  guestFirstName String?
+  guestLastName  String?
+  guestMobile    String?
   /// مبلغ کسرشده از کیف پول (تومان)
-  amount     BigInt
+  amount         BigInt
   /// مبلغی که باید به تأمین‌کننده پرداخت شود (تومان) — مبنای تسویهٔ شبانه
-  payable    BigInt
+  payable        BigInt
 
   /// زمان تسویه با تأمین‌کننده از طریق پرداخت‌یار (null = تسویه‌نشده)
-  settledAt DateTime?
+  settledAt         DateTime?
   /// شناسهٔ دستهٔ تسویهٔ شبانه
   settlementBatchId String?
+  settlementItemId  String?
 
   /// زمان رد/کنسل‌شدن از سمت تأمین‌کننده (از طریق webhook یا درخواست خودمان)
-  canceledAt DateTime?
+  canceledAt      DateTime?
   /// مبلغی که بابت رد یا کنسلی به کیف پول برگشت (تومان)
-  refundedAmount BigInt?
+  refundedAmount  BigInt?
   /// جریمهٔ کنسلیِ اعلام‌شده در وضعیت CANCELING (تومان) — نزد تأمین‌کننده می‌ماند
   cancellationFee BigInt?
   /// توضیح تأمین‌کننده دربارهٔ رد یا تغییر رزرو — در اپ به کارمند نشان داده می‌شود
-  statusNote String?
+  statusNote      String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  employee    Employee         @relation(fields: [employeeId], references: [id])
-  allocation  WalletAllocation @relation(fields: [allocationId], references: [id])
-  transaction Transaction?     @relation(fields: [transactionId], references: [id])
-  webhookEvents GdsWebhookEvent[]
+  employee       Employee          @relation(fields: [employeeId], references: [id])
+  allocation     WalletAllocation  @relation(fields: [allocationId], references: [id])
+  transaction    Transaction?      @relation(fields: [transactionId], references: [id])
+  webhookEvents  GdsWebhookEvent[]
+  settlementItem SettlementItem?   @relation(fields: [settlementItemId], references: [id], onDelete: Restrict)
 
   @@index([employeeId, createdAt])
   @@index([settledAt])
   @@index([provider, providerReserveId])
+  @@index([settlementItemId])
+}
+
+// ─── تسویهٔ شبانه با بانکداری شرکتی تومان ────────────────────────────────────
+
+enum SettlementBatchStatus {
+  BUILDING
+  SUBMITTED
+  PROCESSING
+  COMPLETED
+  PARTIAL_FAILED
+  FAILED
+}
+
+enum SettlementItemStatus {
+  CREATED
+  SUBMITTED
+  PROCESSING
+  SUCCEEDED
+  FAILED
+  UNKNOWN
+}
+
+enum SettlementBeneficiaryType {
+  STORE
+  HOTELYAR
+  EGHAMAT24
+}
+
+/// یک اجرای روزانه؛ runKey بر اساس تاریخ تهران است و اجرای تکراری cron را بی‌اثر می‌کند.
+model SettlementBatch {
+  id             String                @id @default(uuid())
+  runKey         String                @unique
+  status         SettlementBatchStatus @default(BUILDING)
+  tomanBatchUuid String?               @unique
+  totalAmount    BigInt                @default(0)
+  itemCount      Int                   @default(0)
+  error          String?
+  submittedAt    DateTime?
+  completedAt    DateTime?
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
+
+  items SettlementItem[]
+
+  @@index([status, createdAt])
+}
+
+/// هر ذی‌نفع دقیقاً یک انتقال تجمیعی دارد؛ خریدهای مبنا به این سطر متصل‌اند.
+model SettlementItem {
+  id                String                    @id @default(uuid())
+  batchId           String
+  beneficiaryType   SettlementBeneficiaryType
+  beneficiaryKey    String
+  storeId           String?
+  beneficiaryName   String
+  destinationIban   String
+  amount            BigInt
+  trackerId         String                    @unique
+  status            SettlementItemStatus      @default(CREATED)
+  tomanItemUuid     String?                   @unique
+  tomanTransferUuid String?
+  tomanStatus       Int?
+  followUpCode      String?
+  receiptLink       String?
+  error             String?
+  submittedAt       DateTime?
+  settledAt         DateTime?
+  createdAt         DateTime                  @default(now())
+  updatedAt         DateTime                  @updatedAt
+
+  batch         SettlementBatch @relation(fields: [batchId], references: [id], onDelete: Restrict)
+  store         Store?          @relation(fields: [storeId], references: [id], onDelete: Restrict)
+  payments      Payment[]
+  hotelBookings HotelBooking[]
+
+  @@unique([batchId, beneficiaryType, beneficiaryKey])
+  @@index([batchId, status])
 }
 
 /// لاگ خام رویدادهای webhook هتل‌یار.
@@ -259,20 +403,20 @@ model HotelBooking {
 /// بفرستد و کلید یکتای زیر جلوی برگشت دوبارهٔ اعتبار را می‌گیرد،
 /// (۲) بایگانی — اگر پردازش شکست بخورد بدنهٔ خام برای بررسی دستی می‌ماند.
 model GdsWebhookEvent {
-  id String @id @default(uuid())
+  id            String    @id @default(uuid())
   /// reserve | reserve_reject | change
-  action String
+  action        String
   /// شناسهٔ رزرو در هتل‌یار (detail.reservationId)
   reservationId String
   /// شناسهٔ تغییر برای اکشن change — برای بقیه رشتهٔ خالی تا کلید یکتا کار کند
-  changeId String @default("")
+  changeId      String    @default("")
   /// بدنهٔ خام رویداد، همان‌طور که رسیده
-  payload Json
-  bookingId String?
+  payload       Json
+  bookingId     String?
   /// null یعنی هنوز/هرگز پردازش نشده — با error پر می‌شود
-  processedAt DateTime?
-  error String?
-  receivedAt DateTime @default(now())
+  processedAt   DateTime?
+  error         String?
+  receivedAt    DateTime  @default(now())
 
   booking HotelBooking? @relation(fields: [bookingId], references: [id])
 

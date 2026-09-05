@@ -3,7 +3,7 @@
  *
  * دو نکته که کل این فایل را شکل می‌دهند:
  *
- * ۱. **واحد پول.** GRS ریال می‌دهد، سان‌پی همه‌جا تومان کار می‌کند. تبدیل فقط
+ * ۱. **واحد پول.** GRS ریال می‌دهد، صن‌پی همه‌جا تومان کار می‌کند. تبدیل فقط
  *    همین‌جا انجام می‌شود تا هیچ عدد ریالی به سرویس و دیتابیس نشت نکند.
  *
  * ۲. **شناسهٔ اتاق سه‌بخشی است.** رزرو در GRS هم `room_type_id` می‌خواهد هم
@@ -77,9 +77,7 @@ export function toHotelSummary(
   };
 }
 
-function photosOf(property: {
-  images?: { url: string }[] | null;
-}): string[] {
+function photosOf(property: { images?: { url: string }[] | null }): string[] {
   return (property.images ?? [])
     .map((image) => image?.url)
     .filter((url): url is string => !!url);
@@ -102,6 +100,8 @@ export function toHotelDetail(
     ),
     // GRS معادل nearPlaces ندارد
     nearPlaces: [] as NearPlace[],
+    // Property Details در GRS نظر کاربران را برنمی‌گرداند.
+    reviews: [],
     images: photosOf(property),
     geo:
       property.latitude !== null && property.longitude !== null
