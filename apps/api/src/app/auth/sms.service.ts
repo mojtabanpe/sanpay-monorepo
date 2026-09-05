@@ -4,15 +4,20 @@ import {
   ServiceUnavailableException,
 } from '@nestjs/common';
 
-interface IranPayamakResponse {
-  status?: string;
+/**
+ * پاسخ sms.ir — خطاها هم با HTTP 200 برمی‌گردند و فقط `status` معتبر است،
+ * پس نباید صرفاً به کد وضعیت HTTP تکیه کرد.
+ */
+interface SmsIrResponse {
+  status?: number;
   message?: string;
-  messages?: string | string[];
-  data?: { status?: string } | number;
+  data?: unknown;
 }
 
-const IRAN_PAYAMAK_PATTERN_SMS_URL =
-  'https://api.iranpayamak.com/ws/v1/sms/pattern';
+const SMS_IR_VERIFY_URL = 'https://api.sms.ir/v1/send/verify';
+const SMS_IR_OK_STATUS = 1;
+/** نام پارامتر تعریف‌شده در قالبِ (template) پنل sms.ir */
+const OTP_PARAMETER_NAME = 'CODE';
 
 @Injectable()
 export class SmsService {
@@ -24,43 +29,39 @@ export class SmsService {
       return;
     }
 
-    const apiKey = process.env.FARAZ_SMS_API_KEY;
-    const lineNumber = process.env.FARAZ_SMS_LINE_NUMBER;
-    const patternCode = process.env.FARAZ_SMS_OTP_PATTERN_CODE;
-    if (!apiKey || !lineNumber || !patternCode) {
+    const apiKey = process.env.SMSIR_API_KEY;
+    const templateId = Number(process.env.SMSIR_OTP_TEMPLATE_ID);
+    if (!apiKey || !Number.isFinite(templateId)) {
       throw new ServiceUnavailableException('سرویس پیامک پیکربندی نشده است');
     }
 
     try {
-      const response = await fetch(IRAN_PAYAMAK_PATTERN_SMS_URL, {
+      const response = await fetch(SMS_IR_VERIFY_URL, {
         method: 'POST',
         headers: {
           Accept: 'application/json',
-          'Api-Key': apiKey,
           'Content-Type': 'application/json',
+          'x-api-key': apiKey,
         },
         body: JSON.stringify({
-          code: patternCode,
-          attributes: { code },
-          recipient: phone,
-          line_number: lineNumber,
-          number_format: 'english',
+          mobile: phone,
+          templateId,
+          parameters: [{ name: OTP_PARAMETER_NAME, value: code }],
         }),
         signal: AbortSignal.timeout(10_000),
       });
 
-      const payload = (await response.json()) as IranPayamakResponse;
-      if (!response.ok || payload.status !== 'success') {
-        const providerMessage = Array.isArray(payload.messages)
-          ? payload.messages.join(', ')
-          : payload.messages || payload.message || payload.status;
+      const payload = (await response.json()) as SmsIrResponse;
+      if (!response.ok || payload.status !== SMS_IR_OK_STATUS) {
         throw new Error(
-          `IranPayamak returned ${response.status}: ${providerMessage ?? 'unknown error'}`,
+          `sms.ir returned HTTP ${response.status} / status ${payload.status}: ${
+            payload.message ?? 'unknown error'
+          }`,
         );
       }
     } catch (error) {
       this.logger.error(
-        'IranPayamak SMS failed',
+        'sms.ir SMS failed',
         error instanceof Error ? error.stack : undefined,
       );
       throw new ServiceUnavailableException(
