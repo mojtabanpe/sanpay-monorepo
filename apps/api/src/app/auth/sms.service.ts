@@ -23,6 +23,10 @@ const OTP_PARAMETER_NAME = 'CODE';
 export class SmsService {
   private readonly logger = new Logger(SmsService.name);
 
+  constructor() {
+    this.logger.log(`SMS mode: ${process.env.SMS_MODE || 'smsir'}`);
+  }
+
   async sendOtp(phone: string, code: string): Promise<void> {
     if (process.env.SMS_MODE === 'console') {
       this.logger.warn(`[development only] OTP for ${phone}: ${code}`);
@@ -59,6 +63,9 @@ export class SmsService {
           }`,
         );
       }
+      this.logger.log(
+        'sms.ir accepted OTP request; delivery to the handset is not confirmed',
+      );
     } catch (error) {
       this.logger.error(
         'sms.ir SMS failed',

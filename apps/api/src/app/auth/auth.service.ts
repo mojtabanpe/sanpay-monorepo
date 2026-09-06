@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   Injectable,
+  Logger,
   UnauthorizedException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
@@ -23,6 +24,8 @@ const MAX_OTP_ATTEMPTS = 5;
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwt: JwtService,
@@ -80,12 +83,18 @@ export class AuthService {
     });
 
     // پاسخ عمدی یکسان است تا از روی API نتوان عضویت افراد را تشخیص داد.
-    if (!employee) return result;
+    if (!employee) {
+      this.logger.debug(
+        'OTP skipped: no active employee/company matching the supplied credentials',
+      );
+      return result;
+    }
 
     if (
       employee.otp &&
       employee.otp.sentAt.getTime() + OTP_RESEND_SECONDS * 1000 > Date.now()
     ) {
+      this.logger.debug('OTP skipped: the 60-second resend cooldown is active');
       return {
         ...result,
         sent: false,
