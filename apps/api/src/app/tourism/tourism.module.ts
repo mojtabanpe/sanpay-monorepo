@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { GdsWebhookGuard } from './gds-webhook.guard';
 import { Eghamat24Provider } from './providers/eghamat24/eghamat24.provider';
+import { GrsHttpClient } from './providers/eghamat24/grs-http.client';
 import { GrsMockClient } from './providers/eghamat24/grs-mock.client';
 import { GrsClient } from './providers/eghamat24/grs.types';
 import { HotelProviderRouter } from './providers/hotel-provider.router';
@@ -32,12 +33,15 @@ import { TourismService } from './tourism.service';
       useClass: process.env.GDS_MODE === 'live' ? GdsHttpClient : GdsMockClient,
     },
     {
-      // اقامت۲۴ هنوز کلاینت واقعی ندارد: `Client-Token` فقط بعد از ارسال
-      // مدارک ثبتی و پرداخت حق اشتراک صادر می‌شود (فایل «مدارک مورد نیاز وب
-      // سرویس»). تا آن موقع فقط ماک وجود دارد و همین‌جا وصل می‌شود؛ وقتی توکن
-      // رسید، `GrsHttpClient` اضافه و مثل بالا با `GRS_MODE=live` انتخاب شود.
+      // `GRS_MODE=live` به سرویس واقعی اقامت۲۴ وصل می‌شود؛ هر مقدار دیگری (و
+      // نبودِ متغیر) ماک است — همان قرارداد هتل‌یار، به همان دلیل.
+      //
+      // توکن تست را اقامت۲۴ داده و روی `hotel-test-01.denv.ir` می‌نشیند؛ ولی
+      // آن میزبان فقط از داخل ایران باز است، پس اولین اجرا حتماً باید با
+      // `pnpm grs:check` از یک شبکهٔ ایرانی تأیید شود — مسیرهای `ENDPOINTS`
+      // در `GrsHttpClient` هنوز روی سرویس واقعی آزمایش نشده‌اند.
       provide: GrsClient,
-      useClass: GrsMockClient,
+      useClass: process.env.GRS_MODE === 'live' ? GrsHttpClient : GrsMockClient,
     },
   ],
 })

@@ -8,7 +8,8 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio",
     "prisma:seed": "node -r @swc-node/register apps/api/prisma/seed.ts",
-    "gds:check": "node -r @swc-node/register apps/api/scripts/gds-check.ts"
+    "gds:check": "node -r @swc-node/register apps/api/scripts/gds-check.ts",
+    "grs:check": "node -r @swc-node/register apps/api/scripts/grs-check.ts"
   },
   "private": true,
   "packageManager": "pnpm@10.24.0",
