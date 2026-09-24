@@ -61,12 +61,6 @@
           box-shadow: var(--elev-3);
         "
       >
-        <div
-          class="pointer-events-none absolute -top-16 -left-12 size-48 rounded-full blur-3xl"
-          [style.background-color]="categoryVar(wallet, '-bg')"
-          aria-hidden="true"
-        ></div>
-
         <div class="relative flex items-start justify-between gap-3">
           <div
             class="flex min-w-0 items-center gap-2"
@@ -220,7 +214,7 @@
                 <div class="min-w-0">
                   <p class="truncate text-sm font-semibold">{{ purchase.storeName }}</p>
                   <p class="text-muted-foreground text-[11px]">
-                    {{ date(purchase.createdAt) }} · {{ purchase.receiptNo }}
+                    {{ date(purchase.createdAt) }}، {{ purchase.receiptNo }}
                   </p>
                 </div>
                 <p class="shrink-0 text-xs font-bold">{{ toman(purchase.amount) }}</p>

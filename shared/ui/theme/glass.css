@@ -2,23 +2,23 @@
  * sanpay theme — single source of truth for all three apps.
  * Spec: design-system/sanpay/MASTER.md
  *
- * IDENTITY: "ink & gold". Light-first, high-contrast, dense.
- *   - Ink navy (--ink-*) is the brand and the primary interactive colour.
- *     Filled ink buttons on white is the premium-fintech read (Wise/Ramp);
- *     it also guarantees contrast instead of fighting for it.
- *   - Gold (--gold-*) is the single accent, reserved for VALUE — money,
- *     progress, the active nav item, the hero highlight. Used sparingly so
- *     it keeps meaning something.
- *   - Emerald/red are semantic ONLY (available vs. spent/over), never decor.
- *
- * Replaces the previous violet+emerald scheme. That pairing was near
- * complementary, so any gradient between the two passed through a desaturated
- * grey-teal — the muddy hero card. Ink→ink and gold→gold gradients stay
- * within one hue family and cannot mud out.
+ * IDENTITY: "SANPAY blue", taken from the logo (industrial blue #0E4C94, a red
+ * gear #DE2128, a grey gear #666767). Light-first, calm, Apple-HIG-informed.
+ *   - Logo blue (--brand) is the ONE accent colour: primary actions, the
+ *     selected tab, focus, links. Used judiciously (HIG branding.md: "use it
+ *     intentionally for primary actions or status indicators").
+ *   - Ink (--ink-*) is the structural dark, re-hued from navy to the logo's
+ *     blue so the wallet hero cards read as the logo's own S-frame.
+ *   - Gold (--gold-*) still means VALUE — money, progress. Blue + gold is
+ *     the classic industrial/financial pairing and keeps the meaning intact.
+ *   - Logo red is NOT a UI accent. In an app full of money, red already means
+ *     "spent / error" (HIG color.md: "Avoid using the same color to mean
+ *     different things"). It lives in the logo mark and as --destructive only.
+ *   - Logo grey becomes the neutral scale (--muted-foreground etc.).
  *
  * ⚠ GOLD IS NOT A TEXT COLOUR ON LIGHT SURFACES. --gold-500 on white is
  * ~2.1:1. Use it for fills, bars and icons on light; for gold *text* you must
- * be on ink, where --gold-300 reaches ~7:1. Text on light surfaces uses
+ * be on ink, where --gold-300 reaches ~8:1. Text on light surfaces uses
  * --foreground / --muted-foreground / --pos-fg / --destructive only.
  *
  * Dark mode is opt-in via the `.dark` class on <html>. Never follow OS.
@@ -32,24 +32,24 @@
   --font-display: var(--font-sans);
 
   /*
-   * Radius scale. Down from a uniform 1rem — everything at 16px made cards,
-   * chips and inputs read as the same soft blob with no hierarchy. Now the
-   * container is rounder than the controls inside it.
+   * Radius scale. Controls (inputs, buttons) share --radius; containers are
+   * rounder (--radius-lg) so a card reads as the thing that holds controls —
+   * the concentric-corner rule iOS uses for grouped lists.
    */
   --radius: 0.875rem;
   --radius-sm: 0.5rem;
-  --radius-lg: 1.25rem;
+  --radius-lg: 1.375rem;
 
-  /* ── Brand ramp: ink ─────────────────────────────────────────────── */
-  --ink-900: #0a1122;
-  --ink-800: #101b33;
-  --ink-700: #172644;
-  --ink-600: #22334f;
-  --ink-500: #3d4d6b;
-  --ink-400: #5b6b89;
-  --ink-300: #8593ab;
+  /* ── Structural ramp: ink, re-hued to the logo blue (≈213°) ─────────── */
+  --ink-900: #071a33;
+  --ink-800: #0a2447;
+  --ink-700: #0c3161;
+  --ink-600: #0e3f7a;
+  --ink-500: #3a5a86;
+  --ink-400: #5e7394;
+  --ink-300: #8d9cb4;
 
-  /* ── Accent ramp: gold ───────────────────────────────────────────── */
+  /* ── Accent ramp: gold (value) ───────────────────────────────────── */
   --gold-600: #b8860f;
   --gold-500: #d4a017;
   --gold-400: #e0b23f;
@@ -57,97 +57,87 @@
   --gold-100: #fdf3dc;
 
   /*
-   * Elevation. The old shadows were single, very diffuse and very light
-   * (32px blur at 12%), which reads as unfinished rather than raised. A real
-   * scale needs a tight contact shadow AND a wider ambient one — plus the
+   * Elevation: a tight contact shadow plus a wider ambient one, and the
    * hairline border, which is what actually gives an edge on light surfaces.
+   * Neutral black, not tinted: a tinted shadow reads as a colour cast.
    */
-  --hairline: rgba(10, 17, 34, 0.08);
-  --elev-1: 0 1px 2px rgba(10, 17, 34, 0.06),
-    0 1px 3px rgba(10, 17, 34, 0.04);
-  --elev-2: 0 2px 4px -1px rgba(10, 17, 34, 0.08),
-    0 8px 16px -4px rgba(10, 17, 34, 0.06);
-  --elev-3: 0 4px 8px -2px rgba(10, 17, 34, 0.1),
-    0 16px 32px -8px rgba(10, 17, 34, 0.12);
+  --hairline: rgba(15, 23, 42, 0.08);
+  --elev-1: 0 1px 2px rgba(15, 23, 42, 0.05),
+    0 1px 3px rgba(15, 23, 42, 0.03);
+  --elev-2: 0 2px 4px -1px rgba(15, 23, 42, 0.07),
+    0 8px 16px -4px rgba(15, 23, 42, 0.06);
+  --elev-3: 0 4px 8px -2px rgba(15, 23, 42, 0.09),
+    0 16px 32px -8px rgba(15, 23, 42, 0.12);
 
-  /* Glass is now reserved for genuinely floating layers, not every card. */
-  --glass-blur: 16px;
+  /* Material for floating layers only (bars, sheets, menus) — never cards. */
+  --glass-blur: 20px;
   --glass-border: var(--hairline);
   --glass-highlight: rgba(255, 255, 255, 0.6);
   --glass-shadow: var(--elev-3);
   --glass-fallback: #ffffff;
-
-  /* Ambient background wash — one hue family, very low amplitude. */
-  --glow-a: rgba(23, 38, 68, 0.05);
-  --glow-b: rgba(212, 160, 23, 0.06);
+  /* The bar material: translucent enough that content scrolls visibly under
+     it (HIG materials.md › Liquid Glass), opaque enough to keep labels legible. */
+  --bar-material: rgba(255, 255, 255, 0.86);
 
   /*
    * ── Semantic tokens (consumed by the spartan/hlm Tailwind preset) ──
    *
-   * PER-APP BRAND: `--primary`, `--ring`, `--background` and the
-   * `--brand-*` trio below are the designated override points. Each app's
-   * own `styles.css` sets them AFTER importing this file, so the three
-   * panels read as siblings rather than as one product — while the
-   * structural scale (ink, elevation, radius, spacing, semantics, the
-   * category spectrum) stays shared and identical everywhere.
+   * `--brand`, `--brand-fg`, `--brand-soft` are the override points. All
+   * three apps now share the logo blue declared here, so the panels read as
+   * one product; the mechanism stays so an app could still diverge.
    *
    * Override the brand, never the scale.
-   *
-   * The values here are the neutral fallback (ink), used by anything that
-   * imports the theme without declaring its own brand.
    */
-  --brand: #172644;
+  --brand: #0e4c94; /* logo blue — 8.47:1 on white */
   --brand-fg: #ffffff;
-  --brand-soft: #eef1f7;
+  --brand-soft: #e8eff8; /* brand on it: 7.31:1 */
 
   /*
-   * زمینه گرم شد. #F4F6FA تهِ آبی داشت و خاکستریِ سرد، تصویرِ «کلینیکی» و
-   * بی‌روح می‌دهد — همان چیزی که کل صفحه را مرده نشان می‌داد. یک off-white
-   * گرم، همان ساختار را نگه می‌دارد ولی صفحه نفس می‌کشد.
+   * Grouped background, iOS style: a cool neutral canvas so opaque white cards
+   * separate from it without heavy shadows. Brand on it: 7.68:1.
    */
-  --background: #f7f6f3;
-  --foreground: #0a1122;
-  /*
-   * Opaque cards. The old 55%-white-on-lavender is the single biggest reason
-   * the UI looked washed out: every surface tinted toward the background, so
-   * nothing had an edge and no two planes were distinguishable.
-   */
+  --background: #f2f4f7;
+  --foreground: #0d1626;
   --card: #ffffff;
-  --card-foreground: #0a1122;
+  --card-foreground: #0d1626;
   --popover: rgba(255, 255, 255, 0.94);
-  --popover-foreground: #0a1122;
-  /* هرچه به برند وابسته است از --brand مشتق می‌شود تا هر اپ با
-     بازنویسی یک توکن، همهٔ این‌ها را با هم عوض کند. */
+  --popover-foreground: #0d1626;
+  /* Everything brand-related derives from --brand. */
   --primary: var(--brand);
   --primary-foreground: var(--brand-fg);
   --secondary: var(--brand-soft);
   --secondary-foreground: var(--brand);
-  --muted: #f0eeea;
-  --muted-foreground: #5b6b89;
+  --muted: #e9ecf1;
+  /* Logo grey, cooled a touch: 5.39:1 on the canvas, 5.9:1 on white. */
+  --muted-foreground: #5e6470;
   --accent: var(--brand-soft);
   --accent-foreground: var(--brand);
-  --destructive: #d92d20;
-  --border: rgba(10, 17, 34, 0.1);
+  /* Logo red — 4.82:1 on white. The only place the red gear's colour is used. */
+  --destructive: #de2128;
+  --border: rgba(15, 23, 42, 0.1);
   --input: #ffffff;
   --ring: var(--brand);
   --sidebar: #ffffff;
-  --sidebar-foreground: #0a1122;
+  --sidebar-foreground: #0d1626;
   --sidebar-primary: var(--brand);
   --sidebar-primary-foreground: var(--brand-fg);
   --sidebar-accent: var(--brand-soft);
   --sidebar-accent-foreground: var(--brand);
-  --sidebar-border: rgba(10, 17, 34, 0.1);
+  --sidebar-border: rgba(15, 23, 42, 0.1);
   --sidebar-ring: var(--brand);
 
   /*
    * ── Category spectrum ────────────────────────────────────────────────
    * هر دستهٔ کیف پول رنگ خودش را دارد. این تنها جایی است که رنگِ آزاد در
    * سامانه مجاز است، و دلیلش کارکردی است نه تزئینی: صفحهٔ خانه فهرستی از
-   * پنج-شش کیف پول است که با آیکن خاکستریِ یکسان از هم تفکیک نمی‌شدند و
-   * کاربر مجبور بود هر بار عنوان‌ها را بخواند.
+   * پنج-شش کیف پول است که با آیکن خاکستریِ یکسان از هم تفکیک نمی‌شدند.
+   *
+   * با برند آبیِ لوگو، «ورزش» دیگر نمی‌تواند آبیِ آسمانی باشد — با دکمه‌ها
+   * یکی خوانده می‌شد. ورزش فیروزه‌ای شد، و «سوپرمارکت» از زمردی به سبزِ
+   * لیمویی رفت تا هم از فیروزه‌ای جدا بماند و هم با --pos (موجودی) قاطی نشود.
    *
    * قرارداد سه‌تایی برای هر دسته:
-   *   --cat-*-fg     متن و آیکن روی سطح روشن (همه ≥ ۴٫۵:۱ روی سفید)
+   *   --cat-*-fg     متن و آیکن روی سطح روشن (همه ≥ ۴٫۵:۱ روی سفید و روی -bg)
    *   --cat-*-bg     پس‌زمینهٔ کم‌رمق برای چیپ/جعبهٔ آیکن
    *   --cat-*        رنگ پر برای نوار پیشرفت و نقطه‌ها (گرافیک، نه متن)
    */
@@ -155,13 +145,13 @@
   --cat-food-bg: #fef3e2;
   --cat-food: #f59e0b;
 
-  --cat-grocery-fg: #05714d;
-  --cat-grocery-bg: #e7f7f0;
-  --cat-grocery: #10b981;
+  --cat-grocery-fg: #4d7c0f; /* 4.99 white, 4.59 on bg */
+  --cat-grocery-bg: #f1f8e6;
+  --cat-grocery: #65a30d;
 
-  --cat-sport-fg: #0369a1;
-  --cat-sport-bg: #e6f4fd;
-  --cat-sport: #0ea5e9;
+  --cat-sport-fg: #0f766e; /* 5.47 white, 4.91 on bg */
+  --cat-sport-bg: #e6f6f4;
+  --cat-sport: #14b8a6;
 
   --cat-health-fg: #be123c;
   --cat-health-bg: #ffe9ee;
@@ -191,9 +181,9 @@
 }
 
 /*
- * Opt-in dark mode: the same ink & gold identity, with ink promoted from
- * accent to substrate. Gold gets brighter here because it finally has a dark
- * ground to sit on — --gold-300 on --ink-900 is ~7:1.
+ * Opt-in dark mode. Neutral near-black surfaces (not navy): on a coloured
+ * dark ground the blue brand has nothing to stand out against. Brand becomes
+ * a light tint of the logo blue — #8cb8f2 on the canvas is 9.0:1.
  */
 :root.dark {
   color-scheme: dark;
@@ -208,36 +198,33 @@
   --glass-border: var(--hairline);
   --glass-highlight: rgba(255, 255, 255, 0.12);
   --glass-shadow: var(--elev-3);
-  --glass-fallback: #101b33;
+  --glass-fallback: #151e2e;
+  --bar-material: rgba(21, 30, 46, 0.86);
 
-  --glow-a: rgba(96, 130, 190, 0.1);
-  --glow-b: rgba(212, 160, 23, 0.09);
+  --brand: #8cb8f2;
+  --brand-fg: #0b1422;
+  --brand-soft: rgba(140, 184, 242, 0.16);
 
-  /* در تاریکی، برندِ روشنِ هر اپ از خودش می‌آید؛ اینجا فقط fallback است. */
-  --brand: #efc766;
-  --brand-fg: #0a1122;
-  --brand-soft: #22334f;
-
-  --background: #070d1a;
-  --foreground: #eef2f9;
-  --card: #101b33;
-  --card-foreground: #eef2f9;
-  --popover: rgba(16, 27, 51, 0.96);
-  --popover-foreground: #eef2f9;
+  --background: #0b1422;
+  --foreground: #eef2f8;
+  --card: #151e2e;
+  --card-foreground: #eef2f8;
+  --popover: rgba(21, 30, 46, 0.96);
+  --popover-foreground: #eef2f8;
   --primary: var(--brand);
   --primary-foreground: var(--brand-fg);
-  --secondary: #172644;
-  --secondary-foreground: #eef2f9;
-  --muted: #172644;
-  --muted-foreground: #8593ab;
+  --secondary: #1d2839;
+  --secondary-foreground: #eef2f8;
+  --muted: #1d2839;
+  --muted-foreground: #a1a8b3; /* 7.7:1 on canvas */
   --accent: var(--brand-soft);
   --accent-foreground: var(--brand);
   --destructive: #f97066;
   --border: rgba(255, 255, 255, 0.12);
-  --input: #172644;
+  --input: #1d2839;
   --ring: var(--brand);
-  --sidebar: #101b33;
-  --sidebar-foreground: #eef2f9;
+  --sidebar: #151e2e;
+  --sidebar-foreground: #eef2f8;
   --sidebar-primary: var(--brand);
   --sidebar-primary-foreground: var(--brand-fg);
   --sidebar-accent: var(--brand-soft);
@@ -260,11 +247,11 @@
   --cat-food-fg: #fcd34d;
   --cat-food-bg: rgba(245, 158, 11, 0.18);
 
-  --cat-grocery-fg: #6ee7b7;
-  --cat-grocery-bg: rgba(16, 185, 129, 0.18);
+  --cat-grocery-fg: #bef264;
+  --cat-grocery-bg: rgba(101, 163, 13, 0.2);
 
-  --cat-sport-fg: #7dd3fc;
-  --cat-sport-bg: rgba(14, 165, 233, 0.18);
+  --cat-sport-fg: #5eead4;
+  --cat-sport-bg: rgba(20, 184, 166, 0.18);
 
   --cat-health-fg: #fda4af;
   --cat-health-bg: rgba(244, 63, 94, 0.18);
@@ -289,20 +276,13 @@
   }
 
   /*
-   * Fixed gradient backdrop. A fixed-position pseudo-element instead of
-   * `background-attachment: fixed`, which forces full repaints on scroll
-   * (and blanks the page entirely in some Chromium compositors).
+   * No ambient glow any more. The two radial washes behind every page were
+   * decoration (HIG design-principles: "don't mistake delight for
+   * decoration") and tinted the grouped canvas unevenly under cards. The
+   * brand lives in the content and the primary actions instead. If a backdrop
+   * ever comes back, keep it on a fixed `body::before` — never
+   * `background-attachment: fixed`, which blanks Chromium on scroll.
    */
-  body::before {
-    content: '';
-    position: fixed;
-    inset: 0;
-    z-index: -1;
-    pointer-events: none;
-    background-image:
-      radial-gradient(1100px 750px at 12% -10%, var(--glow-a), transparent 62%),
-      radial-gradient(900px 680px at 88% 108%, var(--glow-b), transparent 60%);
-  }
 
   /*
    * Persian headings: no positive letter-spacing. Arabic-script glyphs are
@@ -349,7 +329,7 @@
  */
 [data-slot='card'] {
   border: 1px solid var(--hairline);
-  border-radius: var(--radius);
+  border-radius: var(--radius-lg);
   box-shadow: var(--elev-1);
   background-color: var(--card);
 }
@@ -474,20 +454,15 @@ img {
 
 /*
  * Spartan only defines a hover colour for anchors (`[a]:hover:bg-primary/80`),
- * so a <button hlmBtn> has no hover feedback at all. Supply it, and give the
- * primary CTA the elevation the glass system expects.
+ * so a <button hlmBtn> has no hover feedback at all. Supply it.
+ *
+ * No coloured glow under the primary button any more: a prominent button is
+ * a flat fill of the accent colour (HIG color.md › Liquid Glass color: "apply
+ * the app accent color to the background in prominent buttons"). The blue
+ * halo made every CTA look like it was floating off the page.
  */
-button[data-slot='button'].bg-primary {
-  box-shadow: 0 2px 10px color-mix(in oklab, var(--primary) 30%, transparent);
-}
-
 button[data-slot='button'].bg-primary:hover:not(:disabled) {
   background-color: color-mix(in oklab, var(--primary) 88%, black);
-  box-shadow: 0 4px 16px color-mix(in oklab, var(--primary) 38%, transparent);
-}
-
-button[data-slot='button'].bg-primary:active:not(:disabled) {
-  box-shadow: 0 1px 4px color-mix(in oklab, var(--primary) 28%, transparent);
 }
 
 /* Press feedback for the rest — spartan's own `active:translate-y-px`

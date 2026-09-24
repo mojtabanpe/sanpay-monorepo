@@ -14,22 +14,30 @@
 
 ## Global Rules
 
-### Color Palette
+### Color Palette — "SANPAY blue" (from the logo, 2026-09)
 
-| Role | Hex | CSS Variable |
-|------|-----|--------------|
-| Primary | `#7C3AED` | `--color-primary` |
-| On Primary | `#FFFFFF` | `--color-on-primary` |
-| Secondary | `#8B5CF6` | `--color-secondary` |
-| Accent/CTA | `#059669` | `--color-accent` |
-| Background | `#FAF5FF` | `--color-background` |
-| Foreground | `#0F172A` | `--color-foreground` |
-| Muted | `#F7F3FD` | `--color-muted` |
-| Border | `#EFE7FC` | `--color-border` |
-| Destructive | `#DC2626` | `--color-destructive` |
-| Ring | `#7C3AED` | `--color-ring` |
+Authoritative values live in `shared/ui/theme/glass.css`; this table mirrors them.
+Source logo: blue `#0E4C94`, red gear `#DE2128`, grey gear `#666767`.
 
-**Color Notes:** Violet trust + emerald growth. Light-first; dark mode is opt-in via the `.dark` class (deep aubergine `#171122` base, lighter violet `#A78BFA` primary). Glass surfaces are translucent white over a lavender/mint gradient — see `packages/ui/theme/glass.css` for the authoritative token values.
+| Role | Light | Dark | CSS variable | Contrast |
+|------|-------|------|--------------|----------|
+| Brand / primary (logo blue) | `#0E4C94` | `#8CB8F2` | `--brand` → `--primary` | 8.47:1 on white · 9.0:1 on dark canvas |
+| On brand | `#FFFFFF` | `#0B1422` | `--brand-fg` | 8.47:1 · 9.0:1 |
+| Brand tint | `#E8EFF8` | brand @16% | `--brand-soft` | brand on it 7.31:1 |
+| Canvas (grouped bg) | `#F2F4F7` | `#0B1422` | `--background` | brand on it 7.68:1 |
+| Card | `#FFFFFF` | `#151E2E` | `--card` | — |
+| Text | `#0D1626` | `#EEF2F8` | `--foreground` | — |
+| Secondary text (logo grey) | `#5E6470` | `#A1A8B3` | `--muted-foreground` | 5.39:1 on canvas · 7.7:1 |
+| Destructive (logo red) | `#DE2128` | `#F97066` | `--destructive` | 4.82:1 on white |
+| Value (gold) | `#D4A017` | same | `--gold-*` | fills only on light; text only on ink |
+| Structural dark (ink, logo-blue hue) | `#071A33`→`#0E3F7A` | same | `--ink-900…600` | hero cards |
+
+**Rules**
+- One accent colour: logo blue, shared by all three apps (app, dashboard, store). Used for primary actions, the selected tab, focus and links — not spread over every control (HIG `branding.md`).
+- Logo red is **not** a UI accent: in a money app red already means "spent / error" (HIG `color.md`: don't use one colour for two meanings). It appears only in the logo and as `--destructive`.
+- Category spectrum changed with the blue brand: `sport` sky-blue → teal (`#0F766E`), `grocery` emerald → lime (`#4D7C0F`), so neither collides with the brand or with `--pos`.
+- Material (blur) only on the floating functional layer: app bar, floating tab bar, sheets, menus. Cards are opaque.
+- No ambient background glow; no coloured shadow under primary buttons.
 
 ### Typography
 

@@ -48,39 +48,37 @@ Two pages under a shared shell (`pages/shell`) that owns the header + nav:
 
 ## Design system (important — user-approved, do not regress)
 
-- **"Ink & gold", light-first, dense.** Dark mode is opt-in via the `.dark` class only — never default to dark and never follow OS preference.
-  - **Ink navy** (`--ink-900…--ink-300`) is the structural colour: body text, the hero/summary cards, dark chrome. It is *not* the brand — see per-app palettes below.
-  - **Gold** (`--gold-600…--gold-100`) means **value** — the hero highlight and the default progress fill. Used sparingly so it keeps meaning something.
+- **"SANPAY blue", taken from the logo** (blue `#0E4C94`, red gear `#DE2128`, grey gear `#666767`). Light-first, Apple-HIG-informed (redesigned with the `apple-design` skill). Dark mode is opt-in via the `.dark` class only — never default to dark and never follow OS preference.
+  - **Logo blue** (`--brand`) is the one accent colour: primary actions, the selected tab, focus, links. Used judiciously, not on every control.
+  - **Ink** (`--ink-900…--ink-300`) is the structural dark, re-hued to the logo blue: the hero/summary cards read as the logo's own S-frame.
+  - **Gold** (`--gold-600…--gold-100`) still means **value** — the default progress fill and money highlights on ink.
+  - **Logo red is not a UI accent.** In a money app red already means spent/error; it lives in the logo and as `--destructive` only. **Logo grey** is the neutral scale (`--muted-foreground` `#5E6470`).
   - **Emerald/red/amber are semantic only**, never decoration: `--pos/-fg/-bg` (available), `--neg-fg/-bg` (spent, over limit), `--warn-fg/-bg` (scarcity).
-  - Canvas is a cool neutral `#F4F6FA`; cards are **opaque white**.
-- ⚠ **Gold is not a text colour on light surfaces** — `--gold-500` on white is ~2.1:1. Use it for fills, bars and icons; for gold *text* you must be on ink, where `--gold-300` reaches ~7:1. Text on light uses `--foreground` / `--muted-foreground` / `--pos-fg` / `--neg-fg` / `--warn-fg`.
+  - Canvas is the iOS-style grouped background `#F2F4F7`; cards are **opaque white** with `--radius-lg` (22px) corners, controls keep `--radius` (14px).
+- ⚠ **Gold is not a text colour on light surfaces** — `--gold-500` on white is ~2.1:1. Use it for fills, bars and icons; for gold *text* you must be on ink, where `--gold-300` reaches ~8:1. Blue + gold are near-complementary, so **never blur or blend gold over an ink card** — it goes olive (the store hero's gold glow did exactly that and was removed). Text on light uses `--foreground` / `--muted-foreground` / `--pos-fg` / `--neg-fg` / `--warn-fg`.
 - **Never gradient between two near-complementary hues.** The old violet→emerald hero passed through a desaturated grey-teal at its midpoint — that muddy band was the single most "cheap-looking" thing in the app. Every gradient now stays inside one ramp (ink→ink, gold→gold).
-- **Blur is for floating layers only** (dialogs, popovers, menus, sheets), not cards. A card sits in the scroll flow over a known background, so blur bought nothing while costing a filter per list row. Cards are opaque + `--hairline` border + `--elev-1`; the hairline is what actually gives an edge on light surfaces.
-### Per-app brand palettes — "override the brand, never the scale"
+- **Blur is for floating layers only** (the app bar, the floating capsule tab bar, dialogs, popovers, menus, sheets — HIG `materials.md`: the functional layer floats over content), not cards. Bars use `--bar-material`. No ambient background glow and no coloured shadow under primary buttons: a prominent button is a flat fill of the accent. A card sits in the scroll flow over a known background, so blur bought nothing while costing a filter per list row. Cards are opaque + `--hairline` border + `--elev-1`; the hairline is what actually gives an edge on light surfaces.
+### One brand for all three apps — "override the brand, never the scale"
 
-`glass.css` owns the **scale** (ink ramp, elevation, radius, spacing, semantics, the category spectrum) and ships a neutral ink fallback. Each app then declares its **brand** in its own `styles.css`, *after* the import:
+`glass.css` owns the **scale** (ink ramp, elevation, radius, spacing, semantics, the category spectrum) **and** the brand. Since the logo change all three apps (`app`, `dashboard`, `store`) share the logo blue; they no longer override it (the old teal / indigo / green per-app brands are gone — a single logo means a single identity). The override mechanism is kept: an app may still set `--brand` / `--brand-fg` / `--brand-soft` in its own `styles.css` *after* the import.
 
-| App | `--brand` | Why |
-| --- | --- | --- |
-| `app` (employee) | teal `#0F766E` | Opened daily for everyday shopping — should feel warm and alive, not administrative. Teal also stays clear of the category spectrum; a blue or green brand would collide with it. |
-| `dashboard` | indigo `#3538CD` | A tool, not a consumer app: hours on screen, wall-to-wall tables. Also gets a slightly cooler `--background`, since the warm off-white looks papery under wide tables. |
-| `store` | green `#047857` | The seller only ever watches money arrive, so the brand *is* the positive colour — deliberately deeper than `--pos` so buttons don't read as receipt amounts. |
+`--primary`, `--ring`, `--secondary`, `--accent` and every sidebar token are **derived** from `--brand` with `var()`, so one override repaints the app. Do not hardcode `--primary` in an app, and do not override the scale.
 
-Only `--brand` / `--brand-fg` / `--brand-soft` are set. `--primary`, `--ring`, `--secondary`, `--accent` and every sidebar token are **derived** from them with `var()`, so one override repaints the app. Do not hardcode `--primary` in an app, and do not override the scale — the three panels must read as siblings.
-
-All three brands clear 4.5:1 against white (5.47 / 8.08 / 5.48, measured).
+Brand contrast: 8.47:1 on white, 7.68:1 on the canvas, 7.31:1 on `--brand-soft`; dark `#8CB8F2` is 9.0:1 on the dark canvas (measured).
 
 ### The category spectrum (`--cat-*`)
 
+With the blue brand, `sport` moved from sky-blue to teal and `grocery` from emerald to lime, so neither collides with the brand or with `--pos`.
+
 Six wallet categories — `food, grocery, sport, health, travel, gift` (the exact `icon` values the API sends) — each get a `-fg` (AA-safe text/icon on light), `-bg` (tint for the icon chip) and a solid (progress fill). **This is the only place free colour is allowed, and the justification is functional, not decorative:** the home screen is a list of five or six wallets that were previously identical grey boxes, so finding «ورزش» meant reading every title.
 
-Every `-fg` clears 4.5:1 on both its own tint and white (4.58–7.10, measured). An unknown `icon` falls back to ink rather than a random hue, so a new category can't silently borrow another's colour. `hlm-progress` accepts a per-call `--progress-color`; unset, it stays gold.
+Every `-fg` clears 4.5:1 on both its own tint and white (4.58–7.10, measured; lime grocery 4.59 on its tint). An unknown `icon` falls back to ink rather than a random hue, so a new category can't silently borrow another's colour. `hlm-progress` accepts a per-call `--progress-color`; unset, it stays gold.
 
 - **Don't stack padding on `hlm-card`.** The card frame already applies `py-(--card-spacing)`; adding `py-*` to the content div doubles it (64px of padding around 129px of content, measured). Let the card own vertical padding.
 - Single source of truth: `shared/ui/theme/glass.css` (imported by both apps) + `design-system/sanpay/MASTER.md`.
 - Style spartan components via CSS variables and `[data-slot=…]` overrides in `glass.css`. **Never hand-edit generated files under `shared/ui/*`** — they must stay regeneratable via `nx g @spartan-ng/cli:ui <name>` (config in `components.json`).
 - Backdrop blur only on elevated surfaces (cards, dialogs, menus, sheets…), not inputs/rows. Keep the `prefers-reduced-transparency` / `prefers-reduced-motion` fallbacks. Text contrast ≥ 4.5:1. SVG icons only, no emoji.
-- Do NOT use `background-attachment: fixed` — it blanks/janks Chromium on scroll; the fixed gradient lives on `body::before` in `glass.css`.
+- Do NOT use `background-attachment: fixed` — it blanks/janks Chromium on scroll; if a page backdrop ever returns, put it on a fixed `body::before`.
 - Use the `ui-ux-pro-max` skill (global, `~/.agents/skills/ui-ux-pro-max`) for style/palette/UX decisions, and the `spartan` skill + `spartan-ui` MCP server (`.mcp.json`) for component APIs.
 
 ### Spartan first — no native form controls

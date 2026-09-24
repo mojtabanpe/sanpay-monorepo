@@ -56,7 +56,7 @@ export class QrPage {
           // بزرگ و با حاشیهٔ کافی تا بعد از چاپ هم اسکن شود
           width: 1024,
           margin: 2,
-          color: { dark: '#0a1122ff', light: '#ffffffff' },
+          color: { dark: '#071a33ff', light: '#ffffffff' },
         }),
       );
     } catch {

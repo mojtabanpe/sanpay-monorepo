@@ -1,13 +1,9 @@
 <!-- ظرف اصلی — عرض ماکسیمم ۵۵۰ پیکسل -->
 <div class="mx-auto flex min-h-dvh w-full max-w-[550px] flex-col">
 
-  <!-- هدر -->
-  <!-- خط جداکنندهٔ hairline، نه `border-white/40`: سفیدِ ۴۰٪ روی زمینهٔ گرمِ
-       #f7f6f3 عملاً نامرئی بود و هدرِ شناور هیچ لبه‌ای نداشت. -->
-  <header
-    class="sticky top-0 z-40 border-b bg-white/40 backdrop-blur-xl"
-    style="border-color: var(--hairline)"
-  >
+  <!-- هدر — لایهٔ کارکردی شناور: متریالِ نیمه‌شفاف (--bar-material) تا محتوا
+       زیرش دیده شود، با خط hairline برای لبه. -->
+  <header data-slot="app-bar" class="sticky top-0 z-40 border-b">
     <div class="flex h-14 items-center justify-between px-4">
       <div class="flex items-center gap-2.5">
         <img
@@ -21,7 +17,7 @@
         />
         <div class="leading-tight">
           <p class="text-sm font-bold">جهان‌فولاد سیرجان</p>
-          <p class="text-muted-foreground text-[0.65rem]">سامانه رفاهی پرسنل</p>
+          <p class="text-muted-foreground text-[0.6875rem]">سامانه رفاهی پرسنل</p>
         </div>
       </div>
       <div class="flex items-center gap-3">
@@ -39,16 +35,13 @@
   </header>
 
   <!-- محتوای صفحه -->
-  <main class="flex-1 pb-20">
+  <main class="flex-1 pb-28">
     <router-outlet />
   </main>
 
-  <!-- ناوبری پایین — fixed و هم‌عرض ظرف -->
-  <nav
-    class="fixed bottom-0 left-1/2 z-50 w-full max-w-[550px] -translate-x-1/2 border-t bg-white/90 backdrop-blur-xl"
-    style="border-color: var(--hairline)"
-    aria-label="ناوبری اصلی"
-  >
+  <!-- ناوبری پایین — نوار زبانه‌ای شناور به سبک iOS: کپسولی از متریال
+       نیمه‌شفاف با فاصله از لبه‌ها، که محتوا زیرش اسکرول می‌شود. -->
+  <nav data-slot="tab-bar" aria-label="ناوبری اصلی">
     <div class="flex h-16 items-center">
 
       <!-- خانه -->
@@ -56,7 +49,7 @@
         routerLink="/home"
         routerLinkActive="is-active"
         data-slot="tab"
-        class="text-muted-foreground flex flex-1 flex-col items-center justify-center gap-1 text-[0.65rem] transition-colors"
+        class="text-muted-foreground flex flex-1 flex-col items-center justify-center gap-1 text-[0.6875rem] transition-colors"
         ariaCurrentWhenActive="page"
       >
         <span data-slot="tab-icon">
@@ -73,7 +66,7 @@
         routerLink="/stores"
         routerLinkActive="is-active"
         data-slot="tab"
-        class="text-muted-foreground flex flex-1 flex-col items-center justify-center gap-1 text-[0.65rem] transition-colors"
+        class="text-muted-foreground flex flex-1 flex-col items-center justify-center gap-1 text-[0.6875rem] transition-colors"
         ariaCurrentWhenActive="page"
       >
         <span data-slot="tab-icon">
@@ -90,8 +83,8 @@
       <div class="flex flex-1 justify-center">
         <a
           routerLink="/qr"
-          class="flex size-14 -translate-y-4 items-center justify-center rounded-full bg-primary text-primary-foreground transition-transform active:scale-[0.96]"
-          style="box-shadow: var(--elev-2), 0 4px 16px color-mix(in oklab, var(--primary) 32%, transparent)"
+          data-slot="tab-bar-action"
+          class="flex size-12 items-center justify-center rounded-full bg-primary text-primary-foreground transition-transform active:scale-[0.96]"
           aria-label="تولید کد خرید"
         >
           <svg class="size-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -116,7 +109,7 @@
         routerLink="/tourism"
         routerLinkActive="is-active"
         data-slot="tab"
-        class="text-muted-foreground flex flex-1 flex-col items-center justify-center gap-1 text-[0.65rem] transition-colors"
+        class="text-muted-foreground flex flex-1 flex-col items-center justify-center gap-1 text-[0.6875rem] transition-colors"
         ariaCurrentWhenActive="page"
       >
         <span data-slot="tab-icon">
@@ -134,7 +127,7 @@
         routerLink="/profile"
         routerLinkActive="is-active"
         data-slot="tab"
-        class="text-muted-foreground flex flex-1 flex-col items-center justify-center gap-1 text-[0.65rem] transition-colors"
+        class="text-muted-foreground flex flex-1 flex-col items-center justify-center gap-1 text-[0.6875rem] transition-colors"
         ariaCurrentWhenActive="page"
       >
         <span data-slot="tab-icon">

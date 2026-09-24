@@ -443,7 +443,7 @@
       <section hlmCard>
         <div hlmCardContent class="flex flex-col gap-4 pt-6">
           <h3 class="font-semibold">
-            مسافر {{ number(i + 1) }} · {{ ageLabel(p.type) }}
+            مسافر {{ number(i + 1) }} — {{ ageLabel(p.type) }}
           </h3>
           <div
             class="flex flex-col gap-2"
@@ -669,8 +669,8 @@
                 [value]="wallet.allocationId"
                 [disabled]="wallet.max < q.offer.amount"
               >
-                {{ wallet.name }} · {{ money(wallet.max) }}{{ wallet.max <
-                q.offer.amount ? ' · مانده ناکافی' : '' }}
+                {{ wallet.name }} — {{ money(wallet.max) }}{{ wallet.max <
+                q.offer.amount ? '، مانده ناکافی' : '' }}
               </option>
               }
             </hlm-native-select>
