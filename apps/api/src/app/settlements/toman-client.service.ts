@@ -1,4 +1,8 @@
-import { Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 
 export interface TomanTransferItemInput {
@@ -45,16 +49,22 @@ export class TomanClientService {
     if (!this.isLive()) return { uuid: randomUUID(), status: 1 };
     return this.request<{ uuid: string; status: number }>('/batch-transfer/', {
       method: 'POST',
-      body: JSON.stringify({ max_amount: maxAmountRial, max_transfer_count: maxTransferCount }),
+      body: JSON.stringify({
+        max_amount: maxAmountRial,
+        max_transfer_count: maxTransferCount,
+      }),
     });
   }
 
   async addItems(batchUuid: string, items: TomanTransferItemInput[]) {
-    if (!this.isLive()) return items.map((item) => ({ ...item, uuid: randomUUID() }));
-    const response = await this.request<TomanBatchItemResult[] | { items: TomanBatchItemResult[] }>(
-      `/batch-transfer/${batchUuid}/add-items/`,
-      { method: 'POST', body: JSON.stringify({ items }) },
-    );
+    if (!this.isLive())
+      return items.map((item) => ({ ...item, uuid: randomUUID() }));
+    const response = await this.request<
+      TomanBatchItemResult[] | { items: TomanBatchItemResult[] }
+    >(`/batch-transfer/${batchUuid}/add-items/`, {
+      method: 'POST',
+      body: JSON.stringify({ items }),
+    });
     return Array.isArray(response) ? response : response.items;
   }
 
@@ -85,23 +95,37 @@ export class TomanClientService {
 
   async getBatch(batchUuid: string) {
     if (!this.isLive()) return { uuid: batchUuid, status: 4 };
-    return this.request<{ uuid: string; status: number }>(`/batch-transfer/${batchUuid}/`);
+    return this.request<{ uuid: string; status: number }>(
+      `/batch-transfer/${batchUuid}/`,
+    );
   }
 
   async getTransfer(trackerId: string): Promise<TomanTransferResult> {
     if (!this.isLive()) {
-      return { uuid: `mock-${trackerId}`, status: 6, follow_up_code: `MOCK-${trackerId.slice(-10)}` };
+      return {
+        uuid: `mock-${trackerId}`,
+        status: 6,
+        follow_up_code: `MOCK-${trackerId.slice(-10)}`,
+      };
     }
     return this.request<TomanTransferResult>(
       `/transfer/tracker/${encodeURIComponent(trackerId)}/`,
     );
   }
 
-  private async request<T>(path: string, init: RequestInit = {}, retry = true): Promise<T> {
+  private async request<T>(
+    path: string,
+    init: RequestInit = {},
+    retry = true,
+  ): Promise<T> {
     const token = await this.accessToken();
     const response = await this.fetchWithTimeout(`${this.apiUrl()}${path}`, {
       ...init,
-      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', ...init.headers },
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+        ...init.headers,
+      },
     });
     if (response.status === 401 && retry) {
       this.token = undefined;
@@ -112,7 +136,8 @@ export class TomanClientService {
   }
 
   private async accessToken(): Promise<string> {
-    if (this.token && this.token.expiresAt > Date.now() + 60_000) return this.token.access;
+    if (this.token && this.token.expiresAt > Date.now() + 60_000)
+      return this.token.access;
     const credentials = this.credentials();
     const refreshing = Boolean(this.token?.refresh);
     const body = new URLSearchParams(
@@ -156,17 +181,23 @@ export class TomanClientService {
     const clientId = process.env.TOMAN_CLIENT_ID;
     const clientSecret = process.env.TOMAN_CLIENT_SECRET;
     if (!username || !password || !clientId || !clientSecret) {
-      throw new ServiceUnavailableException('تنظیمات احراز هویت تومان کامل نیست');
+      throw new ServiceUnavailableException(
+        'تنظیمات احراز هویت تومان کامل نیست',
+      );
     }
     return { username, password, clientId, clientSecret };
   }
 
   private apiUrl() {
-    return (process.env.TOMAN_API_URL || 'https://dbank.toman.ir/api/v1').replace(/\/$/, '');
+    return (
+      process.env.TOMAN_API_URL || 'https://dbank.toman.ir/api/v1'
+    ).replace(/\/$/, '');
   }
 
   private authUrl() {
-    return process.env.TOMAN_AUTH_URL || 'https://accounts.qbitpay.org/oauth2/token/';
+    return (
+      process.env.TOMAN_AUTH_URL || 'https://accounts.qbitpay.org/oauth2/token/'
+    );
   }
 
   private async fetchWithTimeout(url: string, init: RequestInit) {
@@ -175,12 +206,13 @@ export class TomanClientService {
   }
 
   private async httpError(response: Response, path: string) {
-    const body = (await response.text()).slice(0, 2_000);
-    this.logger.error(`Toman ${path}: HTTP ${response.status} ${body}`);
+    // پاسخ تومان ممکن است جزئیات حساب یا دادهٔ عملیاتی داشته باشد؛ آن را نه در
+    // لاگ و نه در پاسخ API خودمان منتشر نمی‌کنیم.
+    await response.body?.cancel();
+    this.logger.error(`Toman ${path}: HTTP ${response.status}`);
     return new ServiceUnavailableException({
       message: 'ارتباط با بانکداری شرکتی تومان ناموفق بود',
       status: response.status,
-      detail: body,
     });
   }
 }

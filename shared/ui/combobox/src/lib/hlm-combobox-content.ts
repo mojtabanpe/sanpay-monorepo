@@ -5,6 +5,7 @@ import { classes } from '@sanpay/ui/utils';
 @Directive({
 	selector: '[hlmComboboxContent],hlm-combobox-content',
 	hostDirectives: [BrnComboboxContent],
+	host: { 'data-slot': 'combobox-content' },
 })
 export class HlmComboboxContent {
 	constructor() {

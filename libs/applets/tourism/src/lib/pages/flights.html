@@ -1,0 +1,772 @@
+<div class="flex min-w-0 flex-col gap-5 px-4 pb-8 pt-5">
+  <nav class="flex items-center justify-between gap-2" aria-label="خدمات گردشگری"><div class="bg-muted flex gap-1 rounded-2xl p-1"><a hlmBtn variant="ghost" class="min-h-11 min-w-20 rounded-xl " routerLink="/tourism" ><ng-icon name="lucideHotel" aria-hidden="true" />هتل</a><a hlmBtn variant="ghost" class="min-h-11 min-w-20 rounded-xl bg-background text-primary shadow-sm" routerLink="/tourism/flights" aria-current="page"><ng-icon name="lucidePlane" aria-hidden="true" />پرواز</a></div><a hlmBtn variant="ghost" class="min-h-11 px-2 text-xs" href="#flight-bookings">رزروهای من</a></nav>
+  <header class="flex flex-col gap-1.5">
+    <h1 class="text-xl font-bold">بلیط هواپیما</h1>
+    <p class="text-muted-foreground text-sm leading-relaxed">
+      سفر بعدی، با اعتبار کیف پول گردشگری
+    </p>
+  </header>
+  @if (error()) {
+  <div
+    role="alert"
+    class="border-destructive/25 bg-destructive/5 text-destructive rounded-xl border p-4 text-sm leading-relaxed"
+  >
+    {{ error() }}
+  </div>
+  } @if (loadingAirports()) {
+  <section hlmCard class="p-5" role="status">
+    <p class="text-muted-foreground text-sm">در حال دریافت فرودگاه‌ها…</p>
+  </section>
+  } @else if (!airports().length) {
+  <section hlmCard>
+    <div hlmCardContent class="flex flex-col items-start gap-3 pt-6">
+      <h2 class="font-semibold">جست‌وجوی پرواز فعلاً در دسترس نیست</h2>
+      <p class="text-muted-foreground text-sm">
+        کمی بعد دوباره تلاش کنید. رزروهای قبلی شما در پایین صفحه قابل
+        مشاهده‌اند.
+      </p>
+      <button hlmBtn variant="outline" (click)="loadAirports()">
+        تلاش دوباره
+      </button>
+    </div>
+  </section>
+  } @else if (!quote() && !receipt()) {
+  <section hlmCard class="gap-0 py-0">
+    <form
+      hlmCardContent
+      class="p-4"
+      #searchForm="ngForm"
+      (ngSubmit)="findFlights()"
+    >
+      <fieldset [disabled]="busy()" class="flex min-w-0 flex-col gap-5">
+        <legend class="sr-only">جست‌وجوی پرواز</legend>
+        <div
+          class="bg-muted flex w-fit gap-1 rounded-xl p-1"
+          role="group"
+          aria-label="نوع سفر"
+        >
+          @for (returning of [false, true]; track returning) {
+          <label class="relative cursor-pointer">
+            <input
+              type="radio"
+              name="roundTrip"
+              class="peer sr-only"
+              [value]="returning"
+              [(ngModel)]="roundTrip"
+              (ngModelChange)="changeTrip()"
+            />
+            <span
+              class="peer-checked:bg-background peer-checked:text-primary peer-checked:shadow-sm peer-focus-visible:outline-ring flex min-h-11 items-center rounded-lg px-4 text-sm font-medium peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2"
+              >{{ returning ? 'رفت و برگشت' : 'یک‌طرفه' }}</span
+            >
+          </label>
+          }
+        </div>
+        <div
+          class="grid min-w-0 grid-cols-[minmax(0,1fr)_44px_minmax(0,1fr)] items-end gap-2"
+        >
+          <hlm-field class="min-w-0 gap-2">
+            <label
+              hlmFieldLabel
+              for="flight-origin"
+              class="text-muted-foreground text-xs"
+              >مبدأ</label
+            >
+            <hlm-native-select
+              selectId="flight-origin"
+              class="w-full min-w-0"
+              selectClass="h-12 rounded-xl bg-muted/30 text-sm font-medium"
+              name="origin"
+              required
+              [ngModel]="search().origin"
+              (ngModelChange)="updateSearch('origin', $event)"
+            >
+              <option value="" disabled>انتخاب مبدأ</option>
+              @for (airport of airports(); track airport.iata) {
+              <option [value]="airport.iata">
+                {{ search().origin === airport.iata ? airportLabel(airport.iata)
+                : airport.name + ' (' + airport.iata + ')' }}
+              </option>
+              }
+            </hlm-native-select>
+          </hlm-field>
+          <button
+            hlmBtn
+            type="button"
+            variant="ghost"
+            class="mb-0.5 size-11 rounded-full p-0 transition-[background-color,box-shadow,scale] motion-reduce:transition-none motion-safe:active:scale-[0.96]"
+            (click)="swap()"
+            aria-label="جابه‌جایی مبدأ و مقصد"
+          >
+            <ng-icon
+              name="lucideArrowLeftRight"
+              class="text-primary text-xl"
+              aria-hidden="true"
+            />
+          </button>
+          <hlm-field class="min-w-0 gap-2">
+            <label
+              hlmFieldLabel
+              for="flight-destination"
+              class="text-muted-foreground text-xs"
+              >مقصد</label
+            >
+            <hlm-native-select
+              selectId="flight-destination"
+              class="w-full min-w-0"
+              selectClass="h-12 rounded-xl bg-muted/30 text-sm font-medium"
+              name="destination"
+              required
+              [ngModel]="search().destination"
+              (ngModelChange)="updateSearch('destination', $event)"
+            >
+              <option value="" disabled>انتخاب مقصد</option>
+              @for (airport of airports(); track airport.iata) {
+              <option [value]="airport.iata">
+                {{ search().destination === airport.iata ?
+                airportLabel(airport.iata) : airport.name + ' (' + airport.iata
+                + ')' }}
+              </option>
+              }
+            </hlm-native-select>
+          </hlm-field>
+        </div>
+        <div class="grid min-w-0 grid-cols-2 gap-3">
+          <hlm-field class="min-w-0 gap-2">
+            <label
+              hlmFieldLabel
+              for="flight-departure-date"
+              class="text-muted-foreground text-xs"
+              >تاریخ رفت</label
+            >
+            <hlm-date-picker
+              sanpayDatePickerWidth
+              [date]="departureDate()"
+              [min]="minDate"
+              (dateChange)="setDate($event)"
+            >
+              <hlm-date-picker-trigger
+                class="h-12 w-full rounded-xl"
+                buttonId="flight-departure-date"
+                >انتخاب تاریخ رفت</hlm-date-picker-trigger
+              >
+            </hlm-date-picker>
+          </hlm-field>
+          <hlm-field class="min-w-0 gap-2">
+            <label
+              hlmFieldLabel
+              for="flight-return-date"
+              class="text-muted-foreground text-xs"
+              >تاریخ برگشت</label
+            >
+            @if (roundTrip) {
+            <hlm-date-picker
+              sanpayDatePickerWidth
+              [date]="returnDate()"
+              [min]="departureDate()"
+              (dateChange)="setDate($event, true)"
+            >
+              <hlm-date-picker-trigger
+                class="h-12 w-full rounded-xl"
+                buttonId="flight-return-date"
+                >انتخاب تاریخ برگشت</hlm-date-picker-trigger
+              >
+            </hlm-date-picker>
+            } @else {
+            <button
+              hlmBtn
+              type="button"
+              variant="outline"
+              class="text-muted-foreground h-12 w-full rounded-xl border-dashed text-xs"
+              id="flight-return-date"
+              (click)="roundTrip = true; changeTrip()"
+            >
+              <ng-icon name="lucidePlus" aria-hidden="true" />افزودن برگشت
+            </button>
+            }
+          </hlm-field>
+        </div>
+        <details class="group rounded-xl border px-3">
+          <summary
+            class="focus-visible:outline-ring flex min-h-12 cursor-pointer list-none items-center gap-2 rounded-lg text-sm focus-visible:outline-2 [&::-webkit-details-marker]:hidden"
+          >
+            <ng-icon
+              name="lucideUsers"
+              class="text-muted-foreground text-lg"
+              aria-hidden="true"
+            />
+            <span class="font-medium"
+              >{{ number(passengerCount()) }} مسافر</span
+            >
+            <span class="text-muted-foreground ms-auto text-xs"
+              >تعداد مسافران</span
+            >
+            <ng-icon
+              name="lucideChevronDown"
+              class="text-muted-foreground group-open:rotate-180"
+              aria-hidden="true"
+            />
+          </summary>
+          <div class="flex flex-col gap-3 border-t py-3">
+            @for (type of passengerTypes; track type.key) {
+            <div class="flex items-center justify-between gap-3">
+              <div>
+                <p [id]="type.key + '-label'" class="text-sm font-medium">
+                  {{ type.label }}
+                </p>
+                <p class="text-muted-foreground mt-0.5 text-xs">
+                  {{ type.hint }}
+                </p>
+              </div>
+              <div class="flex items-center gap-1 rounded-xl border p-0.5">
+                <button
+                  hlmBtn
+                  type="button"
+                  variant="ghost"
+                  class="size-11 rounded-lg p-0"
+                  [attr.aria-label]="'افزایش ' + type.label"
+                  [disabled]="busy() || !canChangeCount(type.key, 1)"
+                  (click)="changeCount(type.key, 1)"
+                >
+                  <ng-icon name="lucidePlus" aria-hidden="true" />
+                </button>
+                <output
+                  [attr.aria-labelledby]="type.key + '-label'"
+                  class="w-7 text-center text-sm font-semibold tabular-nums"
+                  aria-live="polite"
+                  >{{ number(search()[type.key]) }}</output
+                >
+                <button
+                  hlmBtn
+                  type="button"
+                  variant="ghost"
+                  class="size-11 rounded-lg p-0"
+                  [attr.aria-label]="'کاهش ' + type.label"
+                  [disabled]="busy() || !canChangeCount(type.key, -1)"
+                  (click)="changeCount(type.key, -1)"
+                >
+                  <ng-icon name="lucideMinus" aria-hidden="true" />
+                </button>
+              </div>
+            </div>
+            }
+          </div>
+        </details>
+        <button
+          hlmBtn
+          type="submit"
+          class="h-12 gap-2 rounded-xl transition-[background-color,box-shadow,scale] motion-reduce:transition-none motion-safe:active:scale-[0.96]"
+          [disabled]="busy() || searchForm.invalid || search().origin === search().destination"
+        >
+          <ng-icon name="lucideSearch" aria-hidden="true" />{{ busy() ? 'در حال
+          جست‌وجو…' : 'جست‌وجوی پرواز' }}
+        </button>
+      </fieldset>
+    </form>
+  </section>
+  @if (busy() && !searched()) {
+  <p role="status" class="text-muted-foreground py-3 text-center text-sm">
+    در حال بررسی پروازهای این مسیر…
+  </p>
+  } @if (searched()) {
+  <div class="flex flex-wrap items-center justify-between gap-2" role="status">
+    <h2 class="text-sm font-semibold">
+      {{ number(offers().length) }} پرواز پیدا شد
+    </h2>
+    <span class="text-muted-foreground text-xs">ارزان‌ترین ابتدا</span>
+  </div>
+  @for (offer of offers(); track offer.id) {
+  <article hlmCard class="gap-0 overflow-hidden py-0">
+    <div hlmCardContent class="flex flex-col gap-4 p-4">
+      @for (leg of offer.returning ? [offer.departure, offer.returning] :
+      [offer.departure]; track leg.key) {
+      <div
+        class="flex flex-col gap-4"
+        [class.border-t]="$index > 0"
+        [class.pt-4]="$index > 0"
+      >
+        <div class="flex items-center justify-between gap-2">
+          <div class="flex min-w-0 items-center gap-2">
+            <span
+              class="bg-muted flex size-9 shrink-0 items-center justify-center rounded-xl text-xs font-bold"
+              dir="ltr"
+              >{{ leg.airline }}</span
+            >
+            <div class="text-xs">
+              <p class="font-medium">پرواز <bdi>{{ leg.flightNumber }}</bdi></p>
+              <p class="text-muted-foreground mt-0.5">
+                {{ leg.flightType === 'charter' ? 'چارتر' : 'سیستمی' }} · {{
+                leg.flightClass === 'economy' ? 'اکونومی' : leg.flightClass }}
+              </p>
+            </div>
+          </div>
+          <span hlmBadge variant="secondary"
+            >{{ $index === 0 ? 'رفت' : 'برگشت' }}</span
+          >
+        </div>
+        <div
+          class="grid grid-cols-[minmax(0,1fr)_64px_minmax(0,1fr)] items-start gap-2"
+        >
+          <div class="min-w-0">
+            <p class="text-2xl font-bold tabular-nums">
+              <bdi>{{ leg.departureTime.slice(11, 16) }}</bdi>
+            </p>
+            <p
+              class="mt-1 text-sm font-medium"
+              [title]="airportName(leg.origin)"
+            >
+              {{ airportLabel(leg.origin) }}
+            </p>
+            <bdi class="text-muted-foreground text-xs">{{ leg.origin }}</bdi>
+          </div>
+          <div
+            class="text-muted-foreground flex flex-col items-center gap-1 pt-2"
+          >
+            <ng-icon
+              name="lucideMoveLeft"
+              class="text-primary text-2xl"
+              aria-hidden="true"
+            /><span class="whitespace-nowrap text-[0.65rem]"
+              >{{ leg.stops ? number(leg.stops) + ' توقف' : 'مستقیم' }}</span
+            >
+          </div>
+          <div class="min-w-0 text-end">
+            <p class="text-2xl font-bold tabular-nums">
+              <bdi>{{ leg.arrivalTime.slice(11, 16) }}</bdi>
+            </p>
+            <p
+              class="mt-1 text-sm font-medium"
+              [title]="airportName(leg.destination)"
+            >
+              {{ airportLabel(leg.destination) }}
+            </p>
+            <bdi class="text-muted-foreground text-xs"
+              >{{ leg.destination }}</bdi
+            >
+          </div>
+        </div>
+        <div
+          class="text-muted-foreground flex flex-wrap items-center justify-between gap-2 text-xs"
+        >
+          <span>{{ dateLabel(leg.departureTime.slice(0, 10)) }}</span
+          ><span class="flex items-center gap-1"
+            ><ng-icon name="lucideLuggage" aria-hidden="true" />{{
+            number(leg.baggage) }} کیلوگرم بار</span
+          >
+        </div>
+      </div>
+      }
+    </div>
+    <div
+      class="bg-muted/30 flex flex-wrap items-center justify-between gap-3 border-t px-4 py-3"
+    >
+      <div>
+        <p class="text-muted-foreground mb-1 text-[0.65rem]">مبلغ کل مسافران</p>
+        <strong class="text-primary text-lg tabular-nums"
+          >{{ money(offer.amount) }}</strong
+        >
+      </div>
+      <button
+        hlmBtn
+        class="min-h-11 rounded-xl transition-[background-color,box-shadow,scale] motion-reduce:transition-none motion-safe:active:scale-[0.96]"
+        [disabled]="busy()"
+        (click)="select(offer)"
+      >
+        انتخاب پرواز
+      </button>
+    </div>
+  </article>
+  } @empty {
+  <section hlmCard>
+    <div
+      hlmCardContent
+      class="flex flex-col items-center gap-3 py-8 text-center"
+    >
+      <span
+        class="bg-muted text-muted-foreground flex size-12 items-center justify-center rounded-full"
+        ><ng-icon name="lucidePlane" class="text-2xl" aria-hidden="true"
+      /></span>
+      <h3 class="text-sm font-semibold">پروازی برای این جست‌وجو پیدا نشد</h3>
+      <p class="text-muted-foreground text-sm">
+        تاریخ یا مسیر دیگری را امتحان کنید.
+      </p>
+    </div>
+  </section>
+  } } } @if (quote(); as q) {
+  <section hlmCard>
+    <div hlmCardContent class="flex flex-col gap-3 pt-6">
+      <div class="flex items-center justify-between gap-3">
+        <h2 class="font-semibold">مشخصات مسافران و پرداخت</h2>
+        <button
+          hlmBtn
+          variant="ghost"
+          [disabled]="busy()"
+          (click)="quote.set(null)"
+        >
+          بازگشت
+        </button>
+      </div>
+      <p>
+        {{ airportName(q.offer.departure.origin) }} به {{
+        airportName(q.offer.departure.destination) }} · {{
+        dateLabel(q.search.departureDate) }}
+      </p>
+      <p class="text-muted-foreground text-sm">
+        {{ number(q.search.adults + q.search.children + q.search.infants) }}
+        مسافر{{ q.offer.returning ? ' · رفت و برگشت' : ' · یک‌طرفه' }}
+      </p>
+      <strong>{{ money(q.offer.amount) }}</strong>
+      <p class="text-muted-foreground text-xs">
+        مهلت تکمیل پیش‌فاکتور ۵ دقیقه است. قیمت و ظرفیت پیش از پرداخت دوباره
+        بررسی می‌شود.
+      </p>
+      <details>
+        <summary class="cursor-pointer text-sm">قوانین کنسلی</summary>
+        @for (leg of q.offer.returning ? [q.offer.departure, q.offer.returning]
+        : [q.offer.departure]; track leg.key) {
+        <p class="mt-2 text-sm">پرواز {{ leg.flightNumber }}</p>
+        @for (rule of leg.cancellationRules; track $index) {
+        <p class="text-muted-foreground text-sm">{{ rule }}</p>
+        } @if (!leg.cancellationRules.length) {
+        <p class="text-muted-foreground text-sm">
+          جریمه کنسلی این پرواز اعلام نشده است. برای اطلاع از شرایط، پیش از
+          پرداخت با پشتیبانی هماهنگ کنید.
+        </p>
+        } }
+      </details>
+    </div>
+  </section>
+  <form class="flex flex-col gap-4" #bookingForm="ngForm" (ngSubmit)="pay()">
+    <fieldset [disabled]="busy()" class="flex min-w-0 flex-col gap-4">
+      <legend class="sr-only">مشخصات رزرو</legend>
+      @for (p of passengers(); track $index; let i = $index) {
+      <section hlmCard>
+        <div hlmCardContent class="flex flex-col gap-4 pt-6">
+          <h3 class="font-semibold">
+            مسافر {{ number(i + 1) }} · {{ ageLabel(p.type) }}
+          </h3>
+          <div
+            class="flex flex-col gap-2"
+            [attr.aria-labelledby]="'flight-traveler-picker-' + i"
+          >
+            <p
+              [id]="'flight-traveler-picker-' + i"
+              class="text-muted-foreground text-xs"
+            >
+              انتخاب سریع مشخصات
+            </p>
+            <div class="flex gap-2 overflow-x-auto pb-1">
+              @for (traveler of previousTravelers(); track
+              traveler.nationalCode) {
+              <button
+                type="button"
+                class="min-h-11 shrink-0 rounded-md border px-4 text-right transition-colors"
+                [class]="selectedTravelers()[i] === traveler.nationalCode ? 'border-primary bg-secondary text-primary' : 'border-border bg-background'"
+                [attr.aria-pressed]="selectedTravelers()[i] === traveler.nationalCode"
+                (click)="selectPrevious(i, traveler)"
+              >
+                <span class="block text-sm font-medium">
+                  {{ traveler.firstName }} {{ traveler.lastName }}
+                </span>
+                <span
+                  class="text-muted-foreground block text-[0.65rem]"
+                  dir="ltr"
+                >
+                  {{ traveler.nationalCode }}
+                </span>
+              </button>
+              }
+            </div>
+            @if (travelersLoading()) {
+            <p class="text-muted-foreground text-xs" role="status">
+              در حال دریافت مسافران قبلی…
+            </p>
+            } @else if (previousTravelers().length === 0) {
+            <p class="text-muted-foreground text-xs">
+              هنوز مسافر قبلی دیگری ثبت نشده است.
+            </p>
+            }
+          </div>
+          <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <hlm-field
+              ><label hlmFieldLabel [for]="'first-' + i">نام انگلیسی</label
+              ><input
+                hlmInput
+                [id]="'first-' + i"
+                [name]="'first-' + i"
+                dir="ltr"
+                required
+                pattern="[A-Za-z][A-Za-z '\-]{0,69}"
+                [ngModel]="p.firstName"
+                (ngModelChange)="updatePassenger(i, 'firstName', $event)"
+            /></hlm-field>
+            <hlm-field
+              ><label hlmFieldLabel [for]="'last-' + i"
+                >نام خانوادگی انگلیسی</label
+              ><input
+                hlmInput
+                [id]="'last-' + i"
+                [name]="'last-' + i"
+                dir="ltr"
+                required
+                pattern="[A-Za-z][A-Za-z '\-]{0,69}"
+                [ngModel]="p.lastName"
+                (ngModelChange)="updatePassenger(i, 'lastName', $event)"
+            /></hlm-field>
+            <hlm-field
+              ><label hlmFieldLabel [for]="'birth-' + i"
+                >تاریخ تولد (میلادی)</label
+              ><sanpay-gregorian-date-picker
+                [date]="dateValue(p.birthdate)"
+                [min]="minGregorianBirthdate"
+                [max]="maxGregorianBirthdate"
+                [buttonId]="'birth-' + i"
+                triggerClass="h-12 w-full rounded-xl"
+                (dateChange)="updateGregorianDate(i, 'birthdate', $event)"
+                >انتخاب تاریخ تولد</sanpay-gregorian-date-picker
+            ></hlm-field>
+            <hlm-field
+              ><label hlmFieldLabel [for]="'gender-' + i">جنسیت</label
+              ><hlm-native-select
+                [selectId]="'gender-' + i"
+                [name]="'gender-' + i"
+                class="w-full"
+                [ngModel]="p.gender"
+                (ngModelChange)="updatePassenger(i, 'gender', $event)"
+                ><option value="male">مرد</option>
+                <option value="female">زن</option></hlm-native-select
+              ></hlm-field
+            >
+            <hlm-field
+              ><label hlmFieldLabel [for]="'nation-' + i"
+                >تابعیت (کد سه‌حرفی کشور)</label
+              ><input
+                hlmInput
+                [id]="'nation-' + i"
+                [name]="'nation-' + i"
+                dir="ltr"
+                required
+                pattern="[A-Z]{3}"
+                maxlength="3"
+                [ngModel]="p.nationality"
+                (ngModelChange)="updatePassenger(i, 'nationality', $event.toUpperCase())"
+              />
+              <p hlmFieldDescription>ایران: IRN</p></hlm-field
+            >
+            @if (!needsPassport(p)) {
+            <hlm-field
+              ><label hlmFieldLabel [for]="'national-' + i">کد ملی</label
+              ><input
+                hlmInput
+                [id]="'national-' + i"
+                [name]="'national-' + i"
+                dir="ltr"
+                inputmode="numeric"
+                required
+                pattern="[0-9]{10}"
+                maxlength="10"
+                [ngModel]="p.nationalCode"
+                (ngModelChange)="updatePassenger(i, 'nationalCode', $event)"
+            /></hlm-field>
+            } @else {
+            <hlm-field
+              ><label hlmFieldLabel [for]="'passport-' + i">شماره گذرنامه</label
+              ><input
+                hlmInput
+                [id]="'passport-' + i"
+                [name]="'passport-' + i"
+                dir="ltr"
+                required
+                pattern="[A-Za-z0-9]{3,20}"
+                [ngModel]="p.passportNumber"
+                (ngModelChange)="updatePassenger(i, 'passportNumber', $event)"
+            /></hlm-field>
+            <hlm-field
+              ><label hlmFieldLabel [for]="'expiry-' + i"
+                >انقضای گذرنامه (میلادی)</label
+              ><sanpay-gregorian-date-picker
+                [date]="dateValue(p.passportExpirationDate)"
+                [min]="minPassportExpiry"
+                [buttonId]="'expiry-' + i"
+                triggerClass="h-12 w-full rounded-xl"
+                (dateChange)="updateGregorianDate(i, 'passportExpirationDate', $event)"
+                >انتخاب تاریخ انقضای گذرنامه</sanpay-gregorian-date-picker
+            ></hlm-field>
+            <hlm-field
+              ><label hlmFieldLabel [for]="'country-' + i"
+                >کشور صادرکننده (کد دوحرفی)</label
+              ><input
+                hlmInput
+                [id]="'country-' + i"
+                [name]="'country-' + i"
+                dir="ltr"
+                required
+                pattern="[A-Z]{2}"
+                maxlength="2"
+                [ngModel]="p.passportIssueCountry"
+                (ngModelChange)="updatePassenger(i, 'passportIssueCountry', $event.toUpperCase())"
+              />
+              <p hlmFieldDescription>ایران: IR</p></hlm-field
+            >
+            }
+          </div>
+        </div>
+      </section>
+      }
+      <section hlmCard>
+        <div hlmCardContent class="flex flex-col gap-4 pt-6">
+          <h3 class="font-semibold">اطلاعات رزروکننده</h3>
+          <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <hlm-field
+              ><label hlmFieldLabel for="booker-first">نام</label
+              ><input
+                hlmInput
+                id="booker-first"
+                name="bookerFirst"
+                required
+                maxlength="70"
+                [(ngModel)]="bookerFirstName"
+                autocomplete="given-name"
+            /></hlm-field>
+            <hlm-field
+              ><label hlmFieldLabel for="booker-last">نام خانوادگی</label
+              ><input
+                hlmInput
+                id="booker-last"
+                name="bookerLast"
+                required
+                maxlength="70"
+                [(ngModel)]="bookerLastName"
+                autocomplete="family-name"
+            /></hlm-field>
+            <hlm-field
+              ><label hlmFieldLabel for="booker-mobile">شماره همراه</label
+              ><input
+                hlmInput
+                id="booker-mobile"
+                name="mobile"
+                required
+                pattern="09[0-9]{9}"
+                maxlength="11"
+                dir="ltr"
+                type="tel"
+                [(ngModel)]="mobile"
+                autocomplete="tel"
+            /></hlm-field>
+          </div>
+          <hlm-field
+            ><label hlmFieldLabel for="flight-wallet">کیف پول گردشگری</label>
+            <hlm-native-select
+              selectId="flight-wallet"
+              name="wallet"
+              class="w-full"
+              required
+              [(ngModel)]="allocationId"
+            >
+              <option value="" disabled>انتخاب کیف پول</option>
+              @for (wallet of q.wallets; track wallet.allocationId) {
+              <option
+                [value]="wallet.allocationId"
+                [disabled]="wallet.max < q.offer.amount"
+              >
+                {{ wallet.name }} · {{ money(wallet.max) }}{{ wallet.max <
+                q.offer.amount ? ' · مانده ناکافی' : '' }}
+              </option>
+              }
+            </hlm-native-select>
+          </hlm-field>
+          @if (!canPay()) {
+          <p role="status" class="text-destructive text-sm">
+            کیف پول گردشگری با اعتبار کافی ندارید.
+          </p>
+          }
+          <p class="text-muted-foreground text-sm">
+            با پرداخت، {{ money(q.offer.amount) }} از کیف پول گردشگری کسر و
+            درخواست صدور ثبت می‌شود. تا مشخص شدن نتیجه، رزرو دیگری برای همین سفر
+            ثبت نکنید.
+          </p>
+          <button
+            hlmBtn
+            type="submit"
+            [disabled]="busy() || bookingForm.invalid || !canPay()"
+          >
+            {{ busy() ? 'در حال ثبت رزرو…' : 'پرداخت ' + money(q.offer.amount) +
+            ' و رزرو' }}
+          </button>
+        </div>
+      </section>
+    </fieldset>
+  </form>
+  } @if (receipt(); as r) {
+  <section hlmCard role="status">
+    <div hlmCardContent class="flex flex-col gap-3 pt-6">
+      <h2 class="font-semibold">{{ statusLabel(r.status) }}</h2>
+      <p>
+        {{ r.status === 'CONFIRMED' ? 'رزرو پرواز شما قطعی شد.' : r.refunded ?
+        'رزرو انجام نشد و مبلغ به کیف پول گردشگری برگشت.' : 'درخواست شما ثبت شده
+        و نتیجه در حال بررسی است. رزرو را تکرار نکنید؛ وضعیت این صفحه به‌روز
+        می‌شود.' }}
+      </p>
+      <p class="text-muted-foreground text-sm">
+        پیگیری: <bdi>{{ r.confirmationCode || r.id }}</bdi>
+      </p>
+      <p>{{ money(r.amount) }} · {{ r.walletName }}</p>
+      <button hlmBtn variant="outline" (click)="receipt.set(null)">
+        بازگشت به جست‌وجو
+      </button>
+    </div>
+  </section>
+  }
+  <section id="flight-bookings" class="flex scroll-mt-24 flex-col gap-3">
+    <div class="flex items-center justify-between">
+      <h2 class="font-semibold">رزروهای پرواز من</h2>
+      <button hlmBtn variant="ghost" (click)="loadBookings()">
+        به‌روزرسانی
+      </button>
+    </div>
+    @if (historyError()) {
+    <p role="alert" class="text-destructive text-sm">{{ historyError() }}</p>
+    } @for (booking of bookings(); track booking.id) {
+    <article hlmCard>
+      <div hlmCardContent class="flex flex-col gap-2 pt-6">
+        <div class="flex flex-wrap justify-between gap-2">
+          <strong
+            >{{ airportName(booking.offer.departure.origin) }} به {{
+            airportName(booking.offer.departure.destination) }}</strong
+          ><span hlmBadge variant="secondary"
+            >{{ statusLabel(booking.status) }}</span
+          >
+        </div>
+        <p class="text-muted-foreground text-sm">
+          {{ dateLabel(booking.offer.departure.departureTime.slice(0, 10)) }} ·
+          {{ booking.offer.returning ? 'رفت و برگشت' : 'یک‌طرفه' }}
+        </p>
+        <p class="text-sm">
+          {{ money(booking.amount) }} · {{ booking.walletName }}
+        </p>
+        <p class="text-muted-foreground break-all text-xs">
+          پیگیری: <bdi>{{ booking.confirmationCode || booking.id }}</bdi>
+        </p>
+        @if (booking.refunded) {
+        <p class="text-sm">مبلغ به کیف پول گردشگری برگشت داده شد.</p>
+        } @for (ticket of booking.tickets; track ticket.id) {
+        <div
+          class="flex flex-wrap justify-between gap-2 rounded-lg border p-3 text-sm"
+        >
+          <bdi>{{ ticket.passengerName }}</bdi>
+          <span>شماره بلیت: <bdi>{{ ticket.number }}</bdi></span>
+          <span>PNR: <bdi>{{ ticket.pnr }}</bdi></span>
+        </div>
+        } @if (booking.status === 'REVIEW') {
+        <p class="text-muted-foreground text-sm">
+          نتیجه صدور هنوز قطعی نیست. برای پیگیری، کد بالا را به پشتیبانی اعلام
+          کنید و رزرو را تکرار نکنید.
+        </p>
+        }
+      </div>
+    </article>
+    } @empty { @if (!historyError()) {
+    <p class="text-muted-foreground text-sm">هنوز رزرو پروازی ثبت نکرده‌اید.</p>
+    } }
+  </section>
+</div>

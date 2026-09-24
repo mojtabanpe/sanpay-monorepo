@@ -56,6 +56,7 @@ model Employee {
   transactions  Transaction[]
   payments      Payment[]
   hotelBookings HotelBooking[]
+  flightBookings FlightBooking[]
   otp           EmployeeOtp?
 
   @@index([companyId])
@@ -83,7 +84,7 @@ enum WalletKind {
   CREDIT
   /// سهمیهٔ ارزاق
   RATION
-  /// اعتبار گردشگری — فقط برای رزرو هتل از طریق هتل‌یار، نه فروشگاه‌ها
+  /// اعتبار گردشگری — برای رزرو هتل و پرواز، نه فروشگاه‌ها
   TOURISM
 }
 
@@ -130,6 +131,7 @@ model WalletAllocation {
   purchaseCodes PurchaseCode[]
   transactions  Transaction[]
   hotelBookings HotelBooking[]
+  flightBookings FlightBooking[]
 
   @@index([employeeId])
   @@index([definitionId])
@@ -482,4 +484,39 @@ model Admin {
   lastLoginAt  DateTime?
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
+}
+
+/// Server-priced flight selection; short lived and owned by the employee.
+model FlightQuote {
+  id         String   @id @default(uuid())
+  employeeId String
+  search     Json
+  offer      Json
+  amount     BigInt
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  booking    FlightBooking?
+
+  @@index([employeeId, expiresAt])
+}
+
+/// One reservation attempt per quote, persisted before external side effects.
+model FlightBooking {
+  id               String   @id @default(uuid())
+  quoteId          String   @unique
+  employeeId       String
+  allocationId     String
+  confirmationCode String?  @unique
+  status           String   @default("PROCESSING")
+  amount           BigInt
+  refunded         Boolean  @default(false)
+  tickets          Json     @default("[]")
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  quote            FlightQuote @relation(fields: [quoteId], references: [id])
+  employee         Employee @relation(fields: [employeeId], references: [id])
+  allocation       WalletAllocation @relation(fields: [allocationId], references: [id])
+
+  @@index([employeeId, createdAt])
+  @@index([status, updatedAt])
 }

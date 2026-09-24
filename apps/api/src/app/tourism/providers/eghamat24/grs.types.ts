@@ -156,12 +156,11 @@ export interface GrsRoomRate {
 /**
  * خروجی suggestion (جست‌وجوی شهری).
  *
- * ⚠ شکل دقیق این موجودیت در نسخه‌ای از داکیومنت که داریم بازنشده است (صفحهٔ ۶۰
- * فقط عنوان دارد). این تایپ از روی خروجی available-rooms و پارامترهای
- * suggestion حدس زده شده. **قبل از اتصال به سرویس واقعی باید با یک پاسخ واقعی
- * تطبیق داده شود** — تا آن موقع فقط ماک از آن استفاده می‌کند.
+ * پاسخ واقعی در GrsHttpClient به room_rates نگاشت می‌شود؛ rooms تخت برای ماک باقی مانده است.
  */
 export interface GrsSuggestion {
+  /** Live API returns nested daily rate plans; flat rooms remain for the mock. */
+  room_rates?: GrsRoomRate[];
   property_id: number;
   property_name?: string;
   star?: number;

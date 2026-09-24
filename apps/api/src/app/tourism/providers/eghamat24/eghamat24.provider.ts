@@ -64,7 +64,9 @@ export class Eghamat24Provider extends HotelProvider {
 
   async hotels(cityId: string | null): Promise<HotelSummary[]> {
     const [properties, cityNames] = await Promise.all([
-      this.grs.getProperties(cityId === null ? null : decodeNumericId(cityId).id),
+      this.grs.getProperties(
+        cityId === null ? null : decodeNumericId(cityId).id,
+      ),
       this.cityNames(),
     ]);
     return properties.map((property) => toHotelSummary(property, cityNames));
@@ -133,6 +135,12 @@ export class Eghamat24Provider extends HotelProvider {
           params.nights,
         ),
       )
+      .map((availability) => ({
+        ...availability,
+        rooms: availability.rooms.filter(
+          (room) => room.capacity >= params.capacity,
+        ),
+      }))
       .filter((availability) => availability.rooms.length > 0);
   }
 
@@ -156,7 +164,9 @@ export class Eghamat24Provider extends HotelProvider {
     const [roomProperty, roomTypeId, ratePlanId] = parts.map(Number);
 
     if (roomProperty !== propertyId) {
-      throw new BadRequestException('اتاق انتخاب‌شده به این اقامتگاه تعلق ندارد');
+      throw new BadRequestException(
+        'اتاق انتخاب‌شده به این اقامتگاه تعلق ندارد',
+      );
     }
 
     const details = await this.grs.reserve({

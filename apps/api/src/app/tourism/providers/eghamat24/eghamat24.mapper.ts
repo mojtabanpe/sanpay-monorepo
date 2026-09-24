@@ -134,7 +134,9 @@ export function toAvailability(
     nights,
     rooms: rooms.flatMap((room) =>
       (room.rate_plans ?? [])
-        .map((plan) => toRoomOffer(propertyId, room, plan, nights))
+        .map((plan) =>
+          toRoomOffer(propertyId, room, plan, nights, checkin, checkout),
+        )
         .filter((offer): offer is RoomOffer => offer !== null),
     ),
   };
@@ -145,22 +147,53 @@ function toRoomOffer(
   room: GrsRoomRate,
   plan: GrsRatePlan,
   nights: number,
+  checkin: string,
+  checkout: string,
 ): RoomOffer | null {
-  const prices = plan.prices ?? [];
+  // available-rooms can include the checkout date, which is not a charged night.
+  const prices = (plan.prices ?? [])
+    .filter((price) => price.day >= checkin && price.day < checkout)
+    .sort((a, b) => a.day.localeCompare(b.day));
 
   // بازهٔ ناقص یعنی برای بعضی شب‌ها نرخ تعریف نشده — همان خطای `rate` که
   // داکیومنت هنگام رزرو می‌دهد. بهتر است همین‌جا حذف شود تا کارمند اتاقی را
   // انتخاب نکند که رزروش قطعاً رد می‌شود.
-  if (prices.length < nights) {
+  if (
+    prices.length !== nights ||
+    new Set(prices.map((price) => price.day)).size !== nights
+  ) {
     return null;
   }
 
   // هر شبِ بسته یا بدون موجودی کل بازه را غیرقابل رزرو می‌کند
-  if (prices.some((price) => price.closed || price.inventory <= 0)) {
+  if (
+    prices.some(
+      (price) =>
+        price.closed ||
+        !Number.isFinite(price.inventory) ||
+        price.inventory <= 0 ||
+        !Number.isFinite(price.grs_rate) ||
+        price.grs_rate <= 0,
+    )
+  ) {
     return null;
   }
 
-  if (nights < (plan.min_stay ?? 1)) {
+  if (
+    nights < (plan.min_stay ?? 1) ||
+    (plan.max_stay && nights > plan.max_stay) ||
+    prices[0].close_to_arrival ||
+    (plan.prices ?? []).some(
+      (price) => price.day === checkout && price.close_to_departure,
+    ) ||
+    prices.some(
+      (price) =>
+        nights < (price.min_stay ?? 1) ||
+        (price.max_stay && nights > price.max_stay),
+    ) ||
+    !Number.isFinite(plan.sleeps) ||
+    plan.sleeps <= 0
+  ) {
     return null;
   }
 
@@ -175,7 +208,9 @@ function toRoomOffer(
     roomId: encodeId(EG, propertyId, room.room_type_id, plan.id),
     roomType: planLabel(room.room_type_name, plan),
     capacity: Number(plan.sleeps) || 1,
-    breakfast: plan.meal_type_included !== null,
+    breakfast: ['breakfast', 'half_board', 'full_board'].includes(
+      plan.meal_type_included ?? '',
+    ),
     extraBed: 0,
     freeCapacity: Math.min(...prices.map((price) => price.inventory)),
     price: rialToToman(total),
@@ -210,7 +245,7 @@ const MEAL_LABELS: Record<string, string> = {
 /**
  * تبدیل خروجی suggestion (جست‌وجوی شهری) به مدل موجودی.
  *
- * ⚠ مثل `GrsSuggestion`، این نگاشت روی پاسخ واقعی تأیید نشده است.
+ * پاسخ واقعی نرخ‌های روزانه دارد؛ شکل تخت فقط برای سازگاری با ماک است.
  */
 export function suggestionToAvailability(
   suggestion: GrsSuggestion,
@@ -218,6 +253,16 @@ export function suggestionToAvailability(
   checkout: string,
   nights: number,
 ): HotelAvailability {
+  if (suggestion.room_rates) {
+    return toAvailability(
+      suggestion.property_id,
+      suggestion.property_name ?? '',
+      checkin,
+      checkout,
+      nights,
+      suggestion.room_rates,
+    );
+  }
   return {
     hotelId: encodeId(EG, suggestion.property_id),
     hotelName: suggestion.property_name ?? '',

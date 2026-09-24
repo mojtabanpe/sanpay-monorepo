@@ -364,7 +364,7 @@
 [data-slot='dropdown-menu'],
 [data-slot='hover-card-content'],
 [data-slot='autocomplete'],
-[data-slot='combobox'],
+[data-slot='combobox-content'],
 [data-slot='command'],
 [data-slot='sheet-content'],
 [data-slot='drawer-content'],
@@ -512,6 +512,7 @@ button[data-slot='button'].bg-primary:active:not(:disabled) {
 [data-slot='input'],
 [data-slot='textarea'],
 [data-slot='select-trigger'],
+[data-slot='combobox-trigger'],
 [data-slot='date-picker-trigger'] > button,
 [data-slot='input-group'] {
   min-height: 2.75rem;
@@ -525,7 +526,8 @@ button[data-slot='button'].bg-primary:active:not(:disabled) {
 
 [data-slot='input']:hover:not(:disabled),
 [data-slot='textarea']:hover:not(:disabled),
-[data-slot='select-trigger']:hover:not(:disabled) {
+[data-slot='select-trigger']:hover:not(:disabled),
+[data-slot='combobox-trigger']:hover:not(:disabled) {
   border-color: color-mix(in oklab, var(--primary) 35%, var(--border));
 }
 
@@ -536,6 +538,7 @@ button[data-slot='button'].bg-primary:active:not(:disabled) {
 [data-slot='input']:focus-visible,
 [data-slot='textarea']:focus-visible,
 [data-slot='select-trigger']:focus-visible,
+[data-slot='combobox-trigger']:focus-visible,
 [data-slot='date-picker-trigger'] > button:focus-visible,
 [data-slot='input-group']:focus-within {
   border-color: var(--ring);
@@ -546,7 +549,8 @@ button[data-slot='button'].bg-primary:active:not(:disabled) {
 /* The trigger is a button, so it inherits the lift above — undo it:
    a form control jumping on hover reads as a bug, not affordance. */
 [data-slot='date-picker-trigger'] > button:hover,
-[data-slot='select-trigger']:hover {
+[data-slot='select-trigger']:hover,
+[data-slot='combobox-trigger']:hover {
   transform: none;
 }
 
@@ -736,6 +740,22 @@ button[data-slot='button'].bg-primary:active:not(:disabled) {
 }
 
 /*
+ * CDK جای پاپ‌اور را پیش از اعمال عرض محاسبه می‌کند. در فیلدهای باریک موبایل،
+ * بزرگ‌شدن بعدی پنل می‌تواند آن را از لبهٔ viewport بیرون ببرد. روی نمایشگر
+ * کوچک، دو لبه را مستقیم مهار می‌کنیم تا تقویم همیشه ۱rem حاشیهٔ امن داشته
+ * باشد؛ در عرض‌های بزرگ‌تر، هم‌ترازی معمول با trigger حفظ می‌شود.
+ */
+@media (max-width: 30rem) {
+  .cdk-overlay-pane:has([data-slot='calendar']) {
+    right: 1rem !important;
+    left: 1rem !important;
+    width: auto !important;
+    min-width: 0;
+    max-width: none;
+  }
+}
+
+/*
  * شبکهٔ روزها باید عرض پاپ‌اور را پر کند وگرنه در یک گوشه جمع می‌شود و بقیه
  * سفید می‌ماند. لایهٔ داخلی hlm-calendar یک `inline-flex` است که عرضش را از
  * محتوا می‌گیرد؛ تا آن باز نشود `w-full` روی جدول بی‌اثر است. فقط همین یک لایه
@@ -750,6 +770,7 @@ button[data-slot='button'].bg-primary:active:not(:disabled) {
 /* ── Overlays: a short rise on open, no motion on close ────────────── */
 [data-slot='popover-content'],
 [data-slot='select-content'],
+[data-slot='combobox-content'],
 [data-slot='dropdown-menu'],
 [data-slot='dialog-content'] {
   animation: sanpay-overlay-in 160ms cubic-bezier(0.16, 1, 0.3, 1);
@@ -820,7 +841,7 @@ button[data-slot='button'].bg-primary:active:not(:disabled) {
   [data-slot='dropdown-menu'],
   [data-slot='hover-card-content'],
   [data-slot='autocomplete'],
-  [data-slot='combobox'],
+  [data-slot='combobox-content'],
   [data-slot='command'],
   [data-slot='sheet-content'],
   [data-slot='drawer-content'],
@@ -841,6 +862,7 @@ button[data-slot='button'].bg-primary:active:not(:disabled) {
 
   [data-slot='popover-content'],
   [data-slot='select-content'],
+  [data-slot='combobox-content'],
   [data-slot='dropdown-menu'],
   [data-slot='dialog-content'],
   [data-slot='skeleton']::after {

@@ -5,12 +5,115 @@
     <title>سامانه رفاهی پرسنل | جهان‌فولاد سیرجان</title>
     <base href="/" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png" />
-    <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png" />
-    <link rel="shortcut icon" href="favicon.ico" />
-    <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png" />
+    <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+    <link rel="apple-touch-icon" href="apple-touch-icon.png" />
+    <style>
+      body.splash-active {
+        margin: 0;
+        overflow: hidden;
+        background: #fff;
+      }
+      #sanpay-splash {
+        position: fixed;
+        inset: 0;
+        z-index: 10000;
+        display: grid;
+        place-content: center;
+        justify-items: center;
+        padding: max(24px, env(safe-area-inset-top)) 0
+          max(24px, env(safe-area-inset-bottom));
+        background: #fff;
+        color: #144c90;
+        isolation: isolate;
+        font-family: Tahoma, sans-serif;
+        opacity: 1;
+        transition: opacity 360ms ease-in-out;
+      }
+      #sanpay-splash .splash-visual {
+        position: relative;
+        width: min(48vw, 200px);
+        aspect-ratio: 1230 / 1430;
+      }
+      #sanpay-splash img,
+      #sanpay-splash video {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        display: block;
+        object-fit: contain;
+        outline: none;
+        border: 0;
+      }
+      #sanpay-splash img,
+      #sanpay-splash video {
+        visibility: hidden;
+      }
+      #sanpay-splash[data-static] img {
+        visibility: visible;
+      }
+      #sanpay-splash[data-animated] video {
+        visibility: visible;
+      }
+      #sanpay-splash[data-animated] img {
+        visibility: hidden;
+      }
+      #sanpay-splash .splash-status {
+        margin: 28px 24px 0;
+        text-align: center;
+        font-size: 13px;
+        line-height: 1.9;
+      }
+      #splash-retry {
+        margin-top: 16px;
+        padding: 10px 24px;
+        color: #fff;
+        background: #0f766e;
+        border-radius: 12px;
+        text-decoration: none;
+      }
+      #splash-retry:focus-visible {
+        outline: 3px solid #155f59;
+        outline-offset: 4px;
+      }
+      #sanpay-splash.splash-leaving {
+        opacity: 0;
+        pointer-events: none;
+      }
+      @media (prefers-reduced-motion: reduce) {
+        #sanpay-splash {
+          transition: none;
+        }
+      }
+    </style>
+    <script src="splash.js" defer></script>
   </head>
-  <body>
-    <app-root></app-root>
+  <body class="splash-active">
+    <div id="sanpay-splash" data-static aria-label="در حال باز کردن صن‌پی">
+      <div class="splash-visual" aria-hidden="true">
+        <img
+          src="brand/sanpay-logo.svg"
+          width="1230"
+          height="1430"
+          alt=""
+          fetchpriority="high"
+        />
+        <video
+          muted
+          playsinline
+          preload="none"
+          poster="brand/sanpay-logo.svg"
+          tabindex="-1"
+        ></video>
+      </div>
+      <p id="splash-message" class="splash-status" role="status" hidden></p>
+      <a id="splash-retry" href="" hidden>تلاش دوباره</a>
+      <noscript
+        ><p class="splash-status">
+          برای استفاده از صن‌پی، جاوااسکریپت مرورگر را فعال کنید.
+        </p></noscript
+      >
+    </div>
+    <app-root inert></app-root>
   </body>
 </html>

@@ -1,0 +1,1 @@
+ALTER TABLE "FlightBooking" ADD COLUMN "tickets" JSONB NOT NULL DEFAULT '[]';

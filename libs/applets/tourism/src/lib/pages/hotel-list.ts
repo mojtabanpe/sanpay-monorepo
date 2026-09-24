@@ -7,9 +7,9 @@ import {
 } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { NgIcon, provideIcons } from '@ng-icons/core';
-import { lucideMinus, lucidePlus } from '@ng-icons/lucide';
+import { lucideMinus, lucidePlus, lucideHotel, lucidePlane } from '@ng-icons/lucide';
 import { JalaliDate } from '@spartan-ng/brain/date-time';
 import { HotelSummary, TourismCity } from '@sanpay/models';
 import { HlmBadgeImports } from '@sanpay/ui/badge';
@@ -18,7 +18,7 @@ import { HlmCardImports } from '@sanpay/ui/card';
 import { HlmDatePickerImports } from '@sanpay/ui/date-picker';
 import { HlmFieldImports } from '@sanpay/ui/field';
 import { HlmInputGroupImports } from '@sanpay/ui/input-group';
-import { HlmSelectImports } from '@sanpay/ui/select';
+import { HlmComboboxImports } from '@sanpay/ui/combobox';
 import { HlmSkeletonImports } from '@sanpay/ui/skeleton';
 import { firstValueFrom } from 'rxjs';
 import { TourismService } from '../data-access/tourism.service';
@@ -28,6 +28,7 @@ import { addDays, faNumber, isoToJalali, jalaliLong, jalaliToIso, today } from '
   selector: 'tourism-hotel-list',
   imports: [
     SanpayDatePickerWidth,
+    RouterLink,
     NgTemplateOutlet,
     FormsModule,
     NgIcon,
@@ -37,10 +38,12 @@ import { addDays, faNumber, isoToJalali, jalaliLong, jalaliToIso, today } from '
     HlmDatePickerImports,
     HlmFieldImports,
     HlmInputGroupImports,
-    HlmSelectImports,
+    HlmComboboxImports,
     HlmSkeletonImports,
   ],
-  viewProviders: [provideIcons({ lucideMinus, lucidePlus })],
+  viewProviders: [
+    provideIcons({ lucideHotel, lucidePlane, lucideMinus, lucidePlus }),
+  ],
   templateUrl: './hotel-list.html',
 })
 export class HotelListPage {
@@ -125,7 +128,10 @@ export class HotelListPage {
       ? 'همهٔ شهرها'
       : (this.cities().find((city) => city.id === id)?.name ?? '');
 
-  protected onCityChange(value: string): void {
+  protected readonly filterCity = (id: string, search: string): boolean =>
+    normalizeCityName(this.cityLabel(id)).includes(normalizeCityName(search));
+
+  protected onCityChange(value: string | null | undefined): void {
     this.cityId.set(value ?? '');
     void this.load();
   }
@@ -154,4 +160,14 @@ export class HotelListPage {
   }
 
   protected readonly count = faNumber;
+}
+
+/** Match Persian and Arabic keyboard variants, spacing and optional diacritics. */
+function normalizeCityName(value: string): string {
+  return value
+    .replace(/[يى]/g, 'ی')
+    .replace(/ك/g, 'ک')
+    .replace(/آ/g, 'ا')
+    .replace(/[\u064B-\u065F\u0670\u0640\u200c\s]/g, '')
+    .toLocaleLowerCase('fa');
 }

@@ -26,6 +26,12 @@
   - `CB:batch_transfer:read:true`
 - IP سرور باید در فهرست IPهای مجاز تومان ثبت شود.
 
+اعتبارنامهٔ حساب `cb-jahanfolad-api` در ۱۴۰۵/۰۷/۰۲ فقط روی محیط production
+احراز شد؛ endpoint توکن staging آن را با `invalid_client` رد می‌کند. دریافت
+توکن production موفق است، اما دسترسی خواندن batch تا زمان فعال‌شدن permission
+و ثبت IP مورد اعتماد با HTTP 403 رد می‌شود. اجرای خودکار تسویه تا رفع این مورد
+باید با `TOMAN_SETTLEMENTS_ENABLED=false` خاموش بماند.
+
 ## endpointهای استفاده‌شده
 
 Base URL اصلی: `https://dbank.toman.ir/api/v1`

@@ -1,7 +1,10 @@
+import { FlightsController } from './flights/flights.controller';
+import { FlightProvider } from './flights/flight-provider';
 import { Module } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { GdsWebhookGuard } from './gds-webhook.guard';
 import { Eghamat24Provider } from './providers/eghamat24/eghamat24.provider';
+import { GrsHttpClient } from './providers/eghamat24/grs-http.client';
 import { GrsMockClient } from './providers/eghamat24/grs-mock.client';
 import { GrsClient } from './providers/eghamat24/grs.types';
 import { HotelProviderRouter } from './providers/hotel-provider.router';
@@ -13,9 +16,10 @@ import { TourismWebhookController } from './tourism-webhook.controller';
 import { TourismWebhookService } from './tourism-webhook.service';
 import { TourismController } from './tourism.controller';
 import { TourismService } from './tourism.service';
+import { FlightsService } from './flights/flights.service';
 
 @Module({
-  controllers: [TourismController, TourismWebhookController],
+  controllers: [TourismController, TourismWebhookController, FlightsController],
   providers: [
     TourismService,
     TourismWebhookService,
@@ -32,13 +36,11 @@ import { TourismService } from './tourism.service';
       useClass: process.env.GDS_MODE === 'live' ? GdsHttpClient : GdsMockClient,
     },
     {
-      // اقامت۲۴ هنوز کلاینت واقعی ندارد: `Client-Token` فقط بعد از ارسال
-      // مدارک ثبتی و پرداخت حق اشتراک صادر می‌شود (فایل «مدارک مورد نیاز وب
-      // سرویس»). تا آن موقع فقط ماک وجود دارد و همین‌جا وصل می‌شود؛ وقتی توکن
-      // رسید، `GrsHttpClient` اضافه و مثل بالا با `GRS_MODE=live` انتخاب شود.
       provide: GrsClient,
-      useClass: GrsMockClient,
+      useClass: process.env.GRS_MODE === 'live' ? GrsHttpClient : GrsMockClient,
     },
+    FlightsService,
+    FlightProvider,
   ],
 })
 export class TourismModule {}

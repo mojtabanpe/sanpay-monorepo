@@ -1,8 +1,8 @@
 import { BooleanInput } from '@angular/cdk/coercion';
-import { booleanAttribute, ChangeDetectionStrategy, Component, input } from '@angular/core';
+import { booleanAttribute, ChangeDetectionStrategy, Component, DestroyRef, ElementRef, inject, input } from '@angular/core';
 import { NgIcon, provideIcons } from '@ng-icons/core';
 import { lucideChevronDown, lucideX } from '@ng-icons/lucide';
-import { BrnComboboxAnchor, BrnComboboxImports, BrnComboboxPopoverTrigger } from '@spartan-ng/brain/combobox';
+import { BrnComboboxAnchor, BrnComboboxImports, BrnComboboxPopoverTrigger, injectBrnComboboxBase } from '@spartan-ng/brain/combobox';
 import { HlmInputGroup, HlmInputGroupImports } from '@sanpay/ui/input-group';
 import { classes } from '@sanpay/ui/utils';
 
@@ -75,5 +75,20 @@ export class HlmComboboxInput {
 
 	constructor() {
 		classes(() => 'w-auto');
+
+        // Brain 1.1.1 rechecks isExpanded after Enter selects and closes the
+        // popup, then opens it again in the same key handler. Handle selection
+        // in capture phase so Enter closes the menu and restores trigger focus.
+        const combobox = injectBrnComboboxBase<unknown>();
+        const host = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
+        const onKeydown = (event: KeyboardEvent) => {
+            if (event.key !== 'Enter' || event.isComposing || !combobox.isExpanded()) return;
+            if (!(event.target instanceof HTMLInputElement)) return;
+            event.preventDefault();
+            event.stopImmediatePropagation();
+            combobox.selectActiveItem();
+        };
+        host.addEventListener('keydown', onKeydown, { capture: true });
+        inject(DestroyRef).onDestroy(() => host.removeEventListener('keydown', onKeydown, { capture: true }));
 	}
 }

@@ -1,4 +1,5 @@
-<div class="flex flex-col gap-4 px-4 py-6">
+<div class="flex min-w-0 flex-col gap-5 px-4 pb-8 pt-5">
+  <nav class="flex items-center justify-between gap-2" aria-label="خدمات گردشگری"><div class="bg-muted flex gap-1 rounded-2xl p-1"><a hlmBtn variant="ghost" class="min-h-11 min-w-20 rounded-xl bg-background text-primary shadow-sm" routerLink="/tourism" aria-current="page"><ng-icon name="lucideHotel" aria-hidden="true" />هتل</a><a hlmBtn variant="ghost" class="min-h-11 min-w-20 rounded-xl " routerLink="/tourism/flights" ><ng-icon name="lucidePlane" aria-hidden="true" />پرواز</a></div><a hlmBtn variant="ghost" class="min-h-11 px-2 text-xs" routerLink="/tourism/bookings">رزروهای من</a></nav>
 
   <!-- نوار جست‌وجو -->
   <section hlmCard>
@@ -19,22 +20,32 @@
       </div>
 
       <hlm-field>
-        <label hlmFieldLabel>شهر</label>
-        <hlm-select
+        <label hlmFieldLabel for="hotel-city-trigger">شهر</label>
+        <hlm-combobox
           [value]="cityId()"
           [itemToString]="cityLabel"
-          (valueChange)="onCityChange($any($event))"
+          [filter]="filterCity"
+          (valueChange)="onCityChange($event)"
         >
-          <hlm-select-trigger class="w-full">
-            <hlm-select-value />
-          </hlm-select-trigger>
-          <hlm-select-content *hlmSelectPortal>
-            <hlm-select-item value="">همهٔ شهرها</hlm-select-item>
-            @for (city of cities(); track city.id) {
-              <hlm-select-item [value]="city.id">{{ city.name }}</hlm-select-item>
-            }
-          </hlm-select-content>
-        </hlm-select>
+          <hlm-combobox-trigger buttonId="hotel-city-trigger" class="w-full justify-between">
+            {{ cityLabel(cityId()) }}
+          </hlm-combobox-trigger>
+          <hlm-combobox-content *hlmComboboxPortal>
+            <label class="sr-only" for="hotel-city-search">جست‌وجوی شهر</label>
+            <hlm-combobox-input
+              inputId="hotel-city-search"
+              placeholder="نام شهر را بنویسید…"
+              [showTrigger]="false"
+            />
+            <div hlmComboboxList>
+              <hlm-combobox-empty>شهری پیدا نشد</hlm-combobox-empty>
+              <hlm-combobox-item value="">همهٔ شهرها</hlm-combobox-item>
+              @for (city of cities(); track city.id) {
+                <hlm-combobox-item [value]="city.id">{{ city.name }}</hlm-combobox-item>
+              }
+            </div>
+          </hlm-combobox-content>
+        </hlm-combobox>
       </hlm-field>
 
       <div class="flex gap-3">

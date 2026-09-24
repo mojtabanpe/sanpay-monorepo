@@ -25,7 +25,9 @@
       "continuous": true,
       "executor": "@nx/js:node",
       "defaultConfiguration": "development",
-      "dependsOn": ["build"],
+      "dependsOn": [
+        "build"
+      ],
       "options": {
         "buildTarget": "api:build",
         "runBuildTargetDependencies": false
@@ -38,7 +40,46 @@
           "buildTarget": "api:build:production"
         }
       }
+    },
+    "test-flights": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "node -r @swc-node/register --test apps/api/tests/flights.test.ts",
+        "env": {
+          "SWC_NODE_PROJECT": "apps/api/tsconfig.app.json"
+        }
+      }
+    },
+    "test-flights-integration": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "node -r @swc-node/register --test apps/api/tests/flights.integration.test.ts",
+        "env": {
+          "SWC_NODE_PROJECT": "apps/api/tsconfig.app.json"
+        }
+      }
+    },
+    "test-eghamat24": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "node -r @swc-node/register --test apps/api/tests/eghamat24.test.ts",
+        "env": {
+          "SWC_NODE_PROJECT": "apps/api/tsconfig.app.json"
+        }
+      }
+    },
+    "check-eghamat24": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "node -r @swc-node/register apps/api/scripts/eghamat24-check.ts",
+        "env": {
+          "SWC_NODE_PROJECT": "apps/api/tsconfig.app.json"
+        }
+      }
     }
   },
-  "tags": ["type:app", "scope:api"]
+  "tags": [
+    "type:app",
+    "scope:api"
+  ]
 }
