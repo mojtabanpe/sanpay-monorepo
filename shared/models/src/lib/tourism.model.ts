@@ -160,7 +160,7 @@ export type BookingStatus =
 /** رسید رزرو — چیزی که بعد از پرداخت به کارمند نشان داده می‌شود */
 export interface BookingReceipt {
   id: string;
-  /** شمارهٔ پیگیری داخلی صن‌پی (۸ رقمی) */
+  /** شمارهٔ پیگیری داخلی صنعت‌پی (۸ رقمی) */
   referenceNo: string;
   status: BookingStatus;
   /** نام تأمین‌کننده برای نمایش در رسید («هتل‌یار» / «اقامت۲۴») */

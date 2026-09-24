@@ -332,7 +332,7 @@ export class SettlementsService {
           amount: this.toSafeRial(item.amount),
           iban_destination: item.destinationIban,
           tracker_id: item.trackerId,
-          description: `تسویه صن‌پی ${batch.runKey}`,
+          description: `تسویه صنعت‌پی ${batch.runKey}`,
           reason: 6,
         }));
         const added = await this.toman.addItems(tomanBatchUuid, inputs);
