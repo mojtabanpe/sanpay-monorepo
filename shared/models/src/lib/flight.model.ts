@@ -42,7 +42,7 @@ export interface FlightPassenger {
   gender: 'male' | 'female';
   type: 'adult' | 'child' | 'infant';
   birthdate: string;
-  /** ISO alpha-3 */
+  /** ISO alpha-2, as required by the flight supplier. */
   nationality: string;
   nationalCode?: string;
   passportNumber?: string;

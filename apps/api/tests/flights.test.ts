@@ -11,10 +11,12 @@ import {
 import {
   flightAmount,
   FlightProvider,
+  FlightProviderRejectedException,
   mapFlightOffers,
 } from '../src/app/tourism/flights/flight-provider';
 import {
   FlightsService,
+  isValidIranianNationalCode,
   validateFlightPassengers,
   validateFlightSearch,
 } from '../src/app/tourism/flights/flights.service';
@@ -75,7 +77,7 @@ const input: FlightBookingInput = {
       firstName: 'Ali',
       lastName: 'Ahmadi',
       birthdate: '2070-01-01',
-      nationality: 'IRN',
+      nationality: 'IR',
       nationalCode: '0492578631',
       type: 'adult',
       gender: 'male',
@@ -127,6 +129,9 @@ test('keeps paired return flights and rejects mismatched dates/routes or capacit
   assert.equal(mapFlightOffers(round, search, 'IRR').length, 0);
 });
 test('validates dates, counts, passenger identities and passports', () => {
+  assert.equal(isValidIranianNationalCode('0492578631'), true);
+  assert.equal(isValidIranianNationalCode('3060123456'), false);
+  assert.equal(isValidIranianNationalCode('1111111111'), false);
   assert.throws(() => validateFlightSearch({ ...search, origin: 'MHD' }));
   assert.throws(() =>
     validateFlightSearch({ ...search, departureDate: '2000-01-01' }),
@@ -169,6 +174,16 @@ test('validates dates, counts, passenger identities and passports', () => {
       offer,
     ),
   );
+  assert.throws(() =>
+    validateFlightPassengers(
+      {
+        ...input,
+        passengers: [{ ...input.passengers[0], nationalCode: '3060123456' }],
+      },
+      search,
+      offer,
+    ),
+  );
 });
 
 function harness(
@@ -178,6 +193,7 @@ function harness(
     usableWallet?: boolean;
     concurrentDebit?: boolean;
     timeoutAt?: 'create' | 'book';
+    rejectCreate?: boolean;
     status?: string;
     lockedAmount?: number;
   } = {},
@@ -206,6 +222,7 @@ function harness(
     flightBooking: {
       findUnique: async () => row,
       findUniqueOrThrow: async () => row,
+      findMany: async () => (row ? [row] : []),
       findFirst: async ({ where }: { where: { employeeId: string } }) =>
         row?.['employeeId'] === where.employeeId
           ? { ...row, quote, allocation: { definition: { name: 'گردشگری' } } }
@@ -216,6 +233,8 @@ function harness(
           employeeId: 'employee',
           status: 'PROCESSING',
           amount: 1000n,
+          refunded: false,
+          tickets: [],
           confirmationCode: null,
           createdAt: new Date(),
         };
@@ -260,6 +279,7 @@ function harness(
     search: async (): Promise<FlightOffer[]> => [offer],
     create: async () => {
       counts.create++;
+      if (options.rejectCreate) throw new FlightProviderRejectedException();
       if (options.timeoutAt === 'create') throw new Error('timeout');
       return {
         confirmationCode: 'ABC',
@@ -270,13 +290,20 @@ function harness(
     },
     book: async () => {
       counts.book++;
-      if (options.timeoutAt === 'book') throw new Error('timeout');
+      if (options.timeoutAt === 'book' && counts.book === 1)
+        throw new Error('timeout');
       return {
         confirmationCode: 'ABC',
         status: options.status ?? 'booked',
         tickets: [],
       };
     },
+    inquiry: async () => ({
+      confirmationCode: 'ABC',
+      status: 'approved',
+      totalAmount: options.lockedAmount ?? 1000,
+      tickets: [],
+    }),
   };
   return {
     service: new FlightsService(
@@ -303,10 +330,7 @@ test('cannot access another employee reservation by guessing a quote', async () 
   assert.equal(h.counts.create, 0);
 });
 test('invalid wallet fails before contacting reservation API', async () => {
-  for (const options of [
-    { usableWallet: false },
-    { concurrentDebit: true },
-  ]) {
+  for (const options of [{ usableWallet: false }, { concurrentDebit: true }]) {
     const h = harness(options);
     await assert.rejects(h.service.book('employee', input));
     assert.equal(h.counts.create, 0);
@@ -357,6 +381,32 @@ test('ambiguous provider outcomes retain a durable review record without retryin
   );
 });
 
+test('definitive create rejection fails and refunds immediately', async () => {
+  const h = harness({ rejectCreate: true });
+  const receipt = await h.service.book('employee', input);
+  assert.equal(receipt.status, 'REJECTED');
+  assert.equal(receipt.refunded, true);
+  assert.equal(h.counts.refunds, 1);
+});
+
+test('reconciliation completes an approved reservation even after the original book timed out', async () => {
+  const previousMode = process.env.FLIGHT_MODE;
+  process.env.FLIGHT_MODE = 'live';
+  try {
+    const h = harness({ timeoutAt: 'book' });
+    assert.equal((await h.service.book('employee', input)).status, 'REVIEW');
+    assert.equal(h.counts.book, 1);
+
+    await h.service.reconcile();
+
+    assert.equal((await h.service.book('employee', input)).status, 'CONFIRMED');
+    assert.equal(h.counts.book, 2);
+  } finally {
+    if (previousMode === undefined) delete process.env.FLIGHT_MODE;
+    else process.env.FLIGHT_MODE = previousMode;
+  }
+});
+
 test('changed locked price stops issuance and releases funds once', async () => {
   const h = harness({ lockedAmount: 1200 });
   const receipt = await h.service.book('employee', input);
@@ -366,6 +416,16 @@ test('changed locked price stops issuance and releases funds once', async () => 
   assert.equal(h.counts.refunds, 1);
   await h.service.book('employee', input);
   assert.equal(h.counts.refunds, 1);
+});
+test('lower locked price refunds only the difference and still issues', async () => {
+  const h = harness({ lockedAmount: 800 });
+  const receipt = await h.service.book('employee', input);
+  assert.equal(receipt.status, 'CONFIRMED');
+  assert.equal(receipt.refunded, false);
+  assert.equal(receipt.amount, 800);
+  assert.equal(h.counts.book, 1);
+  assert.equal(h.counts.refunds, 1);
+  assert.equal(h.counts.transaction, 2);
 });
 test('definitive rejection refunds once and duplicate requests do not debit again', async () => {
   const h = harness({ status: 'rejected' });
@@ -429,6 +489,11 @@ test('HTTP adapter uses the documented paths and preserves return legs, passenge
       'return-key',
     ]);
     assert.ok(calls[0].body?.['returned_flight']);
+    assert.equal(
+      (calls[0].body?.['passengers'] as Array<{ nationality: string }>)[0]
+        .nationality,
+      'IR',
+    );
     assert.equal(result.totalAmount, 1000);
     assert.deepEqual(result.tickets[0], {
       id: 10,
@@ -442,6 +507,11 @@ test('HTTP adapter uses the documented paths and preserves return legs, passenge
     await provider.inquiry('ABC');
     assert.ok(calls[2].url.endsWith('/reserves/ABC/inquiry'));
     await assert.rejects(provider.inquiry('another-id'));
+    globalThis.fetch = (async () =>
+      new Response(JSON.stringify({ code: 200, value: null }), {
+        status: 200,
+      })) as typeof fetch;
+    assert.deepEqual(await provider.search(search), []);
     let attempts = 0;
     globalThis.fetch = (async () => {
       attempts++;

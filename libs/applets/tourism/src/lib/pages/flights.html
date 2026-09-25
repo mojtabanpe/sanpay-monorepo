@@ -1,5 +1,32 @@
 <div class="flex min-w-0 flex-col gap-5 px-4 pb-8 pt-5">
-  <nav class="flex items-center justify-between gap-2" aria-label="خدمات گردشگری"><div class="bg-muted flex gap-1 rounded-2xl p-1"><a hlmBtn variant="ghost" class="min-h-11 min-w-20 rounded-xl " routerLink="/tourism" ><ng-icon name="lucideHotel" aria-hidden="true" />هتل</a><a hlmBtn variant="ghost" class="min-h-11 min-w-20 rounded-xl bg-background text-primary shadow-sm" routerLink="/tourism/flights" aria-current="page"><ng-icon name="lucidePlane" aria-hidden="true" />پرواز</a></div><a hlmBtn variant="ghost" class="min-h-11 px-2 text-xs" href="#flight-bookings">رزروهای من</a></nav>
+  <nav
+    class="flex items-center justify-between gap-2"
+    aria-label="خدمات گردشگری"
+  >
+    <div class="bg-muted flex gap-1 rounded-2xl p-1">
+      <a
+        hlmBtn
+        variant="ghost"
+        class="min-h-11 min-w-20 rounded-xl"
+        routerLink="/tourism"
+        ><ng-icon name="lucideHotel" aria-hidden="true" />هتل</a
+      ><a
+        hlmBtn
+        variant="ghost"
+        class="min-h-11 min-w-20 rounded-xl bg-background text-primary shadow-sm"
+        routerLink="/tourism/flights"
+        aria-current="page"
+        ><ng-icon name="lucidePlane" aria-hidden="true" />پرواز</a
+      >
+    </div>
+    <a
+      hlmBtn
+      variant="ghost"
+      class="min-h-11 px-2 text-xs"
+      routerLink="/tourism/flight-bookings"
+      >رزروهای من</a
+    >
+  </nav>
   <header class="flex flex-col gap-1.5">
     <h1 class="text-xl font-bold">بلیط هواپیما</h1>
     <p class="text-muted-foreground text-sm leading-relaxed">
@@ -518,40 +545,59 @@
                 >تاریخ تولد (میلادی)</label
               ><sanpay-gregorian-date-picker
                 [date]="dateValue(p.birthdate)"
+                [defaultFocusedDate]="defaultGregorianBirthdate"
                 [min]="minGregorianBirthdate"
                 [max]="maxGregorianBirthdate"
+                captionLayout="dropdown"
                 [buttonId]="'birth-' + i"
                 triggerClass="h-12 w-full rounded-xl"
                 (dateChange)="updateGregorianDate(i, 'birthdate', $event)"
                 >انتخاب تاریخ تولد</sanpay-gregorian-date-picker
-            ></hlm-field>
-            <hlm-field
-              ><label hlmFieldLabel [for]="'gender-' + i">جنسیت</label
-              ><hlm-native-select
-                [selectId]="'gender-' + i"
-                [name]="'gender-' + i"
-                class="w-full"
-                [ngModel]="p.gender"
-                (ngModelChange)="updatePassenger(i, 'gender', $event)"
-                ><option value="male">مرد</option>
-                <option value="female">زن</option></hlm-native-select
               ></hlm-field
             >
+            <fieldset hlmFieldSet>
+              <legend hlmFieldLegend>جنسیت</legend>
+              <hlm-toggle-group
+                type="single"
+                variant="outline"
+                [spacing]="2"
+                [value]="p.gender"
+                (valueChange)="updatePassenger(i, 'gender', $any($event))"
+                class="w-full"
+              >
+                <button
+                  hlmToggleGroupItem
+                  type="button"
+                  value="male"
+                  class="h-12 flex-1 rounded-xl"
+                >
+                  مرد
+                </button>
+                <button
+                  hlmToggleGroupItem
+                  type="button"
+                  value="female"
+                  class="h-12 flex-1 rounded-xl"
+                >
+                  زن
+                </button>
+              </hlm-toggle-group>
+            </fieldset>
             <hlm-field
               ><label hlmFieldLabel [for]="'nation-' + i"
-                >تابعیت (کد سه‌حرفی کشور)</label
+                >تابعیت (کد دوحرفی کشور)</label
               ><input
                 hlmInput
                 [id]="'nation-' + i"
                 [name]="'nation-' + i"
                 dir="ltr"
                 required
-                pattern="[A-Z]{3}"
-                maxlength="3"
+                pattern="[A-Z]{2}"
+                maxlength="2"
                 [ngModel]="p.nationality"
                 (ngModelChange)="updatePassenger(i, 'nationality', $event.toUpperCase())"
               />
-              <p hlmFieldDescription>ایران: IRN</p></hlm-field
+              <p hlmFieldDescription>ایران: IR</p></hlm-field
             >
             @if (!needsPassport(p)) {
             <hlm-field
@@ -591,7 +637,8 @@
                 triggerClass="h-12 w-full rounded-xl"
                 (dateChange)="updateGregorianDate(i, 'passportExpirationDate', $event)"
                 >انتخاب تاریخ انقضای گذرنامه</sanpay-gregorian-date-picker
-            ></hlm-field>
+              ></hlm-field
+            >
             <hlm-field
               ><label hlmFieldLabel [for]="'country-' + i"
                 >کشور صادرکننده (کد دوحرفی)</label
@@ -615,45 +662,6 @@
       }
       <section hlmCard>
         <div hlmCardContent class="flex flex-col gap-4 pt-6">
-          <h3 class="font-semibold">اطلاعات رزروکننده</h3>
-          <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <hlm-field
-              ><label hlmFieldLabel for="booker-first">نام</label
-              ><input
-                hlmInput
-                id="booker-first"
-                name="bookerFirst"
-                required
-                maxlength="70"
-                [(ngModel)]="bookerFirstName"
-                autocomplete="given-name"
-            /></hlm-field>
-            <hlm-field
-              ><label hlmFieldLabel for="booker-last">نام خانوادگی</label
-              ><input
-                hlmInput
-                id="booker-last"
-                name="bookerLast"
-                required
-                maxlength="70"
-                [(ngModel)]="bookerLastName"
-                autocomplete="family-name"
-            /></hlm-field>
-            <hlm-field
-              ><label hlmFieldLabel for="booker-mobile">شماره همراه</label
-              ><input
-                hlmInput
-                id="booker-mobile"
-                name="mobile"
-                required
-                pattern="09[0-9]{9}"
-                maxlength="11"
-                dir="ltr"
-                type="tel"
-                [(ngModel)]="mobile"
-                autocomplete="tel"
-            /></hlm-field>
-          </div>
           <hlm-field
             ><label hlmFieldLabel for="flight-wallet">کیف پول گردشگری</label>
             <hlm-native-select
@@ -679,6 +687,10 @@
           <p role="status" class="text-destructive text-sm">
             کیف پول گردشگری با اعتبار کافی ندارید.
           </p>
+          } @if (!hasBookingContact()) {
+          <p role="alert" class="text-destructive text-sm">
+            برای رزرو پرواز، شماره همراه معتبر را در پروفایل خود ثبت کنید.
+          </p>
           }
           <p class="text-muted-foreground text-sm">
             با پرداخت، {{ money(q.offer.amount) }} از کیف پول گردشگری کسر و
@@ -688,7 +700,7 @@
           <button
             hlmBtn
             type="submit"
-            [disabled]="busy() || bookingForm.invalid || !canPay()"
+            [disabled]="busy() || bookingForm.invalid || !canPay() || !hasBookingContact()"
           >
             {{ busy() ? 'در حال ثبت رزرو…' : 'پرداخت ' + money(q.offer.amount) +
             ' و رزرو' }}
@@ -717,56 +729,4 @@
     </div>
   </section>
   }
-  <section id="flight-bookings" class="flex scroll-mt-24 flex-col gap-3">
-    <div class="flex items-center justify-between">
-      <h2 class="font-semibold">رزروهای پرواز من</h2>
-      <button hlmBtn variant="ghost" (click)="loadBookings()">
-        به‌روزرسانی
-      </button>
-    </div>
-    @if (historyError()) {
-    <p role="alert" class="text-destructive text-sm">{{ historyError() }}</p>
-    } @for (booking of bookings(); track booking.id) {
-    <article hlmCard>
-      <div hlmCardContent class="flex flex-col gap-2 pt-6">
-        <div class="flex flex-wrap justify-between gap-2">
-          <strong
-            >{{ airportName(booking.offer.departure.origin) }} به {{
-            airportName(booking.offer.departure.destination) }}</strong
-          ><span hlmBadge variant="secondary"
-            >{{ statusLabel(booking.status) }}</span
-          >
-        </div>
-        <p class="text-muted-foreground text-sm">
-          {{ dateLabel(booking.offer.departure.departureTime.slice(0, 10)) }} ·
-          {{ booking.offer.returning ? 'رفت و برگشت' : 'یک‌طرفه' }}
-        </p>
-        <p class="text-sm">
-          {{ money(booking.amount) }} · {{ booking.walletName }}
-        </p>
-        <p class="text-muted-foreground break-all text-xs">
-          پیگیری: <bdi>{{ booking.confirmationCode || booking.id }}</bdi>
-        </p>
-        @if (booking.refunded) {
-        <p class="text-sm">مبلغ به کیف پول گردشگری برگشت داده شد.</p>
-        } @for (ticket of booking.tickets; track ticket.id) {
-        <div
-          class="flex flex-wrap justify-between gap-2 rounded-lg border p-3 text-sm"
-        >
-          <bdi>{{ ticket.passengerName }}</bdi>
-          <span>شماره بلیت: <bdi>{{ ticket.number }}</bdi></span>
-          <span>PNR: <bdi>{{ ticket.pnr }}</bdi></span>
-        </div>
-        } @if (booking.status === 'REVIEW') {
-        <p class="text-muted-foreground text-sm">
-          نتیجه صدور هنوز قطعی نیست. برای پیگیری، کد بالا را به پشتیبانی اعلام
-          کنید و رزرو را تکرار نکنید.
-        </p>
-        }
-      </div>
-    </article>
-    } @empty { @if (!historyError()) {
-    <p class="text-muted-foreground text-sm">هنوز رزرو پروازی ثبت نکرده‌اید.</p>
-    } }
-  </section>
 </div>

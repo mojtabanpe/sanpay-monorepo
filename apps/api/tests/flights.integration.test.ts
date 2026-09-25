@@ -87,7 +87,7 @@ test('PostgreSQL: simultaneous bookings never overspend; rejection refunds once'
         firstName: 'Test',
         lastName: 'Flight',
         birthdate: '2070-01-01',
-        nationality: 'IRN',
+        nationality: 'IR',
         nationalCode: '0492578631',
         gender: 'male',
         type: 'adult',

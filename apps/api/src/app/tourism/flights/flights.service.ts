@@ -17,7 +17,11 @@ import {
 } from '@sanpay/models';
 import { PrismaService } from '../../prisma/prisma.service';
 import { Prisma } from '../../../generated/prisma/client';
-import { FlightProvider, ProviderReservation } from './flight-provider';
+import {
+  FlightProvider,
+  FlightProviderRejectedException,
+  ProviderReservation,
+} from './flight-provider';
 import { QuoteFlightDto } from './flights.dto';
 
 export function validateFlightSearch(input: FlightSearchInput): void {
@@ -80,7 +84,7 @@ export function validateFlightPassengers(
     const needsPassport =
       offer.departure.foreign ||
       offer.returning?.foreign ||
-      p.nationality !== 'IRN';
+      p.nationality !== 'IR';
     if (
       needsPassport &&
       (!p.passportNumber ||
@@ -91,8 +95,11 @@ export function validateFlightPassengers(
       throw new BadRequestException(
         'اطلاعات گذرنامه معتبر برای این مسافر الزامی است',
       );
-    if (!needsPassport && !p.nationalCode)
-      throw new BadRequestException('کد ملی مسافر الزامی است');
+    if (
+      !needsPassport &&
+      (!p.nationalCode || !isValidIranianNationalCode(p.nationalCode))
+    )
+      throw new BadRequestException('کد ملی مسافر معتبر نیست');
     const identity = needsPassport
       ? `${p.passportIssueCountry}:${p.passportNumber}`
       : (p.nationalCode ?? '');
@@ -221,6 +228,8 @@ export class FlightsService {
             employeeId,
             allocationId: a.id,
             amount: quote.amount,
+            passengers: input.passengers as unknown as Prisma.InputJsonValue,
+            bookerMobile: input.mobile,
           },
         });
         await tx.transaction.create({
@@ -252,22 +261,19 @@ export class FlightsService {
         where: { id: bookingId },
         data: { confirmationCode: locked.confirmationCode },
       });
-      if (locked.status === 'approved' && locked.totalAmount !== offer.amount) {
-        // Capacity is only held: no Book call has been made. Release the local debit;
-        // the supplier hold expires independently. Never issue at an unapproved price.
-        await this.refund(
-          bookingId,
-          'مبلغ نهایی پرواز با پیش‌فاکتور مطابقت نداشت',
-        );
-      } else if (locked.status === 'approved') {
-        const booked = await this.provider.book(locked.confirmationCode);
-        if (booked.confirmationCode !== locked.confirmationCode)
-          throw new Error('Confirmation mismatch');
-        await this.applyStatus(bookingId, booked);
+      if (locked.status === 'approved') {
+        await this.issueApproved(bookingId, offer.amount, locked);
       } else {
         await this.applyStatus(bookingId, locked);
       }
-    } catch {
+    } catch (error) {
+      if (error instanceof FlightProviderRejectedException) {
+        await this.refund(
+          bookingId,
+          'درخواست رزرو پرواز از سوی تأمین‌کننده پذیرفته نشد',
+        );
+        return this.receipt(employeeId, bookingId);
+      }
       // A timeout is NOT proof of failure. Preserve funds and the durable record for inquiry.
       await this.prisma.flightBooking.updateMany({
         where: { id: bookingId, status: 'PROCESSING' },
@@ -276,6 +282,58 @@ export class FlightsService {
       this.logger.warn(`Flight reservation requires inquiry: ${bookingId}`);
     }
     return this.receipt(employeeId, bookingId);
+  }
+  private async issueApproved(
+    id: string,
+    authorizedAmount: number,
+    result: ProviderReservation,
+  ): Promise<void> {
+    if (result.totalAmount === undefined)
+      throw new Error('Approved reservation has no final amount');
+    if (result.totalAmount > authorizedAmount) {
+      // Capacity is only held: do not issue above the amount the user approved.
+      await this.refund(id, 'مبلغ نهایی پرواز از پیش‌فاکتور بیشتر شد');
+      return;
+    }
+    if (result.totalAmount < authorizedAmount)
+      await this.adjustAmount(id, result.totalAmount);
+    const booked = await this.provider.book(result.confirmationCode);
+    if (booked.confirmationCode !== result.confirmationCode)
+      throw new Error('Confirmation mismatch');
+    await this.applyStatus(id, booked);
+  }
+  private async adjustAmount(id: string, finalAmount: number): Promise<void> {
+    await this.prisma.$transaction(async (tx) => {
+      const booking = await tx.flightBooking.findUniqueOrThrow({
+        where: { id },
+      });
+      const amount = BigInt(finalAmount);
+      if (amount >= booking.amount) return;
+      const difference = booking.amount - amount;
+      const claimed = await tx.flightBooking.updateMany({
+        where: {
+          id,
+          amount: booking.amount,
+          refunded: false,
+          status: { in: ['PROCESSING', 'REVIEW'] },
+        },
+        data: { amount },
+      });
+      if (claimed.count !== 1) return;
+      await tx.walletAllocation.update({
+        where: { id: booking.allocationId },
+        data: { spent: { decrement: difference } },
+      });
+      await tx.transaction.create({
+        data: {
+          type: 'REFUND',
+          employeeId: booking.employeeId,
+          allocationId: booking.allocationId,
+          amount: difference,
+          note: `بازگشت مابه‌التفاوت قیمت پرواز — ${id}`,
+        },
+      });
+    });
   }
   private async applyStatus(
     id: string,
@@ -366,7 +424,6 @@ export class FlightsService {
         where: {
           status: { in: ['PROCESSING', 'REVIEW'] },
           confirmationCode: { not: null },
-          createdAt: { gt: new Date(Date.now() - 24 * 60 * 60_000) },
           updatedAt: { lt: new Date(Date.now() - 10000) },
         },
         take: 20,
@@ -374,10 +431,12 @@ export class FlightsService {
       });
       for (const b of rows) {
         try {
-          await this.applyStatus(
-            b.id,
-            await this.provider.inquiry(b.confirmationCode ?? ''),
-          );
+          const result = await this.provider.inquiry(b.confirmationCode ?? '');
+          if (result.status === 'approved') {
+            await this.issueApproved(b.id, Number(b.amount), result);
+          } else {
+            await this.applyStatus(b.id, result);
+          }
         } catch {
           this.logger.warn(`Flight inquiry deferred: ${b.id}`);
         }
@@ -388,4 +447,15 @@ export class FlightsService {
       this.polling = false;
     }
   }
+}
+
+export function isValidIranianNationalCode(value: string): boolean {
+  if (!/^\d{10}$/.test(value) || /^(\d)\1{9}$/.test(value)) return false;
+  const digits = [...value].map(Number);
+  const remainder =
+    digits.slice(0, 9).reduce((sum, digit, index) => {
+      return sum + digit * (10 - index);
+    }, 0) % 11;
+  const checkDigit = remainder < 2 ? remainder : 11 - remainder;
+  return digits[9] === checkDigit;
 }

@@ -6,7 +6,15 @@ import { Route } from '@angular/router';
  * داخلی که به `/tourism` اشاره می‌کنند.
  */
 export const tourismRoutes: Route[] = [
-  { path: 'flights', loadComponent: () => import('./pages/flights').then(m => m.FlightsPage) },
+  {
+    path: 'flights',
+    loadComponent: () => import('./pages/flights').then((m) => m.FlightsPage),
+  },
+  {
+    path: 'flight-bookings',
+    loadComponent: () =>
+      import('./pages/flight-bookings').then((m) => m.FlightBookingsPage),
+  },
   {
     path: '',
     loadComponent: () =>

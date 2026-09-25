@@ -15,7 +15,12 @@ require('node:fs').mkdirSync('tmp/flights', { recursive: true });
     localStorage.setItem('sanpay_token', 'ui-test-only');
     localStorage.setItem(
       'sanpay_profile',
-      JSON.stringify({ firstName: 'کاربر', lastName: 'آزمایشی' }),
+      JSON.stringify({
+        firstName: 'کاربر',
+        lastName: 'آزمایشی',
+        phone: '09121234567',
+        nationalCode: '0492578631',
+      }),
     );
   });
   let receipts = [];
@@ -83,6 +88,10 @@ require('node:fs').mkdirSync('tmp/flights', { recursive: true });
       route.request().method() === 'POST'
     ) {
       submits++;
+      const booking = route.request().postDataJSON();
+      assert.equal(booking.bookerFirstName, 'کاربر');
+      assert.equal(booking.bookerLastName, 'آزمایشی');
+      assert.equal(booking.mobile, '09121234567');
       data = {
         id: 'booking-test',
         offer,
@@ -195,9 +204,6 @@ require('node:fs').mkdirSync('tmp/flights', { recursive: true });
   await page.getByLabel('تاریخ تولد (میلادی)', { exact: true }).click();
   await page.locator('[data-slot="calendar"] table button').first().click();
   await page.getByLabel('کد ملی', { exact: true }).fill('0492578631');
-  await page.getByLabel('نام', { exact: true }).fill('علی');
-  await page.getByLabel('نام خانوادگی', { exact: true }).fill('احمدی');
-  await page.getByLabel('شماره همراه', { exact: true }).fill('09121234567');
   assert.equal(
     await page.evaluate(
       () => document.documentElement.scrollWidth > innerWidth,

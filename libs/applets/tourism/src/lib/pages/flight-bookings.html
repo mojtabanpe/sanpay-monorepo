@@ -1,0 +1,113 @@
+<div class="flex flex-col gap-4 px-4 py-6">
+  <header class="flex items-center justify-between gap-3 px-1">
+    <div>
+      <h1 class="font-bold">رزروهای پرواز من</h1>
+      <p class="text-muted-foreground mt-1 text-xs">
+        وضعیت رزرو و اطلاعات بلیت‌های شما
+      </p>
+    </div>
+    <a hlmBtn variant="outline" size="sm" routerLink="/tourism/flights">
+      پرواز جدید
+    </a>
+  </header>
+
+  @if (loading()) {
+  <div class="grid grid-cols-1 gap-4 min-[560px]:grid-cols-2">
+    <hlm-skeleton class="h-56 w-full" />
+    <hlm-skeleton class="h-56 w-full" />
+  </div>
+  } @else if (error()) {
+  <section hlmCard>
+    <div
+      hlmCardContent
+      class="flex flex-col items-center gap-4 py-10 text-center"
+    >
+      <p class="text-muted-foreground text-sm">
+        دریافت رزروهای پرواز ناموفق بود.
+      </p>
+      <button hlmBtn variant="outline" size="sm" (click)="load()">
+        تلاش دوباره
+      </button>
+    </div>
+  </section>
+  } @else {
+  <div class="grid grid-cols-1 gap-4 min-[560px]:grid-cols-2">
+    @for (booking of bookings(); track booking.id) {
+    <article hlmCard class="h-full">
+      <div hlmCardContent class="flex flex-col gap-3 pt-6">
+        <div class="flex items-start justify-between gap-2">
+          <strong class="text-sm">
+            {{ airportName(booking.offer.departure.origin) }} به {{
+            airportName(booking.offer.departure.destination) }}
+          </strong>
+          <span
+            hlmBadge
+            [variant]="statusVariant(booking.status)"
+            class="shrink-0 rounded-full"
+          >
+            {{ statusLabel(booking.status) }}
+          </span>
+        </div>
+
+        <div class="flex flex-col gap-2 text-xs">
+          <div class="flex justify-between gap-3">
+            <span class="text-muted-foreground">تاریخ پرواز</span>
+            <span>
+              {{ dateLabel(booking.offer.departure.departureTime.slice(0, 10))
+              }}
+            </span>
+          </div>
+          <div class="flex justify-between gap-3">
+            <span class="text-muted-foreground">نوع سفر</span>
+            <span
+              >{{ booking.offer.returning ? 'رفت و برگشت' : 'یک‌طرفه' }}</span
+            >
+          </div>
+          <div class="flex justify-between gap-3">
+            <span class="text-muted-foreground">مبلغ</span>
+            <span class="font-bold">{{ money(booking.amount) }}</span>
+          </div>
+          <div class="flex justify-between gap-3">
+            <span class="text-muted-foreground">کیف پول</span>
+            <span>{{ booking.walletName }}</span>
+          </div>
+          <div class="flex justify-between gap-3">
+            <span class="text-muted-foreground">شماره پیگیری</span>
+            <bdi class="break-all font-medium">
+              {{ booking.confirmationCode || booking.id }}
+            </bdi>
+          </div>
+        </div>
+
+        @if (booking.refunded) {
+        <p class="text-sm">مبلغ به کیف پول گردشگری برگشت داده شد.</p>
+        } @for (ticket of booking.tickets; track ticket.id) {
+        <div class="flex flex-col gap-1 rounded-lg border p-3 text-xs">
+          <bdi class="font-medium">{{ ticket.passengerName }}</bdi>
+          <span>شماره بلیت: <bdi>{{ ticket.number }}</bdi></span>
+          <span>PNR: <bdi>{{ ticket.pnr }}</bdi></span>
+        </div>
+        } @if (booking.status === 'REVIEW') {
+        <p class="text-muted-foreground text-xs leading-relaxed">
+          نتیجه صدور هنوز قطعی نیست. رزرو را تکرار نکنید و شماره پیگیری را به
+          پشتیبانی اعلام کنید.
+        </p>
+        }
+      </div>
+    </article>
+    } @empty {
+    <section hlmCard class="min-[560px]:col-span-2">
+      <div
+        hlmCardContent
+        class="flex flex-col items-center gap-4 py-12 text-center"
+      >
+        <p class="text-muted-foreground text-sm">
+          هنوز رزرو پروازی ثبت نکرده‌اید.
+        </p>
+        <a hlmBtn size="sm" routerLink="/tourism/flights">جست‌وجوی پرواز</a>
+      </div>
+    </section>
+    }
+  </div>
+  }
+</div>

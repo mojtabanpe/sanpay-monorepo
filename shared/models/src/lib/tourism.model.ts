@@ -125,6 +125,13 @@ export interface BookingGuest {
 export interface PreviousTraveler extends BookingGuest {
   /** آخرین زمانی که این مشخصات در یک رزرو استفاده شده است. */
   lastUsedAt: string;
+  /** مشخصات تکمیلی فقط وقتی منبع، رزرو پرواز باشد موجود است. */
+  birthdate?: string;
+  gender?: 'male' | 'female';
+  nationality?: string;
+  passportNumber?: string;
+  passportExpirationDate?: string;
+  passportIssueCountry?: string;
 }
 
 export interface CreateBookingInput {

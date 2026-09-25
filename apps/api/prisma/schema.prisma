@@ -511,6 +511,9 @@ model FlightBooking {
   amount           BigInt
   refunded         Boolean  @default(false)
   tickets          Json     @default("[]")
+  /// Snapshot of the submitted passengers, used for selecting a previous traveler.
+  passengers       Json     @default("[]")
+  bookerMobile     String?
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
   quote            FlightQuote @relation(fields: [quoteId], references: [id])

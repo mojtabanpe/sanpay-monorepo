@@ -1,5 +1,7 @@
 import {
   BadGatewayException,
+  HttpException,
+  HttpStatus,
   Injectable,
   ServiceUnavailableException,
 } from '@nestjs/common';
@@ -17,6 +19,14 @@ import {
 } from './grs.types';
 
 type Row = Record<string, unknown>;
+class GrsRateLimitError extends Error {}
+
+const READ_RETRY_DELAYS_MS = [1000, 4000] as const;
+
+function wait(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 function row(value: unknown): Row {
   if (!value || typeof value !== 'object' || Array.isArray(value))
     throw new BadGatewayException('پاسخ نامعتبر سرویس اقامت۲۴');
@@ -40,7 +50,39 @@ function property(value: unknown): GrsPropertyDetails {
 /** Server-to-server GRS API. The Client-Token is opaque, even when it looks like a URL. */
 @Injectable()
 export class GrsHttpClient extends GrsClient {
+  /** GRS rate-limits bursts, so catalog GETs share one queue per client. */
+  private readQueue: Promise<void> = Promise.resolve();
+
   private async request(path: string, body?: unknown): Promise<Row> {
+    if (body !== undefined) return this.performRequest(path, body);
+
+    const read = this.readQueue.then(async () => {
+      for (let attempt = 0; ; attempt++) {
+        try {
+          return await this.performRequest(path);
+        } catch (error) {
+          if (
+            !(error instanceof GrsRateLimitError) ||
+            attempt >= READ_RETRY_DELAYS_MS.length
+          )
+            throw error instanceof GrsRateLimitError
+              ? new HttpException(
+                  'تعداد درخواست‌ها به سرویس اقامت۲۴ بیش از حد مجاز است؛ کمی بعد دوباره تلاش کنید',
+                  HttpStatus.TOO_MANY_REQUESTS,
+                )
+              : error;
+          await wait(READ_RETRY_DELAYS_MS[attempt]);
+        }
+      }
+    });
+    this.readQueue = read.then(
+      () => undefined,
+      () => undefined,
+    );
+    return read;
+  }
+
+  private async performRequest(path: string, body?: unknown): Promise<Row> {
     const token = process.env.GRS_CLIENT_TOKEN_BASE64
       ? Buffer.from(process.env.GRS_CLIENT_TOKEN_BASE64, 'base64').toString(
           'utf8',
@@ -67,6 +109,8 @@ export class GrsHttpClient extends GrsClient {
         ...(body === undefined ? {} : { body: JSON.stringify(body) }),
       });
       const envelope = row(await response.json());
+      if (response.status === 429 || envelope['code'] === 429)
+        throw new GrsRateLimitError();
       if (
         !response.ok ||
         envelope['code'] !== 200 ||
@@ -78,7 +122,8 @@ export class GrsHttpClient extends GrsClient {
       )
         throw new Error('GRS request failed');
       return row(envelope['value']);
-    } catch {
+    } catch (error) {
+      if (error instanceof GrsRateLimitError) throw error;
       // Provider messages can echo tokens or guest details. Never expose them or retry writes.
       throw new BadGatewayException('ارتباط با سرویس اقامت۲۴ ناموفق بود');
     }

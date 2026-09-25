@@ -8,6 +8,7 @@ import {
   FlightBookingInput,
   FlightLeg,
   FlightOffer,
+  FlightPassenger,
   FlightSearchInput,
   FlightTicket,
 } from '@sanpay/models';
@@ -26,6 +27,9 @@ function str(value: unknown): string {
   if (typeof value !== 'string' || !value)
     throw new BadGatewayException('پاسخ نامعتبر سرویس پرواز');
   return value;
+}
+function optionalStr(value: unknown): string | undefined {
+  return typeof value === 'string' && value ? value : undefined;
 }
 function num(value: unknown): number {
   const n = typeof value === 'number' ? value : NaN;
@@ -121,7 +125,16 @@ export interface ProviderReservation {
   status: string;
   totalAmount?: number;
   tickets: FlightTicket[];
+  passengers?: FlightPassenger[];
 }
+
+/** The supplier returned a definitive rejection, so no reservation was created. */
+export class FlightProviderRejectedException extends BadGatewayException {
+  constructor() {
+    super('سرویس پرواز درخواست رزرو را نپذیرفت');
+  }
+}
+
 @Injectable()
 export class FlightProvider {
   private clientToken(): string {
@@ -145,6 +158,7 @@ export class FlightProvider {
   private async request(
     path: string,
     body?: unknown,
+    allowEmptyValue = false,
   ): Promise<Record<string, unknown>> {
     this.assertConfigured();
     const base =
@@ -152,8 +166,9 @@ export class FlightProvider {
     const url = new URL(`${base.replace(/\/$/, '')}${path}`);
     if (url.protocol !== 'https:')
       throw new ServiceUnavailableException('آدرس سرویس پرواز باید امن باشد');
+    let response: Response;
     try {
-      const response = await fetch(url, {
+      response = await fetch(url, {
         method: body ? 'POST' : 'GET',
         redirect: 'error',
         signal: AbortSignal.timeout(20000),
@@ -164,24 +179,35 @@ export class FlightProvider {
         },
         ...(body ? { body: JSON.stringify(body) } : {}),
       });
-      const envelope = record(await response.json());
-      if (
-        !response.ok ||
-        envelope['code'] !== 200 ||
-        (envelope['errors'] != null &&
-          (!Array.isArray(envelope['errors']) ||
-            envelope['errors'].length > 0)) ||
-        (envelope['error'] != null &&
-          (!Array.isArray(envelope['error']) || envelope['error'].length > 0))
-      )
-        throw new Error('Provider error');
-      return record(envelope['value']);
     } catch {
-      // Never expose provider bodies (which can contain PII or credentials), or retry writes.
+      // A transport failure is ambiguous for writes: the supplier may have processed it.
       throw new BadGatewayException(
         'ارتباط با سرویس پرواز ناموفق بود؛ وضعیت رزرو را پیگیری کنید',
       );
     }
+    let envelope: Record<string, unknown>;
+    try {
+      envelope = record(await response.json());
+    } catch {
+      throw new BadGatewayException('پاسخ نامعتبر سرویس پرواز');
+    }
+    const hasErrors =
+      (envelope['errors'] != null &&
+        (!Array.isArray(envelope['errors']) ||
+          envelope['errors'].length > 0)) ||
+      (envelope['error'] != null &&
+        (!Array.isArray(envelope['error']) || envelope['error'].length > 0));
+    if (
+      (response.status >= 400 && response.status < 500) ||
+      (response.ok && (envelope['code'] !== 200 || hasErrors))
+    )
+      throw new FlightProviderRejectedException();
+    if (!response.ok)
+      throw new BadGatewayException(
+        'ارتباط با سرویس پرواز ناموفق بود؛ وضعیت رزرو را پیگیری کنید',
+      );
+    if (allowEmptyValue && envelope['value'] == null) return {};
+    return record(envelope['value']);
   }
   async airports(): Promise<FlightAirport[]> {
     const result = await this.request('/api/v1/airports');
@@ -199,7 +225,12 @@ export class FlightProvider {
       infant_count: String(input.infants),
       ...(input.returnDate ? { return_date: input.returnDate } : {}),
     });
-    const result = await this.request(`/api/v2/flights/search?${query}`);
+    const result = await this.request(
+      `/api/v2/flights/search?${query}`,
+      undefined,
+      true,
+    );
+    if (!('flights' in result)) return [];
     return mapFlightOffers(
       result['flights'],
       input,
@@ -286,6 +317,42 @@ export class FlightProvider {
       confirmationCode: str(r['confirmation_code']),
       status: str(r['status']),
       tickets,
+      passengers: passengers.flatMap((p) => {
+        const firstName = optionalStr(p['first_name_en']);
+        const lastName = optionalStr(p['last_name_en']);
+        const birthdate = optionalStr(p['birthdate']);
+        const nationality = optionalStr(p['nationality']);
+        const gender = optionalStr(p['gender']);
+        const type = optionalStr(p['type']);
+        if (!firstName || !lastName || !birthdate || !nationality || !gender)
+          return [];
+        const nationalCode = optionalStr(p['national_code']);
+        const passportNumber = optionalStr(p['passport_number']);
+        const passportExpirationDate = optionalStr(
+          p['passport_expiration_date'],
+        );
+        const passportIssueCountry = optionalStr(p['passport_issue_country']);
+        return [
+          {
+            firstName,
+            lastName,
+            gender:
+              gender === 'female' ? ('female' as const) : ('male' as const),
+            type:
+              type === 'child'
+                ? ('child' as const)
+                : type === 'infant'
+                  ? ('infant' as const)
+                  : ('adult' as const),
+            birthdate,
+            nationality,
+            ...(nationalCode ? { nationalCode } : {}),
+            ...(passportNumber ? { passportNumber } : {}),
+            ...(passportExpirationDate ? { passportExpirationDate } : {}),
+            ...(passportIssueCountry ? { passportIssueCountry } : {}),
+          },
+        ];
+      }),
       ...(typeof r['total_guest_price'] === 'number' &&
       r['total_guest_price'] > 0
         ? {

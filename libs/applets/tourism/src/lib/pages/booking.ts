@@ -154,12 +154,7 @@ export class BookingPage {
   private async loadPreviousTravelers(): Promise<void> {
     try {
       const travelers = await firstValueFrom(this.tourism.previousTravelers());
-      const ownNationalCode = this.auth.profile()?.nationalCode;
-      this.previousTravelers.set(
-        travelers.filter(
-          (traveler) => traveler.nationalCode !== ownNationalCode,
-        ),
-      );
+      this.previousTravelers.set(travelers);
     } catch {
       // اختلال این فهرست نباید جلوی رزرو یا ورود دستی مشخصات را بگیرد.
       this.previousTravelers.set([]);

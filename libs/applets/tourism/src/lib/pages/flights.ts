@@ -42,6 +42,7 @@ import { HlmCardImports } from '@sanpay/ui/card';
 import { HlmInputImports } from '@sanpay/ui/input';
 import { HlmFieldImports } from '@sanpay/ui/field';
 import { HlmNativeSelectImports } from '@sanpay/ui/native-select';
+import { HlmToggleGroupImports } from '@sanpay/ui/toggle-group';
 import { HlmDatePickerImports } from '@sanpay/ui/date-picker';
 import { HlmBadgeImports } from '@sanpay/ui/badge';
 import { firstValueFrom } from 'rxjs';
@@ -71,6 +72,7 @@ import {
     HlmInputImports,
     HlmFieldImports,
     HlmNativeSelectImports,
+    HlmToggleGroupImports,
     HlmDatePickerImports,
     HlmBadgeImports,
   ],
@@ -166,11 +168,9 @@ export class FlightsPage {
   }
   protected roundTrip = false;
   protected allocationId = '';
-  protected bookerFirstName = '';
-  protected bookerLastName = '';
-  protected mobile = '';
   protected readonly minDate = isoToJalali(today());
   protected readonly minGregorianBirthdate = new Date(1900, 0, 1);
+  protected readonly defaultGregorianBirthdate = new Date(2000, 0, 1);
   protected readonly maxGregorianBirthdate = new Date();
   protected readonly minPassportExpiry = new Date();
   protected readonly departureDate = computed(() =>
@@ -184,6 +184,14 @@ export class FlightsPage {
   protected readonly canPay = computed(() => {
     const q = this.quote();
     return q?.wallets.some((w) => w.max >= q.offer.amount) ?? false;
+  });
+  protected readonly hasBookingContact = computed(() => {
+    const profile = this.auth.profile();
+    return !!(
+      profile?.firstName.trim() &&
+      profile.lastName.trim() &&
+      profile.phone?.match(/^09\d{9}$/)
+    );
   });
   protected readonly money = toman;
   protected readonly number = faNumber;
@@ -293,7 +301,7 @@ export class FlightsPage {
               lastName: '',
               gender: 'male' as const,
               birthdate: '',
-              nationality: 'IRN',
+              nationality: 'IR',
             }),
           ),
         ),
@@ -335,7 +343,7 @@ export class FlightsPage {
   }
   private fillPassenger(
     index: number,
-    traveler: Pick<PreviousTraveler, 'firstName' | 'lastName' | 'nationalCode'>,
+    traveler: PreviousTraveler,
     key: string,
   ): void {
     this.passengers.update((items) =>
@@ -346,6 +354,22 @@ export class FlightsPage {
               firstName: traveler.firstName,
               lastName: traveler.lastName,
               nationalCode: traveler.nationalCode,
+              ...(traveler.birthdate ? { birthdate: traveler.birthdate } : {}),
+              ...(traveler.gender ? { gender: traveler.gender } : {}),
+              ...(traveler.nationality
+                ? { nationality: traveler.nationality }
+                : {}),
+              ...(traveler.passportNumber
+                ? { passportNumber: traveler.passportNumber }
+                : {}),
+              ...(traveler.passportExpirationDate
+                ? {
+                    passportExpirationDate: traveler.passportExpirationDate,
+                  }
+                : {}),
+              ...(traveler.passportIssueCountry
+                ? { passportIssueCountry: traveler.passportIssueCountry }
+                : {}),
             }
           : passenger,
       ),
@@ -358,12 +382,7 @@ export class FlightsPage {
   private async loadPreviousTravelers(): Promise<void> {
     try {
       const travelers = await firstValueFrom(this.tourism.previousTravelers());
-      const ownNationalCode = this.auth.profile()?.nationalCode;
-      this.previousTravelers.set(
-        travelers.filter(
-          (traveler) => traveler.nationalCode !== ownNationalCode,
-        ),
-      );
+      this.previousTravelers.set(travelers);
     } catch {
       this.previousTravelers.set([]);
     } finally {
@@ -374,12 +393,13 @@ export class FlightsPage {
     return !!(
       this.quote()?.offer.departure.foreign ||
       this.quote()?.offer.returning?.foreign ||
-      p.nationality !== 'IRN'
+      p.nationality !== 'IR'
     );
   }
   protected async pay(): Promise<void> {
     const q = this.quote();
-    if (!q || this.busy()) return;
+    const profile = this.auth.profile();
+    if (!q || !profile || !this.hasBookingContact() || this.busy()) return;
     this.busy.set(true);
     this.error.set('');
     try {
@@ -387,9 +407,9 @@ export class FlightsPage {
         this.api.book({
           quoteId: q.id,
           allocationId: this.allocationId,
-          bookerFirstName: this.bookerFirstName.trim(),
-          bookerLastName: this.bookerLastName.trim(),
-          mobile: this.mobile,
+          bookerFirstName: profile.firstName.trim(),
+          bookerLastName: profile.lastName.trim(),
+          mobile: profile.phone ?? '',
           passengers: this.passengers().map(
             (p) =>
               Object.fromEntries(

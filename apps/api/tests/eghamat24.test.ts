@@ -215,6 +215,40 @@ test('HTTP 200 protocol errors are rejected without exposing provider messages o
   }
 });
 
+test('rate-limited catalog reads retry, while reservation writes remain single-shot', async () => {
+  const original = globalThis.fetch;
+  const env = { ...process.env };
+  let calls = 0;
+  process.env.GRS_CLIENT_TOKEN = 'test-token';
+  delete process.env.GRS_CLIENT_TOKEN_BASE64;
+  process.env.GRS_URL = 'https://example.invalid';
+  globalThis.fetch = (async (_input: URL, init: RequestInit) => {
+    calls++;
+    if (init.method === 'GET' && calls === 1)
+      return new Response(
+        JSON.stringify({ code: 429, errors: null, value: null }),
+        { status: 429 },
+      );
+    return new Response(JSON.stringify(ok({ total: 0, cities: [] })), {
+      status: 200,
+    });
+  }) as typeof fetch;
+  try {
+    assert.deepEqual(await new GrsHttpClient().getCities(), []);
+    assert.equal(calls, 2);
+  } finally {
+    globalThis.fetch = original;
+    for (const key of [
+      'GRS_CLIENT_TOKEN',
+      'GRS_CLIENT_TOKEN_BASE64',
+      'GRS_URL',
+    ]) {
+      if (env[key] === undefined) delete process.env[key];
+      else process.env[key] = env[key];
+    }
+  }
+});
+
 test('flight API reads and converts IRR using Client-Token alone', async () => {
   await fixture(
     async (_client, requests) => {

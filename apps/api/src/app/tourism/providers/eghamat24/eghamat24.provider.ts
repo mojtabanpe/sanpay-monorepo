@@ -63,12 +63,12 @@ export class Eghamat24Provider extends HotelProvider {
   }
 
   async hotels(cityId: string | null): Promise<HotelSummary[]> {
-    const [properties, cityNames] = await Promise.all([
-      this.grs.getProperties(
-        cityId === null ? null : decodeNumericId(cityId).id,
-      ),
-      this.cityNames(),
-    ]);
+    const properties = await this.grs.getProperties(
+      cityId === null ? null : decodeNumericId(cityId).id,
+    );
+    // The selected city is already known by the caller. Avoid a second catalog
+    // request here because GRS applies a strict request window to this token.
+    const cityNames = cityId === null ? await this.cityNames() : new Map();
     return properties.map((property) => toHotelSummary(property, cityNames));
   }
 

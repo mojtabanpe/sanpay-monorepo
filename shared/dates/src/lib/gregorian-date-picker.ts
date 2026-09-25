@@ -63,14 +63,13 @@ function formatDate(date: Date): string {
     <hlm-date-picker
       sanpayDatePickerWidth
       [date]="date()"
+      [defaultFocusedDate]="defaultFocusedDate()"
       [min]="min()"
       [max]="max()"
+      [captionLayout]="captionLayout()"
       (dateChange)="dateChange.emit($event)"
     >
-      <hlm-date-picker-trigger
-        [buttonId]="buttonId()"
-        [class]="triggerClass()"
-      >
+      <hlm-date-picker-trigger [buttonId]="buttonId()" [class]="triggerClass()">
         <ng-content />
       </hlm-date-picker-trigger>
     </hlm-date-picker>
@@ -78,8 +77,12 @@ function formatDate(date: Date): string {
 })
 export class SanpayGregorianDatePicker {
   readonly date = input<Date | undefined>();
+  readonly defaultFocusedDate = input<Date | undefined>();
   readonly min = input<Date | undefined>();
   readonly max = input<Date | undefined>();
+  readonly captionLayout = input<
+    'dropdown' | 'label' | 'dropdown-months' | 'dropdown-years'
+  >('label');
   readonly buttonId = input('sanpay-gregorian-date-picker');
   readonly triggerClass = input('w-full');
   readonly dateChange = output<Date | null>();

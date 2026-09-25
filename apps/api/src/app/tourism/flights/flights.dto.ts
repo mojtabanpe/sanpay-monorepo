@@ -47,7 +47,7 @@ export class FlightPassengerDto implements FlightPassenger {
   @Matches(/^\d{4}-\d{2}-\d{2}$/)
   @IsISO8601({ strict: true })
   birthdate!: string;
-  @Matches(/^[A-Z]{3}$/) nationality!: string;
+  @Matches(/^[A-Z]{2}$/) nationality!: string;
   @IsOptional() @Matches(/^\d{10}$/) nationalCode?: string;
   @IsOptional() @Matches(/^[A-Za-z0-9]{3,20}$/) passportNumber?: string;
   @IsOptional()
