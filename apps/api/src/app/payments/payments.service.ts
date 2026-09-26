@@ -20,7 +20,10 @@ export class PaymentsService {
    * خرج کند، هرکدام با سقف قابل برداشت. کلاینت از روی همین سقف‌ها ورودی مبلغ را
    * محدود می‌کند.
    */
-  async checkout(employeeId: string, storeCode: string): Promise<StoreCheckout> {
+  async checkout(
+    employeeId: string,
+    storeCode: string,
+  ): Promise<StoreCheckout> {
     const store = await this.prisma.store.findUnique({
       where: { code: storeCode.trim().toUpperCase() },
     });
@@ -66,7 +69,11 @@ export class PaymentsService {
    * ثبت پرداخت. مبلغ می‌تواند بین چند کیف پول شکسته شود؛ همهٔ سطرها در یک
    * تراکنش دیتابیس ثبت می‌شوند تا یا همه انجام شود یا هیچ‌کدام.
    */
-  async create(employeeId: string, input: CreatePaymentInput): Promise<Receipt> {
+  async create(
+    employeeId: string,
+    input: CreatePaymentInput,
+    merchantIntentId?: string,
+  ): Promise<Receipt> {
     const store = await this.prisma.store.findUnique({
       where: { code: input.storeCode.trim().toUpperCase() },
     });
@@ -96,6 +103,7 @@ export class PaymentsService {
           employeeId,
           storeId: store.id,
           amount: BigInt(lines.reduce((sum, line) => sum + line.amount, 0)),
+          merchantIntentId,
         },
       });
 
@@ -104,7 +112,9 @@ export class PaymentsService {
         const allocation = await tx.walletAllocation.findUnique({
           where: { id: line.allocationId },
           include: {
-            definition: { include: { stores: { where: { storeId: store.id } } } },
+            definition: {
+              include: { stores: { where: { storeId: store.id } } },
+            },
           },
         });
 
@@ -187,6 +197,32 @@ export class PaymentsService {
     });
 
     return receipt;
+  }
+
+  async receipt(paymentId: string): Promise<Receipt> {
+    const payment = await this.prisma.payment.findUniqueOrThrow({
+      where: { id: paymentId },
+      include: {
+        employee: true,
+        store: true,
+        transactions: {
+          include: { allocation: { include: { definition: true } } },
+        },
+      },
+    });
+    return {
+      id: payment.id,
+      receiptNo: payment.receiptNo,
+      storeName: payment.store.name,
+      employeeName: `${payment.employee.firstName} ${payment.employee.lastName}`,
+      amount: Number(payment.amount),
+      createdAt: payment.createdAt.toISOString(),
+      lines: payment.transactions.map((transaction) => ({
+        walletName: transaction.allocation.definition.name,
+        icon: transaction.allocation.definition.icon,
+        amount: Number(transaction.amount),
+      })),
+    };
   }
 
   /** شمارهٔ رسید ۸ رقمی خوانا، با تلاش مجدد در صورت برخورد */

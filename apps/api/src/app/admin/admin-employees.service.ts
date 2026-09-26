@@ -97,6 +97,7 @@ export class AdminEmployeesService {
         transactions: {
           include: { allocation: { include: { definition: true } } },
         },
+        settlementItem: true,
       },
     });
 
@@ -136,13 +137,18 @@ export class AdminEmployeesService {
     const clash = await this.prisma.employee.findFirst({
       where: {
         OR: [
-          { nationalCode: dto.nationalCode },
-          { personnelCode: dto.personnelCode },
+          { companyId: dto.companyId, nationalCode: dto.nationalCode },
+          { companyId: dto.companyId, personnelCode: dto.personnelCode },
+          { phone: dto.phone },
         ],
       },
     });
     if (clash) {
-      throw new BadRequestException('کد ملی یا کد پرسنلی تکراری است');
+      throw new BadRequestException(
+        clash.phone === dto.phone
+          ? 'این شماره موبایل قبلاً برای یک استخدام دیگر ثبت شده است'
+          : 'کد ملی یا کد پرسنلی در این شرکت تکراری است',
+      );
     }
 
     const employee = await this.prisma.employee.create({
@@ -167,52 +173,75 @@ export class AdminEmployeesService {
     const accepted: ImportEmployeesDto['entries'] = [];
     const nationalCodes = new Set<string>();
     const personnelCodes = new Set<string>();
+    const phones = new Set<string>();
 
     for (const entry of dto.entries) {
       if (
         nationalCodes.has(entry.nationalCode) ||
-        personnelCodes.has(entry.personnelCode)
+        personnelCodes.has(entry.personnelCode) ||
+        phones.has(entry.phone)
       ) {
         rejected.push({
           rowNumber: entry.rowNumber,
           nationalCode: entry.nationalCode,
-          reason: 'کد ملی یا کد پرسنلی در خود فایل تکراری است',
+          reason: 'کد ملی، کد پرسنلی یا موبایل در خود فایل تکراری است',
         });
         continue;
       }
       nationalCodes.add(entry.nationalCode);
       personnelCodes.add(entry.personnelCode);
+      phones.add(entry.phone);
       accepted.push(entry);
     }
 
     const existing = await this.prisma.employee.findMany({
       where: {
         OR: [
-          { nationalCode: { in: accepted.map((entry) => entry.nationalCode) } },
           {
+            companyId: dto.companyId,
+            nationalCode: { in: accepted.map((entry) => entry.nationalCode) },
+          },
+          {
+            companyId: dto.companyId,
             personnelCode: {
               in: accepted.map((entry) => entry.personnelCode),
             },
           },
+          { phone: { in: accepted.map((entry) => entry.phone) } },
         ],
       },
-      select: { nationalCode: true, personnelCode: true },
+      select: {
+        nationalCode: true,
+        personnelCode: true,
+        phone: true,
+        companyId: true,
+      },
     });
-    const existingNationalCodes = new Set(
-      existing.map((row) => row.nationalCode),
-    );
     const existingPersonnelCodes = new Set(
-      existing.map((row) => row.personnelCode),
+      existing
+        .filter((row) => row.companyId === dto.companyId)
+        .map((row) => row.personnelCode),
+    );
+    const existingCompanyNationalCodes = new Set(
+      existing
+        .filter((row) => row.companyId === dto.companyId)
+        .map((row) => row.nationalCode),
+    );
+    const existingPhones = new Set(
+      existing.map((row) => row.phone).filter(Boolean),
     );
     const creatable = accepted.filter((entry) => {
       if (
-        existingNationalCodes.has(entry.nationalCode) ||
-        existingPersonnelCodes.has(entry.personnelCode)
+        existingCompanyNationalCodes.has(entry.nationalCode) ||
+        existingPersonnelCodes.has(entry.personnelCode) ||
+        existingPhones.has(entry.phone)
       ) {
         rejected.push({
           rowNumber: entry.rowNumber,
           nationalCode: entry.nationalCode,
-          reason: 'کد ملی یا کد پرسنلی قبلاً ثبت شده است',
+          reason: existingPhones.has(entry.phone)
+            ? 'شماره موبایل قبلاً برای استخدام دیگری ثبت شده است'
+            : 'کد ملی یا کد پرسنلی قبلاً در این شرکت ثبت شده است',
         });
         return false;
       }
@@ -238,7 +267,7 @@ export class AdminEmployeesService {
   }
 
   async update(id: string, dto: UpdateEmployeeDto): Promise<AdminEmployeeRow> {
-    await this.mustExist(id);
+    const current = await this.mustExist(id);
     if (dto.companyId) {
       await this.mustHaveActiveCompany(dto.companyId);
       const incompatibleAllocation =
@@ -254,6 +283,27 @@ export class AdminEmployeesService {
           'تا زمانی که کارمند کیف‌پول شرکت قبلی را دارد، شرکت او قابل تغییر نیست',
         );
       }
+    }
+    const targetCompanyId = dto.companyId ?? current.companyId;
+    const targetNationalCode = dto.nationalCode ?? current.nationalCode;
+    const targetPersonnelCode = dto.personnelCode ?? current.personnelCode;
+    const targetPhone = dto.phone ?? current.phone;
+    const duplicate = await this.prisma.employee.findFirst({
+      where: {
+        id: { not: id },
+        OR: [
+          { companyId: targetCompanyId, nationalCode: targetNationalCode },
+          { companyId: targetCompanyId, personnelCode: targetPersonnelCode },
+          ...(targetPhone ? [{ phone: targetPhone }] : []),
+        ],
+      },
+    });
+    if (duplicate) {
+      throw new BadRequestException(
+        targetPhone && duplicate.phone === targetPhone
+          ? 'این شماره موبایل قبلاً برای استخدام دیگری ثبت شده است'
+          : 'کد ملی یا کد پرسنلی در این شرکت تکراری است',
+      );
     }
     const employee = await this.prisma.employee.update({
       where: { id },

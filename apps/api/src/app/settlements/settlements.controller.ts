@@ -29,4 +29,10 @@ export class SettlementsController {
   reconcile(@Param('id') id: string) {
     return this.settlements.reconcileBatch(id);
   }
+
+  @Post('items/:id/retry')
+  @Roles(...WRITE_ROLES)
+  retry(@Param('id') id: string) {
+    return this.settlements.retryFailedItem(id);
+  }
 }

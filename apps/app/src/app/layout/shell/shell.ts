@@ -1,5 +1,10 @@
 import { Component, computed, inject } from '@angular/core';
-import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import {
+  Router,
+  RouterLink,
+  RouterLinkActive,
+  RouterOutlet,
+} from '@angular/router';
 import { HlmButtonImports } from '@sanpay/ui/button';
 import { AuthService } from '@sanpay/applets/auth';
 
@@ -20,5 +25,17 @@ export class ShellComponent {
   protected logout(): void {
     this.auth.logout();
     this.router.navigate(['/login']);
+  }
+
+  protected back(): void {
+    if (
+      ['/home', '/stores', '/qr', '/tourism', '/profile'].includes(
+        this.router.url,
+      )
+    ) {
+      void this.router.navigate(['/home']);
+      return;
+    }
+    history.back();
   }
 }

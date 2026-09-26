@@ -53,6 +53,7 @@ export class PaymentsPage {
   protected readonly storeId = signal('');
   protected readonly from = signal<string | null>(null);
   protected readonly to = signal<string | null>(null);
+  protected readonly settlementStatus = signal('');
 
   protected readonly fromDate = computed(() => {
     const value = this.from();
@@ -98,6 +99,7 @@ export class PaymentsPage {
         to: this.to() ? `${this.to()}T23:59:59.999Z` : undefined,
         page: this.page(),
         pageSize: this.pageSize,
+        settlementStatus: this.settlementStatus() || undefined,
       });
       this.rows.set(result.items);
       this.total.set(result.total);
@@ -140,6 +142,53 @@ export class PaymentsPage {
     this.storeId.set('');
     this.from.set(null);
     this.to.set(null);
+    this.settlementStatus.set('');
     this.search();
   }
+
+  protected async exportExcel(): Promise<void> {
+    this.error.set(null);
+    try {
+      await this.api.downloadPaymentsExcel(this.reportQuery());
+    } catch (caught) {
+      this.error.set(apiError(caught, 'ساخت خروجی اکسل ممکن نشد'));
+    }
+  }
+
+  protected print(): void {
+    window.print();
+  }
+
+  protected onSettlementChange(value: unknown): void {
+    this.settlementStatus.set((value as string) ?? '');
+    this.search();
+  }
+
+  protected settlementLabel(value: unknown): string {
+    return settlementLabels[String(value)] ?? 'همهٔ وضعیت‌ها';
+  }
+
+  protected settlementText(
+    status: AdminPaymentRow['settlement']['status'],
+  ): string {
+    return settlementLabels[status] ?? status;
+  }
+
+  private reportQuery() {
+    return {
+      q: this.query().trim() || undefined,
+      storeId: this.storeId() || undefined,
+      from: this.from() ? `${this.from()}T00:00:00.000Z` : undefined,
+      to: this.to() ? `${this.to()}T23:59:59.999Z` : undefined,
+      settlementStatus: this.settlementStatus() || undefined,
+    };
+  }
 }
+
+const settlementLabels: Record<string, string> = {
+  '': 'همهٔ وضعیت‌ها',
+  PENDING: 'در انتظار ارسال',
+  PROCESSING: 'در حال پردازش',
+  SUCCEEDED: 'واریزشده',
+  FAILED: 'ناموفق',
+};

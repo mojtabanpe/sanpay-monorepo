@@ -54,6 +54,9 @@ export class StoresPage {
     category: '',
     phone: '',
     address: '',
+    logoUrl: '',
+    latitude: '',
+    longitude: '',
     settlementIban: '',
     settlementOwnerName: '',
     username: '',
@@ -67,6 +70,9 @@ export class StoresPage {
     category: '',
     phone: '',
     address: '',
+    logoUrl: '',
+    latitude: '',
+    longitude: '',
     settlementIban: '',
     settlementOwnerName: '',
   });
@@ -120,6 +126,9 @@ export class StoresPage {
       category: row.category ?? '',
       phone: row.phone ?? '',
       address: row.address ?? '',
+      logoUrl: row.logoUrl ?? '',
+      latitude: row.latitude?.toString() ?? '',
+      longitude: row.longitude?.toString() ?? '',
       settlementIban: row.settlementIban ?? '',
       settlementOwnerName: row.settlementOwnerName ?? '',
     });
@@ -132,8 +141,11 @@ export class StoresPage {
         name: form.name.trim(),
         code: form.code.trim().toUpperCase() || undefined,
         category: form.category.trim() || undefined,
-        phone: form.phone.trim() || undefined,
-        address: form.address.trim() || undefined,
+        phone: form.phone.trim(),
+        address: form.address.trim(),
+        logoUrl: form.logoUrl || undefined,
+        latitude: form.latitude ? Number(form.latitude) : undefined,
+        longitude: form.longitude ? Number(form.longitude) : undefined,
         settlementIban: form.settlementIban.replace(/\s/g, '').toUpperCase(),
         settlementOwnerName: form.settlementOwnerName.trim() || undefined,
         username: form.username.trim().toLowerCase(),
@@ -146,6 +158,9 @@ export class StoresPage {
         category: '',
         phone: '',
         address: '',
+        logoUrl: '',
+        latitude: '',
+        longitude: '',
         settlementIban: '',
         settlementOwnerName: '',
         username: '',
@@ -163,6 +178,9 @@ export class StoresPage {
         category: form.category.trim(),
         phone: form.phone.trim(),
         address: form.address.trim(),
+        logoUrl: form.logoUrl,
+        latitude: form.latitude ? Number(form.latitude) : undefined,
+        longitude: form.longitude ? Number(form.longitude) : undefined,
         settlementIban: form.settlementIban.replace(/\s/g, '').toUpperCase(),
         settlementOwnerName: form.settlementOwnerName.trim(),
       });
@@ -188,7 +206,25 @@ export class StoresPage {
     }, 'بازنشانی رمز ممکن نشد');
   }
 
-  private async run(action: () => Promise<void>, fallback: string): Promise<void> {
+  protected async selectLogo(event: Event, editing = false): Promise<void> {
+    const file = (event.target as HTMLInputElement).files?.[0];
+    if (!file) return;
+    if (
+      !['image/png', 'image/jpeg', 'image/webp'].includes(file.type) ||
+      file.size > 75_000
+    ) {
+      this.error.set('لوگو باید PNG، JPEG یا WebP و حداکثر ۷۵ کیلوبایت باشد');
+      return;
+    }
+    const value = await fileToDataUrl(file);
+    if (editing) this.updateEdit('logoUrl', value);
+    else this.update('logoUrl', value);
+  }
+
+  private async run(
+    action: () => Promise<void>,
+    fallback: string,
+  ): Promise<void> {
     if (this.saving()) return;
     this.saving.set(true);
     this.error.set(null);
@@ -202,4 +238,13 @@ export class StoresPage {
       this.saving.set(false);
     }
   }
+}
+
+function fileToDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
 }

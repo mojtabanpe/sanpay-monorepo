@@ -21,7 +21,9 @@ export class StoreAuthService {
   private readonly _profile = signal<StoreProfile | null>(readStoredProfile());
 
   readonly profile = this._profile.asReadonly();
-  readonly isLoggedIn = computed(() => this._profile() !== null && !!this.token);
+  readonly isLoggedIn = computed(
+    () => this._profile() !== null && !!this.token,
+  );
 
   get token(): string | null {
     return localStorage.getItem(TOKEN_KEY);
@@ -37,6 +39,21 @@ export class StoreAuthService {
     localStorage.setItem(TOKEN_KEY, response.accessToken);
     localStorage.setItem(PROFILE_KEY, JSON.stringify(response.store));
     this._profile.set(response.store);
+  }
+
+  async ensureSession(): Promise<boolean> {
+    if (!this.token) return false;
+    try {
+      const profile = await firstValueFrom(
+        this.http.get<StoreProfile>('/api/store/me'),
+      );
+      localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
+      this._profile.set(profile);
+      return true;
+    } catch {
+      this.logout();
+      return false;
+    }
   }
 
   logout(): void {

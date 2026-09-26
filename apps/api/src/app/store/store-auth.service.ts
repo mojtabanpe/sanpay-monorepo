@@ -18,7 +18,10 @@ export class StoreAuthService {
   ) {}
 
   async login(username: string, password: string) {
-    const store = await this.prisma.store.findUnique({ where: { username } });
+    const normalizedUsername = username.trim().toLowerCase();
+    const store = await this.prisma.store.findUnique({
+      where: { username: normalizedUsername },
+    });
     if (!store || !store.isActive) {
       throw new UnauthorizedException('نام کاربری یا رمز عبور نادرست است');
     }
@@ -41,7 +44,9 @@ export class StoreAuthService {
   }
 
   async profile(storeId: string) {
-    const store = await this.prisma.store.findUnique({ where: { id: storeId } });
+    const store = await this.prisma.store.findUnique({
+      where: { id: storeId },
+    });
     if (!store || !store.isActive) {
       throw new UnauthorizedException();
     }
@@ -53,6 +58,11 @@ export class StoreAuthService {
     name: string;
     code: string;
     category: string | null;
+    phone: string | null;
+    address: string | null;
+    logoUrl: string | null;
+    latitude: { toString(): string } | null;
+    longitude: { toString(): string } | null;
   }) {
     return {
       id: store.id,
@@ -60,6 +70,11 @@ export class StoreAuthService {
       /** کدی که در QR صندوق چاپ می‌شود */
       code: store.code,
       category: store.category,
+      phone: store.phone,
+      address: store.address,
+      logoUrl: store.logoUrl,
+      latitude: store.latitude === null ? null : Number(store.latitude),
+      longitude: store.longitude === null ? null : Number(store.longitude),
     };
   }
 }

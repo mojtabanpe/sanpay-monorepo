@@ -65,6 +65,9 @@ export class AdminStoresService {
         category: store.category,
         phone: store.phone,
         address: store.address,
+        logoUrl: store.logoUrl,
+        latitude: store.latitude === null ? null : Number(store.latitude),
+        longitude: store.longitude === null ? null : Number(store.longitude),
         settlementIban: store.settlementIban,
         settlementOwnerName: store.settlementOwnerName,
         username: store.username,
@@ -83,7 +86,10 @@ export class AdminStoresService {
   async create(dto: CreateStoreDto): Promise<AdminStoreRow> {
     const taken = await this.prisma.store.findFirst({
       where: {
-        OR: [{ username: dto.username }, ...(dto.code ? [{ code: dto.code }] : [])],
+        OR: [
+          { username: dto.username },
+          ...(dto.code ? [{ code: dto.code }] : []),
+        ],
       },
     });
     if (taken) {
@@ -95,8 +101,11 @@ export class AdminStoresService {
         name: dto.name,
         code: dto.code ?? (await this.uniqueCode()),
         category: dto.category || null,
-        phone: dto.phone || null,
-        address: dto.address || null,
+        phone: dto.phone,
+        address: dto.address,
+        logoUrl: dto.logoUrl || null,
+        latitude: dto.latitude,
+        longitude: dto.longitude,
         settlementIban: dto.settlementIban,
         settlementOwnerName: dto.settlementOwnerName || null,
         username: dto.username,
@@ -112,9 +121,14 @@ export class AdminStoresService {
       where: { id },
       data: {
         ...dto,
-        ...(dto.category !== undefined ? { category: dto.category || null } : {}),
+        ...(dto.category !== undefined
+          ? { category: dto.category || null }
+          : {}),
         ...(dto.phone !== undefined ? { phone: dto.phone || null } : {}),
         ...(dto.address !== undefined ? { address: dto.address || null } : {}),
+        ...(dto.logoUrl !== undefined ? { logoUrl: dto.logoUrl || null } : {}),
+        ...(dto.latitude !== undefined ? { latitude: dto.latitude } : {}),
+        ...(dto.longitude !== undefined ? { longitude: dto.longitude } : {}),
         ...(dto.settlementIban !== undefined
           ? { settlementIban: dto.settlementIban }
           : {}),
@@ -138,7 +152,9 @@ export class AdminStoresService {
   async one(id: string): Promise<AdminStoreRow> {
     const store = await this.prisma.store.findUnique({
       where: { id },
-      include: { _count: { select: { walletDefinitions: true, payments: true } } },
+      include: {
+        _count: { select: { walletDefinitions: true, payments: true } },
+      },
     });
     if (!store) throw new NotFoundException('فروشگاه پیدا نشد');
     const sum = await this.prisma.payment.aggregate({
@@ -152,6 +168,9 @@ export class AdminStoresService {
       category: store.category,
       phone: store.phone,
       address: store.address,
+      logoUrl: store.logoUrl,
+      latitude: store.latitude === null ? null : Number(store.latitude),
+      longitude: store.longitude === null ? null : Number(store.longitude),
       settlementIban: store.settlementIban,
       settlementOwnerName: store.settlementOwnerName,
       username: store.username,
@@ -179,6 +198,8 @@ export class AdminStoresService {
       const clash = await this.prisma.store.findUnique({ where: { code } });
       if (!clash) return code;
     }
-    throw new BadRequestException('ساخت کد یکتا ممکن نشد — کد را دستی وارد کنید');
+    throw new BadRequestException(
+      'ساخت کد یکتا ممکن نشد — کد را دستی وارد کنید',
+    );
   }
 }

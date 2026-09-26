@@ -17,6 +17,11 @@ import { StoreLoginDto } from './dto/store-login.dto';
 import { StoreAuthService, StoreJwtPayload } from './store-auth.service';
 import { StoreJwtGuard } from './store-jwt.guard';
 import { StorePaymentsService } from './store-payments.service';
+import { MerchantPaymentsService } from './merchant-payments.service';
+import {
+  CreateMerchantPaymentIntentDto,
+  VerifyMerchantPaymentIntentDto,
+} from './dto/merchant-payment.dto';
 
 type StoreRequest = Request & { store: StoreJwtPayload };
 
@@ -26,6 +31,7 @@ export class StoreController {
     private readonly auth: StoreAuthService,
     private readonly payments: StorePaymentsService,
     private readonly events: PaymentEventsService,
+    private readonly merchantPayments: MerchantPaymentsService,
   ) {}
 
   @Post('auth/login')
@@ -53,6 +59,26 @@ export class StoreController {
     return this.payments.stats(request.store.sub);
   }
 
+  @Post('merchant-payments/request')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(StoreJwtGuard)
+  requestMerchantPayment(
+    @Req() request: StoreRequest,
+    @Body() dto: CreateMerchantPaymentIntentDto,
+  ) {
+    return this.merchantPayments.request(request.store.sub, dto);
+  }
+
+  @Post('merchant-payments/verify')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(StoreJwtGuard)
+  verifyMerchantPayment(
+    @Req() request: StoreRequest,
+    @Body() dto: VerifyMerchantPaymentIntentDto,
+  ) {
+    return this.merchantPayments.verify(request.store.sub, dto);
+  }
+
   /**
    * استریم زندهٔ رسیدها. کلاینت با `fetch` و هدر Authorization می‌خواندش (نه
    * EventSource) تا توکن در URL نیفتد. پالس ۲۵ ثانیه‌ای اتصال را از بسته‌شدن
@@ -61,9 +87,11 @@ export class StoreController {
   @Sse('payments/stream')
   @UseGuards(StoreJwtGuard)
   stream(@Req() request: StoreRequest): Observable<MessageEvent> {
-    const receipts = this.events.forStore(request.store.sub).pipe(
-      map((receipt): MessageEvent => ({ type: 'payment', data: receipt })),
-    );
+    const receipts = this.events
+      .forStore(request.store.sub)
+      .pipe(
+        map((receipt): MessageEvent => ({ type: 'payment', data: receipt })),
+      );
     const heartbeat = timer(25_000, 25_000).pipe(
       map((): MessageEvent => ({ type: 'ping', data: {} })),
     );

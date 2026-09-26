@@ -62,9 +62,7 @@
         "
       >
         <div class="relative flex items-start justify-between gap-3">
-          <div
-            class="flex min-w-0 items-center gap-2"
-          >
+          <div class="flex min-w-0 items-center gap-2">
             <span
               class="size-1.5 shrink-0 rounded-full"
               [style.background-color]="categoryVar(wallet, '')"
@@ -89,7 +87,9 @@
           مانده از {{ toman(wallet.cap) }}
         </p>
 
-        <div class="relative mt-4 h-1.5 overflow-hidden rounded-full bg-white/15">
+        <div
+          class="relative mt-4 h-1.5 overflow-hidden rounded-full bg-white/15"
+        >
           <div
             class="h-full rounded-full transition-[width]"
             [style.width.%]="percentRemaining(wallet)"
@@ -110,7 +110,9 @@
 
   @if (wallets().length > 1) {
   <div class="flex justify-center" aria-label="انتخاب کیف پول">
-    <div class="bg-muted/70 inline-flex items-center gap-0.5 rounded-full p-1 shadow-sm">
+    <div
+      class="bg-muted/70 inline-flex items-center gap-0.5 rounded-full p-1 shadow-sm"
+    >
       @for (wallet of wallets(); track wallet.id; let index = $index) {
       <button
         class="focus-visible:ring-ring flex size-8 items-center justify-center rounded-full focus-visible:ring-2 focus-visible:ring-offset-2"
@@ -131,9 +133,7 @@
       }
     </div>
   </div>
-  }
-
-  @if (activeWallet(); as wallet) {
+  } @if (activeWallet(); as wallet) {
   <div
     class="bg-muted grid grid-cols-2 gap-1 rounded-xl p-1"
     role="tablist"
@@ -166,76 +166,115 @@
   <div hlmCard class="overflow-hidden">
     <div hlmCardContent>
       <div class="relative min-h-48">
-        @if (activeSection() === 'stores') {
-          @if (stores().length) {
-            <div class="flex flex-col gap-2">
-              @for (store of stores().slice(0, 3); track store.id) {
-                <div class="bg-muted/60 flex min-h-12 items-center gap-3 rounded-xl px-3 py-2">
-                  <div class="min-w-0 flex-1">
-                    <p class="truncate text-sm font-semibold">{{ store.name }}</p>
-                    <p class="text-muted-foreground truncate text-[11px]">
-                      {{ store.category || store.address || 'فروشنده طرف قرارداد' }}
-                    </p>
-                  </div>
-                  <a
-                    class="text-primary focus-visible:ring-ring flex min-h-10 items-center rounded-lg px-2 text-xs font-semibold focus-visible:ring-2"
-                    routerLink="/qr"
-                    [queryParams]="{ store: store.code }"
-                  >خرید</a>
-                </div>
-              }
-              @if (stores().length > 3) {
-                <a class="text-primary min-h-10 self-start py-2 text-xs font-semibold hover:underline" routerLink="/stores">
-                  مشاهده همهٔ فروشنده‌ها
-                </a>
+        @if (activeSection() === 'stores') { @if (stores().length) {
+        <div class="flex flex-col gap-2">
+          @for (store of stores().slice(0, 3); track store.id) {
+          <div
+            class="bg-muted/60 flex min-h-12 items-center gap-3 rounded-xl px-3 py-2"
+          >
+            @if (store.logoUrl) {
+            <img
+              class="size-10 shrink-0 rounded-lg object-cover"
+              [src]="store.logoUrl"
+              [alt]="'لوگوی ' + store.name"
+              loading="lazy"
+            />
+            }
+            <div class="min-w-0 flex-1">
+              <p class="truncate text-sm font-semibold">{{ store.name }}</p>
+              <p class="text-muted-foreground truncate text-[11px]">
+                {{ store.category || store.address || 'فروشنده طرف قرارداد' }}
+              </p>
+              @if (store.phone) {
+              <a
+                class="text-primary text-[11px]"
+                [href]="'tel:' + store.phone"
+                dir="ltr"
+                >{{ store.phone }}</a
+              >
               }
             </div>
-          } @else {
-            <div class="text-muted-foreground flex min-h-48 items-center justify-center text-center text-sm">
-              فروشنده‌ای برای این کیف پول ثبت نشده است.
-            </div>
-          }
-          @if (walletDetailsLoading()) {
-            <div
-              class="bg-card/90 absolute inset-0 flex flex-col gap-2 backdrop-blur-[2px]"
-              role="status"
-              aria-live="polite"
-              aria-label="در حال دریافت فروشنده‌های کیف پول"
+            @if (mapLink(store); as href) {
+            <a
+              class="text-primary focus-visible:ring-ring flex min-h-10 items-center rounded-lg px-2 text-xs font-semibold focus-visible:ring-2"
+              [href]="href"
+              target="_blank"
+              rel="noopener noreferrer"
+              >مسیریابی</a
             >
-              @for (placeholder of [1, 2, 3]; track placeholder) {
-                <hlm-skeleton class="h-14 w-full rounded-xl" />
-              }
-            </div>
+            }
+            <a
+              class="text-primary focus-visible:ring-ring flex min-h-10 items-center rounded-lg px-2 text-xs font-semibold focus-visible:ring-2"
+              routerLink="/qr"
+              [queryParams]="{ store: store.code }"
+              >خرید</a
+            >
+          </div>
+          } @if (stores().length > 3) {
+          <a
+            class="text-primary min-h-10 self-start py-2 text-xs font-semibold hover:underline"
+            routerLink="/stores"
+          >
+            مشاهده همهٔ فروشنده‌ها
+          </a>
           }
-        } @else if (walletPurchases(wallet.id).length) {
-          <div class="flex flex-col gap-2">
-            @for (purchase of walletPurchases(wallet.id).slice(0, 3); track purchase.id) {
-              <div class="bg-muted/60 flex min-h-12 items-center justify-between gap-3 rounded-xl px-3 py-2">
-                <div class="min-w-0">
-                  <p class="truncate text-sm font-semibold">{{ purchase.storeName }}</p>
-                  <p class="text-muted-foreground text-[11px]">
-                    {{ date(purchase.createdAt) }}، {{ purchase.receiptNo }}
-                  </p>
-                </div>
-                <p class="shrink-0 text-xs font-bold">{{ toman(purchase.amount) }}</p>
-              </div>
-            }
-            @if (walletPurchases(wallet.id).length > 3) {
-              <a class="text-primary min-h-10 self-start py-2 text-xs font-semibold hover:underline" routerLink="/profile/payments">
-                مشاهده همهٔ سوابق
-              </a>
-            }
-          </div>
+        </div>
         } @else {
-          <div class="text-muted-foreground flex min-h-48 items-center justify-center text-center text-sm">
-            هنوز خریدی با این کیف پول انجام نشده است.
+        <div
+          class="text-muted-foreground flex min-h-48 items-center justify-center text-center text-sm"
+        >
+          فروشنده‌ای برای این کیف پول ثبت نشده است.
+        </div>
+        } @if (walletDetailsLoading()) {
+        <div
+          class="bg-card/90 absolute inset-0 flex flex-col gap-2 backdrop-blur-[2px]"
+          role="status"
+          aria-live="polite"
+          aria-label="در حال دریافت فروشنده‌های کیف پول"
+        >
+          @for (placeholder of [1, 2, 3]; track placeholder) {
+          <hlm-skeleton class="h-14 w-full rounded-xl" />
+          }
+        </div>
+        } } @else if (walletPurchases(wallet.id).length) {
+        <div class="flex flex-col gap-2">
+          @for (purchase of walletPurchases(wallet.id).slice(0, 3); track
+          purchase.id) {
+          <div
+            class="bg-muted/60 flex min-h-12 items-center justify-between gap-3 rounded-xl px-3 py-2"
+          >
+            <div class="min-w-0">
+              <p class="truncate text-sm font-semibold">
+                {{ purchase.storeName }}
+              </p>
+              <p class="text-muted-foreground text-[11px]">
+                {{ date(purchase.createdAt) }}، {{ purchase.receiptNo }}
+              </p>
+            </div>
+            <p class="shrink-0 text-xs font-bold">
+              {{ toman(purchase.amount) }}
+            </p>
           </div>
+          } @if (walletPurchases(wallet.id).length > 3) {
+          <a
+            class="text-primary min-h-10 self-start py-2 text-xs font-semibold hover:underline"
+            routerLink="/profile/payments"
+          >
+            مشاهده همهٔ سوابق
+          </a>
+          }
+        </div>
+        } @else {
+        <div
+          class="text-muted-foreground flex min-h-48 items-center justify-center text-center text-sm"
+        >
+          هنوز خریدی با این کیف پول انجام نشده است.
+        </div>
         }
       </div>
     </div>
   </div>
-  }
-  } @else {
+  } } @else {
   <section hlmCard>
     <div hlmCardContent class="py-10 text-center">
       <p class="text-muted-foreground text-sm">

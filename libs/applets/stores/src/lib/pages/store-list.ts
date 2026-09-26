@@ -91,6 +91,16 @@ export class StoreListPage {
     });
   }
 
+  protected mapLink(store: EmployeeStore): string | null {
+    const destination =
+      store.latitude !== null && store.longitude !== null
+        ? `${store.latitude},${store.longitude}`
+        : store.address?.trim();
+    return destination
+      ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(destination)}`
+      : null;
+  }
+
   protected readonly toman = toman;
   protected readonly count = faNumber;
 }

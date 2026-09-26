@@ -15,6 +15,6 @@ import { SmsService } from './sms.service';
   ],
   controllers: [AuthController],
   providers: [AuthService, JwtAuthGuard, SmsService],
-  exports: [AuthService],
+  exports: [AuthService, SmsService],
 })
 export class AuthModule {}

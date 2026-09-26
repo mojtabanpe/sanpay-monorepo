@@ -10,6 +10,8 @@ import { PROVIDER_NAMES } from '../tourism/providers/provider-id';
 import { PrismaService } from '../prisma/prisma.service';
 import { BookingQueryDto, PaymentQueryDto } from './dto/admin.dto';
 import { paymentRowInclude, toPaymentRow } from './payment-row';
+import * as ExcelJS from 'exceljs';
+import { Prisma } from '../../generated/prisma/client';
 
 @Injectable()
 export class AdminReportsService {
@@ -145,7 +147,10 @@ export class AdminReportsService {
         pending: bookingPending,
         amount: Number(bookingSum._sum.amount ?? 0n),
       },
-      daily: [...buckets.entries()].map(([date, value]) => ({ date, ...value })),
+      daily: [...buckets.entries()].map(([date, value]) => ({
+        date,
+        ...value,
+      })),
       topStores: topStoreRows.map((row) => ({
         id: row.storeId,
         name: storeNames.get(row.storeId) ?? '—',
@@ -159,38 +164,7 @@ export class AdminReportsService {
   async payments(query: PaymentQueryDto): Promise<Paginated<AdminPaymentRow>> {
     const page = query.page ?? 1;
     const pageSize = query.pageSize ?? 25;
-    const q = query.q?.trim();
-
-    const where = {
-      ...(query.storeId ? { storeId: query.storeId } : {}),
-      ...(query.employeeId ? { employeeId: query.employeeId } : {}),
-      ...(query.from || query.to
-        ? {
-            createdAt: {
-              ...(query.from ? { gte: new Date(query.from) } : {}),
-              ...(query.to ? { lte: new Date(query.to) } : {}),
-            },
-          }
-        : {}),
-      ...(q
-        ? {
-            OR: [
-              { receiptNo: { contains: q } },
-              {
-                employee: {
-                  OR: [
-                    { firstName: { contains: q, mode: 'insensitive' as const } },
-                    { lastName: { contains: q, mode: 'insensitive' as const } },
-                    { personnelCode: { contains: q } },
-                    { nationalCode: { contains: q } },
-                  ],
-                },
-              },
-              { store: { name: { contains: q, mode: 'insensitive' as const } } },
-            ],
-          }
-        : {}),
-    };
+    const where = this.paymentWhere(query);
 
     const [total, payments] = await Promise.all([
       this.prisma.payment.count({ where }),
@@ -206,15 +180,108 @@ export class AdminReportsService {
     return { items: payments.map(toPaymentRow), total, page, pageSize };
   }
 
+  async paymentsExcel(query: PaymentQueryDto): Promise<Buffer> {
+    const payments = await this.prisma.payment.findMany({
+      where: this.paymentWhere(query),
+      orderBy: { createdAt: 'desc' },
+      include: paymentRowInclude,
+    });
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet('پرداخت‌ها', {
+      views: [{ rightToLeft: true }],
+    });
+    sheet.columns = [
+      { header: 'شماره رسید', key: 'receiptNo', width: 16 },
+      { header: 'کارمند', key: 'employee', width: 24 },
+      { header: 'کد پرسنلی', key: 'personnelCode', width: 16 },
+      { header: 'فروشگاه', key: 'store', width: 24 },
+      { header: 'مبلغ (تومان)', key: 'amount', width: 18 },
+      { header: 'وضعیت تسویه', key: 'settlement', width: 18 },
+      { header: 'کد پیگیری', key: 'followUpCode', width: 18 },
+      { header: 'زمان پرداخت', key: 'createdAt', width: 22 },
+    ];
+    for (const payment of payments.map(toPaymentRow)) {
+      sheet.addRow({
+        receiptNo: payment.receiptNo,
+        employee: payment.employee.name,
+        personnelCode: payment.employee.personnelCode,
+        store: payment.store.name,
+        amount: payment.amount,
+        settlement: payment.settlement.status,
+        followUpCode: payment.settlement.followUpCode ?? '',
+        createdAt: new Date(payment.createdAt),
+      });
+    }
+    sheet.getRow(1).font = { bold: true };
+    sheet.getColumn('amount').numFmt = '#,##0';
+    sheet.getColumn('createdAt').numFmt = 'yyyy-mm-dd hh:mm';
+    sheet.autoFilter = { from: 'A1', to: 'H1' };
+    const content = await workbook.xlsx.writeBuffer();
+    return Buffer.from(content);
+  }
+
+  private paymentWhere(query: PaymentQueryDto): Prisma.PaymentWhereInput {
+    const q = query.q?.trim();
+    const settlement = query.settlementStatus;
+    const settlementWhere: Prisma.PaymentWhereInput =
+      settlement === 'PENDING'
+        ? { settlementItemId: null }
+        : settlement === 'PROCESSING'
+          ? {
+              settlementItem: {
+                status: {
+                  in: ['CREATED', 'SUBMITTED', 'PROCESSING', 'UNKNOWN'],
+                },
+              },
+            }
+          : settlement === 'SUCCEEDED' || settlement === 'FAILED'
+            ? { settlementItem: { status: settlement } }
+            : {};
+    return {
+      ...(query.storeId ? { storeId: query.storeId } : {}),
+      ...(query.employeeId ? { employeeId: query.employeeId } : {}),
+      ...(query.companyId ? { employee: { companyId: query.companyId } } : {}),
+      ...(query.from || query.to
+        ? {
+            createdAt: {
+              ...(query.from ? { gte: new Date(query.from) } : {}),
+              ...(query.to ? { lte: new Date(query.to) } : {}),
+            },
+          }
+        : {}),
+      ...settlementWhere,
+      ...(q
+        ? {
+            OR: [
+              { receiptNo: { contains: q } },
+              {
+                employee: {
+                  OR: [
+                    {
+                      firstName: { contains: q, mode: 'insensitive' as const },
+                    },
+                    { lastName: { contains: q, mode: 'insensitive' as const } },
+                    { personnelCode: { contains: q } },
+                    { nationalCode: { contains: q } },
+                  ],
+                },
+              },
+              {
+                store: { name: { contains: q, mode: 'insensitive' as const } },
+              },
+            ],
+          }
+        : {}),
+    };
+  }
+
   async bookings(query: BookingQueryDto): Promise<Paginated<AdminBookingRow>> {
     const page = query.page ?? 1;
     const pageSize = query.pageSize ?? 25;
     const q = query.q?.trim();
 
     const where = {
-      ...(query.status
-        ? { status: query.status as BookingStatus }
-        : {}),
+      ...(query.status ? { status: query.status as BookingStatus } : {}),
       ...(q
         ? {
             OR: [
@@ -251,7 +318,9 @@ export class AdminReportsService {
         amount: Number(booking.amount),
         payable: Number(booking.payable),
         refundedAmount:
-          booking.refundedAmount === null ? null : Number(booking.refundedAmount),
+          booking.refundedAmount === null
+            ? null
+            : Number(booking.refundedAmount),
         settledAt: booking.settledAt?.toISOString() ?? null,
         createdAt: booking.createdAt.toISOString(),
         employee: {

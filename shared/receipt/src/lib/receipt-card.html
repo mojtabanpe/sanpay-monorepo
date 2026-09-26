@@ -52,27 +52,43 @@
     <span class="text-xs font-medium">{{ r.employeeName }}</span>
   </div>
 
+  @if (variant() === 'store' && r.settlement) {
+  <div
+    class="flex items-center justify-between gap-3 border-t border-dashed px-4 py-3"
+    style="border-color: var(--hairline)"
+  >
+    <span class="text-muted-foreground text-xs">وضعیت واریز تومان</span>
+    <span
+      class="bg-secondary text-secondary-foreground rounded-md px-2 py-1 text-xs font-medium"
+    >
+      {{ settlementLabel() }}
+    </span>
+  </div>
+  }
+
   <!-- تفکیک کیف‌پول‌ها -->
   @if (isSplit() || variant() === 'employee') {
-    <div class="border-t border-dashed px-4 py-3" style="border-color: var(--hairline)">
-      <p class="text-muted-foreground mb-2 text-[0.65rem]">
-        {{ isSplit() ? 'کسر از کیف‌پول‌ها' : 'کسر از کیف پول' }}
-      </p>
-      <ul class="space-y-2">
-        @for (line of r.lines; track line.walletName) {
-          <li class="flex items-center justify-between gap-3">
-            <span class="min-w-0 truncate text-xs">{{ line.walletName }}</span>
-            <span class="shrink-0 text-xs font-semibold tabular-nums">
-              {{ toman(line.amount) }}
-            </span>
-          </li>
-          @if (line.remainingAfter !== undefined && variant() === 'employee') {
-            <li class="text-muted-foreground -mt-1 text-[0.65rem]">
-              ماندهٔ این کیف پول: {{ toman(line.remainingAfter) }}
-            </li>
-          }
-        }
-      </ul>
-    </div>
+  <div
+    class="border-t border-dashed px-4 py-3"
+    style="border-color: var(--hairline)"
+  >
+    <p class="text-muted-foreground mb-2 text-[0.65rem]">
+      {{ isSplit() ? 'کسر از کیف‌پول‌ها' : 'کسر از کیف پول' }}
+    </p>
+    <ul class="space-y-2">
+      @for (line of r.lines; track line.walletName) {
+      <li class="flex items-center justify-between gap-3">
+        <span class="min-w-0 truncate text-xs">{{ line.walletName }}</span>
+        <span class="shrink-0 text-xs font-semibold tabular-nums">
+          {{ toman(line.amount) }}
+        </span>
+      </li>
+      @if (line.remainingAfter !== undefined && variant() === 'employee') {
+      <li class="text-muted-foreground -mt-1 text-[0.65rem]">
+        ماندهٔ این کیف پول: {{ toman(line.remainingAfter) }}
+      </li>
+      } }
+    </ul>
+  </div>
   }
 </article>

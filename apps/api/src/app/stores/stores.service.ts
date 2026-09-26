@@ -48,6 +48,10 @@ export class StoresService {
             category: store.category,
             address: store.address,
             phone: store.phone,
+            logoUrl: store.logoUrl,
+            latitude: store.latitude === null ? null : Number(store.latitude),
+            longitude:
+              store.longitude === null ? null : Number(store.longitude),
             wallets: [],
             totalAvailable: 0,
           };

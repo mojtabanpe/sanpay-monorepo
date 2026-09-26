@@ -542,18 +542,23 @@
             /></hlm-field>
             <hlm-field
               ><label hlmFieldLabel [for]="'birth-' + i"
-                >تاریخ تولد (میلادی)</label
-              ><sanpay-gregorian-date-picker
-                [date]="dateValue(p.birthdate)"
-                [defaultFocusedDate]="defaultGregorianBirthdate"
-                [min]="minGregorianBirthdate"
-                [max]="maxGregorianBirthdate"
+                >تاریخ تولد (شمسی)</label
+              ><hlm-date-picker
+                sanpayDatePickerWidth
+                [date]="jalaliDateValue(p.birthdate)"
+                [defaultFocusedDate]="defaultJalaliBirthdate"
+                [min]="minJalaliBirthdate"
+                [max]="maxJalaliBirthdate"
                 captionLayout="dropdown"
-                [buttonId]="'birth-' + i"
-                triggerClass="h-12 w-full rounded-xl"
-                (dateChange)="updateGregorianDate(i, 'birthdate', $event)"
-                >انتخاب تاریخ تولد</sanpay-gregorian-date-picker
-              ></hlm-field
+                (dateChange)="updateJalaliBirthdate(i, $event)"
+              >
+                <hlm-date-picker-trigger
+                  [id]="'birth-' + i"
+                  class="h-12 w-full rounded-xl"
+                >
+                  انتخاب تاریخ تولد
+                </hlm-date-picker-trigger>
+              </hlm-date-picker></hlm-field
             >
             <fieldset hlmFieldSet>
               <legend hlmFieldLegend>جنسیت</legend>

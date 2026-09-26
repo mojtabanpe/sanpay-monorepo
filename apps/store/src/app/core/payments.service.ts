@@ -1,6 +1,12 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { Receipt, StoreStats } from '@sanpay/models';
+import {
+  CreateMerchantPaymentIntentInput,
+  MerchantPaymentIntentResult,
+  Receipt,
+  StoreStats,
+  VerifyMerchantPaymentIntentInput,
+} from '@sanpay/models';
 import { firstValueFrom } from 'rxjs';
 import { StoreAuthService } from './store-auth.service';
 
@@ -19,6 +25,25 @@ export class StorePaymentsService {
    */
   stats(): Promise<StoreStats> {
     return firstValueFrom(this.http.get<StoreStats>('/api/store/stats'));
+  }
+
+  requestMerchantPayment(
+    input: CreateMerchantPaymentIntentInput,
+  ): Promise<MerchantPaymentIntentResult> {
+    return firstValueFrom(
+      this.http.post<MerchantPaymentIntentResult>(
+        '/api/store/merchant-payments/request',
+        input,
+      ),
+    );
+  }
+
+  verifyMerchantPayment(
+    input: VerifyMerchantPaymentIntentInput,
+  ): Promise<Receipt> {
+    return firstValueFrom(
+      this.http.post<Receipt>('/api/store/merchant-payments/verify', input),
+    );
   }
 
   /**
@@ -62,7 +87,9 @@ export class StorePaymentsService {
         retryDelay = 1_000;
         resetWatchdog();
 
-        const reader = response.body.pipeThrough(new TextDecoderStream()).getReader();
+        const reader = response.body
+          .pipeThrough(new TextDecoderStream())
+          .getReader();
         let buffer = '';
         for (;;) {
           const { value, done } = await reader.read();
@@ -99,7 +126,10 @@ export class StorePaymentsService {
     };
   }
 
-  private handleFrame(frame: string, onReceipt: (receipt: Receipt) => void): void {
+  private handleFrame(
+    frame: string,
+    onReceipt: (receipt: Receipt) => void,
+  ): void {
     let event = 'message';
     const dataLines: string[] = [];
 

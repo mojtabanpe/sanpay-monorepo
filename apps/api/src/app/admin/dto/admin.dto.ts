@@ -6,6 +6,7 @@ import {
   IsDateString,
   IsIn,
   IsInt,
+  IsNumber,
   IsNotEmpty,
   IsOptional,
   IsString,
@@ -143,6 +144,10 @@ export class PaymentQueryDto extends ListQueryDto {
   @IsOptional()
   @IsDateString()
   to?: string;
+
+  @IsOptional()
+  @IsIn(['PENDING', 'PROCESSING', 'SUCCEEDED', 'FAILED'])
+  settlementStatus?: string;
 }
 
 export class BookingQueryDto extends ListQueryDto {
@@ -278,13 +283,31 @@ export class CreateStoreDto {
   @IsString()
   category?: string;
 
-  @IsOptional()
   @IsString()
-  phone?: string;
+  @IsNotEmpty()
+  phone!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  address!: string;
 
   @IsOptional()
   @IsString()
-  address?: string;
+  logoUrl?: string;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(-90)
+  @Max(90)
+  latitude?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(-180)
+  @Max(180)
+  longitude?: number;
 
   @IsString()
   @Matches(/^IR\d{24}$/, { message: 'شماره شبا باید با IR و ۲۴ رقم وارد شود' })
@@ -326,6 +349,24 @@ export class UpdateStoreDto {
   @IsOptional()
   @IsString()
   address?: string;
+
+  @IsOptional()
+  @IsString()
+  logoUrl?: string;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(-90)
+  @Max(90)
+  latitude?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(-180)
+  @Max(180)
+  longitude?: number;
 
   @IsOptional()
   @IsString()

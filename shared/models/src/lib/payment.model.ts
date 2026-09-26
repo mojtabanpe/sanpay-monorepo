@@ -59,4 +59,10 @@ export interface Receipt {
   /** زمان پرداخت (ISO) */
   createdAt: string;
   lines: ReceiptLine[];
+  settlement?: {
+    status: 'PENDING' | 'PROCESSING' | 'SUCCEEDED' | 'FAILED';
+    settledAt: string | null;
+    followUpCode: string | null;
+    receiptLink: string | null;
+  };
 }

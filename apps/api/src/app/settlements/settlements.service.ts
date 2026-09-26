@@ -1,9 +1,12 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { randomUUID } from 'node:crypto';
 import { HotelBooking, Payment, Store } from '../../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
-import { TomanClientService, TomanTransferItemInput } from './toman-client.service';
+import {
+  TomanClientService,
+  TomanTransferItemInput,
+} from './toman-client.service';
 
 const IRAN_TIME_ZONE = 'Asia/Tehran';
 const SUCCESS_STATUS = 6;
@@ -19,6 +22,7 @@ type Group = {
   paymentIds: string[];
   bookingIds: string[];
 };
+type BeneficiaryType = Group['type'];
 
 @Injectable()
 export class SettlementsService {
@@ -33,7 +37,11 @@ export class SettlementsService {
   @Cron('0 2 * * *', { timeZone: IRAN_TIME_ZONE })
   async scheduledSettlement() {
     if (!this.enabled()) return;
-    await this.runNow();
+    const types: BeneficiaryType[] = ['STORE'];
+    const weekday = this.tehranWeekday();
+    if (weekday === 0) types.push('HOTELYAR', 'EGHAMAT24');
+    if (weekday === 2) types.push('EGHAMAT24');
+    await this.runWithKey(this.tehranDateKey(), types);
   }
 
   /** وضعیت انتقال‌ها ناهمگام است؛ تا نهایی‌شدن هر ۱۵ دقیقه تطبیق می‌دهیم. */
@@ -44,17 +52,26 @@ export class SettlementsService {
   }
 
   async runNow() {
-    return this.runWithKey(this.tehranDateKey());
+    return this.runWithKey(this.tehranDateKey(), [
+      'STORE',
+      'HOTELYAR',
+      'EGHAMAT24',
+    ]);
   }
 
   /** اجرای دستی batch مستقل می‌سازد، اما فقط خریدهای هنوز متصل‌نشده را برمی‌دارد. */
   async runManual() {
-    return this.runWithKey(`${this.tehranDateKey()}-manual-${Date.now()}`);
+    return this.runWithKey(`${this.tehranDateKey()}-manual-${Date.now()}`, [
+      'STORE',
+      'HOTELYAR',
+      'EGHAMAT24',
+    ]);
   }
 
-  private async runWithKey(runKey: string) {
-    const batch = await this.prepareBatch(runKey);
-    if (batch.itemCount === 0 || batch.status === 'COMPLETED') return this.one(batch.id);
+  private async runWithKey(runKey: string, types: BeneficiaryType[]) {
+    const batch = await this.prepareBatch(runKey, types);
+    if (batch.itemCount === 0 || batch.status === 'COMPLETED')
+      return this.one(batch.id);
     if (!batch.submittedAt) await this.submitBatch(batch.id);
     await this.reconcileBatch(batch.id);
     return this.one(batch.id);
@@ -82,21 +99,38 @@ export class SettlementsService {
       where: {
         OR: [
           { status: { in: ['SUBMITTED', 'PROCESSING'] } },
-          { status: 'FAILED', submittedAt: null, tomanBatchUuid: { not: null } },
+          {
+            status: 'FAILED',
+            submittedAt: null,
+            tomanBatchUuid: { not: null },
+          },
         ],
       },
-      select: { id: true, status: true, submittedAt: true, tomanBatchUuid: true },
+      select: {
+        id: true,
+        status: true,
+        submittedAt: true,
+        tomanBatchUuid: true,
+      },
     });
     for (const batch of batches) {
       try {
-        if (batch.status === 'FAILED' && !batch.submittedAt && batch.tomanBatchUuid) {
+        if (
+          batch.status === 'FAILED' &&
+          !batch.submittedAt &&
+          batch.tomanBatchUuid
+        ) {
           const remote = await this.toman.getBatch(batch.tomanBatchUuid);
           if (remote.status === 1) {
             await this.submitBatch(batch.id);
           } else if ([2, 3, 4].includes(remote.status)) {
             await this.prisma.settlementBatch.update({
               where: { id: batch.id },
-              data: { status: 'SUBMITTED', submittedAt: new Date(), error: null },
+              data: {
+                status: 'SUBMITTED',
+                submittedAt: new Date(),
+                error: null,
+              },
             });
           } else {
             continue;
@@ -121,12 +155,17 @@ export class SettlementsService {
     if (remoteBatch.status === -2 || remoteBatch.status === -3) {
       await this.prisma.settlementBatch.update({
         where: { id: batchId },
-        data: { status: 'FAILED', error: `Toman batch status: ${remoteBatch.status}` },
+        data: {
+          status: 'FAILED',
+          error: `Toman batch status: ${remoteBatch.status}`,
+        },
       });
       return this.one(batchId);
     }
 
-    for (const item of batch.items.filter((row) => !['SUCCEEDED', 'FAILED'].includes(row.status))) {
+    for (const item of batch.items.filter(
+      (row) => !['SUCCEEDED', 'FAILED'].includes(row.status),
+    )) {
       try {
         const transfer = await this.toman.getTransfer(item.trackerId);
         if (transfer.status === SUCCESS_STATUS) {
@@ -174,75 +213,149 @@ export class SettlementsService {
           });
         }
       } catch (error) {
-        this.logger.warn(`Transfer ${item.trackerId} is not queryable yet: ${this.message(error)}`);
+        this.logger.warn(
+          `Transfer ${item.trackerId} is not queryable yet: ${this.message(error)}`,
+        );
       }
     }
     await this.refreshBatchStatus(batchId);
     return this.one(batchId);
   }
 
-  private async prepareBatch(runKey: string) {
-    const existing = await this.prisma.settlementBatch.findUnique({ where: { runKey } });
+  async retryFailedItem(itemId: string) {
+    const previous = await this.prisma.settlementItem.findUnique({
+      where: { id: itemId },
+      include: {
+        payments: { select: { id: true } },
+        hotelBookings: { select: { id: true } },
+      },
+    });
+    if (!previous || previous.status !== 'FAILED') {
+      throw new BadRequestException(
+        'فقط تسویهٔ ناموفق نهایی قابل تلاش مجدد است',
+      );
+    }
+
+    const runKey = `${this.tehranDateKey()}-retry-${Date.now()}`;
+    const batch = await this.prisma.$transaction(async (tx) => {
+      const created = await tx.settlementBatch.create({
+        data: { runKey, totalAmount: previous.amount, itemCount: 1 },
+      });
+      const id = randomUUID();
+      const item = await tx.settlementItem.create({
+        data: {
+          id,
+          batchId: created.id,
+          beneficiaryType: previous.beneficiaryType,
+          beneficiaryKey: previous.beneficiaryKey,
+          storeId: previous.storeId,
+          beneficiaryName: previous.beneficiaryName,
+          destinationIban: previous.destinationIban,
+          amount: previous.amount,
+          trackerId: `sp-${id.replace(/-/g, '')}`,
+          retryOfId: previous.id,
+        },
+      });
+      if (previous.payments.length) {
+        await tx.payment.updateMany({
+          where: { id: { in: previous.payments.map((row) => row.id) } },
+          data: { settlementItemId: item.id },
+        });
+      }
+      if (previous.hotelBookings.length) {
+        await tx.hotelBooking.updateMany({
+          where: { id: { in: previous.hotelBookings.map((row) => row.id) } },
+          data: { settlementItemId: item.id, settlementBatchId: created.id },
+        });
+      }
+      return created;
+    });
+    await this.submitBatch(batch.id);
+    await this.reconcileBatch(batch.id);
+    return this.one(batch.id);
+  }
+
+  private async prepareBatch(runKey: string, types: BeneficiaryType[]) {
+    const existing = await this.prisma.settlementBatch.findUnique({
+      where: { runKey },
+    });
     if (existing) return existing;
 
     try {
-      return await this.prisma.$transaction(async (tx) => {
-        const duplicate = await tx.settlementBatch.findUnique({ where: { runKey } });
-        if (duplicate) return duplicate;
-        const payments = await tx.payment.findMany({
-          where: { settlementItemId: null },
-          include: { store: true },
-          orderBy: { createdAt: 'asc' },
-        });
-        const bookings = await tx.hotelBooking.findMany({
-          where: {
-            settlementItemId: null,
-            payable: { gt: 0 },
-            status: { in: ['CONFIRMED', 'CANCELED'] },
-          },
-          orderBy: { createdAt: 'asc' },
-        });
-        const groups = this.groups(payments, bookings);
-        const batch = await tx.settlementBatch.create({ data: { runKey } });
-        let total = 0n;
-        for (const group of groups) {
-          const id = randomUUID();
-          const item = await tx.settlementItem.create({
-            data: {
-              id,
-              batchId: batch.id,
-              beneficiaryType: group.type,
-              beneficiaryKey: group.key,
-              storeId: group.storeId,
-              beneficiaryName: group.name,
-              destinationIban: group.iban,
-              amount: group.amount,
-              trackerId: `sp-${id.replace(/-/g, '')}`,
-            },
+      return await this.prisma.$transaction(
+        async (tx) => {
+          const duplicate = await tx.settlementBatch.findUnique({
+            where: { runKey },
           });
-          if (group.paymentIds.length) {
-            await tx.payment.updateMany({
-              where: { id: { in: group.paymentIds }, settlementItemId: null },
-              data: { settlementItemId: item.id },
+          if (duplicate) return duplicate;
+          const payments = await tx.payment.findMany({
+            where: types.includes('STORE')
+              ? { settlementItemId: null }
+              : { id: { in: [] } },
+            include: { store: true },
+            orderBy: { createdAt: 'asc' },
+          });
+          const providerTypes = [
+            ...(types.includes('HOTELYAR') ? ['hy' as const] : []),
+            ...(types.includes('EGHAMAT24') ? ['eg' as const] : []),
+          ];
+          const bookings = await tx.hotelBooking.findMany({
+            where: {
+              provider: { in: providerTypes },
+              settlementItemId: null,
+              payable: { gt: 0 },
+              status: { in: ['CONFIRMED', 'CANCELED'] },
+            },
+            orderBy: { createdAt: 'asc' },
+          });
+          const groups = this.groups(payments, bookings);
+          const batch = await tx.settlementBatch.create({ data: { runKey } });
+          let total = 0n;
+          for (const group of groups) {
+            const id = randomUUID();
+            const item = await tx.settlementItem.create({
+              data: {
+                id,
+                batchId: batch.id,
+                beneficiaryType: group.type,
+                beneficiaryKey: group.key,
+                storeId: group.storeId,
+                beneficiaryName: group.name,
+                destinationIban: group.iban,
+                amount: group.amount,
+                trackerId: `sp-${id.replace(/-/g, '')}`,
+              },
             });
+            if (group.paymentIds.length) {
+              await tx.payment.updateMany({
+                where: { id: { in: group.paymentIds }, settlementItemId: null },
+                data: { settlementItemId: item.id },
+              });
+            }
+            if (group.bookingIds.length) {
+              await tx.hotelBooking.updateMany({
+                where: { id: { in: group.bookingIds }, settlementItemId: null },
+                data: {
+                  settlementItemId: item.id,
+                  settlementBatchId: batch.id,
+                },
+              });
+            }
+            total += group.amount;
           }
-          if (group.bookingIds.length) {
-            await tx.hotelBooking.updateMany({
-              where: { id: { in: group.bookingIds }, settlementItemId: null },
-              data: { settlementItemId: item.id, settlementBatchId: batch.id },
-            });
-          }
-          total += group.amount;
-        }
-        return tx.settlementBatch.update({
-          where: { id: batch.id },
-          data: groups.length
-            ? { totalAmount: total, itemCount: groups.length }
-            : { status: 'COMPLETED', completedAt: new Date() },
-        });
-      }, { isolationLevel: 'Serializable' });
+          return tx.settlementBatch.update({
+            where: { id: batch.id },
+            data: groups.length
+              ? { totalAmount: total, itemCount: groups.length }
+              : { status: 'COMPLETED', completedAt: new Date() },
+          });
+        },
+        { isolationLevel: 'Serializable' },
+      );
     } catch (error) {
-      const raced = await this.prisma.settlementBatch.findUnique({ where: { runKey } });
+      const raced = await this.prisma.settlementBatch.findUnique({
+        where: { runKey },
+      });
       if (raced) return raced;
       throw error;
     }
@@ -274,7 +387,9 @@ export class SettlementsService {
     for (const booking of bookings) {
       const isHotelyar = booking.provider === 'hy';
       const iban = this.validIban(
-        process.env[isHotelyar ? 'TOMAN_HOTELYAR_IBAN' : 'TOMAN_EGHAMAT24_IBAN'],
+        process.env[
+          isHotelyar ? 'TOMAN_HOTELYAR_IBAN' : 'TOMAN_EGHAMAT24_IBAN'
+        ],
       );
       if (!iban) continue;
       const type = isHotelyar ? 'HOTELYAR' : 'EGHAMAT24';
@@ -282,8 +397,10 @@ export class SettlementsService {
       const group: Group = map.get(key) ?? {
         type,
         key: booking.provider,
-        name: process.env[isHotelyar ? 'TOMAN_HOTELYAR_NAME' : 'TOMAN_EGHAMAT24_NAME'] ||
-          (isHotelyar ? 'هتل‌یار' : 'اقامت۲۴'),
+        name:
+          process.env[
+            isHotelyar ? 'TOMAN_HOTELYAR_NAME' : 'TOMAN_EGHAMAT24_NAME'
+          ] || (isHotelyar ? 'هتل‌یار' : 'اقامت۲۴'),
         iban,
         amount: 0n,
         paymentIds: [],
@@ -298,7 +415,8 @@ export class SettlementsService {
 
   private async submitBatch(batchId: string) {
     const batch = await this.prisma.settlementBatch.findUniqueOrThrow({
-      where: { id: batchId }, include: { items: true },
+      where: { id: batchId },
+      include: { items: true },
     });
     try {
       let tomanBatchUuid = batch.tomanBatchUuid;
@@ -309,17 +427,24 @@ export class SettlementsService {
         );
         tomanBatchUuid = created.uuid;
         await this.prisma.settlementBatch.update({
-          where: { id: batchId }, data: { tomanBatchUuid, error: null },
+          where: { id: batchId },
+          data: { tomanBatchUuid, error: null },
         });
       }
       const remoteItems = await this.toman.listBatchItems(tomanBatchUuid);
-      const remoteByTracker = new Map(remoteItems.map((item) => [item.tracker_id, item]));
+      const remoteByTracker = new Map(
+        remoteItems.map((item) => [item.tracker_id, item]),
+      );
       for (const item of batch.items.filter((row) => !row.tomanItemUuid)) {
         const remote = remoteByTracker.get(item.trackerId);
         if (remote?.uuid) {
           await this.prisma.settlementItem.update({
             where: { id: item.id },
-            data: { tomanItemUuid: remote.uuid, status: 'SUBMITTED', submittedAt: new Date() },
+            data: {
+              tomanItemUuid: remote.uuid,
+              status: 'SUBMITTED',
+              submittedAt: new Date(),
+            },
           });
         }
       }
@@ -338,10 +463,15 @@ export class SettlementsService {
         const added = await this.toman.addItems(tomanBatchUuid, inputs);
         for (const item of chunk) {
           const remote = added.find((row) => row.tracker_id === item.trackerId);
-          if (!remote?.uuid) throw new Error(`Toman did not return item ${item.trackerId}`);
+          if (!remote?.uuid)
+            throw new Error(`Toman did not return item ${item.trackerId}`);
           await this.prisma.settlementItem.update({
             where: { id: item.id },
-            data: { tomanItemUuid: remote.uuid, status: 'SUBMITTED', submittedAt: new Date() },
+            data: {
+              tomanItemUuid: remote.uuid,
+              status: 'SUBMITTED',
+              submittedAt: new Date(),
+            },
           });
         }
       }
@@ -352,22 +482,31 @@ export class SettlementsService {
       });
     } catch (error) {
       await this.prisma.settlementBatch.update({
-        where: { id: batchId }, data: { status: 'FAILED', error: this.message(error) },
+        where: { id: batchId },
+        data: { status: 'FAILED', error: this.message(error) },
       });
       throw error;
     }
   }
 
   private async refreshBatchStatus(batchId: string) {
-    const items = await this.prisma.settlementItem.findMany({ where: { batchId } });
-    const succeeded = items.filter((item) => item.status === 'SUCCEEDED').length;
+    const items = await this.prisma.settlementItem.findMany({
+      where: { batchId },
+    });
+    const succeeded = items.filter(
+      (item) => item.status === 'SUCCEEDED',
+    ).length;
     const failed = items.filter((item) => item.status === 'FAILED').length;
     const complete = succeeded + failed === items.length;
     await this.prisma.settlementBatch.update({
       where: { id: batchId },
       data: {
         status: complete
-          ? failed === 0 ? 'COMPLETED' : succeeded === 0 ? 'FAILED' : 'PARTIAL_FAILED'
+          ? failed === 0
+            ? 'COMPLETED'
+            : succeeded === 0
+              ? 'FAILED'
+              : 'PARTIAL_FAILED'
           : 'PROCESSING',
         completedAt: complete ? new Date() : null,
       },
@@ -393,20 +532,35 @@ export class SettlementsService {
 
   private tehranDateKey() {
     const parts = new Intl.DateTimeFormat('en-US', {
-      timeZone: IRAN_TIME_ZONE, year: 'numeric', month: '2-digit', day: '2-digit',
+      timeZone: IRAN_TIME_ZONE,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
     }).formatToParts();
     const value = (type: Intl.DateTimeFormatPartTypes) =>
       parts.find((part) => part.type === type)?.value;
     return `${value('year')}-${value('month')}-${value('day')}`;
   }
 
+  private tehranWeekday(): number {
+    const label = new Intl.DateTimeFormat('en-US', {
+      timeZone: IRAN_TIME_ZONE,
+      weekday: 'short',
+    }).format(new Date());
+    return ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].indexOf(label);
+  }
+
   private serialize<T>(value: T): T {
-    return JSON.parse(JSON.stringify(value, (_key, item) =>
-      typeof item === 'bigint' ? Number(item) : item,
-    )) as T;
+    return JSON.parse(
+      JSON.stringify(value, (_key, item) =>
+        typeof item === 'bigint' ? Number(item) : item,
+      ),
+    ) as T;
   }
 
   private message(error: unknown) {
-    return error instanceof Error ? error.message.slice(0, 2_000) : String(error).slice(0, 2_000);
+    return error instanceof Error
+      ? error.message.slice(0, 2_000)
+      : String(error).slice(0, 2_000);
   }
 }

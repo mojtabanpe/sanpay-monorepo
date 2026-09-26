@@ -1,11 +1,30 @@
 <!-- ظرف اصلی — عرض ماکسیمم ۵۵۰ پیکسل -->
 <div class="mx-auto flex min-h-dvh w-full max-w-[550px] flex-col">
-
   <!-- هدر — لایهٔ کارکردی شناور: متریالِ نیمه‌شفاف (--bar-material) تا محتوا
        زیرش دیده شود، با خط hairline برای لبه. -->
   <header data-slot="app-bar" class="sticky top-0 z-40 border-b">
     <div class="flex h-14 items-center justify-between px-4">
       <div class="flex items-center gap-2.5">
+        <button
+          hlmBtn
+          variant="ghost"
+          size="icon-sm"
+          (click)="back()"
+          aria-label="بازگشت"
+        >
+          <svg
+            class="size-4"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <path d="m9 18 6-6-6-6" />
+          </svg>
+        </button>
         <img
           src="/brand/sanpay-mark.svg"
           alt="صنعت‌پی"
@@ -17,13 +36,26 @@
         />
         <div class="leading-tight">
           <p class="text-sm font-bold">جهان‌فولاد سیرجان</p>
-          <p class="text-muted-foreground text-[0.6875rem]">سامانه رفاهی پرسنل</p>
+          <p class="text-muted-foreground text-[0.6875rem]">
+            سامانه رفاهی پرسنل
+          </p>
         </div>
       </div>
       <div class="flex items-center gap-3">
-        <span class="text-foreground text-xs font-medium">{{ fullName() }}</span>
+        <span class="text-foreground text-xs font-medium"
+          >{{ fullName() }}</span
+        >
         <button hlmBtn variant="ghost" size="sm" (click)="logout()">
-          <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <svg
+            class="size-4"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
             <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
             <polyline points="16 17 21 12 16 7" />
             <line x1="21" x2="9" y1="12" y2="12" />
@@ -43,7 +75,6 @@
        نیمه‌شفاف با فاصله از لبه‌ها، که محتوا زیرش اسکرول می‌شود. -->
   <nav data-slot="tab-bar" aria-label="ناوبری اصلی">
     <div class="flex h-16 items-center">
-
       <!-- خانه -->
       <a
         routerLink="/home"
@@ -53,7 +84,16 @@
         ariaCurrentWhenActive="page"
       >
         <span data-slot="tab-icon">
-          <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <svg
+            class="size-5"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
             <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
             <polyline points="9 22 9 12 15 12 15 22" />
           </svg>
@@ -70,7 +110,16 @@
         ariaCurrentWhenActive="page"
       >
         <span data-slot="tab-icon">
-          <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <svg
+            class="size-5"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
             <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z" />
             <path d="M3 6h18" />
             <path d="M16 10a4 4 0 0 1-8 0" />
@@ -87,7 +136,16 @@
           class="flex size-12 items-center justify-center rounded-full bg-primary text-primary-foreground transition-transform active:scale-[0.96]"
           aria-label="تولید کد خرید"
         >
-          <svg class="size-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <svg
+            class="size-6"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
             <rect width="5" height="5" x="3" y="3" rx="1" />
             <rect width="5" height="5" x="16" y="3" rx="1" />
             <rect width="5" height="5" x="3" y="16" rx="1" />
@@ -113,7 +171,16 @@
         ariaCurrentWhenActive="page"
       >
         <span data-slot="tab-icon">
-          <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <svg
+            class="size-5"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
             <path d="M2 20h20" />
             <path d="M4 20V8l8-5 8 5v12" />
             <path d="M9 20v-6h6v6" />
@@ -131,15 +198,22 @@
         ariaCurrentWhenActive="page"
       >
         <span data-slot="tab-icon">
-          <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <svg
+            class="size-5"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
             <circle cx="12" cy="8" r="4" />
             <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
           </svg>
         </span>
         پروفایل
       </a>
-
     </div>
   </nav>
-
 </div>

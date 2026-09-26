@@ -1,6 +1,7 @@
 import {
   Component,
   ElementRef,
+  HostListener,
   OnDestroy,
   computed,
   effect,
@@ -16,7 +17,10 @@ import { HlmCardImports } from '@sanpay/ui/card';
 import { HlmFieldImports } from '@sanpay/ui/field';
 import { HlmInputImports } from '@sanpay/ui/input';
 import { HlmInputGroupImports } from '@sanpay/ui/input-group';
-import { CheckoutService, parseStoreCode } from '../../core/checkout/checkout.service';
+import {
+  CheckoutService,
+  parseStoreCode,
+} from '../../core/checkout/checkout.service';
 import { QrScanner } from '../../core/checkout/qr-scanner';
 
 type Step = 'scan' | 'amount' | 'done';
@@ -86,6 +90,18 @@ export class PayPage implements OnDestroy {
 
   ngOnDestroy(): void {
     this.stopCamera();
+  }
+
+  @HostListener('document:visibilitychange')
+  protected onVisibilityChange(): void {
+    if (document.hidden) {
+      this.stopCamera();
+      return;
+    }
+    const video = this.videoRef()?.nativeElement;
+    if (this.step() === 'scan' && video && !this.scanner) {
+      void this.startCamera(video);
+    }
   }
 
   // ─── گام ۱: اسکن ──────────────────────────────────────────────────

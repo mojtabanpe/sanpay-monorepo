@@ -79,6 +79,11 @@ const NAV: NavItem[] = [
     icon: 'M3 10h18M6 6h12a3 3 0 0 1 3 3v6a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3V9a3 3 0 0 1 3-3Zm10 8h2',
   },
   {
+    path: '/settlements',
+    label: 'تسویه‌ها',
+    icon: 'M3 6h18M6 10h12M5 14h4m4 0h6M4 3h16a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z',
+  },
+  {
     path: '/bookings',
     label: 'رزرو هتل',
     icon: 'M3 20V8l9-4 9 4v12M3 20h18M9 20v-6h6v6',

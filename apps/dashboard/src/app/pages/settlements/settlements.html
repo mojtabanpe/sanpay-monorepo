@@ -1,0 +1,64 @@
+<div class="flex w-full flex-col gap-5">
+  <header class="flex flex-wrap items-end justify-between gap-3">
+    <div>
+      <h1 class="text-2xl font-bold">تسویه‌ها</h1>
+      <p class="text-muted-foreground text-sm">وضعیت انتقال‌های تومان و تلاش مجدد دستی</p>
+    </div>
+    @if (canWrite()) {
+      <button hlmBtn [disabled]="loading()" (click)="run()">اجرای دستی اقلام جدید</button>
+    }
+  </header>
+
+  @if (error()) {
+    <div hlmAlert variant="destructive"><p hlmAlertDescription>{{ error() }}</p></div>
+  }
+
+  @for (batch of rows(); track batch.id) {
+    <section hlmCard>
+      <div hlmCardHeader>
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h2 hlmCardTitle dir="ltr">{{ batch.runKey }}</h2>
+            <p hlmCardDescription>{{ jalaliTime(batch.createdAt) }} — {{ toman(batch.totalAmount) }}</p>
+          </div>
+          <span hlmBadge [variant]="batch.status === 'FAILED' || batch.status === 'PARTIAL_FAILED' ? 'destructive' : 'secondary'">
+            {{ label(batch.status) }}
+          </span>
+        </div>
+      </div>
+      <div hlmCardContent>
+        <div hlmTableContainer>
+          <table hlmTable class="w-full">
+            <thead hlmTHead><tr hlmTr>
+              <th hlmTh>ذی‌نفع</th><th hlmTh>نوع</th><th hlmTh>مبلغ</th>
+              <th hlmTh>وضعیت</th><th hlmTh>کد پیگیری</th><th hlmTh></th>
+            </tr></thead>
+            <tbody hlmTBody>
+              @for (item of batch.items; track item.id) {
+                <tr hlmTr>
+                  <td hlmTd class="font-medium">{{ item.beneficiaryName }}</td>
+                  <td hlmTd>{{ item.beneficiaryType }}</td>
+                  <td hlmTd>{{ toman(item.amount) }}</td>
+                  <td hlmTd><span hlmBadge [variant]="item.status === 'FAILED' ? 'destructive' : 'secondary'">{{ label(item.status) }}</span></td>
+                  <td hlmTd dir="ltr">{{ item.followUpCode ?? '—' }}</td>
+                  <td hlmTd>
+                    @if (canWrite() && item.status === 'FAILED') {
+                      <button hlmBtn variant="outline" size="sm" [disabled]="loading()" (click)="retry(item.id)">تلاش مجدد</button>
+                    }
+                  </td>
+                </tr>
+                @if (item.error) {
+                  <tr hlmTr><td hlmTd colspan="6" class="text-destructive text-xs">{{ item.error }}</td></tr>
+                }
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  } @empty {
+    <section hlmCard><div hlmCardContent class="text-muted-foreground py-10 text-center">
+      {{ loading() ? 'در حال بارگذاری…' : 'هنوز تسویه‌ای ثبت نشده است.' }}
+    </div></section>
+  }
+</div>

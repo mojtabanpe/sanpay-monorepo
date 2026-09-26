@@ -1,0 +1,68 @@
+<div class="mx-auto flex w-full max-w-xl flex-col gap-5 px-4 py-6">
+  <header>
+    <h1 class="text-xl font-bold">پرداخت با پیامک</h1>
+    <p class="text-muted-foreground text-sm">
+      اطلاعات مشتری و مبلغ را وارد کنید؛ پرداخت فقط با کد تأیید مشتری انجام می‌شود.
+    </p>
+  </header>
+
+  @if (error()) {
+    <div hlmAlert variant="destructive">
+      <p hlmAlertDescription>{{ error() }}</p>
+    </div>
+  }
+
+  @if (step() === 'details') {
+    <section hlmCard>
+      <div hlmCardHeader><h2 hlmCardTitle>مشخصات پرداخت</h2></div>
+      <div hlmCardContent class="flex flex-col gap-4">
+        <hlm-field>
+          <label hlmFieldLabel for="merchant-national-code">کد ملی</label>
+          <input id="merchant-national-code" hlmInput inputmode="numeric" maxlength="10"
+            [value]="nationalCode()" (input)="set('nationalCode', $any($event.target).value)" />
+        </hlm-field>
+        <hlm-field>
+          <label hlmFieldLabel for="merchant-phone">شماره موبایل</label>
+          <input id="merchant-phone" hlmInput inputmode="tel" maxlength="11" dir="ltr"
+            [value]="phone()" (input)="set('phone', $any($event.target).value)" />
+        </hlm-field>
+        <hlm-field>
+          <label hlmFieldLabel for="merchant-amount">مبلغ (تومان)</label>
+          <input id="merchant-amount" hlmInput inputmode="numeric" dir="ltr"
+            [value]="amount()" (input)="set('amount', $any($event.target).value)" />
+        </hlm-field>
+      </div>
+      <div hlmCardFooter>
+        <button hlmBtn class="w-full" [disabled]="busy()" (click)="requestOtp()">
+          @if (busy()) { <hlm-spinner /> }
+          ارسال کد تأیید
+        </button>
+      </div>
+    </section>
+  } @else if (step() === 'otp') {
+    <section hlmCard>
+      <div hlmCardHeader>
+        <h2 hlmCardTitle>تأیید مشتری</h2>
+        <p hlmCardDescription>کد شش‌رقمی پیامک‌شده به مشتری را وارد کنید.</p>
+      </div>
+      <div hlmCardContent>
+        <hlm-field>
+          <label hlmFieldLabel for="merchant-otp">کد تأیید</label>
+          <input id="merchant-otp" hlmInput inputmode="numeric" maxlength="6" dir="ltr"
+            autocomplete="one-time-code" [value]="code()"
+            (input)="set('code', $any($event.target).value)" (keyup.enter)="verify()" />
+        </hlm-field>
+      </div>
+      <div hlmCardFooter class="gap-2">
+        <button hlmBtn class="flex-1" [disabled]="busy()" (click)="verify()">
+          @if (busy()) { <hlm-spinner /> }
+          تأیید و پرداخت
+        </button>
+        <button hlmBtn variant="ghost" [disabled]="busy()" (click)="reset()">انصراف</button>
+      </div>
+    </section>
+  } @else if (receipt(); as paymentReceipt) {
+    <sanpay-receipt-card [receipt]="paymentReceipt" variant="store" />
+    <button hlmBtn variant="outline" (click)="reset()">پرداخت جدید</button>
+  }
+</div>

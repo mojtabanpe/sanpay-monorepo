@@ -29,6 +29,28 @@ import { firstValueFrom } from 'rxjs';
 /** پارامترهای فهرست — کلیدهای خالی حذف می‌شوند */
 export type Query = Record<string, string | number | undefined | null>;
 
+export interface SettlementItemView {
+  id: string;
+  beneficiaryName: string;
+  beneficiaryType: 'STORE' | 'HOTELYAR' | 'EGHAMAT24';
+  amount: number;
+  status: string;
+  followUpCode: string | null;
+  error: string | null;
+  settledAt: string | null;
+  retryOfId: string | null;
+}
+
+export interface SettlementBatchView {
+  id: string;
+  runKey: string;
+  status: string;
+  totalAmount: number;
+  itemCount: number;
+  createdAt: string;
+  items: SettlementItemView[];
+}
+
 @Injectable({ providedIn: 'root' })
 export class AdminApiService {
   private readonly http = inject(HttpClient);
@@ -157,8 +179,39 @@ export class AdminApiService {
     return this.get<Paginated<AdminPaymentRow>>('/api/admin/payments', query);
   }
 
+  async downloadPaymentsExcel(query: Query = {}): Promise<void> {
+    const params = this.params(query);
+    const blob = await firstValueFrom(
+      this.http.get('/api/admin/payments.xlsx', {
+        params,
+        responseType: 'blob',
+      }),
+    );
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = `sanpay-payments-${new Date().toISOString().slice(0, 10)}.xlsx`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+  }
+
   bookings(query: Query = {}) {
     return this.get<Paginated<AdminBookingRow>>('/api/admin/bookings', query);
+  }
+
+  settlements() {
+    return this.get<SettlementBatchView[]>('/api/admin/settlements');
+  }
+
+  runSettlements() {
+    return this.post<SettlementBatchView>('/api/admin/settlements/run', {});
+  }
+
+  retrySettlementItem(id: string) {
+    return this.post<SettlementBatchView>(
+      `/api/admin/settlements/items/${id}/retry`,
+      {},
+    );
   }
 
   // ─── کاربران داشبورد ──────────────────────────────────────────────────
@@ -193,12 +246,18 @@ export class AdminApiService {
 
   // ─── پایه ─────────────────────────────────────────────────────────────
   private get<T>(url: string, query: Query = {}) {
+    return firstValueFrom(
+      this.http.get<T>(url, { params: this.params(query) }),
+    );
+  }
+
+  private params(query: Query): HttpParams {
     let params = new HttpParams();
     for (const [key, value] of Object.entries(query)) {
       if (value === undefined || value === null || value === '') continue;
       params = params.set(key, String(value));
     }
-    return firstValueFrom(this.http.get<T>(url, { params }));
+    return params;
   }
 
   private post<T>(url: string, body: unknown) {

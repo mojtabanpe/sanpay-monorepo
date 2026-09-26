@@ -9,8 +9,10 @@ import {
   Post,
   Query,
   Req,
+  Res,
   UseGuards,
 } from '@nestjs/common';
+import { Response } from 'express';
 import { AdminAuthService } from './admin-auth.service';
 import { AdminCompaniesService } from './admin-companies.service';
 import { AdminEmployeesService } from './admin-employees.service';
@@ -271,6 +273,23 @@ export class AdminReportsController {
   @Get('payments')
   payments(@Query() query: PaymentQueryDto) {
     return this.reports.payments(query);
+  }
+
+  @Get('payments.xlsx')
+  async paymentsExcel(
+    @Query() query: PaymentQueryDto,
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    const content = await this.reports.paymentsExcel(query);
+    response.setHeader(
+      'Content-Type',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    );
+    response.setHeader(
+      'Content-Disposition',
+      `attachment; filename="sanpay-payments-${new Date().toISOString().slice(0, 10)}.xlsx"`,
+    );
+    return content;
   }
 
   @Get('bookings')

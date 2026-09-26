@@ -17,6 +17,9 @@ export interface EmployeeStore {
   category: string | null;
   address: string | null;
   phone: string | null;
+  logoUrl: string | null;
+  latitude: number | null;
+  longitude: number | null;
   /** کیف‌پول‌های کارمند که در این فروشگاه اعتبار دارند */
   wallets: StoreWalletBadge[];
   /** جمع ماندهٔ کیف‌پول‌های بالا (تومان) */
@@ -30,6 +33,11 @@ export interface StoreProfile {
   /** کد کوتاه — محتوای QR صندوق `SANPAY:S:<code>` است */
   code: string;
   category: string | null;
+  phone: string | null;
+  address: string | null;
+  logoUrl: string | null;
+  latitude: number | null;
+  longitude: number | null;
 }
 
 /** جمع فروش در یک بازهٔ زمانی */
@@ -54,4 +62,25 @@ export interface StoreStats {
   month: StoreStatsBucket;
   /** ۷ روز گذشته، شامل روزهای بدون فروش با مقدار صفر */
   series: StoreStatsPoint[];
+}
+
+export type SettlementDisplayStatus =
+  'PENDING' | 'PROCESSING' | 'SUCCEEDED' | 'FAILED';
+
+export interface MerchantPaymentIntentResult {
+  intentId: string;
+  expiresInSeconds: number;
+  retryAfterSeconds: number;
+}
+
+export interface CreateMerchantPaymentIntentInput {
+  nationalCode: string;
+  phone: string;
+  amount: number;
+  idempotencyKey?: string;
+}
+
+export interface VerifyMerchantPaymentIntentInput {
+  intentId: string;
+  code: string;
 }

@@ -37,11 +37,12 @@ enum OrganizationalRank {
 model Employee {
   id                 String             @id @default(uuid())
   /// کد ملی — شناسهٔ ورود به سامانه
-  nationalCode       String             @unique
-  personnelCode      String             @unique
+  nationalCode       String
+  personnelCode      String
   firstName          String
   lastName           String
-  phone              String?
+  /// هر استخدام موبایل ورود مستقل دارد؛ تکرار موبایل بین دو شرکت مجاز نیست.
+  phone              String?            @unique
   companyId          String
   organizationalRank OrganizationalRank
   /// تا پیش از اولین ورود با OTP خالی است
@@ -57,9 +58,13 @@ model Employee {
   payments      Payment[]
   hotelBookings HotelBooking[]
   flightBookings FlightBooking[]
+  merchantPaymentIntents MerchantPaymentIntent[]
   otp           EmployeeOtp?
 
+  @@unique([companyId, nationalCode])
+  @@unique([companyId, personnelCode])
   @@index([companyId])
+  @@index([nationalCode])
 }
 
 /// آخرین کد ورود کارمند؛ کد خام هرگز ذخیره نمی‌شود.
@@ -148,6 +153,9 @@ model Store {
   category            String?
   phone               String?
   address             String?
+  logoUrl             String?
+  latitude            Decimal? @db.Decimal(9, 6)
+  longitude           Decimal? @db.Decimal(9, 6)
   /// شبای مقصد تسویهٔ شبانه در تومان
   settlementIban      String?
   /// نام صاحب حساب برای ثبت در آیتم انتقال
@@ -163,6 +171,7 @@ model Store {
   transactions      Transaction[]
   payments          Payment[]
   settlementItems   SettlementItem[]
+  merchantPaymentIntents MerchantPaymentIntent[]
 }
 
 /// رابطهٔ چند-به-چند: هر کیف پول در کدام فروشگاه‌ها قابل استفاده است
@@ -216,16 +225,48 @@ model Payment {
   amount           BigInt
   settlementItemId String?
   settledAt        DateTime?
+  merchantIntentId String?   @unique
   createdAt        DateTime  @default(now())
 
   employee       Employee        @relation(fields: [employeeId], references: [id])
   store          Store           @relation(fields: [storeId], references: [id])
   transactions   Transaction[]
   settlementItem SettlementItem? @relation(fields: [settlementItemId], references: [id], onDelete: Restrict)
+  merchantIntent MerchantPaymentIntent? @relation(fields: [merchantIntentId], references: [id], onDelete: Restrict)
 
   @@index([storeId, createdAt])
   @@index([employeeId, createdAt])
   @@index([settlementItemId])
+}
+
+enum MerchantPaymentIntentStatus {
+  PENDING
+  USED
+  EXPIRED
+  CANCELED
+}
+
+/// پرداختی که فروشگاه با کد ملی، موبایل و مبلغ آغاز می‌کند و مشتری با OTP تأیید می‌کند.
+model MerchantPaymentIntent {
+  id             String                      @id @default(uuid())
+  storeId        String
+  employeeId     String
+  amount         BigInt
+  codeHash       String
+  attempts       Int                         @default(0)
+  status         MerchantPaymentIntentStatus @default(PENDING)
+  expiresAt      DateTime
+  sentAt         DateTime                    @default(now())
+  idempotencyKey String?                     @unique
+  createdAt      DateTime                    @default(now())
+  updatedAt      DateTime                    @updatedAt
+
+  store    Store    @relation(fields: [storeId], references: [id], onDelete: Restrict)
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Restrict)
+  payment  Payment?
+
+  @@index([storeId, createdAt])
+  @@index([employeeId, status, expiresAt])
 }
 
 // ─── رزرو هتل (گردشگری) ───────────────────────────────────────────────────────
@@ -389,14 +430,18 @@ model SettlementItem {
   settledAt         DateTime?
   createdAt         DateTime                  @default(now())
   updatedAt         DateTime                  @updatedAt
+  retryOfId         String?
 
   batch         SettlementBatch @relation(fields: [batchId], references: [id], onDelete: Restrict)
   store         Store?          @relation(fields: [storeId], references: [id], onDelete: Restrict)
   payments      Payment[]
   hotelBookings HotelBooking[]
+  retryOf       SettlementItem?  @relation("SettlementRetries", fields: [retryOfId], references: [id], onDelete: Restrict)
+  retries       SettlementItem[] @relation("SettlementRetries")
 
   @@unique([batchId, beneficiaryType, beneficiaryKey])
   @@index([batchId, status])
+  @@index([retryOfId])
 }
 
 /// لاگ خام رویدادهای webhook هتل‌یار.

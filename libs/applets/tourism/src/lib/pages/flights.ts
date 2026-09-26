@@ -169,9 +169,9 @@ export class FlightsPage {
   protected roundTrip = false;
   protected allocationId = '';
   protected readonly minDate = isoToJalali(today());
-  protected readonly minGregorianBirthdate = new Date(1900, 0, 1);
-  protected readonly defaultGregorianBirthdate = new Date(2000, 0, 1);
-  protected readonly maxGregorianBirthdate = new Date();
+  protected readonly minJalaliBirthdate = isoToJalali('1900-01-01');
+  protected readonly defaultJalaliBirthdate = isoToJalali('2000-01-01');
+  protected readonly maxJalaliBirthdate = isoToJalali(today());
   protected readonly minPassportExpiry = new Date();
   protected readonly departureDate = computed(() =>
     isoToJalali(this.search().departureDate),
@@ -337,6 +337,15 @@ export class FlightsPage {
     value: Date | null,
   ): void {
     this.updatePassenger(index, key, value ? isoDate(value) : '');
+  }
+  protected jalaliDateValue(value: string | undefined): JalaliDate | undefined {
+    return value ? isoToJalali(value) : undefined;
+  }
+  protected updateJalaliBirthdate(
+    index: number,
+    value: JalaliDate | null,
+  ): void {
+    this.updatePassenger(index, 'birthdate', value ? jalaliToIso(value) : '');
   }
   protected selectPrevious(index: number, traveler: PreviousTraveler): void {
     this.fillPassenger(index, traveler, traveler.nationalCode);

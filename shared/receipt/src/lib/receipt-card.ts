@@ -1,4 +1,9 @@
-import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  input,
+} from '@angular/core';
 import { Receipt } from '@sanpay/models';
 
 /**
@@ -32,7 +37,9 @@ export class ReceiptCard {
     second: '2-digit',
   });
 
-  protected readonly paidAt = computed(() => new Date(this.receipt().createdAt));
+  protected readonly paidAt = computed(
+    () => new Date(this.receipt().createdAt),
+  );
   /** وقتی مبلغ از یک کیف پول کسر شده، تفکیک اضافه است */
   protected readonly isSplit = computed(() => this.receipt().lines.length > 1);
 
@@ -54,5 +61,16 @@ export class ReceiptCard {
     return receiptNo.length === 8
       ? `${receiptNo.slice(0, 4)} ${receiptNo.slice(4)}`
       : receiptNo;
+  }
+
+  protected settlementLabel(): string {
+    const status = this.receipt().settlement?.status;
+    return status === 'SUCCEEDED'
+      ? 'واریزشده'
+      : status === 'FAILED'
+        ? 'ناموفق'
+        : status === 'PROCESSING'
+          ? 'در حال پردازش'
+          : 'در انتظار ارسال';
   }
 }

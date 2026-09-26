@@ -33,11 +33,21 @@ export class AuthService {
   ) {}
 
   async login(nationalCode: string, password: string) {
-    const employee = await this.prisma.employee.findUnique({
-      where: { nationalCode },
+    const candidates = await this.prisma.employee.findMany({
+      where: { nationalCode, isActive: true, company: { isActive: true } },
       include: { company: true },
     });
-    if (!employee || !employee.isActive || !employee.company.isActive) {
+    const matches = [];
+    for (const candidate of candidates) {
+      if (
+        candidate.passwordHash &&
+        (await bcrypt.compare(password, candidate.passwordHash))
+      ) {
+        matches.push(candidate);
+      }
+    }
+    const employee = matches.length === 1 ? matches[0] : null;
+    if (!employee) {
       throw new UnauthorizedException('کد ملی یا رمز عبور نادرست است');
     }
 
@@ -201,6 +211,15 @@ export class AuthService {
 
   /** به‌روزرسانی اطلاعات تماس — کارمند فقط شمارهٔ موبایل خودش را می‌تواند عوض کند */
   async updatePhone(employeeId: string, phone: string | undefined) {
+    if (phone) {
+      const duplicate = await this.prisma.employee.findFirst({
+        where: { phone, id: { not: employeeId } },
+        select: { id: true },
+      });
+      if (duplicate) {
+        throw new BadRequestException('این شماره موبایل قبلاً ثبت شده است');
+      }
+    }
     const employee = await this.prisma.employee.update({
       where: { id: employeeId },
       data: { phone: phone ? phone : null },

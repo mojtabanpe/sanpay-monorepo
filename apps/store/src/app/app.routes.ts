@@ -22,6 +22,13 @@ export const appRoutes: Route[] = [
         path: 'qr',
         loadComponent: () => import('./pages/qr/qr').then((m) => m.QrPage),
       },
+      {
+        path: 'merchant-payment',
+        loadComponent: () =>
+          import('./pages/merchant-payment/merchant-payment').then(
+            (m) => m.MerchantPayment,
+          ),
+      },
       // فرزندِ پوسته، نه مسیر هم‌سطح: اگر بیرون بماند، مسیر '' اول با پوسته
       // تطبیق داده می‌شود، هیچ فرزندی '' را نمی‌گیرد و تطبیق شکست می‌خورد.
       { path: '', redirectTo: 'payments', pathMatch: 'full' },

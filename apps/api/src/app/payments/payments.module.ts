@@ -7,6 +7,6 @@ import { PaymentsService } from './payments.service';
 @Module({
   controllers: [PaymentsController],
   providers: [PaymentsService, PaymentEventsService, JwtAuthGuard],
-  exports: [PaymentEventsService],
+  exports: [PaymentEventsService, PaymentsService],
 })
 export class PaymentsModule {}

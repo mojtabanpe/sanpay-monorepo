@@ -161,6 +161,9 @@ export interface AdminStoreRow {
   category: string | null;
   phone: string | null;
   address: string | null;
+  logoUrl: string | null;
+  latitude: number | null;
+  longitude: number | null;
   settlementIban: string | null;
   settlementOwnerName: string | null;
   username: string;
@@ -178,8 +181,11 @@ export interface CreateStoreInput {
   /** اگر خالی باشد سرور یک کد یکتا می‌سازد */
   code?: string;
   category?: string;
-  phone?: string;
-  address?: string;
+  phone: string;
+  address: string;
+  logoUrl?: string;
+  latitude?: number;
+  longitude?: number;
   /** شبای ۲۶ نویسه‌ای مقصد تسویه (IR + 24 رقم) */
   settlementIban: string;
   settlementOwnerName?: string;
@@ -286,6 +292,11 @@ export interface AdminPaymentRow {
   employee: { id: string; name: string; personnelCode: string };
   store: { id: string; name: string; code: string };
   lines: Array<{ walletName: string; icon: string | null; amount: number }>;
+  settlement: {
+    status: 'PENDING' | 'PROCESSING' | 'SUCCEEDED' | 'FAILED';
+    settledAt: string | null;
+    followUpCode: string | null;
+  };
 }
 
 export interface AdminBookingRow {

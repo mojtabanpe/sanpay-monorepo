@@ -6,6 +6,7 @@ import {
   StoreStatsPoint,
 } from '@sanpay/models';
 import { PrismaService } from '../prisma/prisma.service';
+import { settlementStatus } from '../admin/payment-row';
 
 @Injectable()
 export class StorePaymentsService {
@@ -21,6 +22,7 @@ export class StorePaymentsService {
         transactions: {
           include: { allocation: { include: { definition: true } } },
         },
+        settlementItem: true,
       },
       orderBy: { createdAt: 'desc' },
       take,
@@ -40,6 +42,12 @@ export class StorePaymentsService {
         icon: transaction.allocation.definition.icon,
         amount: Number(transaction.amount),
       })),
+      settlement: {
+        status: settlementStatus(payment.settlementItem?.status),
+        settledAt: payment.settledAt?.toISOString() ?? null,
+        followUpCode: payment.settlementItem?.followUpCode ?? null,
+        receiptLink: payment.settlementItem?.receiptLink ?? null,
+      },
     }));
   }
 
