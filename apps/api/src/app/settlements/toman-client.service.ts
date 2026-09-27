@@ -31,15 +31,24 @@ export interface TomanTransferResult {
 
 type TokenResponse = {
   access_token: string;
-  refresh_token?: string;
   expires_in?: number;
 };
+
+type CachedToken = {
+  access: string;
+  expiresAt: number;
+};
+
+const BATCH_CREATE_SCOPE = 'digital_banking.batch_transfer.create';
+const BATCH_READ_SCOPE = 'digital_banking.batch_transfer.read';
+const TRANSFER_READ_SCOPE = 'digital_banking.transfer.read';
 
 /** کلاینت حداقلی Corporate Banking؛ تنها مرز سامانه با قرارداد HTTP تومان. */
 @Injectable()
 export class TomanClientService {
   private readonly logger = new Logger(TomanClientService.name);
-  private token?: { access: string; refresh?: string; expiresAt: number };
+  private readonly tokens = new Map<string, CachedToken>();
+  private readonly tokenRequests = new Map<string, Promise<string>>();
 
   isLive(): boolean {
     return process.env.TOMAN_MODE?.toLowerCase() === 'live';
@@ -47,13 +56,17 @@ export class TomanClientService {
 
   async createBatch(maxAmountRial: number, maxTransferCount: number) {
     if (!this.isLive()) return { uuid: randomUUID(), status: 1 };
-    return this.request<{ uuid: string; status: number }>('/batch-transfer/', {
-      method: 'POST',
-      body: JSON.stringify({
-        max_amount: maxAmountRial,
-        max_transfer_count: maxTransferCount,
-      }),
-    });
+    return this.request<{ uuid: string; status: number }>(
+      '/batch-transfer/',
+      BATCH_CREATE_SCOPE,
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          max_amount: maxAmountRial,
+          max_transfer_count: maxTransferCount,
+        }),
+      },
+    );
   }
 
   async addItems(batchUuid: string, items: TomanTransferItemInput[]) {
@@ -61,7 +74,7 @@ export class TomanClientService {
       return items.map((item) => ({ ...item, uuid: randomUUID() }));
     const response = await this.request<
       TomanBatchItemResult[] | { items: TomanBatchItemResult[] }
-    >(`/batch-transfer/${batchUuid}/add-items/`, {
+    >(`/batch-transfer/${batchUuid}/add-items/`, BATCH_CREATE_SCOPE, {
       method: 'POST',
       body: JSON.stringify({ items }),
     });
@@ -72,6 +85,7 @@ export class TomanClientService {
     if (!this.isLive()) return { message: 'mock committed successfully' };
     return this.request<{ message: string }>(
       `/batch-transfer/${batchUuid}/commit/`,
+      BATCH_CREATE_SCOPE,
       { method: 'POST' },
     );
   }
@@ -86,7 +100,10 @@ export class TomanClientService {
         count: number;
         next: string | null;
         results: TomanBatchItemResult[];
-      }>(`/batch-transfer/${batchUuid}/items/?page_size=1000&page=${page}`);
+      }>(
+        `/batch-transfer/${batchUuid}/items/?page_size=1000&page=${page}`,
+        BATCH_READ_SCOPE,
+      );
       all.push(...response.results);
       if (!response.next) return all;
       page += 1;
@@ -97,6 +114,7 @@ export class TomanClientService {
     if (!this.isLive()) return { uuid: batchUuid, status: 4 };
     return this.request<{ uuid: string; status: number }>(
       `/batch-transfer/${batchUuid}/`,
+      BATCH_READ_SCOPE,
     );
   }
 
@@ -110,15 +128,17 @@ export class TomanClientService {
     }
     return this.request<TomanTransferResult>(
       `/transfer/tracker/${encodeURIComponent(trackerId)}/`,
+      TRANSFER_READ_SCOPE,
     );
   }
 
   private async request<T>(
     path: string,
+    scope: string,
     init: RequestInit = {},
     retry = true,
   ): Promise<T> {
-    const token = await this.accessToken();
+    const token = await this.accessToken(scope);
     const response = await this.fetchWithTimeout(`${this.apiUrl()}${path}`, {
       ...init,
       headers: {
@@ -127,51 +147,51 @@ export class TomanClientService {
         ...init.headers,
       },
     });
-    if (response.status === 401 && retry) {
-      this.token = undefined;
-      return this.request<T>(path, init, false);
+    if ((response.status === 401 || response.status === 403) && retry) {
+      await response.body?.cancel();
+      this.tokens.delete(scope);
+      return this.request<T>(path, scope, init, false);
     }
     if (!response.ok) throw await this.httpError(response, path);
     return (await response.json()) as T;
   }
 
-  private async accessToken(): Promise<string> {
-    if (this.token && this.token.expiresAt > Date.now() + 60_000)
-      return this.token.access;
+  private async accessToken(scope: string): Promise<string> {
+    const cached = this.tokens.get(scope);
+    if (cached && cached.expiresAt > Date.now() + 60_000) return cached.access;
+
+    const pending = this.tokenRequests.get(scope);
+    if (pending) return pending;
+
+    const request = this.fetchAccessToken(scope).finally(() => {
+      if (this.tokenRequests.get(scope) === request)
+        this.tokenRequests.delete(scope);
+    });
+    this.tokenRequests.set(scope, request);
+    return request;
+  }
+
+  private async fetchAccessToken(scope: string): Promise<string> {
     const credentials = this.credentials();
-    const refreshing = Boolean(this.token?.refresh);
-    const body = new URLSearchParams(
-      refreshing
-        ? {
-            grant_type: 'refresh_token',
-            refresh_token: this.token?.refresh ?? '',
-            client_id: credentials.clientId,
-            client_secret: credentials.clientSecret,
-          }
-        : {
-            grant_type: 'password',
-            username: credentials.username,
-            password: credentials.password,
-            client_id: credentials.clientId,
-            client_secret: credentials.clientSecret,
-          },
-    );
+    const body = new URLSearchParams({
+      grant_type: 'password',
+      username: credentials.username,
+      password: credentials.password,
+      client_id: credentials.clientId,
+      client_secret: credentials.clientSecret,
+      scope,
+    });
     const response = await this.fetchWithTimeout(this.authUrl(), {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body,
     });
-    if (!response.ok && refreshing) {
-      this.token = undefined;
-      return this.accessToken();
-    }
     if (!response.ok) throw await this.httpError(response, 'oauth2/token');
     const data = (await response.json()) as TokenResponse;
-    this.token = {
+    this.tokens.set(scope, {
       access: data.access_token,
-      refresh: data.refresh_token,
-      expiresAt: Date.now() + (data.expires_in ?? 86_400) * 1000,
-    };
+      expiresAt: Date.now() + (data.expires_in ?? 86_400) * 1_000,
+    });
     return data.access_token;
   }
 
