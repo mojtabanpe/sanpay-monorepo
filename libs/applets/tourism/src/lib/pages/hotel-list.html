@@ -164,8 +164,10 @@
 
 <ng-template #cards let-chunk>
   <div class="grid grid-cols-2 gap-3 sm:gap-4">
-    @for (hotel of chunk; track hotel.id) {
+    @for (hotel of chunk; track hotel.id; let i = $index) {
       <button
+        animate.enter="sanpay-rise"
+        [style.--i]="i"
         type="button"
         class="h-full w-full text-right transition-transform active:scale-[0.96]"
         (click)="openHotel(hotel)"

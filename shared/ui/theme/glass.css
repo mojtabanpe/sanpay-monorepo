@@ -466,9 +466,16 @@ button[data-slot='button'].bg-primary:hover:not(:disabled) {
 }
 
 /* Press feedback for the rest — spartan's own `active:translate-y-px`
-   handles the movement, so nothing here may set `transform`. */
+   handles the movement, so nothing here may set `transform`. The shrink uses
+   the independent `scale` property, which composes with spartan's transform
+   instead of replacing it. */
 [data-slot='button']:not([data-size]):active:not(:disabled) {
   transition-duration: 60ms;
+  scale: 0.97;
+}
+
+[data-slot='button'] {
+  transition-property: background-color, box-shadow, transform, scale;
 }
 
 /*
@@ -758,6 +765,82 @@ button[data-slot='button'].bg-primary:hover:not(:disabled) {
   }
 }
 
+/*
+ * ── Motion ───────────────────────────────────────────────────────────
+ * حرکت اینجا فقط برای جهت‌یابی و بازخورد است، نه تزئین: چیزی که تازه
+ * رسیده از پایین بالا می‌آید، چیزی که لمس شده کمی فرو می‌رود. فقط
+ * `opacity` و `transform`/`scale` متحرک می‌شوند تا روی GPU کامپوزیت شوند و
+ * گوشی‌های ضعیف هم روان بمانند. همه در بلوک reduced-motion پایین خاموش‌اند.
+ */
+:root {
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  /* فنرِ کوچک با کمی پرش — برای لحظه‌های «موفق» */
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --dur-fast: 160ms;
+  --dur-base: 280ms;
+  --dur-slow: 480ms;
+}
+
+/*
+ * ورودِ پله‌ای: با `animate.enter="sanpay-rise"` انگولار کلاس را هنگام درج
+ * می‌گذارد و بعد از پایان انیمیشن برمی‌دارد. `--i` (شمارهٔ ردیف) تأخیر را
+ * پله‌ای می‌کند؛ سقف ۸ دارد تا ردیف بیستم ثانیه‌ها منتظر نماند.
+ */
+.sanpay-rise {
+  animation: sanpay-rise var(--dur-slow) var(--ease-out) both;
+  animation-delay: calc(min(var(--i, 0), 8) * 40ms);
+}
+
+@keyframes sanpay-rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+
+.sanpay-fade {
+  animation: sanpay-fade var(--dur-base) var(--ease-out) both;
+}
+
+@keyframes sanpay-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+/* نوار پیشرفت از صفر پر می‌شود. RTL است، پس از لبهٔ راست. */
+.sanpay-fill {
+  transform-origin: right;
+  animation: sanpay-fill 900ms var(--ease-out) 200ms both;
+}
+
+@keyframes sanpay-fill {
+  from {
+    transform: scaleX(0);
+  }
+}
+
+/*
+ * ── جابه‌جایی بین صفحه‌ها (View Transitions) ─────────────────────────
+ * روتر با `withViewTransitions()` هر ناوبری را در `startViewTransition`
+ * می‌پیچد. صفحهٔ قدیم محو می‌شود و صفحهٔ جدید کمی از پایین بالا می‌آید.
+ * نوار بالا و نوار زبانه‌ای نام جدا دارند، پس ثابت می‌مانند و با محتوا
+ * محو نمی‌شوند. مرورگری که این API را ندارد بی‌انیمیشن جابه‌جا می‌شود.
+ */
+::view-transition-old(root) {
+  animation: sanpay-fade-out 140ms ease-in both;
+}
+
+::view-transition-new(root) {
+  animation: sanpay-rise var(--dur-base) var(--ease-out) both;
+}
+
+@keyframes sanpay-fade-out {
+  to {
+    opacity: 0;
+  }
+}
+
 /* ── Skeleton ──────────────────────────────────────────────────────── */
 /*
  * شعاع اینجا ست می‌شود و نه سر فراخوانی. `hlm-skeleton` خودش `rounded-md`
@@ -840,8 +923,17 @@ button[data-slot='button'].bg-primary:hover:not(:disabled) {
   [data-slot='combobox-content'],
   [data-slot='dropdown-menu'],
   [data-slot='dialog-content'],
-  [data-slot='skeleton']::after {
+  [data-slot='skeleton']::after,
+  .sanpay-rise,
+  .sanpay-fade,
+  .sanpay-fill,
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
     animation: none;
+  }
+
+  [data-slot='button']:not([data-size]):active:not(:disabled) {
+    scale: none;
   }
 
   [data-slot='progress-indicator'] {

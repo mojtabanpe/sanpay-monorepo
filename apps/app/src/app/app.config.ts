@@ -3,7 +3,11 @@ import {
   ApplicationConfig,
   provideBrowserGlobalErrorListeners,
 } from '@angular/core';
-import { provideRouter, withInMemoryScrolling } from '@angular/router';
+import {
+  provideRouter,
+  withInMemoryScrolling,
+  withViewTransitions,
+} from '@angular/router';
 import { appRoutes } from './app.routes';
 import { authInterceptor } from '@sanpay/applets/auth';
 import { providePersianDates } from '@sanpay/dates';
@@ -20,6 +24,9 @@ export const appConfig: ApplicationConfig = {
         scrollPositionRestoration: 'enabled',
         anchorScrolling: 'enabled',
       }),
+      // جابه‌جایی نرم بین صفحه‌ها؛ انیمیشنش در glass.css است. اولین بارگذاری
+      // بی‌انیمیشن است تا اسپلش مستقیم به صفحه برسد.
+      withViewTransitions({ skipInitialTransition: true }),
     ),
     provideHttpClient(withInterceptors([authInterceptor])),
     // تقویم شمسی برای هر hlm-calendar / hlm-date-picker در اپ و اپلت‌ها

@@ -121,8 +121,8 @@
     {{ count(visibleStores().length) }} فروشگاه قابل استفاده
   </p>
 
-  @for (store of visibleStores(); track store.id) {
-  <section hlmCard>
+  @for (store of visibleStores(); track store.id; let i = $index) {
+  <section hlmCard animate.enter="sanpay-rise" [style.--i]="i">
     <!-- بدون py: خودِ hlm-card با py-(--card-spacing) پدینگ عمودی دارد و
              هر py اینجا روی آن جمع می‌شود (۶۴ پیکسل فاصله برای ۱۲۹ پیکسل محتوا). -->
     <div hlmCardContent class="flex flex-col gap-2.5">

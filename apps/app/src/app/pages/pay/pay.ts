@@ -66,9 +66,34 @@ export class PayPage implements OnDestroy {
   );
   protected readonly canPay = computed(() => this.total() > 0 && !this.busy());
 
+  /**
+   * ساعتِ «زنده» روی صفحهٔ رسید. اسکرین‌شاتِ یک رسید قدیمی نه می‌تپد و نه
+   * ثانیه‌شمارش جلو می‌رود، پس صندوق‌دار از روی گوشی می‌بیند که رسید تازه
+   * است. زمان از ساعت خود گوشی لحظهٔ رسیدن پاسخ گرفته می‌شود، نه از
+   * `createdAt` سرور، تا اختلاف ساعت دستگاه عدد منفی یا عجیب نسازد.
+   */
+  private readonly receivedAt = signal(0);
+  private readonly now = signal(Date.now());
+  protected readonly elapsedLabel = computed(() => {
+    const seconds = Math.max(
+      0,
+      Math.floor((this.now() - this.receivedAt()) / 1000),
+    );
+    if (seconds < 5) return 'همین حالا';
+    if (seconds < 60) return `${this.count(seconds)} ثانیه پیش`;
+    return `${this.count(Math.floor(seconds / 60))} دقیقه پیش`;
+  });
+
   private readonly faNumber = new Intl.NumberFormat('fa-IR');
 
   constructor() {
+    effect((onCleanup) => {
+      if (this.step() !== 'done') return;
+      this.now.set(Date.now());
+      const timer = setInterval(() => this.now.set(Date.now()), 1000);
+      onCleanup(() => clearInterval(timer));
+    });
+
     // ورود از فهرست فروشگاه‌ها (`/qr?store=CODE`) — اسکن لازم نیست
     const preselected = parseStoreCode(
       this.route.snapshot.queryParamMap.get('store') ?? '',
@@ -217,7 +242,10 @@ export class PayPage implements OnDestroy {
         lines,
       });
       this.receipt.set(receipt);
+      this.receivedAt.set(Date.now());
       this.step.set('done');
+      // لرزش کوتاهِ تأیید — فقط اندروید؛ iOS این API را ندارد
+      navigator.vibrate?.(30);
     } catch (caught) {
       this.error.set(messageOf(caught, 'ثبت پرداخت ممکن نشد'));
     } finally {

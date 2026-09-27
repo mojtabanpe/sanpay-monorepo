@@ -39,8 +39,8 @@
       جمع این فهرست: {{ toman(total()) }}
     </p>
 
-    @for (payment of payments(); track payment.id) {
-      <section hlmCard>
+    @for (payment of payments(); track payment.id; let i = $index) {
+      <section hlmCard animate.enter="sanpay-rise" [style.--i]="i">
         <div hlmCardContent class="flex flex-col gap-2 pt-6">
 
           <div class="flex items-start justify-between gap-3">

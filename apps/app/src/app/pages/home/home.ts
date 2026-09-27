@@ -12,6 +12,7 @@ import { HlmCardImports } from '@sanpay/ui/card';
 import { HlmSkeletonImports } from '@sanpay/ui/skeleton';
 import { firstValueFrom } from 'rxjs';
 import { HomeService } from './home.service';
+import { CountUp } from '../../core/motion/count-up';
 
 type WalletSection = 'stores' | 'history';
 
@@ -25,7 +26,7 @@ interface WalletPurchase {
 
 @Component({
   selector: 'app-home',
-  imports: [RouterLink, HlmCardImports, HlmSkeletonImports],
+  imports: [RouterLink, HlmCardImports, HlmSkeletonImports, CountUp],
   templateUrl: './home.html',
 })
 export class HomePage {
@@ -188,9 +189,9 @@ export class HomePage {
     this.activateWallet(nearest);
   }
 
-  protected toman(value: number): string {
-    return `${this.faNumber.format(value)} تومان`;
-  }
+  // arrow تا بشود آن را به‌عنوان `countUpFormat` پاس داد و `this` گم نشود
+  protected readonly toman = (value: number): string =>
+    `${this.faNumber.format(value)} تومان`;
 
   protected count(value: number): string {
     return this.faNumber.format(value);

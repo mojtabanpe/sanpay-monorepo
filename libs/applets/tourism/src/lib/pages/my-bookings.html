@@ -27,8 +27,8 @@
          تمام‌عرض‌بودنش فقط فضای خالی می‌سازد. -->
     <div class="grid grid-cols-1 gap-4 min-[560px]:grid-cols-2">
 
-    @for (booking of bookings(); track booking.id) {
-      <section hlmCard class="h-full">
+    @for (booking of bookings(); track booking.id; let i = $index) {
+      <section hlmCard class="h-full" animate.enter="sanpay-rise" [style.--i]="i">
         <div hlmCardContent class="flex flex-col gap-3 pt-6">
 
           <div class="flex items-start justify-between gap-2">

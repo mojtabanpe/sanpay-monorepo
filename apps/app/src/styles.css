@@ -82,7 +82,12 @@
   block-size: 1.75rem;
   inline-size: 2.75rem;
   border-radius: 999px;
-  transition: background-color 150ms ease, color 150ms ease;
+  transition: background-color 150ms ease, color 150ms ease, scale 120ms ease;
+}
+
+/* لمس: آیکن کمی فرو می‌رود. تبِ تازه فعال‌شده: قرص یک بار «پاپ» می‌کند. */
+[data-slot='tab']:active [data-slot='tab-icon'] {
+  scale: 0.9;
 }
 
 [data-slot='tab'].is-active {
@@ -92,4 +97,153 @@
 
 [data-slot='tab'].is-active [data-slot='tab-icon'] {
   background-color: var(--brand-soft);
+  animation: sanpay-pop var(--dur-base) var(--ease-spring);
+}
+
+@keyframes sanpay-pop {
+  from {
+    scale: 0.8;
+  }
+}
+
+/*
+ * ── حرکت ─────────────────────────────────────────────────────────────
+ * توکن‌ها و کلاس‌های مشترک (sanpay-rise و …) در glass.css‌اند؛ اینجا فقط
+ * حرکت‌هایی که به قطعه‌های همین اپ گره خورده‌اند.
+ */
+
+/*
+ * نوارها در جابه‌جایی صفحه نام جدا دارند، پس جزو عکسِ `root` نیستند و ثابت
+ * می‌مانند. بدون این، نوار زبانه‌ای با هر تعویض تب محو و ظاهر می‌شد.
+ */
+[data-slot='app-bar'] {
+  view-transition-name: app-bar;
+}
+
+[data-slot='tab-bar'] {
+  view-transition-name: tab-bar;
+}
+
+::view-transition-group(app-bar),
+::view-transition-group(tab-bar) {
+  animation: none;
+}
+
+/*
+ * کاروسل کیف‌پول: کارت‌های غیرفعال کمی کوچک‌تر و کم‌رنگ‌ترند و کارتی که به
+ * جایش می‌لغزد به اندازهٔ کامل می‌رسد — حس عمق. با `data-active` از همان
+ * سیگنالِ کارت فعال رانده می‌شود، نه با scroll-driven animation: کروم
+ * view-timeline را در اسکرولرِ RTL اشتباه حساب می‌کند (کارتِ کاملاً پیدا
+ * پیشرفت ۱۰٪ گزارش می‌داد) و نتیجه برعکس درمی‌آمد.
+ */
+[data-slot='wallet-slide'] {
+  transition: scale var(--dur-base) var(--ease-out),
+    opacity var(--dur-base) var(--ease-out);
+}
+
+[data-slot='wallet-slide'][data-active='false'] {
+  scale: 0.94;
+  opacity: 0.7;
+}
+
+/* خط اسکن در کادر هدف دوربین — نشان می‌دهد اسکنر زنده است. */
+[data-slot='scan-line'] {
+  position: absolute;
+  inset-inline: 0.75rem;
+  top: 0;
+  height: 2px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, transparent, #fff, transparent);
+  animation: sanpay-scan 2.2s ease-in-out infinite alternate;
+}
+
+@keyframes sanpay-scan {
+  from {
+    translate: 0 0.75rem;
+  }
+  to {
+    translate: 0 calc(12rem - 0.75rem);
+  }
+}
+
+/* گوشه‌های کادر هدف آرام «نفس» می‌کشند. */
+[data-slot='scan-frame'] {
+  animation: sanpay-breathe 2.2s ease-in-out infinite alternate;
+}
+
+@keyframes sanpay-breathe {
+  to {
+    scale: 1.03;
+  }
+}
+
+/*
+ * لحظهٔ پرداخت موفق: دایره با فنر باز می‌شود، سپس خطِ تیک کشیده می‌شود.
+ * `pathLength="1"` روی polyline طول را نرمال می‌کند تا dasharray ساده بماند.
+ */
+[data-slot='success-badge'] {
+  animation: sanpay-badge var(--dur-slow) var(--ease-spring) both;
+}
+
+@keyframes sanpay-badge {
+  from {
+    scale: 0.4;
+    opacity: 0;
+  }
+}
+
+[data-slot='success-badge'] polyline {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: sanpay-draw 420ms var(--ease-out) 260ms forwards;
+}
+
+@keyframes sanpay-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* نقطهٔ «زنده» روی رسید: اسکرین‌شاتِ یک رسید قدیمی نمی‌تپد. */
+[data-slot='live-dot'] {
+  position: relative;
+}
+
+[data-slot='live-dot']::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: inherit;
+  animation: sanpay-ping 1.4s var(--ease-out) infinite;
+}
+
+@keyframes sanpay-ping {
+  to {
+    scale: 2.6;
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-slot='tab'].is-active [data-slot='tab-icon'],
+  [data-slot='scan-line'],
+  [data-slot='scan-frame'],
+  [data-slot='success-badge'],
+  [data-slot='live-dot']::after {
+    animation: none;
+  }
+
+  [data-slot='success-badge'] polyline {
+    animation: none;
+    stroke-dashoffset: 0;
+  }
+
+  [data-slot='tab']:active [data-slot='tab-icon'] {
+    scale: none;
+  }
+
+  [data-slot='wallet-slide'] {
+    transition: none;
+  }
 }
