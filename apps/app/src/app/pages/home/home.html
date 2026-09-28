@@ -97,9 +97,18 @@
 
         <p
           class="relative mt-4 text-[1.75rem] leading-tight font-bold tracking-tight"
-          [appCountUp]="wallet.remaining"
-          [countUpFormat]="toman"
-        ></p>
+        >
+          <span class="inline-grid whitespace-nowrap tabular-nums">
+            <span aria-hidden="true" class="invisible col-start-1 row-start-1"
+              >{{ toman(wallet.remaining) }}</span
+            >
+            <span
+              class="col-start-1 row-start-1"
+              [appCountUp]="wallet.remaining"
+              [countUpFormat]="toman"
+            ></span>
+          </span>
+        </p>
         <p class="relative mt-1 text-[11px] text-white/55">
           مانده از {{ toman(wallet.cap) }}
         </p>
