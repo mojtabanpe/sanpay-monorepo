@@ -35,7 +35,7 @@
   @if (wallets().length) {
   <div
     #walletCarousel
-    class="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto overscroll-x-contain px-4 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+    class="-mx-4 flex snap-x snap-mandatory scroll-px-4 gap-3 overflow-x-auto overscroll-x-contain px-4 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
     role="region"
     aria-roledescription="carousel"
     aria-label="کیف پول‌های فعال"
@@ -48,7 +48,7 @@
     <section
       data-slot="wallet-slide"
       [attr.data-active]="activeWalletIndex() === walletIndex"
-      class="basis-[88%] shrink-0 snap-start sm:basis-[82%]"
+      class="origin-right basis-[88%] shrink-0 snap-start sm:basis-[82%]"
       [attr.aria-label]="'کیف پول ' + wallet.name"
     >
       <div
