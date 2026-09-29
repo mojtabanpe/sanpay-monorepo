@@ -29,6 +29,11 @@ export const appRoutes: Route[] = [
             (m) => m.MerchantPayment,
           ),
       },
+      {
+        path: 'reports',
+        loadComponent: () =>
+          import('./pages/reports/reports').then((m) => m.Reports),
+      },
       // فرزندِ پوسته، نه مسیر هم‌سطح: اگر بیرون بماند، مسیر '' اول با پوسته
       // تطبیق داده می‌شود، هیچ فرزندی '' را نمی‌گیرد و تطبیق شکست می‌خورد.
       { path: '', redirectTo: 'payments', pathMatch: 'full' },

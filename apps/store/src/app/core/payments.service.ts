@@ -1,9 +1,10 @@
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import {
   CreateMerchantPaymentIntentInput,
   MerchantPaymentIntentResult,
   Receipt,
+  StorePaymentReport,
   StoreStats,
   VerifyMerchantPaymentIntentInput,
 } from '@sanpay/models';
@@ -17,6 +18,27 @@ export class StorePaymentsService {
 
   recent(): Promise<Receipt[]> {
     return firstValueFrom(this.http.get<Receipt[]>('/api/store/payments'));
+  }
+
+  report(query: {
+    q?: string;
+    from?: string;
+    to?: string;
+    settlementStatus?: string;
+    page?: number;
+    pageSize?: number;
+  }): Promise<StorePaymentReport> {
+    let params = new HttpParams();
+    for (const [key, value] of Object.entries(query)) {
+      if (value !== undefined && value !== '') {
+        params = params.set(key, String(value));
+      }
+    }
+    return firstValueFrom(
+      this.http.get<StorePaymentReport>('/api/store/reports/payments', {
+        params,
+      }),
+    );
   }
 
   /**

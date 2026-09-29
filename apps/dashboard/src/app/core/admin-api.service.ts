@@ -2,6 +2,7 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import {
   AdminBookingRow,
+  AdminFlightBookingRow,
   AdminCompanyRow,
   AdminEmployeeDetail,
   AdminEmployeeRow,
@@ -197,6 +198,13 @@ export class AdminApiService {
 
   bookings(query: Query = {}) {
     return this.get<Paginated<AdminBookingRow>>('/api/admin/bookings', query);
+  }
+
+  flightBookings(query: Query = {}) {
+    return this.get<Paginated<AdminFlightBookingRow>>(
+      '/api/admin/flight-bookings',
+      query,
+    );
   }
 
   settlements() {

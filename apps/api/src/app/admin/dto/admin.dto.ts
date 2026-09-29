@@ -156,6 +156,12 @@ export class BookingQueryDto extends ListQueryDto {
   status?: string;
 }
 
+export class FlightBookingQueryDto extends ListQueryDto {
+  @IsOptional()
+  @IsIn(['PROCESSING', 'CONFIRMED', 'REJECTED', 'REVIEW'])
+  status?: string;
+}
+
 export class CreateEmployeeDto {
   @IsString()
   @Matches(/^\d{10}$/, { message: 'کد ملی باید ۱۰ رقم باشد' })

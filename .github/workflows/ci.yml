@@ -3,7 +3,7 @@ name: CI
 on:
   push:
     branches:
-      - main
+      - master
   pull_request:
 
 permissions:
@@ -38,7 +38,7 @@ jobs:
       - run: pnpm exec playwright install --with-deps
 
       # Prepend any command with "nx record --" to record its logs to Nx Cloud
-      - run: pnpm nx record -- pnpm nx format:check --base="remotes/origin/main"
+      - run: pnpm nx record -- pnpm nx format:check --base="remotes/origin/master"
       - run: pnpm nx run-many -t lint test build typecheck e2e
       # Nx Cloud recommends fixes for failures to help you get CI green faster. Learn more: https://nx.dev/docs/features/ci-features/self-healing-ci
       - run: pnpm nx fix-ci

@@ -1,0 +1,15 @@
+[Unit]
+Description=Poll GitHub and deploy Sanpay when master changes
+Wants=network-online.target
+After=network-online.target docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+User=@@DEPLOY_USER@@
+WorkingDirectory=@@PROJECT_ROOT@@
+Environment=DEPLOY_BRANCH=master
+ExecStart=@@PROJECT_ROOT@@/deploy/poll-and-deploy.sh
+
+[Install]
+WantedBy=multi-user.target

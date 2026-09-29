@@ -1,0 +1,13 @@
+.git
+.github
+.nx
+.angular
+node_modules
+dist
+coverage
+.env
+.env.*
+!.env.production.example
+graphify-out
+__screenshots__
+*.log

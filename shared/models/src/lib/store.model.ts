@@ -64,6 +64,35 @@ export interface StoreStats {
   series: StoreStatsPoint[];
 }
 
+export type StoreSettlementStatus =
+  'PENDING' | 'PROCESSING' | 'SUCCEEDED' | 'FAILED';
+
+export interface StorePaymentReportRow {
+  id: string;
+  receiptNo: string;
+  employeeName: string;
+  amount: number;
+  createdAt: string;
+  settlement: {
+    status: StoreSettlementStatus;
+    settledAt: string | null;
+    followUpCode: string | null;
+  };
+}
+
+export interface StorePaymentReport {
+  items: StorePaymentReportRow[];
+  total: number;
+  page: number;
+  pageSize: number;
+  summary: {
+    count: number;
+    amount: number;
+    settledCount: number;
+    settledAmount: number;
+  };
+}
+
 export type SettlementDisplayStatus =
   'PENDING' | 'PROCESSING' | 'SUCCEEDED' | 'FAILED';
 

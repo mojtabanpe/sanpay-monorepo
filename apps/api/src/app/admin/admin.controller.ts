@@ -33,6 +33,7 @@ import {
   ImportEmployeesDto,
   CreateStoreDto,
   CreateWalletDefinitionDto,
+  FlightBookingQueryDto,
   ListQueryDto,
   PaymentQueryDto,
   SetPasswordDto,
@@ -295,5 +296,10 @@ export class AdminReportsController {
   @Get('bookings')
   bookings(@Query() query: BookingQueryDto) {
     return this.reports.bookings(query);
+  }
+
+  @Get('flight-bookings')
+  flightBookings(@Query() query: FlightBookingQueryDto) {
+    return this.reports.flightBookings(query);
   }
 }

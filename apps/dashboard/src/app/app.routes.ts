@@ -64,6 +64,13 @@ export const appRoutes: Route[] = [
           import('./pages/bookings/bookings').then((m) => m.BookingsPage),
       },
       {
+        path: 'flight-bookings',
+        loadComponent: () =>
+          import('./pages/flight-bookings/flight-bookings').then(
+            (m) => m.FlightBookings,
+          ),
+      },
+      {
         path: 'admins',
         canActivate: [superAdminGuard],
         loadComponent: () =>

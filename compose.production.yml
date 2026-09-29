@@ -1,0 +1,68 @@
+name: sanpay-production
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-sanpay}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      POSTGRES_DB: ${POSTGRES_DB:-sanpay}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"']
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.production
+      target: api
+    restart: unless-stopped
+    env_file:
+      - ${SANPAY_ENV_FILE:-.env.production}
+    environment:
+      PORT: 6500
+      DATABASE_URL: postgresql://${POSTGRES_USER:-sanpay}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-sanpay}?schema=public
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.production
+      target: app
+    restart: unless-stopped
+    ports:
+      - '${APP_PORT:-8080}:80'
+    depends_on:
+      - api
+
+  dashboard:
+    build:
+      context: .
+      dockerfile: Dockerfile.production
+      target: dashboard
+    restart: unless-stopped
+    ports:
+      - '${DASHBOARD_PORT:-8081}:80'
+    depends_on:
+      - api
+
+  store:
+    build:
+      context: .
+      dockerfile: Dockerfile.production
+      target: store
+    restart: unless-stopped
+    ports:
+      - '${STORE_PORT:-8082}:80'
+    depends_on:
+      - api
+
+volumes:
+  postgres_data:

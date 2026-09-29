@@ -6,6 +6,7 @@ import {
   HttpStatus,
   MessageEvent,
   Post,
+  Query,
   Req,
   Sse,
   UseGuards,
@@ -22,6 +23,7 @@ import {
   CreateMerchantPaymentIntentDto,
   VerifyMerchantPaymentIntentDto,
 } from './dto/merchant-payment.dto';
+import { StorePaymentReportQueryDto } from './dto/store-report.dto';
 
 type StoreRequest = Request & { store: StoreJwtPayload };
 
@@ -50,6 +52,15 @@ export class StoreController {
   @UseGuards(StoreJwtGuard)
   recent(@Req() request: StoreRequest) {
     return this.payments.recent(request.store.sub);
+  }
+
+  @Get('reports/payments')
+  @UseGuards(StoreJwtGuard)
+  report(
+    @Req() request: StoreRequest,
+    @Query() query: StorePaymentReportQueryDto,
+  ) {
+    return this.payments.report(request.store.sub, query);
   }
 
   /** آمار فروش برای داشبورد فروشنده — امروز، ۷ روز، ۳۰ روز و سری روزانه */

@@ -79,6 +79,13 @@ export const BOOKING_STATUS_LABELS: Record<string, string> = {
   CANCELED: 'کنسل شده',
 };
 
+export const FLIGHT_BOOKING_STATUS_LABELS: Record<string, string> = {
+  CONFIRMED: 'قطعی',
+  PROCESSING: 'در حال صدور',
+  REVIEW: 'نیازمند بررسی',
+  REJECTED: 'ناموفق',
+};
+
 export const ADMIN_ROLE_LABELS: Record<string, string> = {
   SUPER_ADMIN: 'مدیر ارشد',
   ADMIN: 'مدیر',

@@ -89,6 +89,11 @@ const NAV: NavItem[] = [
     icon: 'M3 20V8l9-4 9 4v12M3 20h18M9 20v-6h6v6',
   },
   {
+    path: '/flight-bookings',
+    label: 'رزرو پرواز',
+    icon: 'M22 2 9 15M15 2l7 0 0 7M13 6 4 3l-2 2 7 5M18 11l3 7-2 2-5-9',
+  },
+  {
     path: '/admins',
     label: 'کاربران داشبورد',
     icon: 'M12 3l8 4v5c0 5-3.4 8.3-8 9-4.6-.7-8-4-8-9V7l8-4Zm0 7v4m0 3h.01',

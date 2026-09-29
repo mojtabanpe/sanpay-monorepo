@@ -2,13 +2,21 @@ import { Injectable } from '@nestjs/common';
 import {
   BookingStatus,
   AdminBookingRow,
+  AdminFlightBookingRow,
   AdminOverview,
   AdminPaymentRow,
+  FlightBookingStatus,
+  FlightOffer,
+  FlightPassenger,
   Paginated,
 } from '@sanpay/models';
 import { PROVIDER_NAMES } from '../tourism/providers/provider-id';
 import { PrismaService } from '../prisma/prisma.service';
-import { BookingQueryDto, PaymentQueryDto } from './dto/admin.dto';
+import {
+  BookingQueryDto,
+  FlightBookingQueryDto,
+  PaymentQueryDto,
+} from './dto/admin.dto';
 import { paymentRowInclude, toPaymentRow } from './payment-row';
 import * as ExcelJS from 'exceljs';
 import { Prisma } from '../../generated/prisma/client';
@@ -329,6 +337,75 @@ export class AdminReportsService {
           personnelCode: booking.employee.personnelCode,
         },
       })),
+      total,
+      page,
+      pageSize,
+    };
+  }
+
+  async flightBookings(
+    query: FlightBookingQueryDto,
+  ): Promise<Paginated<AdminFlightBookingRow>> {
+    const page = query.page ?? 1;
+    const pageSize = query.pageSize ?? 25;
+    const q = query.q?.trim();
+    const where: Prisma.FlightBookingWhereInput = {
+      ...(query.status ? { status: query.status } : {}),
+      ...(q
+        ? {
+            OR: [
+              { id: { contains: q } },
+              { confirmationCode: { contains: q } },
+              {
+                employee: {
+                  OR: [
+                    { firstName: { contains: q, mode: 'insensitive' } },
+                    { lastName: { contains: q, mode: 'insensitive' } },
+                    { personnelCode: { contains: q } },
+                  ],
+                },
+              },
+            ],
+          }
+        : {}),
+    };
+
+    const [total, bookings] = await Promise.all([
+      this.prisma.flightBooking.count({ where }),
+      this.prisma.flightBooking.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+        include: { employee: true, quote: { select: { offer: true } } },
+      }),
+    ]);
+
+    return {
+      items: bookings.map((booking) => {
+        const offer = booking.quote.offer as unknown as FlightOffer;
+        const passengers = booking.passengers as unknown as FlightPassenger[];
+        return {
+          id: booking.id,
+          confirmationCode: booking.confirmationCode,
+          status: booking.status as FlightBookingStatus,
+          origin: offer.departure.origin,
+          destination: offer.departure.destination,
+          departureTime: offer.departure.departureTime,
+          returnTime: offer.returning?.departureTime ?? null,
+          airline: offer.departure.airline,
+          flightNumber: offer.departure.flightNumber,
+          passengerCount: Array.isArray(passengers) ? passengers.length : 0,
+          amount: Number(booking.amount),
+          refunded: booking.refunded,
+          createdAt: booking.createdAt.toISOString(),
+          employee: {
+            id: booking.employee.id,
+            name: `${booking.employee.firstName} ${booking.employee.lastName}`,
+            personnelCode: booking.employee.personnelCode,
+          },
+        };
+      }),
       total,
       page,
       pageSize,

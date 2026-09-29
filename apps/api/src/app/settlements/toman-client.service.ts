@@ -210,13 +210,13 @@ export class TomanClientService {
 
   private apiUrl() {
     return (
-      process.env.TOMAN_API_URL || 'https://dbank.toman.ir/api/v1'
+      process.env.TOMAN_API_URL || 'https://dbank-staging.qcluster.org/api/v1'
     ).replace(/\/$/, '');
   }
 
   private authUrl() {
     return (
-      process.env.TOMAN_AUTH_URL || 'https://accounts.qbitpay.org/oauth2/token/'
+      process.env.TOMAN_AUTH_URL || 'https://auth.qbitpay.org/oauth2/token/'
     );
   }
 

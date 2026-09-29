@@ -1,12 +1,15 @@
 import { Injectable } from '@nestjs/common';
 import {
   Receipt,
+  StorePaymentReport,
   StoreStats,
   StoreStatsBucket,
   StoreStatsPoint,
 } from '@sanpay/models';
+import { Prisma } from '../../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { settlementStatus } from '../admin/payment-row';
+import { StorePaymentReportQueryDto } from './dto/store-report.dto';
 
 @Injectable()
 export class StorePaymentsService {
@@ -49,6 +52,113 @@ export class StorePaymentsService {
         receiptLink: payment.settlementItem?.receiptLink ?? null,
       },
     }));
+  }
+
+  async report(
+    storeId: string,
+    query: StorePaymentReportQueryDto,
+  ): Promise<StorePaymentReport> {
+    const page = query.page ?? 1;
+    const pageSize = query.pageSize ?? 50;
+    const where = this.reportWhere(storeId, query);
+    const succeededWhere: Prisma.PaymentWhereInput = {
+      AND: [where, { settlementItem: { status: 'SUCCEEDED' } }],
+    };
+
+    const [payments, summary, settled] = await Promise.all([
+      this.prisma.payment.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+        include: { employee: true, settlementItem: true },
+      }),
+      this.prisma.payment.aggregate({
+        where,
+        _count: { _all: true },
+        _sum: { amount: true },
+      }),
+      this.prisma.payment.aggregate({
+        where: succeededWhere,
+        _count: { _all: true },
+        _sum: { amount: true },
+      }),
+    ]);
+
+    return {
+      items: payments.map((payment) => ({
+        id: payment.id,
+        receiptNo: payment.receiptNo,
+        employeeName: `${payment.employee.firstName} ${payment.employee.lastName}`,
+        amount: Number(payment.amount),
+        createdAt: payment.createdAt.toISOString(),
+        settlement: {
+          status: settlementStatus(payment.settlementItem?.status),
+          settledAt: payment.settledAt?.toISOString() ?? null,
+          followUpCode: payment.settlementItem?.followUpCode ?? null,
+        },
+      })),
+      total: summary._count._all,
+      page,
+      pageSize,
+      summary: {
+        count: summary._count._all,
+        amount: Number(summary._sum.amount ?? 0n),
+        settledCount: settled._count._all,
+        settledAmount: Number(settled._sum.amount ?? 0n),
+      },
+    };
+  }
+
+  private reportWhere(
+    storeId: string,
+    query: StorePaymentReportQueryDto,
+  ): Prisma.PaymentWhereInput {
+    const q = query.q?.trim();
+    const settlement = query.settlementStatus;
+    const settlementWhere: Prisma.PaymentWhereInput =
+      settlement === 'PENDING'
+        ? { settlementItemId: null }
+        : settlement === 'PROCESSING'
+          ? {
+              settlementItem: {
+                status: {
+                  in: ['CREATED', 'SUBMITTED', 'PROCESSING', 'UNKNOWN'],
+                },
+              },
+            }
+          : settlement === 'SUCCEEDED' || settlement === 'FAILED'
+            ? { settlementItem: { status: settlement } }
+            : {};
+
+    return {
+      storeId,
+      ...settlementWhere,
+      ...(query.from || query.to
+        ? {
+            createdAt: {
+              ...(query.from ? { gte: new Date(query.from) } : {}),
+              ...(query.to ? { lte: new Date(query.to) } : {}),
+            },
+          }
+        : {}),
+      ...(q
+        ? {
+            OR: [
+              { receiptNo: { contains: q } },
+              {
+                employee: {
+                  OR: [
+                    { firstName: { contains: q, mode: 'insensitive' } },
+                    { lastName: { contains: q, mode: 'insensitive' } },
+                    { personnelCode: { contains: q } },
+                  ],
+                },
+              },
+            ],
+          }
+        : {}),
+    };
   }
 
   /**

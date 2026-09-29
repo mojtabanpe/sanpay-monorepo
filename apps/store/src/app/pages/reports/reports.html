@@ -1,0 +1,156 @@
+<div class="report-root flex w-full flex-col gap-4 px-4 py-5 lg:px-0 print:p-0">
+  <header class="flex items-start justify-between gap-3">
+    <div>
+      <h1 class="text-xl font-bold">گزارش پرداخت‌ها</h1>
+      <p class="text-muted-foreground mt-1 text-sm">
+        {{ store()?.name }} — وضعیت پرداخت و تسویه فروش‌ها
+      </p>
+    </div>
+    <button hlmBtn class="print:hidden" (click)="print()">چاپ گزارش</button>
+  </header>
+
+  <section hlmCard class="print:hidden">
+    <div hlmCardContent class="grid gap-3 pt-6 sm:grid-cols-2">
+      <div class="flex flex-col gap-1.5 sm:col-span-2">
+        <label hlmLabel for="report-query">جست‌وجو</label>
+        <input
+          hlmInput
+          id="report-query"
+          placeholder="شماره رسید، نام یا کد پرسنلی"
+          [value]="query()"
+          (input)="query.set($any($event.target).value)"
+          (keyup.enter)="search()"
+        />
+      </div>
+
+      <div class="flex flex-col gap-1.5">
+        <label hlmLabel for="report-from">از تاریخ</label>
+        <input
+          hlmInput
+          id="report-from"
+          type="date"
+          [value]="from()"
+          (input)="from.set($any($event.target).value)"
+        />
+      </div>
+      <div class="flex flex-col gap-1.5">
+        <label hlmLabel for="report-to">تا تاریخ</label>
+        <input
+          hlmInput
+          id="report-to"
+          type="date"
+          [value]="to()"
+          (input)="to.set($any($event.target).value)"
+        />
+      </div>
+
+      <div class="flex flex-col gap-1.5 sm:col-span-2">
+        <label hlmLabel for="report-status">وضعیت تسویه</label>
+        <hlm-native-select
+          selectId="report-status"
+          class="w-full"
+          [value]="settlementStatus()"
+          (valueChange)="settlementStatus.set($any($event) ?? '')"
+        >
+          <option hlmNativeSelectOption value="">همه وضعیت‌ها</option>
+          <option hlmNativeSelectOption value="SUCCEEDED">تسویه‌شده</option>
+          <option hlmNativeSelectOption value="PENDING">در انتظار تسویه</option>
+          <option hlmNativeSelectOption value="PROCESSING">در حال تسویه</option>
+          <option hlmNativeSelectOption value="FAILED">ناموفق</option>
+        </hlm-native-select>
+      </div>
+
+      <div class="flex gap-2 sm:col-span-2">
+        <button hlmBtn (click)="search()">اعمال فیلتر</button>
+        <button hlmBtn variant="outline" (click)="clearFilters()">
+          پاک‌کردن
+        </button>
+      </div>
+    </div>
+  </section>
+
+  @if (report(); as data) {
+  <section class="grid grid-cols-2 gap-3 sm:grid-cols-4">
+    <div class="rounded-xl border p-3">
+      <p class="text-muted-foreground text-xs">تعداد پرداخت</p>
+      <p class="mt-1 font-bold">{{ count(data.summary.count) }}</p>
+    </div>
+    <div class="rounded-xl border p-3">
+      <p class="text-muted-foreground text-xs">جمع پرداخت</p>
+      <p class="mt-1 font-bold">{{ toman(data.summary.amount) }}</p>
+    </div>
+    <div class="rounded-xl border p-3">
+      <p class="text-muted-foreground text-xs">تسویه‌شده</p>
+      <p class="mt-1 font-bold">{{ count(data.summary.settledCount) }}</p>
+    </div>
+    <div class="rounded-xl border p-3">
+      <p class="text-muted-foreground text-xs">مبلغ تسویه‌شده</p>
+      <p class="mt-1 font-bold">{{ toman(data.summary.settledAmount) }}</p>
+    </div>
+  </section>
+  } @if (error()) {
+  <div class="flex flex-col items-center gap-3 py-10 text-center">
+    <p class="text-destructive text-sm">دریافت گزارش پرداخت‌ها ممکن نشد.</p>
+    <button hlmBtn variant="outline" size="sm" (click)="load()">
+      تلاش دوباره
+    </button>
+  </div>
+  } @else {
+  <section hlmCard class="report-card w-full">
+    <div hlmCardContent class="pt-6">
+      <div hlmTableContainer>
+        <table hlmTable class="w-full">
+          <thead hlmTHead>
+            <tr hlmTr>
+              <th hlmTh>شماره رسید</th>
+              <th hlmTh>خریدار</th>
+              <th hlmTh>مبلغ</th>
+              <th hlmTh>زمان پرداخت</th>
+              <th hlmTh>وضعیت تسویه</th>
+              <th hlmTh>زمان تسویه</th>
+              <th hlmTh>کد پیگیری</th>
+            </tr>
+          </thead>
+          <tbody hlmTBody>
+            @for (row of report()?.items ?? []; track row.id) {
+            <tr hlmTr>
+              <td hlmTd dir="ltr">{{ row.receiptNo }}</td>
+              <td hlmTd>{{ row.employeeName }}</td>
+              <td hlmTd class="font-semibold">{{ toman(row.amount) }}</td>
+              <td hlmTd>{{ dateTime(row.createdAt) }}</td>
+              <td hlmTd>
+                <span hlmBadge [variant]="statusVariant(row.settlement.status)">
+                  {{ statusLabels[row.settlement.status] }}
+                </span>
+              </td>
+              <td hlmTd>{{ dateTime(row.settlement.settledAt) }}</td>
+              <td hlmTd dir="ltr">{{ row.settlement.followUpCode || '—' }}</td>
+            </tr>
+            } @empty {
+            <tr hlmTr>
+              <td hlmTd colspan="7" class="text-muted-foreground text-center">
+                {{ loading() ? 'در حال بارگذاری…' : 'پرداختی پیدا نشد.' }}
+              </td>
+            </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      <div class="flex items-center justify-between pt-4 print:hidden">
+        <span class="text-muted-foreground text-sm"
+          >صفحه {{ count(page()) }} از {{ count(pageCount()) }}</span
+        >
+        <div class="flex gap-2">
+          <button hlmBtn variant="outline" size="sm" (click)="changePage(-1)">
+            قبلی
+          </button>
+          <button hlmBtn variant="outline" size="sm" (click)="changePage(1)">
+            بعدی
+          </button>
+        </div>
+      </div>
+    </div>
+  </section>
+  }
+</div>

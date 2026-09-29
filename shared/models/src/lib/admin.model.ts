@@ -1,3 +1,4 @@
+import { FlightBookingStatus } from './flight.model';
 import { BookingStatus } from './tourism.model';
 
 /**
@@ -315,6 +316,23 @@ export interface AdminBookingRow {
   payable: number;
   refundedAmount: number | null;
   settledAt: string | null;
+  createdAt: string;
+  employee: { id: string; name: string; personnelCode: string };
+}
+
+export interface AdminFlightBookingRow {
+  id: string;
+  confirmationCode: string | null;
+  status: FlightBookingStatus;
+  origin: string;
+  destination: string;
+  departureTime: string;
+  returnTime: string | null;
+  airline: string;
+  flightNumber: string;
+  passengerCount: number;
+  amount: number;
+  refunded: boolean;
   createdAt: string;
   employee: { id: string; name: string; personnelCode: string };
 }

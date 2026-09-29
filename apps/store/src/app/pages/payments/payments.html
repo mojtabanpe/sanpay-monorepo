@@ -1,5 +1,4 @@
-<div class="mx-auto flex w-full max-w-3xl flex-col gap-4 px-4 py-5">
-
+<div class="flex w-full flex-col gap-4 px-4 py-5 lg:px-0">
   <!--
     خلاصهٔ فروش امروز. ارقام از `GET /api/store/stats` می‌آیند، نه از جمعِ
     کلاینتیِ ۵۰ رسیدِ آخر — آن نسخه در فروشگاهِ پرتردد، فروش امروز را کمتر از
@@ -7,13 +6,23 @@
   -->
   <div
     class="relative overflow-hidden rounded-[1.25rem] p-5 text-white"
-    style="background-image: linear-gradient(135deg, var(--ink-900), var(--ink-700) 55%, var(--ink-600));
-           box-shadow: var(--elev-3)"
+    style="
+      background-image: linear-gradient(
+        135deg,
+        var(--ink-900),
+        var(--ink-700) 55%,
+        var(--ink-600)
+      );
+      box-shadow: var(--elev-3);
+    "
   >
-
     <div class="relative flex items-start justify-between gap-3">
       <div class="flex items-center gap-2">
-        <span class="size-1.5 rounded-full" style="background-color: var(--gold-400)" aria-hidden="true"></span>
+        <span
+          class="size-1.5 rounded-full"
+          style="background-color: var(--gold-400)"
+          aria-hidden="true"
+        ></span>
         <p class="text-[13px] font-medium text-white/70">فروش امروز</p>
       </div>
 
@@ -31,59 +40,71 @@
     </div>
 
     @if (stats(); as figures) {
-      <p class="relative mt-3 text-[2rem] leading-tight font-bold tracking-tight">
-        {{ toman(figures.today.total) }}
-      </p>
+    <p class="relative mt-3 text-[2rem] leading-tight font-bold tracking-tight">
+      {{ toman(figures.today.total) }}
+    </p>
 
-      <div class="relative mt-4 grid grid-cols-3 gap-3 border-t border-white/12 pt-3">
-        <div>
-          <p class="text-[10px] text-white/50">تعداد خرید امروز</p>
-          <p class="mt-0.5 text-sm font-bold">{{ count(figures.today.count) }}</p>
-        </div>
-        <div>
-          <p class="text-[10px] text-white/50">۷ روز گذشته</p>
-          <p class="mt-0.5 text-sm font-bold">{{ toman(figures.week.total) }}</p>
-        </div>
-        <div>
-          <p class="text-[10px] text-white/50">۳۰ روز گذشته</p>
-          <p class="mt-0.5 text-sm font-bold">{{ toman(figures.month.total) }}</p>
-        </div>
+    <div
+      class="relative mt-4 grid grid-cols-3 gap-3 border-t border-white/12 pt-3"
+    >
+      <div>
+        <p class="text-[10px] text-white/50">تعداد خرید امروز</p>
+        <p class="mt-0.5 text-sm font-bold">{{ count(figures.today.count) }}</p>
       </div>
+      <div>
+        <p class="text-[10px] text-white/50">۷ روز گذشته</p>
+        <p class="mt-0.5 text-sm font-bold">{{ toman(figures.week.total) }}</p>
+      </div>
+      <div>
+        <p class="text-[10px] text-white/50">۳۰ روز گذشته</p>
+        <p class="mt-0.5 text-sm font-bold">{{ toman(figures.month.total) }}</p>
+      </div>
+    </div>
     } @else {
-      <div class="relative mt-3 h-8 w-48 animate-pulse rounded-lg" style="background-color: rgba(255,255,255,0.14)"></div>
+    <div
+      class="relative mt-3 h-8 w-48 animate-pulse rounded-lg"
+      style="background-color: rgba(255, 255, 255, 0.14)"
+    ></div>
     }
   </div>
 
   <!-- نمودار فروش ۷ روز گذشته -->
   @if (stats(); as figures) {
-    <section hlmCard>
-      <div hlmCardContent class="flex flex-col gap-3">
-        <h2 class="text-sm font-bold">فروش ۷ روز گذشته</h2>
+  <section hlmCard>
+    <div hlmCardContent class="flex flex-col gap-3">
+      <h2 class="text-sm font-bold">فروش ۷ روز گذشته</h2>
 
-        <!--
+      <!--
           نمودار میله‌ای ساده با div — برای هفت عدد، آوردن یک کتابخانهٔ نمودار
           به باندل توجیهی ندارد. جدولِ کنارش، همان داده را برای صفحه‌خوان
           می‌گذارد، چون ارتفاع میله برای کاربر نابینا معنایی ندارد.
         -->
-        <div class="flex h-28 items-end justify-between gap-1.5" aria-hidden="true">
-          @for (point of figures.series; track point.date) {
-            <div class="flex h-full flex-1 flex-col items-center justify-end gap-1.5">
-              <div
-                class="w-full rounded-t-[4px] transition-[height] duration-500"
-                [style.height]="barHeight(point.total)"
-                [style.background-image]="
+      <div
+        class="flex h-28 items-end justify-between gap-1.5"
+        aria-hidden="true"
+      >
+        @for (point of figures.series; track point.date) {
+        <div
+          class="flex h-full flex-1 flex-col items-center justify-end gap-1.5"
+        >
+          <div
+            class="w-full rounded-t-[4px] transition-[height] duration-500"
+            [style.height]="barHeight(point.total)"
+            [style.background-image]="
                   point.total > 0
                     ? 'linear-gradient(180deg, var(--gold-400), var(--gold-500))'
                     : 'none'
                 "
-                [style.background-color]="point.total > 0 ? '' : 'var(--muted)'"
-              ></div>
-              <span class="text-muted-foreground text-[10px]">{{ weekday(point.date) }}</span>
-            </div>
-          }
+            [style.background-color]="point.total > 0 ? '' : 'var(--muted)'"
+          ></div>
+          <span class="text-muted-foreground text-[10px]"
+            >{{ weekday(point.date) }}</span
+          >
         </div>
+        }
+      </div>
 
-        <!--
+      <!--
           `sr-only` باید روی یک div بیرونی باشد، نه روی خودِ <table>.
           sr-only با width/height: 1px کار می‌کند، ولی الگوریتم چیدمان جدول
           این عرض را فقط یک «پیشنهاد» می‌گیرد و جدول تا حداقلِ عرضِ محتوا باز
@@ -91,61 +112,86 @@
           هم از sr-only گرفته بود، دقیقاً روی میله‌های نمودار می‌افتاد.
           div محدودیت ۱ پیکسل را رعایت می‌کند و محتوا را می‌بُرد.
         -->
-        <div class="sr-only">
-          <table>
-            <caption>فروش روزانهٔ ۷ روز گذشته</caption>
-            <tbody>
-              @for (point of figures.series; track point.date) {
-                <tr>
-                  <th scope="row">{{ fullDate(point.date) }}</th>
-                  <td>{{ toman(point.total) }}</td>
-                </tr>
-              }
-            </tbody>
-          </table>
-        </div>
+      <div class="sr-only">
+        <table>
+          <caption>
+            فروش روزانهٔ ۷ روز گذشته
+          </caption>
+          <tbody>
+            @for (point of figures.series; track point.date) {
+            <tr>
+              <th scope="row">{{ fullDate(point.date) }}</th>
+              <td>{{ toman(point.total) }}</td>
+            </tr>
+            }
+          </tbody>
+        </table>
       </div>
-    </section>
+    </div>
+  </section>
   }
 
   <h2 class="px-1 text-sm font-bold">آخرین پرداخت‌ها</h2>
 
   @if (loading()) {
-    <hlm-skeleton class="h-32 w-full" />
-    <hlm-skeleton class="h-32 w-full" />
+  <hlm-skeleton class="h-32 w-full" />
+  <hlm-skeleton class="h-32 w-full" />
   } @else if (error()) {
-    <div class="flex flex-col items-center gap-3 py-10 text-center">
-      <p class="text-muted-foreground text-sm">دریافت لیست پرداخت‌ها ممکن نشد.</p>
-      <button class="text-primary text-sm font-medium hover:underline" (click)="load()">
-        تلاش دوباره
-      </button>
-    </div>
+  <div class="flex flex-col items-center gap-3 py-10 text-center">
+    <p class="text-muted-foreground text-sm">دریافت لیست پرداخت‌ها ممکن نشد.</p>
+    <button
+      class="text-primary text-sm font-medium hover:underline"
+      (click)="load()"
+    >
+      تلاش دوباره
+    </button>
+  </div>
   } @else if (receipts().length === 0) {
-    <div class="flex flex-col items-center gap-2 py-14 text-center">
-      <svg class="text-muted-foreground size-10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-        <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z" />
-        <path d="M3 6h18" />
-        <path d="M16 10a4 4 0 0 1-8 0" />
-      </svg>
-      <p class="text-sm font-medium">هنوز پرداختی ثبت نشده</p>
-      <p class="text-muted-foreground text-xs">
-        به‌محض پرداخت مشتری، رسید همین‌جا ظاهر می‌شود.
-      </p>
-    </div>
+  <div class="flex flex-col items-center gap-2 py-14 text-center">
+    <svg
+      class="text-muted-foreground size-10"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="1.5"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z" />
+      <path d="M3 6h18" />
+      <path d="M16 10a4 4 0 0 1-8 0" />
+    </svg>
+    <p class="text-sm font-medium">هنوز پرداختی ثبت نشده</p>
+    <p class="text-muted-foreground text-xs">
+      به‌محض پرداخت مشتری، رسید همین‌جا ظاهر می‌شود.
+    </p>
+  </div>
   } @else {
-    <!-- لیست رسیدها — تازه‌ترین بالا -->
-    <ul class="flex flex-col gap-3" aria-live="polite">
-      @for (receipt of receipts(); track receipt.id) {
-        <li class="rounded-[1.25rem] transition-shadow">
-          @if (justArrived() === receipt.id) {
-            <p class="mb-1.5 flex items-center gap-1.5 px-1 text-xs font-bold" style="color: var(--pos-fg)">
-              <span class="size-1.5 rounded-full" style="background-color: var(--pos)" aria-hidden="true"></span>
-              پرداخت جدید
-            </p>
-          }
-          <sanpay-receipt-card [receipt]="receipt" variant="store" [compact]="true" />
-        </li>
+  <!-- لیست رسیدها — تازه‌ترین بالا -->
+  <ul class="grid gap-3 lg:grid-cols-2 2xl:grid-cols-3" aria-live="polite">
+    @for (receipt of receipts(); track receipt.id) {
+    <li class="rounded-[1.25rem] transition-shadow">
+      @if (justArrived() === receipt.id) {
+      <p
+        class="mb-1.5 flex items-center gap-1.5 px-1 text-xs font-bold"
+        style="color: var(--pos-fg)"
+      >
+        <span
+          class="size-1.5 rounded-full"
+          style="background-color: var(--pos)"
+          aria-hidden="true"
+        ></span>
+        پرداخت جدید
+      </p>
       }
-    </ul>
+      <sanpay-receipt-card
+        [receipt]="receipt"
+        variant="store"
+        [compact]="true"
+      />
+    </li>
+    }
+  </ul>
   }
 </div>
