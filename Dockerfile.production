@@ -23,7 +23,12 @@ COPY --from=build /workspace/package.json /workspace/pnpm-lock.yaml ./
 COPY --from=build /workspace/node_modules ./node_modules
 COPY --from=build /workspace/dist ./dist
 COPY --from=build /workspace/prisma.config.ts ./prisma.config.ts
+COPY --from=build /workspace/tsconfig.base.json ./tsconfig.base.json
+COPY --from=build /workspace/apps/api/tsconfig.json ./apps/api/tsconfig.json
+COPY --from=build /workspace/apps/api/tsconfig.app.json ./apps/api/tsconfig.app.json
 COPY --from=build /workspace/apps/api/prisma ./apps/api/prisma
+COPY --from=build /workspace/apps/api/scripts/create-super-admin.ts ./apps/api/scripts/create-super-admin.ts
+COPY --from=build /workspace/apps/api/src/generated/prisma ./apps/api/src/generated/prisma
 
 EXPOSE 6500
 CMD ["sh", "-c", "pnpm exec prisma migrate deploy && node dist/apps/api/main.js"]

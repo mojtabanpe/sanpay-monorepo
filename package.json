@@ -8,6 +8,7 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio",
     "prisma:seed": "node -r @swc-node/register apps/api/prisma/seed.ts",
+    "admin:create-super": "SWC_NODE_PROJECT=apps/api/tsconfig.app.json node -r @swc-node/register apps/api/scripts/create-super-admin.ts",
     "gds:check": "node -r @swc-node/register apps/api/scripts/gds-check.ts"
   },
   "private": true,

@@ -44,6 +44,17 @@ docker compose --env-file .env.production -f compose.production.yml ps
 
 The current successful revision is stored in `.deploy/deployed-revision`.
 
+To create a dashboard super admin after deployment, run this command in an
+interactive terminal from the deployment checkout:
+
+```bash
+docker compose --env-file .env.production -f compose.production.yml exec api pnpm admin:create-super
+```
+
+Enter the username and password when prompted. The password is hidden, and
+the command creates only the super admin account; it does not run the sample
+data seed. An existing username is left unchanged.
+
 ## Domains
 
 The Compose `gateway` service is the only public HTTP entry point and routes by

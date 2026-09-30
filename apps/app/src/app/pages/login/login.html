@@ -1,7 +1,7 @@
 <main
-  class="mx-auto flex min-h-dvh w-full max-w-[550px] flex-col items-center justify-center gap-8 px-4 py-10"
+  class="mx-auto flex min-h-dvh w-full max-w-[550px] flex-col items-center justify-center gap-2 px-4 py-2 sm:gap-8 sm:py-10"
 >
-  <div class="flex flex-col items-center gap-3 text-center">
+  <div class="flex items-center gap-2 text-right sm:flex-col sm:gap-3 sm:text-center">
     <img
       src="/brand/sanpay-logo.svg"
       alt="صنعت‌پی"
@@ -9,7 +9,7 @@
       height="1430"
       decoding="sync"
       fetchpriority="high"
-      class="h-auto w-36 object-contain outline-none"
+      class="h-auto w-10 shrink-0 object-contain outline-none sm:w-36"
     />
     <div class="leading-tight">
       <p class="text-lg font-bold">جهان‌فولاد سیرجان</p>
@@ -17,12 +17,17 @@
     </div>
   </div>
 
-  <section hlmCard class="w-full max-w-md">
-    <div hlmCardHeader>
+  <section hlmCard class="w-full max-w-md gap-2 py-2 sm:gap-4 sm:py-4">
+    <div hlmCardHeader class="px-4 py-2 sm:p-6 sm:pb-6">
       <h1 hlmCardTitle class="text-xl">ورود کارکنان</h1>
-      <p hlmCardDescription>روش ورود خود را انتخاب کنید.</p>
+      <p hlmCardDescription class="hidden sm:block">
+        روش ورود خود را انتخاب کنید.
+      </p>
     </div>
-    <div hlmCardContent class="flex flex-col gap-5">
+    <div
+      hlmCardContent
+      class="flex flex-col gap-2 px-4 pb-2 sm:gap-5 sm:px-6 sm:pb-6"
+    >
       <div
         class="bg-muted grid grid-cols-2 gap-1 rounded-lg p-1"
         aria-label="روش ورود"
@@ -46,7 +51,7 @@
       </div>
 
       @if (mode() === 'password') {
-      <div class="flex flex-col gap-2">
+      <div class="flex flex-col gap-1 sm:gap-2">
         <label hlmLabel for="password-national-code">کد ملی</label>
         <input
           hlmInput
@@ -58,7 +63,7 @@
           #passwordNationalCode
         />
       </div>
-      <div class="flex flex-col gap-2">
+      <div class="flex flex-col gap-1 sm:gap-2">
         <label hlmLabel for="password">رمز عبور</label>
         <input
           hlmInput
@@ -78,7 +83,13 @@
       >
         {{ loading() ? 'در حال ورود…' : 'ورود با رمز عبور' }}
       </button>
-      <button hlmBtn variant="link" size="sm" (click)="setMode('otp')">
+      <button
+        hlmBtn
+        variant="link"
+        size="sm"
+        class="hidden sm:inline-flex"
+        (click)="setMode('otp')"
+      >
         رمز ندارید یا فراموش کرده‌اید؟ ورود با OTP
       </button>
       } @else if (otpStep() === 'identity') {
@@ -199,6 +210,6 @@
   </section>
 
   <p class="text-muted-foreground text-center text-xs">
-    © ۱۴۰۴ شرکت جهان‌فولاد سیرجان — طراحی و توسعه: شرکت طرح و توسعه دیار مانا
+    © ۱۴۰۵ شرکت جهان‌فولاد سیرجان — طراحی و توسعه: شرکت طرح و توسعه دیار مانا
   </p>
 </main>

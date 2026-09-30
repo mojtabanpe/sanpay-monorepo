@@ -18,6 +18,7 @@ const SMS_IR_VERIFY_URL = 'https://api.sms.ir/v1/send/verify';
 const SMS_IR_OK_STATUS = 1;
 /** نام پارامتر تعریف‌شده در قالبِ (template) پنل sms.ir */
 const OTP_PARAMETER_NAME = 'CODE';
+const LOGIN_TEMPLATE_ID = 938507;
 const PURCHASE_TEMPLATE_ID = 944060;
 
 interface SmsParameter {
@@ -34,8 +35,7 @@ export class SmsService {
   }
 
   async sendOtp(phone: string, code: string): Promise<void> {
-    const templateId = Number(process.env.SMSIR_OTP_TEMPLATE_ID);
-    await this.sendVerify(phone, templateId, [
+    await this.sendVerify(phone, LOGIN_TEMPLATE_ID, [
       { name: OTP_PARAMETER_NAME, value: code },
     ]);
   }
