@@ -18,6 +18,12 @@ const SMS_IR_VERIFY_URL = 'https://api.sms.ir/v1/send/verify';
 const SMS_IR_OK_STATUS = 1;
 /** نام پارامتر تعریف‌شده در قالبِ (template) پنل sms.ir */
 const OTP_PARAMETER_NAME = 'CODE';
+const PURCHASE_TEMPLATE_ID = 944060;
+
+interface SmsParameter {
+  name: string;
+  value: string;
+}
 
 @Injectable()
 export class SmsService {
@@ -28,14 +34,40 @@ export class SmsService {
   }
 
   async sendOtp(phone: string, code: string): Promise<void> {
+    const templateId = Number(process.env.SMSIR_OTP_TEMPLATE_ID);
+    await this.sendVerify(phone, templateId, [
+      { name: OTP_PARAMETER_NAME, value: code },
+    ]);
+  }
+
+  async sendPurchaseOtp(
+    phone: string,
+    code: string,
+    purchase: { store: string; price: number; wallets: string[] },
+  ): Promise<void> {
+    await this.sendVerify(phone, PURCHASE_TEMPLATE_ID, [
+      { name: 'CODE', value: code },
+      { name: 'STORE', value: purchase.store },
+      { name: 'PRICE', value: purchase.price.toLocaleString('en-US') },
+      { name: 'CURRENCY', value: 'تومان' },
+      { name: 'WALLET', value: purchase.wallets.join('، ') },
+    ]);
+  }
+
+  private async sendVerify(
+    phone: string,
+    templateId: number,
+    parameters: SmsParameter[],
+  ): Promise<void> {
     if (process.env.SMS_MODE === 'console') {
-      this.logger.warn(`[development only] OTP for ${phone}: ${code}`);
+      this.logger.warn(
+        `[development only] OTP for ${phone}: ${parameters[0].value}`,
+      );
       return;
     }
 
     const apiKey = process.env.SMSIR_API_KEY;
-    const templateId = Number(process.env.SMSIR_OTP_TEMPLATE_ID);
-    if (!apiKey || !Number.isFinite(templateId)) {
+    if (!apiKey || !Number.isSafeInteger(templateId) || templateId <= 0) {
       throw new ServiceUnavailableException('سرویس پیامک پیکربندی نشده است');
     }
 
@@ -50,7 +82,7 @@ export class SmsService {
         body: JSON.stringify({
           mobile: phone,
           templateId,
-          parameters: [{ name: OTP_PARAMETER_NAME, value: code }],
+          parameters,
         }),
         signal: AbortSignal.timeout(10_000),
       });

@@ -57,6 +57,14 @@ export class MerchantPaymentsService {
       throw new BadRequestException('اعتبار قابل استفاده برای این مبلغ کافی نیست');
     }
 
+    let remaining = dto.amount;
+    const wallets = checkout.wallets.flatMap((wallet) => {
+      if (remaining <= 0) return [];
+      const used = Math.min(wallet.max, remaining);
+      remaining -= used;
+      return [wallet.name];
+    });
+
     const cooldown = await this.prisma.merchantPaymentIntent.findFirst({
       where: {
         storeId,
@@ -70,7 +78,11 @@ export class MerchantPaymentsService {
 
     const id = randomUUID();
     const code = String(randomInt(100_000, 1_000_000));
-    await this.sms.sendOtp(dto.phone, code);
+    await this.sms.sendPurchaseOtp(dto.phone, code, {
+      store: store.name,
+      price: dto.amount,
+      wallets,
+    });
     const intent = await this.prisma.merchantPaymentIntent.create({
       data: {
         id,
