@@ -43,3 +43,17 @@ docker compose --env-file .env.production -f compose.production.yml ps
 ```
 
 The current successful revision is stored in `.deploy/deployed-revision`.
+
+## Domains
+
+The Compose `gateway` service is the only public HTTP entry point and routes by
+hostname:
+
+- `sanpayco.com` and `www.sanpayco.com` to the employee app
+- `admin.sanpayco.com` to the admin dashboard
+- `store.sanpayco.com` to the store panel
+
+All names must have DNS records pointing to the server. By default the gateway
+only listens on `127.0.0.1:8080`, so the host reverse proxy can terminate HTTPS
+and forward all three hostnames to that single address. The original `Host`
+header must be preserved so this gateway can select the correct application.
