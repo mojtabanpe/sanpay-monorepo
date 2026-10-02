@@ -1,4 +1,11 @@
-import { Component, computed, inject, input, signal } from '@angular/core';
+import {
+  Component,
+  OnInit,
+  computed,
+  inject,
+  input,
+  signal,
+} from '@angular/core';
 import { RouterModule } from '@angular/router';
 import {
   AdminCompanyRow,
@@ -51,7 +58,7 @@ import {
   ],
   templateUrl: './employee-detail.html',
 })
-export class EmployeeDetailPage {
+export class EmployeeDetailPage implements OnInit {
   /** از پارامتر مسیر `/employees/:id` (withComponentInputBinding) */
   readonly id = input.required<string>();
 
@@ -133,7 +140,7 @@ export class EmployeeDetailPage {
     };
   });
 
-  constructor() {
+  ngOnInit(): void {
     void this.load();
   }
 
