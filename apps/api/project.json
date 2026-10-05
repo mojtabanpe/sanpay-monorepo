@@ -75,6 +75,15 @@
         }
       }
     },
+    "eghamat24-scenarios": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "node -r @swc-node/register apps/api/scripts/eghamat24-scenarios.ts",
+        "env": {
+          "SWC_NODE_PROJECT": "apps/api/tsconfig.app.json"
+        }
+      }
+    },
     "check-eghamat24": {
       "executor": "nx:run-commands",
       "options": {
