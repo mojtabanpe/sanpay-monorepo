@@ -18,6 +18,12 @@ import {
   GrsSuggestionParams,
 } from './grs.types';
 
+export class GrsRequestFailure extends BadGatewayException {
+  constructor(readonly diagnostic: string) {
+    super('ارتباط با سرویس اقامت۲۴ ناموفق بود');
+  }
+}
+
 type Row = Record<string, unknown>;
 class GrsRateLimitError extends Error {}
 
@@ -96,6 +102,8 @@ export class GrsHttpClient extends GrsClient {
     const url = new URL(`${base.replace(/\/$/, '')}${path}`);
     if (url.protocol !== 'https:')
       throw new ServiceUnavailableException('آدرس سرویس اقامت۲۴ باید امن باشد');
+    let httpStatus: number | undefined;
+    let providerCode: number | undefined;
     try {
       const response = await fetch(url, {
         method: body === undefined ? 'GET' : 'POST',
@@ -108,7 +116,9 @@ export class GrsHttpClient extends GrsClient {
         signal: AbortSignal.timeout(20000),
         ...(body === undefined ? {} : { body: JSON.stringify(body) }),
       });
+      httpStatus = response.status;
       const envelope = row(await response.json());
+      if (typeof envelope['code'] === 'number') providerCode = envelope['code'];
       if (response.status === 429 || envelope['code'] === 429)
         throw new GrsRateLimitError();
       if (
@@ -125,7 +135,15 @@ export class GrsHttpClient extends GrsClient {
     } catch (error) {
       if (error instanceof GrsRateLimitError) throw error;
       // Provider messages can echo tokens or guest details. Never expose them or retry writes.
-      throw new BadGatewayException('ارتباط با سرویس اقامت۲۴ ناموفق بود');
+      const reason =
+        httpStatus === undefined
+          ? error instanceof Error && error.name === 'TimeoutError'
+            ? 'timeout'
+            : 'network'
+          : 'provider-response';
+      throw new GrsRequestFailure(
+        `HTTP ${httpStatus ?? '—'} / GRS ${providerCode ?? '—'} / ${reason}`,
+      );
     }
   }
 

@@ -317,3 +317,149 @@ test('Base64 configuration preserves dollar signs even if Nx expands the plain v
     () => ok({ cities: [], airports: [], total: 0 }),
   );
 });
+
+test('scenario runner selects current room and nationality-specific plans and checks every night', async () => {
+  const { prepareScenarioRequest, TEST_SINGLE_ROOM_ID } =
+    await import('../scripts/eghamat24-scenario-plan');
+  const type = {
+    id: 999,
+    name: 'یک تخته',
+    capacity: 1,
+    extra_capacity: 0,
+    out_of_service: false,
+  };
+  const domestic = {
+    id: 1780,
+    nationality: 'domestic',
+    country_id: 222,
+    prices: [day('2090-01-01')],
+  };
+  const foreign = {
+    ...domestic,
+    id: 2644,
+    nationality: 'foreign',
+    country_id: null,
+  };
+  const client = {
+    getPropertyDetails: async () => ({ ...detail, room_type: [type] }),
+    getAvailableRooms: async () => [
+      { ...room, room_type_id: type.id, rate_plans: [domestic, foreign] },
+    ],
+  } as unknown as Pick<
+    import('../src/app/tourism/providers/eghamat24/grs.types').GrsClient,
+    'getPropertyDetails' | 'getAvailableRooms'
+  >;
+  const request = {
+    property_id: 1416,
+    check_in: '2090-01-01',
+    check_out: '2090-01-02',
+    rooms: [
+      {
+        room_type_id: TEST_SINGLE_ROOM_ID,
+        rate_plan_id: 273,
+        count: 1,
+        adult_count: 1,
+        guest_country_id: 222,
+      },
+      {
+        room_type_id: TEST_SINGLE_ROOM_ID,
+        rate_plan_id: 273,
+        count: 1,
+        adult_count: 1,
+        guest_country_id: null,
+      },
+    ],
+  } as import('../src/app/tourism/providers/eghamat24/grs.types').GrsReserveRequest;
+  const prepared = await prepareScenarioRequest(client, request);
+  assert.deepEqual(
+    prepared.rooms.map((r) => [r.room_type_id, r.rate_plan_id]),
+    [
+      [999, 1780],
+      [999, 2644],
+    ],
+  );
+  assert.equal(request.rooms[0].rate_plan_id, 273);
+  await assert.rejects(
+    prepareScenarioRequest(client, { ...request, check_out: '2090-01-03' }),
+    /موجودی کامل/,
+  );
+  const limited = {
+    ...domestic,
+    prices: [{ ...day('2090-01-01'), inventory: 1 }],
+  };
+  client.getAvailableRooms = async () =>
+    [
+      { ...room, room_type_id: type.id, rate_plans: [limited] },
+    ] as unknown as import('../src/app/tourism/providers/eghamat24/grs.types').GrsRoomRate[];
+  await assert.rejects(
+    prepareScenarioRequest(client, {
+      ...request,
+      rooms: [request.rooms[0], request.rooms[0]],
+    }),
+    /موجودی کامل/,
+  );
+});
+
+test('scenario preflight supports both nationalities and detects an unset extra-bed rate before any reservation', async () => {
+  const { prepareScenarioRequest, TEST_DOUBLE_ROOM_ID } =
+    await import('../scripts/eghamat24-scenario-plan');
+  const type = {
+    id: TEST_DOUBLE_ROOM_ID,
+    name: 'دوتخته',
+    capacity: 2,
+    extra_capacity: 1,
+    out_of_service: false,
+  };
+  const plan = {
+    id: 2653,
+    nationality: 'both',
+    country_id: null,
+    prices: [{ ...day('2090-01-01'), extend_bed_grs_rate: 0 }],
+  };
+  const client = {
+    getPropertyDetails: async () => ({ ...detail, room_type: [type] }),
+    getAvailableRooms: async () => [
+      { ...room, room_type_id: type.id, rate_plans: [plan] },
+    ],
+  } as unknown as Pick<
+    import('../src/app/tourism/providers/eghamat24/grs.types').GrsClient,
+    'getPropertyDetails' | 'getAvailableRooms'
+  >;
+  const request = {
+    property_id: 1416,
+    check_in: '2090-01-01',
+    check_out: '2090-01-02',
+    rooms: [
+      {
+        room_type_id: type.id,
+        rate_plan_id: 273,
+        count: 1,
+        adult_count: 2,
+        guest_country_id: null,
+      },
+    ],
+  } as import('../src/app/tourism/providers/eghamat24/grs.types').GrsReserveRequest;
+  assert.equal(
+    (await prepareScenarioRequest(client, request)).rooms[0].rate_plan_id,
+    2653,
+  );
+  await assert.rejects(
+    prepareScenarioRequest(client, {
+      ...request,
+      rooms: [{ ...request.rooms[0], adult_count: 3 }],
+    }),
+    /نرخ تخت اضافه/,
+  );
+});
+
+test('scenario CSV preserves long IDs as literal text and escapes embedded quotes', async () => {
+  const { scenariosTextCsv } =
+    await import('../scripts/eghamat24-scenario-csv');
+  const csv = scenariosTextCsv([
+    { code: '1000100644927945', title: 'تست "اتاق", رزرو', empty: '' },
+  ]);
+  assert.ok(csv.startsWith('\uFEFF'));
+  assert.ok(csv.includes('"=""1000100644927945"""'));
+  assert.ok(csv.includes('"=""تست """"اتاق"""", رزرو"""'));
+  assert.ok(csv.endsWith('\r\n'));
+});

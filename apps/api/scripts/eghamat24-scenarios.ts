@@ -13,16 +13,27 @@
  */
 import 'dotenv/config';
 import 'reflect-metadata';
-import { GrsHttpClient } from '../src/app/tourism/providers/eghamat24/grs-http.client';
+import { writeFile } from 'node:fs/promises';
+import { scenariosTextCsv } from './eghamat24-scenario-csv';
+import {
+  GrsHttpClient,
+  GrsRequestFailure,
+} from '../src/app/tourism/providers/eghamat24/grs-http.client';
 import {
   GrsReserveRequest,
   GrsReserveRoom,
 } from '../src/app/tourism/providers/eghamat24/grs.types';
 
+import {
+  prepareScenarioRequest,
+  TEST_DOUBLE_ROOM_ID,
+  TEST_SINGLE_ROOM_ID,
+} from './eghamat24-scenario-plan';
+
 const PROPERTY_ID = 1416;
-const RATE_PLAN_ID = 273;
-const DOUBLE = 411102; // اتاق دو تخته
-const SINGLE = 411840; // اتاق یک تخته
+const RATE_PLAN_ID = 1780; // نمونهٔ dry-run؛ هنگام ارسال از API انتخاب می‌شود
+const DOUBLE = TEST_DOUBLE_ROOM_ID; // اتاق دو تخته
+const SINGLE = TEST_SINGLE_ROOM_ID; // اتاق یک تخته
 const IRAN = 222;
 
 function isoDay(offset: number): string {
@@ -63,7 +74,7 @@ const room = (
   g: ReturnType<typeof guest>,
 ): GrsReserveRoom => ({
   room_type_id: roomTypeId,
-  rate_plan_id: RATE_PLAN_ID,
+  rate_plan_id: g.guest_country_id === IRAN ? RATE_PLAN_ID : 2653,
   count: 1,
   adult_count: adults,
   children,
@@ -141,17 +152,45 @@ function build(s: Scenario, index: number, checkIn: string): GrsReserveRequest {
 
 async function main() {
   const send = process.argv.includes('--send');
-  // هر سناریو یک بازهٔ جدا (۳۰ روز بعد، با فاصله) تا موجودی هم‌دیگر را مصرف نکنند
-  const base = Number(process.env.GRS_SCENARIO_DAYS_AHEAD ?? 30);
+  // بازه‌های نزدیک، تا از افق نرخ‌دهی هتل تست خارج نشویم؛ موجودی پیش از ارسال بررسی می‌شود.
+  const base = Number(process.env.GRS_SCENARIO_DAYS_AHEAD ?? 1);
+  const spacing = Number(process.env.GRS_SCENARIO_SPACING_DAYS ?? 1);
+  if (
+    !Number.isSafeInteger(base) ||
+    base < 1 ||
+    !Number.isSafeInteger(spacing) ||
+    spacing < 1
+  )
+    throw new Error('فاصله تاریخ‌های سناریو باید عدد صحیح مثبت باشد');
+  const selected = process.argv
+    .find((arg) => arg.startsWith('--scenario='))
+    ?.split('=')[1];
+  if (selected !== undefined && !/^[1-6]$/.test(selected))
+    throw new Error('--scenario باید عددی بین ۱ و ۶ باشد');
+  const check = process.argv.includes('--check');
   const client = new GrsHttpClient();
   const rows: Record<string, string>[] = [];
   for (const [i, s] of scenarios.entries()) {
-    const body = build(s, i, isoDay(base + i * 10));
-    if (!send) {
+    if (selected && Number(selected) !== i + 1) continue;
+    let body = build(s, i, isoDay(base + i * spacing));
+    if (!send && !check) {
       console.log(`\n# ${i + 1}. ${s.title}\n${JSON.stringify(body, null, 2)}`);
       continue;
     }
     try {
+      body = await prepareScenarioRequest(client, body);
+      if (check) {
+        rows.push({
+          '#': String(i + 1),
+          scenario: s.title,
+          status: 'آماده ارسال',
+          rooms: body.rooms
+            .map((room) => `${room.room_type_id}/${room.rate_plan_id}`)
+            .join(', '),
+          dates: `${body.check_in} → ${body.check_out}`,
+        });
+        continue;
+      }
       const r = await client.reserve(body);
       rows.push({
         '#': String(i + 1),
@@ -162,18 +201,33 @@ async function main() {
         dates: `${body.check_in} → ${body.check_out}`,
       });
     } catch (error) {
+      process.exitCode = 1;
       rows.push({
         '#': String(i + 1),
         scenario: s.title,
         confirmation_code: '— ناموفق —',
-        status: error instanceof Error ? error.message : 'error',
+        status:
+          error instanceof GrsRequestFailure
+            ? `${error.message} (${error.diagnostic})`
+            : error instanceof Error
+              ? error.message
+              : 'error',
         agency_code: body.agency_confirmation_code,
         dates: `${body.check_in} → ${body.check_out}`,
       });
     }
   }
-  if (send) console.table(rows);
-  else console.log('\nDry-run: چیزی ارسال نشد. برای ارسال واقعی --send بزنید.');
+  if (send || check) {
+    console.table(rows);
+    const csvPath = process.argv
+      .find((arg) => arg.startsWith('--csv='))
+      ?.slice('--csv='.length);
+    if (csvPath) {
+      await writeFile(csvPath, scenariosTextCsv(rows), 'utf8');
+      console.log(`CSV: ${csvPath}`);
+    }
+  } else
+    console.log('\nDry-run: چیزی ارسال نشد. برای ارسال واقعی --send بزنید.');
 }
 main().catch((error: unknown) => {
   console.error(error instanceof Error ? error.message : 'failed');

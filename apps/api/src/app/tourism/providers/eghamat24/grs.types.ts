@@ -104,6 +104,8 @@ export interface GrsRoomType {
 }
 
 export interface GrsRatePlan {
+  country_id?: number | null;
+  nationality?: 'domestic' | 'foreign' | 'both' | null;
   id: number;
   name: string;
   meal_type_included: 'breakfast' | 'half_board' | 'full_board' | null;
