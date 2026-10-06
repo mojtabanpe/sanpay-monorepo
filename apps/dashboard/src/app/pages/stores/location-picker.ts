@@ -91,7 +91,12 @@ export class StoreLocationPicker {
 
   private async initialize(): Promise<void> {
     try {
-      const leaflet = await import('leaflet');
+      const imported = await import('leaflet');
+      // Production bundles expose this CommonJS library through default;
+      // the development server can expose the named exports directly.
+      const leaflet = (
+        'default' in imported ? imported.default : imported
+      ) as typeof import('leaflet');
       if (this.destroyRef.destroyed) return;
       this.leaflet = leaflet;
       const latitude = this.latitude();
