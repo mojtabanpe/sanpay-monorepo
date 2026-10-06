@@ -2,5 +2,15 @@
   "/api": {
     "target": "http://localhost:6500",
     "secure": false
+  },
+  "/map-tiles/**": {
+    "target": "https://tile.openstreetmap.org",
+    "secure": true,
+    "changeOrigin": true,
+    "pathRewrite": { "^/map-tiles": "" },
+    "headers": {
+      "User-Agent": "Sanpay/1.0 (+https://sanpayco.com)",
+      "Referer": "https://admin.sanpayco.com/"
+    }
   }
 }

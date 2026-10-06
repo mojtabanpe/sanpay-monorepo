@@ -12,7 +12,7 @@ import {
   viewChild,
 } from '@angular/core';
 import { HlmButtonImports } from '@sanpay/ui/button';
-import type { Map, Marker } from 'leaflet';
+import type { Map, Marker, TileLayer } from 'leaflet';
 
 @Component({
   selector: 'app-store-location-picker',
@@ -31,6 +31,16 @@ import type { Map, Marker } from 'leaflet';
       role="region"
       aria-label="نقشه انتخاب موقعیت فروشگاه"
     ></div>
+    @if (tilesFailed()) {
+      <div class="mt-2 flex flex-wrap items-center gap-3" role="alert">
+        <p class="text-destructive text-xs">
+          تصاویر نقشه دریافت نشد؛ اتصال را بررسی کنید و دوباره تلاش کنید.
+        </p>
+        <button hlmBtn type="button" variant="outline" (click)="retryTiles()">
+          تلاش دوباره
+        </button>
+      </div>
+    }
     <div class="mt-3 flex flex-wrap items-center gap-3">
       <button
         hlmBtn
@@ -71,7 +81,9 @@ export class StoreLocationPicker {
   protected readonly ready = signal(false);
   protected readonly locating = signal(false);
   protected readonly error = signal<string | null>(null);
+  protected readonly tilesFailed = signal(false);
   private map?: Map;
+  private tiles?: TileLayer;
   private marker?: Marker;
   private leaflet?: typeof import('leaflet');
   private observer?: ResizeObserver;
@@ -109,13 +121,16 @@ export class StoreLocationPicker {
           selected ? 16 : 5,
         );
       this.map.zoomControl.setPosition('topright');
-      leaflet
-        .tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      this.tiles = leaflet
+        .tileLayer('/map-tiles/{z}/{x}/{y}.png', {
           attribution:
             '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
           maxZoom: 19,
-        })
-        .addTo(this.map);
+        });
+      this.tiles.on('tileerror', () => {
+        if (!this.destroyRef.destroyed) this.tilesFailed.set(true);
+      });
+      this.tiles.addTo(this.map);
       this.map.on('click', (event) =>
         this.select(event.latlng.lat, event.latlng.lng),
       );
@@ -171,6 +186,11 @@ export class StoreLocationPicker {
   protected selectCenter(): void {
     const point = this.map?.getCenter();
     if (point) this.select(point.lat, point.lng);
+  }
+
+  protected retryTiles(): void {
+    this.tilesFailed.set(false);
+    this.tiles?.redraw();
   }
 
   protected locate(): void {
