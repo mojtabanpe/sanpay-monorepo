@@ -17,6 +17,12 @@ export class ShellComponent {
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
 
+  protected readonly company = computed(() => this.auth.profile()?.company);
+
+  constructor() {
+    void this.auth.refreshProfile().catch(() => undefined);
+  }
+
   protected readonly fullName = computed(() => {
     const profile = this.auth.profile();
     return profile ? `${profile.firstName} ${profile.lastName}` : '';

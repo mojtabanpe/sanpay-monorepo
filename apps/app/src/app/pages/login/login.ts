@@ -47,16 +47,21 @@ export class LoginPage {
   }
 
   protected async passwordLogin(
-    nationalCodeEl: HTMLInputElement,
+    phoneEl: HTMLInputElement,
     passwordEl: HTMLInputElement,
   ): Promise<void> {
-    const nationalCode = toEnglishDigits(nationalCodeEl.value.trim());
-    if (!/^\d{10}$/.test(nationalCode) || !passwordEl.value || this.loading()) {
-      this.error.set('کد ملی و رمز عبور را کامل وارد کنید.');
+    if (this.loading()) return;
+    const phone = toEnglishDigits(phoneEl.value.trim());
+    if (!/^09\d{9}$/.test(phone)) {
+      this.error.set('شماره موبایل باید ۱۱ رقم و با ۰۹ شروع شود.');
+      return;
+    }
+    if (!passwordEl.value) {
+      this.error.set('رمز عبور را وارد کنید.');
       return;
     }
     await this.run(async () => {
-      await this.auth.login(nationalCode, passwordEl.value);
+      await this.auth.login(phone, passwordEl.value);
       await this.router.navigate(['/home']);
     });
   }

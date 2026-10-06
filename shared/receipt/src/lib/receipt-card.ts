@@ -43,8 +43,8 @@ export class ReceiptCard {
   /** وقتی مبلغ از یک کیف پول کسر شده، تفکیک اضافه است */
   protected readonly isSplit = computed(() => this.receipt().lines.length > 1);
 
-  protected toman(value: number): string {
-    return `${this.faNumber.format(value)} تومان`;
+  protected rial(value: number): string {
+    return `${this.faNumber.format(value * 10)} ریال`;
   }
 
   protected date(value: Date): string {

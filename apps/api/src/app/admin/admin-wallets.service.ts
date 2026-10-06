@@ -77,6 +77,7 @@ export class AdminWalletsService {
           kind: definition.kind as WalletKind,
           description: definition.description,
           icon: definition.icon,
+          imageUrl: definition.imageUrl,
           defaultCap:
             definition.defaultCap === null
               ? null
@@ -112,6 +113,7 @@ export class AdminWalletsService {
         kind: dto.kind,
         description: dto.description || null,
         icon: dto.icon || null,
+        imageUrl: dto.imageUrl || null,
         // خالی گذاشتن سقف پیش‌فرض یعنی نامحدود
         defaultCap:
           dto.defaultCap === undefined || dto.defaultCap === null
@@ -162,6 +164,9 @@ export class AdminWalletsService {
           ...(dto.kind !== undefined ? { kind: dto.kind } : {}),
           ...(dto.description !== undefined
             ? { description: dto.description || null }
+            : {}),
+          ...(dto.imageUrl !== undefined
+            ? { imageUrl: dto.imageUrl || null }
             : {}),
           ...(dto.icon !== undefined ? { icon: dto.icon || null } : {}),
           // `null` صریح یعنی «نامحدود» و باید سقف قبلی را پاک کند

@@ -92,6 +92,7 @@ export class WalletsPage {
     name: '',
     kind: 'CREDIT' as Kind,
     description: '',
+    imageUrl: '',
     icon: '',
     defaultCap: '',
     storeIds: [] as string[],
@@ -192,6 +193,7 @@ export class WalletsPage {
       name: '',
       kind: 'CREDIT',
       description: '',
+      imageUrl: '',
       icon: '',
       defaultCap: '',
       storeIds: [],
@@ -206,13 +208,37 @@ export class WalletsPage {
       name: definition.name,
       kind: definition.kind as Kind,
       description: definition.description ?? '',
+      imageUrl: definition.imageUrl ?? '',
       icon: definition.icon ?? '',
       defaultCap:
-        definition.defaultCap === null ? '' : String(definition.defaultCap),
+        definition.defaultCap === null
+          ? ''
+          : String(definition.defaultCap * 10),
       storeIds: definition.stores.map((store) => store.id),
       companyId: definition.company.id,
     });
     this.showForm.set(true);
+  }
+
+  protected async selectCardImage(event: Event): Promise<void> {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = '';
+    if (!file) return;
+    if (
+      !['image/png', 'image/jpeg', 'image/webp'].includes(file.type) ||
+      file.size > 75_000
+    ) {
+      this.error.set(
+        'تصویر کارت باید PNG، JPEG یا WebP و حداکثر ۷۵ کیلوبایت باشد',
+      );
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => this.update('imageUrl', String(reader.result));
+    reader.onerror = () =>
+      this.error.set('خواندن تصویر ممکن نشد؛ دوباره انتخاب کنید');
+    reader.readAsDataURL(file);
   }
 
   protected async save(): Promise<void> {
@@ -222,6 +248,7 @@ export class WalletsPage {
       companyId: form.companyId,
       kind: form.kind,
       description: form.description.trim() || undefined,
+      imageUrl: form.imageUrl,
       icon: form.icon.trim() || undefined,
       // خالی = نامحدود؛ `null` صریح لازم است تا در ویرایش، سقف قبلی پاک شود
       defaultCap: form.defaultCap.trim() ? parseAmount(form.defaultCap) : null,
@@ -258,7 +285,7 @@ export class WalletsPage {
     this.bulkFor.set(definition);
     // سقف پیش‌فرض کیف پول نقطهٔ شروع منطقی است؛ نامحدود یعنی باید دستی وارد شود
     this.bulkCap.set(
-      definition.defaultCap === null ? '' : String(definition.defaultCap),
+      definition.defaultCap === null ? '' : String(definition.defaultCap * 10),
     );
     this.bulkExpiry.set(defaultExpiry());
     this.clearFile();

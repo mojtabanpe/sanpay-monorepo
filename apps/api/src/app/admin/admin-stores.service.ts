@@ -21,6 +21,7 @@ export class AdminStoresService {
     const q = query.q?.trim();
 
     const where = {
+      deletedAt: null,
       ...(query.active ? { isActive: query.active === 'true' } : {}),
       ...(q
         ? {
@@ -117,6 +118,19 @@ export class AdminStoresService {
 
   async update(id: string, dto: UpdateStoreDto): Promise<AdminStoreRow> {
     await this.mustExist(id);
+    if (dto.username || dto.code) {
+      const clash = await this.prisma.store.findFirst({
+        where: {
+          id: { not: id },
+          OR: [
+            ...(dto.username ? [{ username: dto.username }] : []),
+            ...(dto.code ? [{ code: dto.code }] : []),
+          ],
+        },
+      });
+      if (clash)
+        throw new BadRequestException('نام کاربری یا کد فروشگاه تکراری است');
+    }
     await this.prisma.store.update({
       where: { id },
       data: {
@@ -140,6 +154,15 @@ export class AdminStoresService {
     return this.one(id);
   }
 
+  async remove(id: string) {
+    await this.mustExist(id);
+    await this.prisma.store.update({
+      where: { id },
+      data: { isActive: false, deletedAt: new Date() },
+    });
+    return { ok: true };
+  }
+
   async resetPassword(id: string, password: string) {
     await this.mustExist(id);
     await this.prisma.store.update({
@@ -156,7 +179,8 @@ export class AdminStoresService {
         _count: { select: { walletDefinitions: true, payments: true } },
       },
     });
-    if (!store) throw new NotFoundException('فروشگاه پیدا نشد');
+    if (!store || store.deletedAt)
+      throw new NotFoundException('فروشگاه پیدا نشد');
     const sum = await this.prisma.payment.aggregate({
       where: { storeId: id },
       _sum: { amount: true },
@@ -184,7 +208,8 @@ export class AdminStoresService {
 
   private async mustExist(id: string) {
     const store = await this.prisma.store.findUnique({ where: { id } });
-    if (!store) throw new NotFoundException('فروشگاه پیدا نشد');
+    if (!store || store.deletedAt)
+      throw new NotFoundException('فروشگاه پیدا نشد');
     return store;
   }
 

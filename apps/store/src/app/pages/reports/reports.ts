@@ -134,8 +134,8 @@ export class Reports {
     window.print();
   }
 
-  protected toman(value: number): string {
-    return `${this.numberFormatter.format(value)} تومان`;
+  protected rial(value: number): string {
+    return `${this.numberFormatter.format(value * 10)} ریال`;
   }
 
   protected count(value: number): string {

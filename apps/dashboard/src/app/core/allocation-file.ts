@@ -26,7 +26,16 @@ const HEADERS = {
     'rank',
     'position',
   ],
-  cap: ['سقف اعتبار', 'سقف', 'مبلغ', 'اعتبار', 'cap', 'amount', 'credit'],
+  cap: [
+    'سقف اعتبار (ریال)',
+    'سقف اعتبار',
+    'سقف',
+    'مبلغ',
+    'اعتبار',
+    'cap',
+    'amount',
+    'credit',
+  ],
   expiresAt: [
     'تاریخ انقضا',
     'انقضا',
@@ -41,7 +50,7 @@ const HEADERS = {
 /**
  * فایل تخصیص گروهی (CSV یا XLSX) را به سطرهای `BulkAllocateEntry` تبدیل می‌کند.
  *
- * فایل چهار ستون دارد: کد ملی، ردهٔ سازمانی، سقف اعتبار (تومان) و تاریخ انقضای جلالی
+ * فایل چهار ستون دارد: کد ملی، ردهٔ سازمانی، سقف اعتبار (ریال) و تاریخ انقضای جلالی
  * (مثل ۱۴۰۵/۰۶/۳۱). ارقام فارسی و عربی، جداکنندهٔ هزار و جداکننده‌های `/`، `-`
  * و `.` در تاریخ همه پذیرفته می‌شوند، چون فایلی که واحد رفاه دستی می‌سازد
  * هیچ‌وقت یک‌دست نیست. تاریخ همین‌جا به میلادی تبدیل می‌شود چون API فقط
@@ -108,9 +117,11 @@ export async function parseAllocationFile(
     }
 
     const capRaw = toLatinDigits(row[columns.cap] ?? '').replace(/[^\d]/g, '');
-    const cap = Number(capRaw);
-    if (!capRaw || !Number.isFinite(cap)) {
-      errors.push(`سطر ${lineNo}: سقف اعتبار نامعتبر است`);
+    const cap = Number(capRaw) / 10;
+    if (!capRaw || !Number.isSafeInteger(cap)) {
+      errors.push(
+        `سطر ${lineNo}: سقف اعتبار باید مبلغ ریالی و مضربی از ۱۰ باشد`,
+      );
       return;
     }
 

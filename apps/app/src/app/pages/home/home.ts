@@ -6,6 +6,7 @@ import {
   signal,
   viewChild,
 } from '@angular/core';
+import { AuthService } from '@sanpay/applets/auth';
 import { RouterLink } from '@angular/router';
 import { EmployeeStore, PaymentHistoryItem, Wallet } from '@sanpay/models';
 import { HlmCardImports } from '@sanpay/ui/card';
@@ -30,6 +31,7 @@ interface WalletPurchase {
   templateUrl: './home.html',
 })
 export class HomePage {
+  protected readonly auth = inject(AuthService);
   private readonly homeService = inject(HomeService);
 
   protected readonly wallets = signal<Wallet[]>([]);
@@ -87,7 +89,10 @@ export class HomePage {
     this.loading.set(true);
     this.error.set(false);
     try {
-      const result = await firstValueFrom(this.homeService.load());
+      const [result] = await Promise.all([
+        firstValueFrom(this.homeService.load()),
+        this.auth.refreshProfile(),
+      ]);
       this.wallets.set(result.wallets);
       this.payments.set(result.payments);
       this.activeWalletIndex.set(0);
@@ -191,7 +196,7 @@ export class HomePage {
 
   // arrow تا بشود آن را به‌عنوان `countUpFormat` پاس داد و `this` گم نشود
   protected readonly toman = (value: number): string =>
-    `${this.faNumber.format(value)} تومان`;
+    `${this.faNumber.format(value * 10)} ریال`;
 
   protected count(value: number): string {
     return this.faNumber.format(value);

@@ -1,10 +1,9 @@
 import { IsString, Length, Matches, MinLength } from 'class-validator';
 
 export class LoginDto {
-  /** کد ملی — ده رقم */
   @IsString()
-  @Matches(/^\d{10}$/, { message: 'کد ملی باید ۱۰ رقم باشد' })
-  nationalCode!: string;
+  @Matches(/^09\d{9}$/, { message: 'شماره موبایل معتبر نیست' })
+  phone!: string;
 
   @IsString()
   @Length(6, 72, { message: 'رمز عبور باید حداقل ۶ کاراکتر باشد' })

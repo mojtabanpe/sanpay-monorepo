@@ -27,7 +27,7 @@
     </div>
     <div class="shrink-0 text-left">
       <p class="text-primary font-bold" [class.text-lg]="!compact()">
-        {{ toman(r.amount) }}
+        {{ rial(r.amount) }}
       </p>
       <p class="text-muted-foreground text-[0.65rem]">
         {{ date(paidAt()) }} — {{ time(paidAt()) }}
@@ -57,7 +57,7 @@
     class="flex items-center justify-between gap-3 border-t border-dashed px-4 py-3"
     style="border-color: var(--hairline)"
   >
-    <span class="text-muted-foreground text-xs">وضعیت واریز تومان</span>
+    <span class="text-muted-foreground text-xs">وضعیت واریز</span>
     <span
       class="bg-secondary text-secondary-foreground rounded-md px-2 py-1 text-xs font-medium"
     >
@@ -80,12 +80,12 @@
       <li class="flex items-center justify-between gap-3">
         <span class="min-w-0 truncate text-xs">{{ line.walletName }}</span>
         <span class="shrink-0 text-xs font-semibold tabular-nums">
-          {{ toman(line.amount) }}
+          {{ rial(line.amount) }}
         </span>
       </li>
       @if (line.remainingAfter !== undefined && variant() === 'employee') {
       <li class="text-muted-foreground -mt-1 text-[0.65rem]">
-        ماندهٔ این کیف پول: {{ toman(line.remainingAfter) }}
+        ماندهٔ این کیف پول: {{ rial(line.remainingAfter) }}
       </li>
       } }
     </ul>

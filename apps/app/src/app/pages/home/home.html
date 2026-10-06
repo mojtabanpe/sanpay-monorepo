@@ -1,3 +1,12 @@
+@if (auth.profile()?.birthdayToday) {
+<section
+  class="mx-4 mt-4 rounded-xl border border-primary bg-primary/5 p-4"
+  role="status"
+>
+  <p class="font-bold">{{ auth.profile()?.firstName }} عزیز، تولدت مبارک!</p>
+  <p class="text-sm">برایت سالی پر از شادی و سلامتی آرزو می‌کنیم.</p>
+</section>
+}
 <div class="flex flex-col gap-5 px-4 py-6">
   @if (loading()) {
   <hlm-skeleton class="h-12 w-48" />
@@ -64,6 +73,14 @@
           box-shadow: var(--elev-3);
         "
       >
+        @if (wallet.imageUrl) {
+        <img
+          [src]="wallet.imageUrl"
+          alt=""
+          class="pointer-events-none absolute inset-0 h-full w-full object-cover"
+        />
+        <div class="pointer-events-none absolute inset-0 bg-black/65"></div>
+        }
         <!-- حلقه‌های هم‌مرکز کم‌رنگ، هم‌خانوادهٔ چرخ‌دندهٔ لوگو. سفید روی
              جوهر، پس داخل همان طیف می‌ماند (نه طلایی و نه بلور). -->
         <svg

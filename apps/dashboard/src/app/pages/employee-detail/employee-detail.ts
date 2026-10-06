@@ -6,7 +6,7 @@ import {
   input,
   signal,
 } from '@angular/core';
-import { RouterModule } from '@angular/router';
+import { Router, RouterModule } from '@angular/router';
 import {
   AdminCompanyRow,
   AdminEmployeeDetail,
@@ -24,6 +24,7 @@ import { HlmSelectImports } from '@sanpay/ui/select';
 import { HlmTableImports } from '@sanpay/ui/table';
 import { SanpayDatePickerWidth, isoToJalali, jalaliToIso } from '@sanpay/dates';
 import { JalaliDate } from '@spartan-ng/brain/date-time';
+import { parseBirthDate } from '../../core/employee-file';
 import { AdminApiService, apiError } from '../../core/admin-api.service';
 import { AdminAuthService } from '../../core/admin-auth.service';
 import {
@@ -62,6 +63,7 @@ export class EmployeeDetailPage implements OnInit {
   /** از پارامتر مسیر `/employees/:id` (withComponentInputBinding) */
   readonly id = input.required<string>();
 
+  private readonly router = inject(Router);
   private readonly api = inject(AdminApiService);
   private readonly auth = inject(AdminAuthService);
 
@@ -89,6 +91,9 @@ export class EmployeeDetailPage implements OnInit {
   /** فرم ویرایش اطلاعات */
   protected readonly editing = signal(false);
   protected readonly editForm = signal({
+    birthDay: '',
+    birthMonth: '',
+    birthYear: '',
     firstName: '',
     lastName: '',
     phone: '',
@@ -170,7 +175,11 @@ export class EmployeeDetailPage implements OnInit {
       this.employee.set(employee);
       this.definitions.set(definitions.items);
       this.companies.set(companies.items);
+      const birth = employee.birthDate ? isoToJalali(employee.birthDate) : null;
       this.editForm.set({
+        birthDay: birth ? String(birth.day) : '',
+        birthMonth: birth ? String(birth.month) : '',
+        birthYear: birth ? String(birth.year) : '',
         firstName: employee.firstName,
         lastName: employee.lastName,
         phone: employee.phone ?? '',
@@ -194,6 +203,9 @@ export class EmployeeDetailPage implements OnInit {
     await this.run(async () => {
       const form = this.editForm();
       await this.api.updateEmployee(this.id(), {
+        birthDate:
+          parseBirthDate(form.birthYear, form.birthMonth, form.birthDay) ??
+          null,
         firstName: form.firstName.trim(),
         lastName: form.lastName.trim(),
         phone: form.phone.trim(),
@@ -203,6 +215,23 @@ export class EmployeeDetailPage implements OnInit {
       this.editing.set(false);
       this.notice.set('اطلاعات کارمند به‌روزرسانی شد.');
     }, 'ذخیرهٔ اطلاعات ممکن نشد');
+  }
+
+  protected async deleteEmployee(): Promise<void> {
+    if (
+      this.saving() ||
+      !confirm('کارمند حذف شود؟ دسترسی او بسته و سوابق مالی حفظ می‌شود.')
+    )
+      return;
+    this.saving.set(true);
+    try {
+      await this.api.deleteEmployee(this.id());
+      await this.router.navigate(['/employees']);
+    } catch (caught) {
+      this.error.set(apiError(caught, 'حذف کارمند ممکن نشد'));
+    } finally {
+      this.saving.set(false);
+    }
   }
 
   protected async toggleActive(): Promise<void> {

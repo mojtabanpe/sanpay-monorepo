@@ -1,4 +1,5 @@
 @layer theme, base, components, utilities;
+@import 'leaflet/dist/leaflet.css';
 @import 'tailwindcss/theme.css' layer(theme);
 @import 'tailwindcss/preflight.css' layer(base);
 @import 'tailwindcss/utilities.css';
@@ -13,8 +14,9 @@
 
 /* Persian dashboard: Vazirmatn for both body and display type. */
 :root {
-  --font-sans: 'Vazirmatn FD', -apple-system, BlinkMacSystemFont, 'Segoe UI',
-    Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-sans:
+    'Vazirmatn FD', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+    'Helvetica Neue', Arial, sans-serif;
   --font-display: 'Vazirmatn FD', var(--font-sans);
 
   /*

@@ -19,7 +19,7 @@ export function faNumber(value: number): string {
 }
 
 export function toman(value: number): string {
-  return `${NUMBER.format(value)} تومان`;
+  return `${NUMBER.format(value * 10)} ریال`;
 }
 
 /** «۱۴۰۵/۰۶/۳۱» از تاریخ ISO یا YYYY-MM-DD */
@@ -70,7 +70,5 @@ export function jalaliToIso(date: JalaliDate): string {
  * (مثل تهران) یک روز عقب نیفتند.
  */
 function parseDate(isoDate: string): Date {
-  return new Date(
-    isoDate.length === 10 ? `${isoDate}T00:00:00Z` : isoDate,
-  );
+  return new Date(isoDate.length === 10 ? `${isoDate}T00:00:00Z` : isoDate);
 }

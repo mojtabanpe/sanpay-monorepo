@@ -1,7 +1,9 @@
 <main
   class="mx-auto flex min-h-dvh w-full max-w-[550px] flex-col items-center justify-center gap-2 px-4 py-2 sm:gap-8 sm:py-10"
 >
-  <div class="flex items-center gap-2 text-right sm:flex-col sm:gap-3 sm:text-center">
+  <div
+    class="flex items-center gap-2 text-right sm:flex-col sm:gap-3 sm:text-center"
+  >
     <img
       src="/brand/sanpay-logo.svg"
       alt="صنعت‌پی"
@@ -12,7 +14,7 @@
       class="h-auto w-10 shrink-0 object-contain outline-none sm:w-36"
     />
     <div class="leading-tight">
-      <p class="text-lg font-bold">جهان‌فولاد سیرجان</p>
+      <p class="text-lg font-bold">صنعت‌پی</p>
       <p class="text-muted-foreground text-sm">سامانه رفاهی پرسنل</p>
     </div>
   </div>
@@ -52,16 +54,21 @@
 
       @if (mode() === 'password') {
       <div class="flex flex-col gap-1 sm:gap-2">
-        <label hlmLabel for="password-national-code">کد ملی</label>
+        <label hlmLabel for="password-phone">شماره موبایل</label>
         <input
           hlmInput
-          id="password-national-code"
-          inputmode="numeric"
+          id="password-phone"
+          dir="ltr"
+          inputmode="tel"
           autocomplete="username"
-          maxlength="10"
-          placeholder="مثلاً ۳۰۶۰۱۲۳۴۵۶"
-          #passwordNationalCode
+          maxlength="11"
+          placeholder="09123456789"
+          #passwordPhone
         />
+        <p class="text-muted-foreground text-xs">
+          اگر در چند شرکت حساب دارید، شماره ثبت‌شده در شرکت موردنظر را وارد
+          کنید.
+        </p>
       </div>
       <div class="flex flex-col gap-1 sm:gap-2">
         <label hlmLabel for="password">رمز عبور</label>
@@ -72,14 +79,14 @@
           autocomplete="current-password"
           placeholder="••••••••"
           #passwordInput
-          (keyup.enter)="passwordLogin(passwordNationalCode, passwordInput)"
+          (keyup.enter)="passwordLogin(passwordPhone, passwordInput)"
         />
       </div>
       <button
         hlmBtn
         class="w-full"
         [disabled]="loading()"
-        (click)="passwordLogin(passwordNationalCode, passwordInput)"
+        (click)="passwordLogin(passwordPhone, passwordInput)"
       >
         {{ loading() ? 'در حال ورود…' : 'ورود با رمز عبور' }}
       </button>
@@ -210,6 +217,6 @@
   </section>
 
   <p class="text-muted-foreground text-center text-xs">
-    © ۱۴۰۵ شرکت جهان‌فولاد سیرجان — طراحی و توسعه: شرکت طرح و توسعه دیار مانا
+    © ۱۴۰۵ صنعت‌پی — طراحی و توسعه: شرکت طرح و توسعه دیار مانا
   </p>
 </main>

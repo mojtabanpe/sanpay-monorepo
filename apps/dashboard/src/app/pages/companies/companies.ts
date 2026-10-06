@@ -45,6 +45,7 @@ export class CompaniesPage {
   protected readonly showForm = signal(false);
   protected readonly editingId = signal<string | null>(null);
   protected readonly name = signal('');
+  protected readonly logoUrl = signal('');
 
   constructor() {
     void this.load();
@@ -83,12 +84,14 @@ export class CompaniesPage {
   protected startCreate(): void {
     this.editingId.set(null);
     this.name.set('');
+    this.logoUrl.set('');
     this.showForm.set(true);
   }
 
   protected startEdit(company: AdminCompanyRow): void {
     this.editingId.set(company.id);
     this.name.set(company.name);
+    this.logoUrl.set(company.logoUrl ?? '');
     this.showForm.set(true);
   }
 
@@ -98,15 +101,16 @@ export class CompaniesPage {
     await this.run(async () => {
       const id = this.editingId();
       if (id) {
-        await this.api.updateCompany(id, { name });
+        await this.api.updateCompany(id, { name, logoUrl: this.logoUrl() });
         this.notice.set('شرکت به‌روزرسانی شد.');
       } else {
-        await this.api.createCompany({ name });
+        await this.api.createCompany({ name, logoUrl: this.logoUrl() });
         this.notice.set('شرکت ساخته شد.');
       }
       this.showForm.set(false);
       this.editingId.set(null);
       this.name.set('');
+      this.logoUrl.set('');
     }, 'ذخیرهٔ شرکت ممکن نشد');
   }
 
@@ -115,6 +119,32 @@ export class CompaniesPage {
       await this.api.updateCompany(company.id, { isActive: !company.isActive });
       this.notice.set(company.isActive ? 'شرکت غیرفعال شد.' : 'شرکت فعال شد.');
     }, 'تغییر وضعیت شرکت ممکن نشد');
+  }
+
+  protected async selectLogo(event: Event): Promise<void> {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+    if (
+      !['image/png', 'image/jpeg', 'image/webp'].includes(file.type) ||
+      file.size > 75000
+    ) {
+      this.error.set('لوگو باید PNG، JPEG یا WebP و حداکثر ۷۵ کیلوبایت باشد');
+      input.value = '';
+      return;
+    }
+    try {
+      const data = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result));
+        reader.onerror = () => reject(reader.error);
+        reader.readAsDataURL(file);
+      });
+      this.logoUrl.set(data);
+      this.error.set(null);
+    } catch {
+      this.error.set('خواندن فایل لوگو ممکن نشد');
+    }
   }
 
   private async run(

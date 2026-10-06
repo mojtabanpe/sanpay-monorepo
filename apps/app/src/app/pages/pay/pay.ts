@@ -198,16 +198,19 @@ export class PayPage implements OnDestroy {
   /** مقدار نمایشی داخل اینپوت — با اعداد فارسی و جداکنندهٔ هزارگان */
   protected amountText(wallet: PayableWallet): string {
     const amount = this.amountOf(wallet);
-    return amount === 0 ? '' : this.faNumber.format(amount);
+    return amount === 0 ? '' : this.faNumber.format(amount * 10);
   }
 
   protected onAmountInput(wallet: PayableWallet, event: Event): void {
     const input = event.target as HTMLInputElement;
     const parsed = toLatinDigits(input.value).replace(/\D/g, '');
     // مبلغ هرگز از سقف کیف پول بالاتر نمی‌رود — سقف در سرور هم دوباره چک می‌شود
-    const amount = Math.min(parsed === '' ? 0 : Number(parsed), wallet.max);
+    const amount = Math.min(
+      parsed === '' ? 0 : Math.floor(Number(parsed) / 10),
+      wallet.max,
+    );
     this.setAmount(wallet, amount);
-    input.value = amount === 0 ? '' : this.faNumber.format(amount);
+    input.value = amount === 0 ? '' : this.faNumber.format(amount * 10);
   }
 
   protected fillMax(wallet: PayableWallet): void {
@@ -269,7 +272,7 @@ export class PayPage implements OnDestroy {
   }
 
   protected toman(value: number): string {
-    return `${this.faNumber.format(value)} تومان`;
+    return `${this.faNumber.format(value * 10)} ریال`;
   }
 
   protected count(value: number): string {

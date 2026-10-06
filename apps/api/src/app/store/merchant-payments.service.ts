@@ -33,7 +33,8 @@ export class MerchantPaymentsService {
       const existing = await this.prisma.merchantPaymentIntent.findUnique({
         where: { idempotencyKey: dto.idempotencyKey },
       });
-      if (existing && existing.storeId === storeId) return this.result(existing);
+      if (existing && existing.storeId === storeId)
+        return this.result(existing);
     }
 
     const employee = await this.prisma.employee.findFirst({
@@ -41,6 +42,7 @@ export class MerchantPaymentsService {
         nationalCode: dto.nationalCode,
         phone: dto.phone,
         isActive: true,
+        deletedAt: null,
         company: { isActive: true },
       },
     });
@@ -54,7 +56,9 @@ export class MerchantPaymentsService {
 
     const checkout = await this.payments.checkout(employee.id, store.code);
     if (checkout.totalAvailable < dto.amount) {
-      throw new BadRequestException('اعتبار قابل استفاده برای این مبلغ کافی نیست');
+      throw new BadRequestException(
+        'اعتبار قابل استفاده برای این مبلغ کافی نیست',
+      );
     }
 
     let remaining = dto.amount;
@@ -122,7 +126,10 @@ export class MerchantPaymentsService {
       throw new UnauthorizedException('کد نامعتبر یا منقضی شده است');
     }
 
-    const checkout = await this.payments.checkout(intent.employeeId, intent.store.code);
+    const checkout = await this.payments.checkout(
+      intent.employeeId,
+      intent.store.code,
+    );
     let remaining = Number(intent.amount);
     const lines = checkout.wallets.flatMap((wallet) => {
       if (remaining <= 0) return [];
@@ -131,7 +138,9 @@ export class MerchantPaymentsService {
       return [{ allocationId: wallet.allocationId, amount }];
     });
     if (remaining > 0) {
-      throw new BadRequestException('اعتبار کارمند از زمان ارسال کد تغییر کرده است');
+      throw new BadRequestException(
+        'اعتبار کارمند از زمان ارسال کد تغییر کرده است',
+      );
     }
 
     const receipt = await this.payments.create(
@@ -149,14 +158,25 @@ export class MerchantPaymentsService {
   private result(intent: { id: string; expiresAt: Date; sentAt: Date }) {
     return {
       intentId: intent.id,
-      expiresInSeconds: Math.max(0, Math.ceil((intent.expiresAt.getTime() - Date.now()) / 1_000)),
-      retryAfterSeconds: Math.max(0, Math.ceil((intent.sentAt.getTime() + RESEND_SECONDS * 1_000 - Date.now()) / 1_000)),
+      expiresInSeconds: Math.max(
+        0,
+        Math.ceil((intent.expiresAt.getTime() - Date.now()) / 1_000),
+      ),
+      retryAfterSeconds: Math.max(
+        0,
+        Math.ceil(
+          (intent.sentAt.getTime() + RESEND_SECONDS * 1_000 - Date.now()) /
+            1_000,
+        ),
+      ),
     };
   }
 
   private hash(intentId: string, code: string): string {
     const secret = process.env.OTP_SECRET || process.env.JWT_SECRET;
     if (!secret) throw new Error('OTP_SECRET or JWT_SECRET must be configured');
-    return createHmac('sha256', secret).update(`${intentId}:${code}`).digest('hex');
+    return createHmac('sha256', secret)
+      .update(`${intentId}:${code}`)
+      .digest('hex');
   }
 }

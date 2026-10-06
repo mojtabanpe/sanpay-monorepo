@@ -6,11 +6,15 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { Request } from 'express';
+import { PrismaService } from '../prisma/prisma.service';
 import { JwtPayload } from './auth.service';
 
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
-  constructor(private readonly jwt: JwtService) {}
+  constructor(
+    private readonly jwt: JwtService,
+    private readonly prisma: PrismaService,
+  ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest<Request>();
@@ -27,6 +31,17 @@ export class JwtAuthGuard implements CanActivate {
       if (!payload.nationalCode) {
         throw new UnauthorizedException();
       }
+      const employee = await this.prisma.employee.findFirst({
+        where: {
+          id: payload.sub,
+          nationalCode: payload.nationalCode,
+          isActive: true,
+          deletedAt: null,
+          company: { isActive: true },
+        },
+        select: { id: true },
+      });
+      if (!employee) throw new UnauthorizedException();
       if (
         payload.requiresPasswordSetup &&
         !request.url.includes('/auth/set-initial-password')

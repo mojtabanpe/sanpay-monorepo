@@ -51,7 +51,7 @@ export class AdminCompaniesService {
     if (existing) throw new BadRequestException('این شرکت قبلاً ثبت شده است');
 
     const company = await this.prisma.company.create({
-      data: { name },
+      data: { name, logoUrl: dto.logoUrl || null },
       include: {
         _count: { select: { employees: true, walletDefinitions: true } },
       },
@@ -73,6 +73,7 @@ export class AdminCompaniesService {
     const company = await this.prisma.company.update({
       where: { id },
       data: {
+        ...(dto.logoUrl !== undefined ? { logoUrl: dto.logoUrl || null } : {}),
         ...(dto.name !== undefined ? { name: dto.name.trim() } : {}),
         ...(dto.isActive !== undefined ? { isActive: dto.isActive } : {}),
       },
@@ -85,6 +86,7 @@ export class AdminCompaniesService {
 }
 
 function toRow(company: {
+  logoUrl: string | null;
   id: string;
   name: string;
   isActive: boolean;
@@ -93,6 +95,7 @@ function toRow(company: {
 }): AdminCompanyRow {
   return {
     id: company.id,
+    logoUrl: company.logoUrl,
     name: company.name,
     isActive: company.isActive,
     createdAt: company.createdAt.toISOString(),

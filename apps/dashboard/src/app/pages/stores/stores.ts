@@ -9,6 +9,7 @@ import { HlmInputImports } from '@sanpay/ui/input';
 import { HlmTableImports } from '@sanpay/ui/table';
 import { AdminApiService, apiError } from '../../core/admin-api.service';
 import { AdminAuthService } from '../../core/admin-auth.service';
+import { StoreLocationPicker } from './location-picker';
 import { fa, toman } from '../../core/format';
 
 /** فروشگاه‌های طرف قرارداد: ثبت، ویرایش، کد QR صندوق و رمز پنل */
@@ -22,6 +23,7 @@ import { fa, toman } from '../../core/format';
     HlmFieldImports,
     HlmInputImports,
     HlmTableImports,
+    StoreLocationPicker,
   ],
   templateUrl: './stores.html',
 })
@@ -66,6 +68,7 @@ export class StoresPage {
   /** فروشگاهی که ردیفش باز شده و در حال ویرایش است */
   protected readonly editingId = signal<string | null>(null);
   protected readonly editForm = signal({
+    username: '',
     name: '',
     category: '',
     phone: '',
@@ -112,16 +115,23 @@ export class StoresPage {
   }
 
   protected update(field: string, value: string): void {
-    this.form.update((form) => ({ ...form, [field]: value }));
+    this.form.update((form) => ({
+      ...form,
+      [field]: value,
+    }));
   }
 
   protected updateEdit(field: string, value: string): void {
-    this.editForm.update((form) => ({ ...form, [field]: value }));
+    this.editForm.update((form) => ({
+      ...form,
+      [field]: value,
+    }));
   }
 
   protected startEdit(row: AdminStoreRow): void {
     this.editingId.set(row.id);
     this.editForm.set({
+      username: row.username,
       name: row.name,
       category: row.category ?? '',
       phone: row.phone ?? '',
@@ -132,6 +142,31 @@ export class StoresPage {
       settlementIban: row.settlementIban ?? '',
       settlementOwnerName: row.settlementOwnerName ?? '',
     });
+  }
+
+  protected selectLocation(
+    location: { latitude: number; longitude: number },
+    editing = false,
+  ): void {
+    const target = editing ? this.editForm : this.form;
+    target.update((form) => ({
+      ...form,
+      latitude: String(location.latitude),
+      longitude: String(location.longitude),
+    }));
+  }
+
+  protected async deleteStore(row: AdminStoreRow): Promise<void> {
+    if (
+      !confirm(
+        `فروشگاه «${row.name}» حذف شود؟ دسترسی آن بسته و سوابق مالی حفظ می‌شود.`,
+      )
+    )
+      return;
+    await this.run(async () => {
+      await this.api.deleteStore(row.id);
+      this.notice.set('فروشگاه حذف شد.');
+    }, 'حذف فروشگاه ممکن نشد');
   }
 
   protected async create(): Promise<void> {
@@ -174,6 +209,7 @@ export class StoresPage {
     const form = this.editForm();
     await this.run(async () => {
       await this.api.updateStore(id, {
+        username: form.username.trim().toLowerCase(),
         name: form.name.trim(),
         category: form.category.trim(),
         phone: form.phone.trim(),

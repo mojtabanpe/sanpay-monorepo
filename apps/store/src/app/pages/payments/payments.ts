@@ -8,12 +8,7 @@ import { StorePaymentsService } from '../../core/payments.service';
 
 @Component({
   selector: 'store-payments',
-  imports: [
-    HlmButtonImports,
-    HlmCardImports,
-    HlmSkeletonImports,
-    ReceiptCard,
-  ],
+  imports: [HlmButtonImports, HlmCardImports, HlmSkeletonImports, ReceiptCard],
   templateUrl: './payments.html',
 })
 export class PaymentsPage implements OnDestroy {
@@ -154,8 +149,8 @@ export class PaymentsPage implements OnDestroy {
     return this.faFullDate.format(new Date(`${date}T12:00:00+03:30`));
   }
 
-  protected toman(value: number): string {
-    return `${this.faNumber.format(value)} تومان`;
+  protected rial(value: number): string {
+    return `${this.faNumber.format(value * 10)} ریال`;
   }
 
   protected count(value: number): string {

@@ -14,6 +14,7 @@ import {
   Max,
   Min,
   MinLength,
+  MaxLength,
   ValidateNested,
 } from 'class-validator';
 
@@ -112,12 +113,30 @@ export class ListQueryDto {
 }
 
 export class CreateCompanyDto {
+  @IsOptional()
+  @IsString()
+  @Matches(
+    /^(https:\/\/[^\s]+|data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+|)$/,
+    { message: 'لوگو باید PNG، JPEG، WebP یا لینک HTTPS باشد' },
+  )
+  @MaxLength(101000)
+  logoUrl?: string;
+
   @IsString()
   @IsNotEmpty()
   name!: string;
 }
 
 export class UpdateCompanyDto {
+  @IsOptional()
+  @IsString()
+  @Matches(
+    /^(https:\/\/[^\s]+|data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+|)$/,
+    { message: 'لوگو باید PNG، JPEG، WebP یا لینک HTTPS باشد' },
+  )
+  @MaxLength(101000)
+  logoUrl?: string;
+
   @IsOptional()
   @IsString()
   @IsNotEmpty()
@@ -167,9 +186,14 @@ export class CreateEmployeeDto {
   @Matches(/^\d{10}$/, { message: 'کد ملی باید ۱۰ رقم باشد' })
   nationalCode!: string;
 
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
-  personnelCode!: string;
+  personnelCode?: string;
+
+  @IsOptional()
+  @IsDateString({ strict: true })
+  @Matches(/^\d{4}-\d{2}-\d{2}$/)
+  birthDate?: string;
 
   @IsString()
   @IsNotEmpty()
@@ -203,9 +227,14 @@ export class ImportEmployeeEntryDto {
   @Matches(/^\d{10}$/)
   nationalCode!: string;
 
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
-  personnelCode!: string;
+  personnelCode?: string;
+
+  @IsOptional()
+  @IsDateString({ strict: true })
+  @Matches(/^\d{4}-\d{2}-\d{2}$/)
+  birthDate?: string;
 
   @IsString()
   @IsNotEmpty()
@@ -236,6 +265,11 @@ export class ImportEmployeesDto {
 }
 
 export class UpdateEmployeeDto {
+  @IsOptional()
+  @IsDateString({ strict: true })
+  @Matches(/^\d{4}-\d{2}-\d{2}$/)
+  birthDate?: string | null;
+
   @IsOptional()
   @IsString()
   @Matches(/^\d{10}$/)
@@ -413,6 +447,15 @@ export class CreateWalletDefinitionDto {
   @IsString()
   icon?: string;
 
+  @IsOptional()
+  @IsString()
+  @Matches(
+    /^(https:\/\/[^\s]+|data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+|)$/,
+    { message: 'تصویر کارت باید PNG، JPEG، WebP یا لینک HTTPS باشد' },
+  )
+  @MaxLength(101000)
+  imageUrl?: string;
+
   /** `null` صریح = نامحدود؛ `@IsOptional` هم undefined و هم null را رد می‌کند */
   @IsOptional()
   @Type(() => Number)
@@ -448,6 +491,15 @@ export class UpdateWalletDefinitionDto {
   @IsOptional()
   @IsString()
   icon?: string;
+
+  @IsOptional()
+  @IsString()
+  @Matches(
+    /^(https:\/\/[^\s]+|data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+|)$/,
+    { message: 'تصویر کارت باید PNG، JPEG، WebP یا لینک HTTPS باشد' },
+  )
+  @MaxLength(101000)
+  imageUrl?: string;
 
   /** `null` صریح = نامحدود؛ `@IsOptional` هم undefined و هم null را رد می‌کند */
   @IsOptional()

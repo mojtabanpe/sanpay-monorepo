@@ -48,8 +48,8 @@ export class SmsService {
     await this.sendVerify(phone, PURCHASE_TEMPLATE_ID, [
       { name: 'CODE', value: code },
       { name: 'STORE', value: purchase.store },
-      { name: 'PRICE', value: purchase.price.toLocaleString('en-US') },
-      { name: 'CURRENCY', value: 'تومان' },
+      { name: 'PRICE', value: (purchase.price * 10).toLocaleString('en-US') },
+      { name: 'CURRENCY', value: 'ریال' },
       { name: 'WALLET', value: purchase.wallets.join('، ') },
     ]);
   }

@@ -3,66 +3,58 @@
   <!-- هدر — لایهٔ کارکردی شناور: متریالِ نیمه‌شفاف (--bar-material) تا محتوا
        زیرش دیده شود، با خط hairline برای لبه. -->
   <header data-slot="app-bar" class="sticky top-0 z-40 border-b">
-    <div class="flex h-14 items-center justify-between px-4">
-      <div class="flex items-center gap-2.5">
-        <button
-          hlmBtn
-          variant="ghost"
-          size="icon-sm"
-          (click)="back()"
-          aria-label="بازگشت"
-        >
-          <svg
-            class="size-4"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            aria-hidden="true"
-          >
-            <path d="m9 18 6-6-6-6" />
-          </svg>
-        </button>
+    <div
+      class="flex min-h-16 items-center justify-between gap-3 px-4 py-2"
+      dir="rtl"
+    >
+      <div class="flex min-w-0 items-center gap-2.5">
+        @if (company()?.logoUrl; as logo) {
         <img
-          src="/brand/sanpay-mark.svg"
-          alt="صنعت‌پی"
-          width="950"
-          height="1020"
-          decoding="sync"
-          fetchpriority="high"
-          class="h-10 w-10 shrink-0 object-contain outline-none"
+          [src]="logo"
+          [alt]="'لوگوی ' + company()?.name"
+          class="h-10 w-12 shrink-0 object-contain"
         />
-        <div class="leading-tight">
-          <p class="text-sm font-bold">جهان‌فولاد سیرجان</p>
-          <p class="text-muted-foreground text-[0.6875rem]">
-            سامانه رفاهی پرسنل
+        } @else {
+        <span
+          class="bg-muted flex size-10 shrink-0 items-center justify-center rounded-lg text-lg font-bold"
+          aria-hidden="true"
+          >{{ company()?.name?.slice(0, 1) }}</span
+        >
+        }
+        <div class="min-w-0 leading-tight">
+          <p class="truncate text-sm font-bold">{{ company()?.name }}</p>
+          <p class="text-muted-foreground mt-1 truncate text-xs">
+            {{ fullName() }}
           </p>
         </div>
       </div>
-      <div class="flex items-center gap-3">
-        <span class="text-foreground text-xs font-medium"
-          >{{ fullName() }}</span
-        >
-        <button hlmBtn variant="ghost" size="sm" (click)="logout()">
-          <svg
-            class="size-4"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            aria-hidden="true"
-          >
-            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-            <polyline points="16 17 21 12 16 7" />
-            <line x1="21" x2="9" y1="12" y2="12" />
-          </svg>
-          <span class="sr-only">خروج</span>
-        </button>
-      </div>
+      <img
+        src="/brand/sanpay-mark.svg"
+        alt="صنعت‌پی"
+        width="950"
+        height="1020"
+        class="h-10 w-10 shrink-0 object-contain"
+      />
+    </div>
+    <div class="flex items-center justify-between px-4 pb-2">
+      <button
+        hlmBtn
+        variant="ghost"
+        size="sm"
+        (click)="back()"
+        aria-label="بازگشت"
+      >
+        بازگشت
+      </button>
+      <button
+        hlmBtn
+        variant="ghost"
+        size="sm"
+        (click)="logout()"
+        aria-label="خروج"
+      >
+        خروج
+      </button>
     </div>
   </header>
 

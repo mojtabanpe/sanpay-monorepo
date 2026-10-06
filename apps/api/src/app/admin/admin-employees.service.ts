@@ -35,6 +35,7 @@ export class AdminEmployeesService {
     const q = query.q?.trim();
 
     const where = {
+      deletedAt: null,
       ...(query.active ? { isActive: query.active === 'true' } : {}),
       ...(query.companyId ? { companyId: query.companyId } : {}),
       ...(q
@@ -85,7 +86,8 @@ export class AdminEmployeesService {
         },
       },
     });
-    if (!employee) throw new NotFoundException('کارمند پیدا نشد');
+    if (!employee || employee.deletedAt)
+      throw new NotFoundException('کارمند پیدا نشد');
 
     const payments = await this.prisma.payment.findMany({
       where: { employeeId: id },
@@ -133,12 +135,16 @@ export class AdminEmployeesService {
   }
 
   async create(dto: CreateEmployeeDto): Promise<AdminEmployeeRow> {
+    validateBirthDate(dto.birthDate);
     await this.mustHaveActiveCompany(dto.companyId);
     const clash = await this.prisma.employee.findFirst({
       where: {
         OR: [
           { companyId: dto.companyId, nationalCode: dto.nationalCode },
-          { companyId: dto.companyId, personnelCode: dto.personnelCode },
+          {
+            companyId: dto.companyId,
+            personnelCode: dto.personnelCode || dto.nationalCode,
+          },
           { phone: dto.phone },
         ],
       },
@@ -154,7 +160,8 @@ export class AdminEmployeesService {
     const employee = await this.prisma.employee.create({
       data: {
         nationalCode: dto.nationalCode,
-        personnelCode: dto.personnelCode,
+        personnelCode: dto.personnelCode || dto.nationalCode,
+        birthDate: dto.birthDate ? new Date(dto.birthDate) : null,
         firstName: dto.firstName,
         lastName: dto.lastName,
         phone: dto.phone,
@@ -176,9 +183,18 @@ export class AdminEmployeesService {
     const phones = new Set<string>();
 
     for (const entry of dto.entries) {
+      try {
+        validateBirthDate(entry.birthDate);
+      } catch {
+        rejected.push({
+          rowNumber: entry.rowNumber,
+          reason: 'تاریخ تولد معتبر نیست',
+        });
+        continue;
+      }
       if (
         nationalCodes.has(entry.nationalCode) ||
-        personnelCodes.has(entry.personnelCode) ||
+        (!!entry.personnelCode && personnelCodes.has(entry.personnelCode)) ||
         phones.has(entry.phone)
       ) {
         rejected.push({
@@ -189,7 +205,7 @@ export class AdminEmployeesService {
         continue;
       }
       nationalCodes.add(entry.nationalCode);
-      personnelCodes.add(entry.personnelCode);
+      if (entry.personnelCode) personnelCodes.add(entry.personnelCode);
       phones.add(entry.phone);
       accepted.push(entry);
     }
@@ -204,7 +220,9 @@ export class AdminEmployeesService {
           {
             companyId: dto.companyId,
             personnelCode: {
-              in: accepted.map((entry) => entry.personnelCode),
+              in: accepted.map(
+                (entry) => entry.personnelCode || entry.nationalCode,
+              ),
             },
           },
           { phone: { in: accepted.map((entry) => entry.phone) } },
@@ -227,19 +245,16 @@ export class AdminEmployeesService {
         .filter((row) => row.companyId === dto.companyId)
         .map((row) => row.nationalCode),
     );
-    const existingPhones = new Set(
-      existing.map((row) => row.phone).filter(Boolean),
-    );
     const creatable = accepted.filter((entry) => {
       if (
         existingCompanyNationalCodes.has(entry.nationalCode) ||
-        existingPersonnelCodes.has(entry.personnelCode) ||
-        existingPhones.has(entry.phone)
+        existingPersonnelCodes.has(entry.personnelCode || entry.nationalCode) ||
+        existing.some((row) => row.phone === entry.phone)
       ) {
         rejected.push({
           rowNumber: entry.rowNumber,
           nationalCode: entry.nationalCode,
-          reason: existingPhones.has(entry.phone)
+          reason: existing.some((row) => row.phone === entry.phone)
             ? 'شماره موبایل قبلاً برای استخدام دیگری ثبت شده است'
             : 'کد ملی یا کد پرسنلی قبلاً در این شرکت ثبت شده است',
         });
@@ -252,7 +267,8 @@ export class AdminEmployeesService {
       await this.prisma.employee.createMany({
         data: creatable.map((entry) => ({
           nationalCode: entry.nationalCode,
-          personnelCode: entry.personnelCode,
+          personnelCode: entry.personnelCode || entry.nationalCode,
+          birthDate: entry.birthDate ? new Date(entry.birthDate) : null,
           firstName: entry.firstName,
           lastName: entry.lastName,
           phone: entry.phone,
@@ -267,6 +283,7 @@ export class AdminEmployeesService {
   }
 
   async update(id: string, dto: UpdateEmployeeDto): Promise<AdminEmployeeRow> {
+    validateBirthDate(dto.birthDate);
     const current = await this.mustExist(id);
     if (dto.companyId) {
       await this.mustHaveActiveCompany(dto.companyId);
@@ -294,7 +311,13 @@ export class AdminEmployeesService {
         OR: [
           { companyId: targetCompanyId, nationalCode: targetNationalCode },
           { companyId: targetCompanyId, personnelCode: targetPersonnelCode },
-          ...(targetPhone ? [{ phone: targetPhone }] : []),
+          ...(targetPhone
+            ? [
+                {
+                  phone: targetPhone,
+                },
+              ]
+            : []),
         ],
       },
     });
@@ -309,6 +332,9 @@ export class AdminEmployeesService {
       where: { id },
       data: {
         ...dto,
+        ...(dto.birthDate !== undefined
+          ? { birthDate: dto.birthDate ? new Date(dto.birthDate) : null }
+          : {}),
         ...(dto.phone !== undefined ? { phone: dto.phone || null } : {}),
       },
       include: {
@@ -317,6 +343,21 @@ export class AdminEmployeesService {
       },
     });
     return toRow(employee);
+  }
+
+  async remove(id: string) {
+    await this.mustExist(id);
+    await this.prisma.$transaction(async (tx) => {
+      await tx.employee.update({
+        where: { id },
+        data: { isActive: false, deletedAt: new Date() },
+      });
+      await tx.walletAllocation.updateMany({
+        where: { employeeId: id },
+        data: { isActive: false },
+      });
+    });
+    return { ok: true };
   }
 
   async resetPassword(id: string, password: string) {
@@ -421,7 +462,8 @@ export class AdminEmployeesService {
 
   private async mustExist(id: string) {
     const employee = await this.prisma.employee.findUnique({ where: { id } });
-    if (!employee) throw new NotFoundException('کارمند پیدا نشد');
+    if (!employee || employee.deletedAt)
+      throw new NotFoundException('کارمند پیدا نشد');
     return employee;
   }
 
@@ -442,6 +484,7 @@ function activeAllocation() {
 function toRow(employee: {
   id: string;
   nationalCode: string;
+  birthDate?: Date | null;
   personnelCode: string;
   firstName: string;
   lastName: string;
@@ -456,6 +499,7 @@ function toRow(employee: {
   return {
     id: employee.id,
     nationalCode: employee.nationalCode,
+    birthDate: employee.birthDate?.toISOString().slice(0, 10) ?? null,
     personnelCode: employee.personnelCode,
     firstName: employee.firstName,
     lastName: employee.lastName,
@@ -496,4 +540,23 @@ export function toAllocationRow(allocation: {
     isActive: allocation.isActive,
     createdAt: allocation.createdAt.toISOString(),
   };
+}
+
+export function validateBirthDate(value: string | null | undefined): void {
+  if (value === undefined || value === null) return;
+  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value))
+    throw new BadRequestException('تاریخ تولد معتبر نیست');
+  const date = new Date(`${value}T12:00:00Z`);
+  const today = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Tehran',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date());
+  if (
+    !Number.isFinite(date.getTime()) ||
+    date.toISOString().slice(0, 10) !== value ||
+    value > today
+  )
+    throw new BadRequestException('تاریخ تولد معتبر نیست');
 }

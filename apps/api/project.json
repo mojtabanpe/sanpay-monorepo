@@ -25,9 +25,7 @@
       "continuous": true,
       "executor": "@nx/js:node",
       "defaultConfiguration": "development",
-      "dependsOn": [
-        "build"
-      ],
+      "dependsOn": ["build"],
       "options": {
         "buildTarget": "api:build",
         "runBuildTargetDependencies": false
@@ -85,10 +83,16 @@
           "SWC_NODE_PROJECT": "apps/api/tsconfig.app.json"
         }
       }
+    },
+    "test-admin": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "node -r @swc-node/register --test apps/api/tests/admin.test.ts",
+        "env": {
+          "SWC_NODE_PROJECT": "apps/api/tsconfig.app.json"
+        }
+      }
     }
   },
-  "tags": [
-    "type:app",
-    "scope:api"
-  ]
+  "tags": ["type:app", "scope:api"]
 }

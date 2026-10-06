@@ -1,3 +1,5 @@
+import { isoToJalali, jalaliToIso } from '@sanpay/dates';
+import { JalaliDate } from '@spartan-ng/brain/date-time';
 import { EmployeeImportEntry, OrganizationalRank } from '@sanpay/models';
 
 export interface EmployeeFileResult {
@@ -7,7 +9,9 @@ export interface EmployeeFileResult {
 
 const HEADERS: Record<string, string[]> = {
   nationalCode: ['کد ملی', 'کدملی', 'national code', 'nationalcode'],
-  personnelCode: ['کد پرسنلی', 'کدپرسنلی', 'personnel code', 'personnelcode'],
+  birthDay: ['روز تولد', 'birthday'],
+  birthMonth: ['ماه تولد', 'birthmonth'],
+  birthYear: ['سال تولد', 'birthyear'],
   firstName: ['نام', 'first name', 'firstname'],
   lastName: ['نام خانوادگی', 'نام‌خانوادگی', 'last name', 'lastname'],
   phone: ['موبایل', 'شماره موبایل', 'تلفن همراه', 'phone', 'mobile'],
@@ -40,12 +44,14 @@ export async function parseEmployeeFile(
     ]),
   ) as Record<keyof typeof HEADERS, number>;
   const missing = Object.entries(columns)
-    .filter(([, index]) => index < 0)
+    .filter(([key, index]) => index < 0 && !key.startsWith('birth'))
     .map(
       ([key]) =>
         ({
           nationalCode: 'کد ملی',
-          personnelCode: 'کد پرسنلی',
+          birthDay: 'روز تولد',
+          birthMonth: 'ماه تولد',
+          birthYear: 'سال تولد',
           firstName: 'نام',
           lastName: 'نام خانوادگی',
           phone: 'موبایل',
@@ -66,7 +72,17 @@ export async function parseEmployeeFile(
     const value = (key: keyof typeof HEADERS) =>
       (row[columns[key]] ?? '').trim();
     const nationalCode = digits(value('nationalCode')).replace(/\D/g, '');
-    const personnelCode = digits(value('personnelCode'));
+    let birthDate: string | undefined;
+    try {
+      birthDate = parseBirthDate(
+        value('birthYear'),
+        value('birthMonth'),
+        value('birthDay'),
+      );
+    } catch {
+      errors.push(`سطر ${rowNumber}: تاریخ تولد شمسی معتبر وارد کنید`);
+      return;
+    }
     const firstName = value('firstName');
     const lastName = value('lastName');
     const phone = digits(value('phone')).replace(/\D/g, '');
@@ -74,8 +90,8 @@ export async function parseEmployeeFile(
 
     if (!/^\d{10}$/.test(nationalCode)) {
       errors.push(`سطر ${rowNumber}: کد ملی باید ۱۰ رقم باشد`);
-    } else if (!personnelCode || !firstName || !lastName) {
-      errors.push(`سطر ${rowNumber}: نام، نام خانوادگی یا کد پرسنلی خالی است`);
+    } else if (!firstName || !lastName) {
+      errors.push(`سطر ${rowNumber}: نام یا نام خانوادگی خالی است`);
     } else if (!/^09\d{9}$/.test(phone)) {
       errors.push(`سطر ${rowNumber}: شماره موبایل معتبر نیست`);
     } else if (!organizationalRank) {
@@ -84,7 +100,7 @@ export async function parseEmployeeFile(
       entries.push({
         rowNumber,
         nationalCode,
-        personnelCode,
+        birthDate,
         firstName,
         lastName,
         phone,
@@ -172,4 +188,33 @@ function parseCsv(text: string): string[][] {
     rows.push(row);
   }
   return rows;
+}
+
+/** Blank birthday is allowed for existing employees; partial and impossible dates are rejected. */
+export function parseBirthDate(
+  year: string,
+  month: string,
+  day: string,
+): string | undefined {
+  const parts = [year, month, day].map((part) => digits(part.trim()));
+  if (parts.every((part) => !part)) return undefined;
+  if (parts.some((part) => !/^\d+$/.test(part)))
+    throw new Error('روز، ماه و سال تولد را کامل وارد کنید');
+  const [y, m, d] = parts.map(Number);
+  if (y < 1200 || m < 1 || m > 12 || d < 1 || d > 31)
+    throw new Error('تاریخ تولد معتبر نیست');
+  const iso = jalaliToIso(new JalaliDate(y, m, d));
+  const roundTrip = isoToJalali(iso);
+  if (
+    roundTrip.year !== y ||
+    roundTrip.month !== m ||
+    roundTrip.day !== d ||
+    iso > new Date().toISOString().slice(0, 10)
+  )
+    throw new Error('تاریخ تولد معتبر نیست');
+  return iso;
+}
+
+export function employeeTemplateCsv(): string {
+  return '\uFEFFکد ملی,نام,نام خانوادگی,موبایل,رده سازمانی,روز تولد,ماه تولد,سال تولد\r\n0012345678,علی,رضایی,09123456789,کارمند,15,7,1370\r\n';
 }

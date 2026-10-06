@@ -98,6 +98,12 @@ export class AdminApiService {
     return this.patch<AdminEmployeeRow>(`/api/admin/employees/${id}`, input);
   }
 
+  deleteEmployee(id: string) {
+    return firstValueFrom(
+      this.http.delete<{ ok: boolean }>(`/api/admin/employees/${id}`),
+    );
+  }
+
   resetEmployeePassword(id: string, password: string) {
     return this.post<{ ok: boolean }>(
       `/api/admin/employees/${id}/reset-password`,
@@ -135,6 +141,12 @@ export class AdminApiService {
 
   updateStore(id: string, input: UpdateStoreInput) {
     return this.patch<AdminStoreRow>(`/api/admin/stores/${id}`, input);
+  }
+
+  deleteStore(id: string) {
+    return firstValueFrom(
+      this.http.delete<{ ok: boolean }>(`/api/admin/stores/${id}`),
+    );
   }
 
   resetStorePassword(id: string, password: string) {
@@ -279,6 +291,8 @@ export class AdminApiService {
 
 /** پیام خطای قابل‌نمایش از پاسخ خطای Nest */
 export function apiError(caught: unknown, fallback: string): string {
+  if (caught instanceof Error && !(caught as { error?: unknown }).error)
+    return caught.message;
   const message = (caught as { error?: { message?: unknown } })?.error?.message;
   if (typeof message === 'string') return message;
   if (Array.isArray(message) && typeof message[0] === 'string')

@@ -17,7 +17,11 @@ import { HlmTableImports } from '@sanpay/ui/table';
 import { AdminApiService, apiError } from '../../core/admin-api.service';
 import { AdminAuthService } from '../../core/admin-auth.service';
 import { ORGANIZATIONAL_RANK_LABELS, fa, toman } from '../../core/format';
-import { parseEmployeeFile } from '../../core/employee-file';
+import {
+  parseEmployeeFile,
+  parseBirthDate,
+  employeeTemplateCsv,
+} from '../../core/employee-file';
 
 @Component({
   selector: 'app-employees',
@@ -78,7 +82,9 @@ export class EmployeesPage {
   protected readonly formError = signal<string | null>(null);
   protected readonly form = signal({
     nationalCode: '',
-    personnelCode: '',
+    birthDay: '',
+    birthMonth: '',
+    birthYear: '',
     firstName: '',
     lastName: '',
     phone: '',
@@ -149,7 +155,11 @@ export class EmployeesPage {
     try {
       await this.api.createEmployee({
         nationalCode: form.nationalCode.trim(),
-        personnelCode: form.personnelCode.trim(),
+        birthDate: parseBirthDate(
+          form.birthYear,
+          form.birthMonth,
+          form.birthDay,
+        ),
         firstName: form.firstName.trim(),
         lastName: form.lastName.trim(),
         phone: form.phone.trim(),
@@ -159,7 +169,9 @@ export class EmployeesPage {
       this.showForm.set(false);
       this.form.set({
         nationalCode: '',
-        personnelCode: '',
+        birthDay: '',
+        birthMonth: '',
+        birthYear: '',
         firstName: '',
         lastName: '',
         phone: '',
@@ -172,6 +184,32 @@ export class EmployeesPage {
       this.formError.set(apiError(caught, 'ثبت کارمند ممکن نشد'));
     } finally {
       this.saving.set(false);
+    }
+  }
+
+  protected downloadTemplate(): void {
+    const url = URL.createObjectURL(
+      new Blob([employeeTemplateCsv()], { type: 'text/csv;charset=utf-8' }),
+    );
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = 'sanpay-employees-template.csv';
+    anchor.click();
+    URL.revokeObjectURL(url);
+  }
+
+  protected async deleteEmployee(row: AdminEmployeeRow): Promise<void> {
+    if (
+      !confirm(
+        `کارمند «${row.firstName} ${row.lastName}» حذف شود؟ دسترسی او بسته و سوابق مالی حفظ می‌شود.`,
+      )
+    )
+      return;
+    try {
+      await this.api.deleteEmployee(row.id);
+      await this.load();
+    } catch (caught) {
+      this.error.set(apiError(caught, 'حذف کارمند ممکن نشد'));
     }
   }
 

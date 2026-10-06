@@ -32,34 +32,21 @@ export class AuthService {
     private readonly sms: SmsService,
   ) {}
 
-  async login(nationalCode: string, password: string) {
-    const candidates = await this.prisma.employee.findMany({
-      where: { nationalCode, isActive: true, company: { isActive: true } },
+  async login(phone: string, password: string) {
+    const employee = await this.prisma.employee.findFirst({
+      where: {
+        phone,
+        deletedAt: null,
+        isActive: true,
+        company: { isActive: true },
+      },
       include: { company: true },
     });
-    const matches = [];
-    for (const candidate of candidates) {
-      if (
-        candidate.passwordHash &&
-        (await bcrypt.compare(password, candidate.passwordHash))
-      ) {
-        matches.push(candidate);
-      }
-    }
-    const employee = matches.length === 1 ? matches[0] : null;
-    if (!employee) {
-      throw new UnauthorizedException('کد ملی یا رمز عبور نادرست است');
-    }
-
-    if (!employee.passwordHash) {
-      throw new BadRequestException(
-        'ابتدا با کد یک‌بارمصرف وارد شوید و برای خودتان رمز تعیین کنید',
-      );
-    }
-
-    const passwordOk = await bcrypt.compare(password, employee.passwordHash);
-    if (!passwordOk) {
-      throw new UnauthorizedException('کد ملی یا رمز عبور نادرست است');
+    if (
+      !employee?.passwordHash ||
+      !(await bcrypt.compare(password, employee.passwordHash))
+    ) {
+      throw new UnauthorizedException('شماره موبایل یا رمز عبور نادرست است');
     }
 
     const payload: JwtPayload = {
@@ -84,12 +71,14 @@ export class AuthService {
     };
     const employee = await this.prisma.employee.findFirst({
       where: {
+        deletedAt: null,
         nationalCode,
         phone,
         isActive: true,
         company: { isActive: true },
       },
       include: { otp: true },
+      orderBy: { createdAt: 'asc' },
     });
 
     // پاسخ عمدی یکسان است تا از روی API نتوان عضویت افراد را تشخیص داد.
@@ -136,12 +125,14 @@ export class AuthService {
   async verifyOtp(nationalCode: string, phone: string, code: string) {
     const employee = await this.prisma.employee.findFirst({
       where: {
+        deletedAt: null,
         nationalCode,
         phone,
         isActive: true,
         company: { isActive: true },
       },
       include: { company: true, otp: true },
+      orderBy: { createdAt: 'asc' },
     });
     const otp = employee?.otp;
     if (
@@ -203,7 +194,12 @@ export class AuthService {
       where: { id: employeeId },
       include: { company: true },
     });
-    if (!employee || !employee.isActive) {
+    if (
+      !employee ||
+      employee.deletedAt ||
+      !employee.isActive ||
+      !employee.company.isActive
+    ) {
       throw new UnauthorizedException();
     }
     return this.toProfile(employee);
@@ -236,8 +232,14 @@ export class AuthService {
   ) {
     const employee = await this.prisma.employee.findUnique({
       where: { id: employeeId },
+      include: { company: true },
     });
-    if (!employee || !employee.isActive) {
+    if (
+      !employee ||
+      employee.deletedAt ||
+      !employee.isActive ||
+      !employee.company.isActive
+    ) {
       throw new UnauthorizedException();
     }
     if (!employee.passwordHash) {
@@ -271,21 +273,41 @@ export class AuthService {
     id: string;
     nationalCode: string;
     personnelCode: string;
+    birthDate?: Date | null;
     firstName: string;
     lastName: string;
     phone: string | null;
     organizationalRank: 'MANAGER' | 'DEPUTY' | 'HEAD' | 'EMPLOYEE';
-    company: { id: string; name: string };
+    company: { id: string; name: string; logoUrl?: string | null };
   }): EmployeeProfile {
     return {
       id: employee.id,
       nationalCode: employee.nationalCode,
       personnelCode: employee.personnelCode,
+      birthDate: employee.birthDate?.toISOString().slice(0, 10) ?? null,
+      birthdayToday: employee.birthDate
+        ? isBirthdayToday(employee.birthDate)
+        : false,
       firstName: employee.firstName,
       lastName: employee.lastName,
       phone: employee.phone,
-      company: { id: employee.company.id, name: employee.company.name },
+      company: {
+        id: employee.company.id,
+        name: employee.company.name,
+        logoUrl: employee.company.logoUrl ?? null,
+      },
       organizationalRank: employee.organizationalRank,
     };
   }
+}
+
+function isBirthdayToday(birthDate: Date): boolean {
+  const formatter = new Intl.DateTimeFormat('en-US-u-ca-persian', {
+    timeZone: 'Asia/Tehran',
+    month: 'numeric',
+    day: 'numeric',
+  });
+  // Birth dates are date-only, so avoid Tehran midnight shifting the stored day.
+  const birth = new Date(`${birthDate.toISOString().slice(0, 10)}T12:00:00Z`);
+  return formatter.format(birth) === formatter.format(new Date());
 }

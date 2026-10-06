@@ -39,18 +39,26 @@ export class MerchantPayment {
     field: 'nationalCode' | 'phone' | 'amount' | 'code',
     value: string,
   ): void {
-    this[field].set(value.replace(/[^0-9]/g, ''));
+    this[field].set(
+      value
+        .replace(/[۰-۹]/g, (digit) => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(digit)))
+        .replace(/[٠-٩]/g, (digit) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(digit)))
+        .replace(/[^0-9]/g, ''),
+    );
     this.error.set(null);
   }
 
   protected async requestOtp(): Promise<void> {
-    const amount = Number(this.amount());
-    if (!/^\d{10}$/.test(this.nationalCode()) || !/^09\d{9}$/.test(this.phone())) {
+    const amount = Number(this.amount()) / 10;
+    if (
+      !/^\d{10}$/.test(this.nationalCode()) ||
+      !/^09\d{9}$/.test(this.phone())
+    ) {
       this.error.set('کد ملی و شماره موبایل را کامل وارد کنید');
       return;
     }
     if (!Number.isInteger(amount) || amount <= 0) {
-      this.error.set('مبلغ معتبر وارد کنید');
+      this.error.set('مبلغ ریالی معتبر (مضرب ۱۰) وارد کنید');
       return;
     }
     await this.run(async () => {
@@ -73,7 +81,10 @@ export class MerchantPayment {
     }
     await this.run(async () => {
       this.receipt.set(
-        await this.payments.verifyMerchantPayment({ intentId, code: this.code() }),
+        await this.payments.verifyMerchantPayment({
+          intentId,
+          code: this.code(),
+        }),
       );
       this.step.set('done');
     });
@@ -97,8 +108,11 @@ export class MerchantPayment {
     try {
       await action();
     } catch (caught) {
-      const value = (caught as { error?: { message?: unknown } })?.error?.message;
-      this.error.set(typeof value === 'string' ? value : 'انجام عملیات ممکن نشد');
+      const value = (caught as { error?: { message?: unknown } })?.error
+        ?.message;
+      this.error.set(
+        typeof value === 'string' ? value : 'انجام عملیات ممکن نشد',
+      );
     } finally {
       this.busy.set(false);
     }

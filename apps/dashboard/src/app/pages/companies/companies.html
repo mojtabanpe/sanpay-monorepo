@@ -34,6 +34,30 @@
           (keyup.enter)="save()"
         />
       </hlm-field>
+      <hlm-field class="w-full sm:w-80">
+        <label hlmFieldLabel for="company-logo">لوگوی شرکت</label>
+        <input
+          id="company-logo"
+          hlmInput
+          type="file"
+          accept="image/png,image/jpeg,image/webp"
+          (change)="selectLogo($event)"
+        />
+        <p class="text-muted-foreground text-xs">
+          در سمت راست سربرگ کارکنان این شرکت نمایش داده می‌شود. حداکثر ۷۵
+          کیلوبایت.
+        </p>
+        @if (logoUrl()) {
+        <img
+          [src]="logoUrl()"
+          alt="پیش‌نمایش لوگوی شرکت"
+          class="h-16 w-24 object-contain"
+        />
+        <button hlmBtn variant="ghost" type="button" (click)="logoUrl.set('')">
+          حذف لوگو
+        </button>
+        }
+      </hlm-field>
       <button hlmBtn [disabled]="saving() || !name().trim()" (click)="save()">
         ذخیره
       </button>

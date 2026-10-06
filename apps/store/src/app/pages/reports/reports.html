@@ -77,7 +77,7 @@
     </div>
     <div class="rounded-xl border p-3">
       <p class="text-muted-foreground text-xs">جمع پرداخت</p>
-      <p class="mt-1 font-bold">{{ toman(data.summary.amount) }}</p>
+      <p class="mt-1 font-bold">{{ rial(data.summary.amount) }}</p>
     </div>
     <div class="rounded-xl border p-3">
       <p class="text-muted-foreground text-xs">تسویه‌شده</p>
@@ -85,7 +85,7 @@
     </div>
     <div class="rounded-xl border p-3">
       <p class="text-muted-foreground text-xs">مبلغ تسویه‌شده</p>
-      <p class="mt-1 font-bold">{{ toman(data.summary.settledAmount) }}</p>
+      <p class="mt-1 font-bold">{{ rial(data.summary.settledAmount) }}</p>
     </div>
   </section>
   } @if (error()) {
@@ -116,7 +116,7 @@
             <tr hlmTr>
               <td hlmTd dir="ltr">{{ row.receiptNo }}</td>
               <td hlmTd>{{ row.employeeName }}</td>
-              <td hlmTd class="font-semibold">{{ toman(row.amount) }}</td>
+              <td hlmTd class="font-semibold">{{ rial(row.amount) }}</td>
               <td hlmTd>{{ dateTime(row.createdAt) }}</td>
               <td hlmTd>
                 <span hlmBadge [variant]="statusVariant(row.settlement.status)">

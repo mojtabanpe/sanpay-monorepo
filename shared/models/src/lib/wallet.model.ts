@@ -6,6 +6,7 @@ export interface Wallet {
   name: string;
   /** اسلاگ آیکون (WalletIcon) — مقادیر ناشناخته با آیکون پیش‌فرض نمایش داده می‌شوند */
   icon: string | null;
+  imageUrl?: string | null;
   /** سقف اعتبار (تومان) */
   cap: number;
   /** ماندهٔ اعتبار (تومان) */

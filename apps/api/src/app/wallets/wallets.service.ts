@@ -5,6 +5,7 @@ export interface WalletView {
   id: string;
   name: string;
   icon: string | null;
+  imageUrl: string | null;
   /** سقف اعتبار (تومان) */
   cap: number;
   /** ماندهٔ اعتبار (تومان) */
@@ -37,6 +38,7 @@ export class WalletsService {
       id: allocation.id,
       name: allocation.definition.name,
       icon: allocation.definition.icon,
+      imageUrl: allocation.definition.imageUrl,
       cap: Number(allocation.cap),
       remaining: Number(allocation.cap - allocation.spent),
       expiresAt: allocation.expiresAt.toISOString(),

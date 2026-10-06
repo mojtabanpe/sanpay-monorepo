@@ -13,12 +13,12 @@ describe('parseAllocationFile', () => {
       {
         nationalCode: '0012345678',
         organizationalRank: 'MANAGER',
-        cap: 10_000_000,
+        cap: 1_000_000,
       },
       {
         nationalCode: '0098765432',
         organizationalRank: 'DEPUTY',
-        cap: 8_000_000,
+        cap: 800_000,
       },
     ]);
   });
@@ -57,10 +57,8 @@ describe('parseAllocationFile', () => {
 });
 
 function parseCsv(content: string) {
-  return parseAllocationFile(
-    {
-      name: 'allocations.csv',
-      text: async () => content,
-    } as File,
-  );
+  return parseAllocationFile({
+    name: 'allocations.csv',
+    text: async () => content,
+  } as File);
 }

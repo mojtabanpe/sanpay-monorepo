@@ -4,10 +4,12 @@ export interface EmployeeProfile {
   /** کد ملی — شناسهٔ ورود */
   nationalCode: string;
   personnelCode: string;
+  birthDate?: string | null;
+  birthdayToday?: boolean;
   firstName: string;
   lastName: string;
   phone: string | null;
-  company: { id: string; name: string };
+  company: { id: string; name: string; logoUrl?: string | null };
   organizationalRank: import('./admin.model').OrganizationalRank;
 }
 

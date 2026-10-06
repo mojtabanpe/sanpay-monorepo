@@ -21,8 +21,8 @@
         </span>
       </h1>
       <p class="text-muted-foreground text-sm">
-        کد ملی <span dir="ltr">{{ employee.nationalCode }}</span> — کد پرسنلی
-        <span dir="ltr">{{ employee.personnelCode }}</span>
+        کد ملی <span dir="ltr">{{ employee.nationalCode }}</span> — تولد {{
+        jalali(employee.birthDate) }}
       </p>
       <p class="text-muted-foreground text-sm">
         {{ employee.company.name }} — {{ rankLabels[employee.organizationalRank]
@@ -31,6 +31,14 @@
     </div>
     @if (canWrite()) {
     <div class="flex gap-2">
+      <button
+        hlmBtn
+        variant="destructive"
+        [disabled]="saving()"
+        (click)="deleteEmployee()"
+      >
+        حذف کارمند
+      </button>
       <button hlmBtn variant="outline" (click)="editing.set(!editing())">
         ویرایش اطلاعات
       </button>
@@ -69,6 +77,39 @@
       <h2 hlmCardTitle>ویرایش اطلاعات</h2>
     </div>
     <div hlmCardContent class="grid gap-4 md:grid-cols-5">
+      <hlm-field
+        ><label hlmFieldLabel for="employee-edit-birth-birthDay"
+          >روز تولد (شمسی)</label
+        ><input
+          id="employee-edit-birth-birthDay"
+          hlmInput
+          class="w-full"
+          inputmode="numeric"
+          [value]="editForm().birthDay"
+          (input)="updateEdit('birthDay', $any($event.target).value)"
+      /></hlm-field>
+      <hlm-field
+        ><label hlmFieldLabel for="employee-edit-birth-birthMonth"
+          >ماه تولد (شمسی)</label
+        ><input
+          id="employee-edit-birth-birthMonth"
+          hlmInput
+          class="w-full"
+          inputmode="numeric"
+          [value]="editForm().birthMonth"
+          (input)="updateEdit('birthMonth', $any($event.target).value)"
+      /></hlm-field>
+      <hlm-field
+        ><label hlmFieldLabel for="employee-edit-birth-birthYear"
+          >سال تولد (شمسی)</label
+        ><input
+          id="employee-edit-birth-birthYear"
+          hlmInput
+          class="w-full"
+          inputmode="numeric"
+          [value]="editForm().birthYear"
+          (input)="updateEdit('birthYear', $any($event.target).value)"
+      /></hlm-field>
       <hlm-field>
         <label hlmFieldLabel for="fld-1">نام</label>
         <input
@@ -177,7 +218,7 @@
         </hlm-field>
 
         <hlm-field>
-          <label hlmFieldLabel for="fld-5">سقف (تومان)</label>
+          <label hlmFieldLabel for="fld-5">سقف (ریال)</label>
           <input
             hlmInput
             class="w-full"
@@ -264,7 +305,7 @@
                   #capInput
                   class="w-32"
                   dir="ltr"
-                  [value]="allocation.cap"
+                  [value]="allocation.cap * 10"
                   (keyup.enter)="setCap(allocation.id, capInput.value)"
                 />
               </td>

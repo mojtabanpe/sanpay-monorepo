@@ -96,30 +96,14 @@
           (change)="selectLogo($event)"
         />
       </hlm-field>
-      <hlm-field>
-        <label hlmFieldLabel for="fld-lat">عرض جغرافیایی</label>
-        <input
-          id="fld-lat"
-          hlmInput
-          class="w-full"
-          dir="ltr"
-          inputmode="decimal"
-          [value]="form().latitude"
-          (input)="update('latitude', $any($event.target).value)"
+      <section class="md:col-span-3 space-y-3">
+        <h3 class="text-sm font-medium">موقعیت فروشگاه</h3>
+        <app-store-location-picker
+          [latitude]="form().latitude ? +form().latitude : null"
+          [longitude]="form().longitude ? +form().longitude : null"
+          (locationSelected)="selectLocation($event)"
         />
-      </hlm-field>
-      <hlm-field>
-        <label hlmFieldLabel for="fld-lng">طول جغرافیایی</label>
-        <input
-          id="fld-lng"
-          hlmInput
-          class="w-full"
-          dir="ltr"
-          inputmode="decimal"
-          [value]="form().longitude"
-          (input)="update('longitude', $any($event.target).value)"
-        />
-      </hlm-field>
+      </section>
       <hlm-field>
         <label hlmFieldLabel for="fld-6">نام کاربری پنل</label>
         <input
@@ -260,6 +244,15 @@
                 >
                   {{ row.isActive ? 'غیرفعال' : 'فعال' }}
                 </button>
+                <button
+                  hlmBtn
+                  variant="destructive"
+                  size="sm"
+                  [disabled]="saving()"
+                  (click)="deleteStore(row)"
+                >
+                  حذف فروشگاه
+                </button>
               </td>
               }
             </tr>
@@ -280,6 +273,17 @@
                       (input)="updateEdit('name', $any($event.target).value)"
                     />
                   </hlm-field>
+                  <hlm-field
+                    ><label hlmFieldLabel for="store-edit-username"
+                      >نام کاربری پنل</label
+                    ><input
+                      id="store-edit-username"
+                      hlmInput
+                      class="w-full"
+                      dir="ltr"
+                      [value]="editForm().username"
+                      (input)="updateEdit('username', $any($event.target).value)"
+                  /></hlm-field>
                   <hlm-field>
                     <label hlmFieldLabel for="fld-9">دسته‌بندی</label>
                     <input
@@ -322,32 +326,14 @@
                       (change)="selectLogo($event, true)"
                     />
                   </hlm-field>
-                  <hlm-field>
-                    <label hlmFieldLabel for="fld-edit-lat"
-                      >عرض جغرافیایی</label
-                    >
-                    <input
-                      id="fld-edit-lat"
-                      hlmInput
-                      class="w-full"
-                      dir="ltr"
-                      [value]="editForm().latitude"
-                      (input)="updateEdit('latitude', $any($event.target).value)"
+                  <section class="md:col-span-4 space-y-3">
+                    <h3 class="text-sm font-medium">موقعیت فروشگاه</h3>
+                    <app-store-location-picker
+                      [latitude]="editForm().latitude ? +editForm().latitude : null"
+                      [longitude]="editForm().longitude ? +editForm().longitude : null"
+                      (locationSelected)="selectLocation($event, true)"
                     />
-                  </hlm-field>
-                  <hlm-field>
-                    <label hlmFieldLabel for="fld-edit-lng"
-                      >طول جغرافیایی</label
-                    >
-                    <input
-                      id="fld-edit-lng"
-                      hlmInput
-                      class="w-full"
-                      dir="ltr"
-                      [value]="editForm().longitude"
-                      (input)="updateEdit('longitude', $any($event.target).value)"
-                    />
-                  </hlm-field>
+                  </section>
                   <hlm-field>
                     <label hlmFieldLabel for="fld-edit-iban"
                       >شماره شبای تسویه</label

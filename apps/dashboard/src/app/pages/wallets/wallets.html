@@ -26,11 +26,34 @@
         {{ editingId() ? 'ویرایش کیف پول' : 'کیف پول جدید' }}
       </h2>
       <p hlmCardDescription>
-        کیف پول گردشگری برای رزرو هتل و پرواز است و به فروشگاه وصل نمی‌شود. اعتبار
-        کارمندان از دکمهٔ «تخصیص گروهی» روی کارت هر کیف پول داده می‌شود.
+        کیف پول گردشگری برای رزرو هتل و پرواز است و به فروشگاه وصل نمی‌شود.
+        اعتبار کارمندان از دکمهٔ «تخصیص گروهی» روی کارت هر کیف پول داده می‌شود.
       </p>
     </div>
     <div hlmCardContent class="flex flex-col gap-5">
+      <hlm-field
+        ><label hlmFieldLabel for="wallet-image">تصویر روی کارت</label
+        ><input
+          id="wallet-image"
+          hlmInput
+          type="file"
+          accept="image/png,image/jpeg,image/webp"
+          (change)="selectCardImage($event)"
+        />
+        <p hlmFieldDescription>PNG، JPEG یا WebP تا ۷۵ کیلوبایت</p></hlm-field
+      >
+      @if (form().imageUrl) {
+      <div>
+        <img
+          [src]="form().imageUrl"
+          alt="پیش‌نمایش تصویر کارت"
+          class="h-32 w-full rounded-xl object-cover"
+        /><button hlmBtn variant="ghost" (click)="update('imageUrl', '')">
+          حذف تصویر کارت
+        </button>
+      </div>
+      }
+
       <div class="grid gap-4 md:grid-cols-4">
         <hlm-field>
           <label hlmFieldLabel for="wallet-company">شرکت</label>
@@ -78,7 +101,7 @@
         </hlm-field>
 
         <hlm-field>
-          <label hlmFieldLabel for="fld-3">سقف پیش‌فرض (تومان)</label>
+          <label hlmFieldLabel for="fld-3">سقف پیش‌فرض (ریال)</label>
           <input
             id="fld-3"
             hlmInput
@@ -162,6 +185,13 @@
   <section class="grid gap-4 lg:grid-cols-2 2xl:grid-cols-3">
     @for (definition of definitions(); track definition.id) {
     <div hlmCard class="flex flex-col gap-3 p-5">
+      @if (definition.imageUrl) {
+      <img
+        [src]="definition.imageUrl"
+        alt=""
+        class="h-32 w-full rounded-xl object-cover"
+      />
+      }
       <div class="flex items-start justify-between gap-3">
         <div>
           <h2 class="font-bold">{{ definition.name }}</h2>
@@ -275,7 +305,7 @@
       >
         <span class="text-sm font-medium">بارگذاری فایل (اختیاری)</span>
         <p class="text-muted-foreground text-xs">
-          اکسل یا CSV با چهار ستون: کد ملی، رده سازمانی، سقف اعتبار (تومان)،
+          اکسل یا CSV با چهار ستون: کد ملی، رده سازمانی، سقف اعتبار (ریال)،
           تاریخ انقضای جلالی — مثل ۱۴۰۵/۰۶/۳۱. رده یکی از مدیر، معاون، رییس یا
           کارمند است.
         </p>
@@ -339,7 +369,7 @@
       <!-- سقف و انقضای یکسان — وقتی فایلی نیست -->
       @if (!fileEntries().length) {
       <hlm-field>
-        <label hlmFieldLabel for="fld-6">سقف اعتبار (تومان)</label>
+        <label hlmFieldLabel for="fld-6">سقف اعتبار (ریال)</label>
         <input
           id="fld-6"
           hlmInput

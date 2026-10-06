@@ -28,11 +28,11 @@ export class AuthService {
     return localStorage.getItem(TOKEN_KEY);
   }
 
-  async login(nationalCode: string, password: string): Promise<void> {
+  async login(phone: string, password: string): Promise<void> {
     const response = await firstValueFrom(
       this.http.post<EmployeeAuthResponse>('/api/auth/login', {
-        nationalCode,
         password,
+        phone,
       }),
     );
     this.storeSession(response);

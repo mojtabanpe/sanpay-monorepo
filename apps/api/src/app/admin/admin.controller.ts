@@ -1,5 +1,6 @@
 import {
   Body,
+  Delete,
   Controller,
   Get,
   HttpCode,
@@ -164,6 +165,12 @@ export class AdminEmployeesController {
     return this.employees.update(id, dto);
   }
 
+  @Delete(':id')
+  @Roles(...WRITE_ROLES)
+  remove(@Param('id') id: string) {
+    return this.employees.remove(id);
+  }
+
   @Post(':id/reset-password')
   @HttpCode(HttpStatus.OK)
   @Roles(...WRITE_ROLES)
@@ -221,6 +228,12 @@ export class AdminStoresController {
   @Roles(...WRITE_ROLES)
   update(@Param('id') id: string, @Body() dto: UpdateStoreDto) {
     return this.stores.update(id, dto);
+  }
+
+  @Delete(':id')
+  @Roles(...WRITE_ROLES)
+  remove(@Param('id') id: string) {
+    return this.stores.remove(id);
   }
 
   @Post(':id/reset-password')

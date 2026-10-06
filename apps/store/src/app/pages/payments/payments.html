@@ -41,7 +41,7 @@
 
     @if (stats(); as figures) {
     <p class="relative mt-3 text-[2rem] leading-tight font-bold tracking-tight">
-      {{ toman(figures.today.total) }}
+      {{ rial(figures.today.total) }}
     </p>
 
     <div
@@ -53,11 +53,11 @@
       </div>
       <div>
         <p class="text-[10px] text-white/50">۷ روز گذشته</p>
-        <p class="mt-0.5 text-sm font-bold">{{ toman(figures.week.total) }}</p>
+        <p class="mt-0.5 text-sm font-bold">{{ rial(figures.week.total) }}</p>
       </div>
       <div>
         <p class="text-[10px] text-white/50">۳۰ روز گذشته</p>
-        <p class="mt-0.5 text-sm font-bold">{{ toman(figures.month.total) }}</p>
+        <p class="mt-0.5 text-sm font-bold">{{ rial(figures.month.total) }}</p>
       </div>
     </div>
     } @else {
@@ -121,7 +121,7 @@
             @for (point of figures.series; track point.date) {
             <tr>
               <th scope="row">{{ fullDate(point.date) }}</th>
-              <td>{{ toman(point.total) }}</td>
+              <td>{{ rial(point.total) }}</td>
             </tr>
             }
           </tbody>

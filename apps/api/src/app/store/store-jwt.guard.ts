@@ -6,11 +6,15 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { Request } from 'express';
+import { PrismaService } from '../prisma/prisma.service';
 import { StoreJwtPayload } from './store-auth.service';
 
 @Injectable()
 export class StoreJwtGuard implements CanActivate {
-  constructor(private readonly jwt: JwtService) {}
+  constructor(
+    private readonly jwt: JwtService,
+    private readonly prisma: PrismaService,
+  ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest<Request>();
@@ -26,6 +30,11 @@ export class StoreJwtGuard implements CanActivate {
       if (payload.role !== 'store') {
         throw new UnauthorizedException();
       }
+      const store = await this.prisma.store.findFirst({
+        where: { id: payload.sub, isActive: true, deletedAt: null },
+        select: { id: true },
+      });
+      if (!store) throw new UnauthorizedException();
       (request as Request & { store: StoreJwtPayload }).store = payload;
       return true;
     } catch {

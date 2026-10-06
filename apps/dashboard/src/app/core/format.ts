@@ -1,5 +1,5 @@
 /**
- * قالب‌بندی مشترک داشبورد: اعداد فارسی، مبلغ تومان و تاریخ جلالی.
+ * قالب‌بندی مشترک داشبورد: اعداد فارسی، نمایش ریال و تاریخ جلالی.
  * `Intl` با locale `fa-IR-u-ca-persian` هم رقم فارسی می‌دهد و هم تقویم جلالی،
  * پس اینجا به کتابخانهٔ تاریخ نیازی نیست.
  */
@@ -18,10 +18,10 @@ const dateTimeFormatter = new Intl.DateTimeFormat('fa-IR-u-ca-persian', {
   minute: '2-digit',
 });
 
-/** «۲۴٬۵۰۰٬۰۰۰ تومان» */
+/** تومان ذخیره‌شده → ریال نمایشی */
 export function toman(value: number | null | undefined): string {
   if (value === null || value === undefined) return '—';
-  return `${amountFormatter.format(value)} تومان`;
+  return `${amountFormatter.format(value * 10)} ریال`;
 }
 
 /** فقط عدد فارسی، بدون واحد */
@@ -49,14 +49,14 @@ export function isoDate(date: Date): string {
   ).padStart(2, '0')}`;
 }
 
-/** ورودی مبلغ کاربر (با رقم فارسی/عربی یا جداکنندهٔ هزار) → عدد */
+/** ورودی ریالی کاربر (با رقم فارسی/عربی یا جداکنندهٔ هزار) → تومان برای API */
 export function parseAmount(raw: string): number {
   const normalized = raw
     .replace(/[۰-۹]/g, (d) => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d)))
     .replace(/[٠-٩]/g, (d) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d)))
     .replace(/[^\d-]/g, '');
   const value = Number(normalized);
-  return Number.isFinite(value) ? value : 0;
+  return Number.isFinite(value) ? value / 10 : 0;
 }
 
 export const WALLET_KIND_LABELS: Record<string, string> = {

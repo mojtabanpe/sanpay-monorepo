@@ -27,7 +27,7 @@ export class AuthController {
   @Post('login')
   @HttpCode(HttpStatus.OK)
   login(@Body() dto: LoginDto) {
-    return this.auth.login(dto.nationalCode, dto.password);
+    return this.auth.login(dto.phone, dto.password);
   }
 
   @Post('otp/request')

@@ -30,6 +30,7 @@ export type WalletKind = 'CREDIT' | 'RATION' | 'TOURISM';
 export type OrganizationalRank = 'MANAGER' | 'DEPUTY' | 'HEAD' | 'EMPLOYEE';
 
 export interface AdminCompanyRow {
+  logoUrl: string | null;
   id: string;
   name: string;
   isActive: boolean;
@@ -39,6 +40,7 @@ export interface AdminCompanyRow {
 }
 
 export interface CreateCompanyInput {
+  logoUrl?: string;
   name: string;
 }
 
@@ -79,6 +81,7 @@ export interface AdminEmployeeRow {
   id: string;
   nationalCode: string;
   personnelCode: string;
+  birthDate?: string | null;
   firstName: string;
   lastName: string;
   phone: string | null;
@@ -117,7 +120,8 @@ export interface AdminEmployeeDetail extends AdminEmployeeRow {
 
 export interface CreateEmployeeInput {
   nationalCode: string;
-  personnelCode: string;
+  personnelCode?: string;
+  birthDate?: string | null;
   firstName: string;
   lastName: string;
   phone: string;
@@ -132,7 +136,8 @@ export type UpdateEmployeeInput = Partial<CreateEmployeeInput> & {
 export interface EmployeeImportEntry {
   rowNumber: number;
   nationalCode: string;
-  personnelCode: string;
+  personnelCode?: string;
+  birthDate?: string | null;
   firstName: string;
   lastName: string;
   phone: string;
@@ -207,6 +212,7 @@ export interface AdminWalletDefinitionRow {
   kind: WalletKind;
   description: string | null;
   icon: string | null;
+  imageUrl?: string | null;
   defaultCap: number | null;
   isActive: boolean;
   createdAt: string;
@@ -223,6 +229,7 @@ export interface CreateWalletDefinitionInput {
   kind: WalletKind;
   description?: string;
   icon?: string;
+  imageUrl?: string;
   /** `null` یعنی نامحدود — هنگام تخصیص، سقف دستی وارد می‌شود */
   defaultCap?: number | null;
   storeIds?: string[];
