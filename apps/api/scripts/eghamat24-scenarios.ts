@@ -2,7 +2,7 @@
  * سناریوی تستِ اقامت۲۴ (GRS Agency Manual v1.12.0، صفحهٔ ۱۴ تا ۲۱).
  *
  * اقامت۲۴ برای دادن توکن پروداکشن، کد رزروِ شش سناریو را روی هتل تست مشهد
- * (property_id = 1416) می‌خواهد. این اسکریپت هر شش رزرو را می‌فرستد و
+ * (property_id = 2210) می‌خواهد. این اسکریپت هر شش رزرو را می‌فرستد و
  * `confirmation_code` هرکدام را چاپ می‌کند تا برای پشتیبانی فنی ارسال شود.
  *
  * فقط `POST /v1/reserve` اجرا می‌شود (نه book/cancel). تاریخ‌ها نسبت به امروز
@@ -30,7 +30,7 @@ import {
   TEST_SINGLE_ROOM_ID,
 } from './eghamat24-scenario-plan';
 
-const PROPERTY_ID = 1416;
+const PROPERTY_ID = 2210;
 const RATE_PLAN_ID = 1780; // نمونهٔ dry-run؛ هنگام ارسال از API انتخاب می‌شود
 const DOUBLE = TEST_DOUBLE_ROOM_ID; // اتاق دو تخته
 const SINGLE = TEST_SINGLE_ROOM_ID; // اتاق یک تخته
