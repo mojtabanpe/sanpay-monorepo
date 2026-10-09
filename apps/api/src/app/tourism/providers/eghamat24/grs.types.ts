@@ -202,6 +202,16 @@ export interface GrsReserveRoom {
   guest_passport_number: string;
   guest_country_id: number | null;
   guest_city_id: number | null;
+  guests?: {
+    first_name: string;
+    last_name: string;
+    phone: string;
+    email: string;
+    national_code: string;
+    passport_number: string;
+    country_id: number | null;
+    city_id: number | null;
+  }[];
 }
 
 export interface GrsReserveRequest {
@@ -324,6 +334,7 @@ export interface GrsSuggestionParams {
   checkIn: string;
   checkOut: string;
   adultsCount: number;
+  children?: number[];
   /** حداقل ستاره؛ ۰ یعنی بدون فیلتر */
   star: number;
 }

@@ -342,12 +342,23 @@ test('scenario runner selects current room and nationality-specific plans and ch
   };
   const client = {
     getPropertyDetails: async () => ({ ...detail, room_type: [type] }),
-    getAvailableRooms: async () => [
-      { ...room, room_type_id: type.id, rate_plans: [domestic, foreign] },
-    ],
+    suggestion: async (params: {
+      adultsCount: number;
+      children?: number[];
+    }) => {
+      assert.equal(params.adultsCount, 1);
+      return [
+        {
+          property_id: 1416,
+          room_rates: [
+            { ...room, room_type_id: type.id, rate_plans: [domestic, foreign] },
+          ],
+        },
+      ];
+    },
   } as unknown as Pick<
     import('../src/app/tourism/providers/eghamat24/grs.types').GrsClient,
-    'getPropertyDetails' | 'getAvailableRooms'
+    'getPropertyDetails' | 'suggestion'
   >;
   const request = {
     property_id: 1416,
@@ -387,10 +398,14 @@ test('scenario runner selects current room and nationality-specific plans and ch
     ...domestic,
     prices: [{ ...day('2090-01-01'), inventory: 1 }],
   };
-  client.getAvailableRooms = async () =>
+  client.suggestion = async () =>
     [
-      { ...room, room_type_id: type.id, rate_plans: [limited] },
-    ] as unknown as import('../src/app/tourism/providers/eghamat24/grs.types').GrsRoomRate[];
+      {
+        property_id: 1416,
+        rooms: null,
+        room_rates: [{ ...room, room_type_id: type.id, rate_plans: [limited] }],
+      },
+    ] as unknown as import('../src/app/tourism/providers/eghamat24/grs.types').GrsSuggestion[];
   await assert.rejects(
     prepareScenarioRequest(client, {
       ...request,
@@ -418,12 +433,15 @@ test('scenario preflight supports both nationalities and detects an unset extra-
   };
   const client = {
     getPropertyDetails: async () => ({ ...detail, room_type: [type] }),
-    getAvailableRooms: async () => [
-      { ...room, room_type_id: type.id, rate_plans: [plan] },
+    suggestion: async () => [
+      {
+        property_id: 1416,
+        room_rates: [{ ...room, room_type_id: type.id, rate_plans: [plan] }],
+      },
     ],
   } as unknown as Pick<
     import('../src/app/tourism/providers/eghamat24/grs.types').GrsClient,
-    'getPropertyDetails' | 'getAvailableRooms'
+    'getPropertyDetails' | 'suggestion'
   >;
   const request = {
     property_id: 1416,
@@ -462,4 +480,25 @@ test('scenario CSV preserves long IDs as literal text and escapes embedded quote
   assert.ok(csv.includes('"=""1000100644927945"""'));
   assert.ok(csv.includes('"=""تست """"اتاق"""", رزرو"""'));
   assert.ok(csv.endsWith('\r\n'));
+});
+
+test('suggestion sends each child age with the requested occupancy and hotel', async () => {
+  await fixture(
+    async (client, requests) => {
+      await client.suggestion({
+        cityId: null,
+        propertyId: 2210,
+        checkIn: '2090-01-01',
+        checkOut: '2090-01-02',
+        adultsCount: 2,
+        children: [1, 3],
+        star: 0,
+      });
+      assert.equal(requests[0].searchParams.get('property_id'), '2210');
+      assert.equal(requests[0].searchParams.get('adults_count'), '2');
+      assert.equal(requests[0].searchParams.get('children[0]'), '1');
+      assert.equal(requests[0].searchParams.get('children[1]'), '3');
+    },
+    () => ok({ suggestions: [], total: 0 }),
+  );
 });

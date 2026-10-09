@@ -5,7 +5,7 @@
  * (property_id = 2210) می‌خواهد. این اسکریپت هر شش رزرو را می‌فرستد و
  * `confirmation_code` هرکدام را چاپ می‌کند تا برای پشتیبانی فنی ارسال شود.
  *
- * فقط `POST /v1/reserve` اجرا می‌شود (نه book/cancel). تاریخ‌ها نسبت به امروز
+ * `POST /v1/reserve` و سپس `POST /v1/book` اجرا می‌شوند. تاریخ‌ها نسبت به امروز
  * ساخته می‌شوند چون نمونهٔ داکیومنت (۲۰۲۱) گذشته است.
  *
  *   pnpm nx run api:eghamat24-scenarios            # فقط نمایش بدنه‌ها (dry-run)
@@ -62,7 +62,7 @@ const guest = (
   guest_phone: '09379332830',
   guest_email: 'torabi@eghamat24.com',
   guest_national_code: '',
-  guest_passport_number: '',
+  guest_passport_number: countryId === IRAN ? '' : 'TEST987654',
   guest_country_id: countryId,
   guest_city_id: null,
 });
@@ -79,6 +79,16 @@ const room = (
   adult_count: adults,
   children,
   ...g,
+  guests: Array.from({ length: adults + children.length }, (_, index) => ({
+    first_name: index === 0 ? g.guest_first_name : `میهمان ${index + 1}`,
+    last_name: g.guest_last_name,
+    phone: g.guest_phone,
+    email: g.guest_email,
+    national_code: g.guest_national_code,
+    passport_number: g.guest_passport_number,
+    country_id: g.guest_country_id,
+    city_id: g.guest_city_id,
+  })),
 });
 
 interface Scenario {
@@ -102,8 +112,8 @@ const scenarios: Scenario[] = [
   {
     title: 'درخواست اتاق دو تخته به همراه نیم‌بها',
     nights: 7,
-    // سن‌های کودک: قانون children هتل ۲ تا ۵ سال است (max_infant_age=2، max_child_age=5)
-    rooms: [room(DOUBLE, 3, [1, 3], guest('ستاره', 'ستاره'))],
+    // دو بزرگسال و یک کودک نیم‌بها؛ نفر اضافه در سناریوی ۲ بررسی می‌شود.
+    rooms: [room(DOUBLE, 2, [3], guest('ستاره', 'ستاره'))],
   },
   {
     title: 'رزرو دو اتاق یک تخته در یک رزرو',
@@ -125,7 +135,7 @@ const scenarios: Scenario[] = [
     title: 'رزرو با مهمان خارجی و ایرانی',
     nights: 1,
     rooms: [
-      // پلن بدون محدودیت ملیت: country_id = null | پلن دارای محدودیت: فقط ۲۲۲
+      // میهمان خارجی همراه پاسپورت تست؛ پلن مناسب از کاتالوگ انتخاب می‌شود.
       room(SINGLE, 1, [], guest('تست', 'تست', null)),
       room(SINGLE, 1, [], guest('تست', 'تست', IRAN)),
     ],
@@ -191,15 +201,43 @@ async function main() {
         });
         continue;
       }
-      const r = await client.reserve(body);
-      rows.push({
+      const reserved = await client.reserve(body);
+      const result: Record<string, string> = {
         '#': String(i + 1),
         scenario: s.title,
-        confirmation_code: r.confirmation_code,
-        status: r.status,
+        confirmation_code: reserved.confirmation_code,
+        status: reserved.status,
         agency_code: body.agency_confirmation_code,
         dates: `${body.check_in} → ${body.check_out}`,
-      });
+      };
+      rows.push(result);
+      if (
+        reserved.status !== 'booking' &&
+        reserved.status !== 'booked' &&
+        reserved.status !== 'definite'
+      ) {
+        process.exitCode = 1;
+        result.status = `رزرو آماده Book نیست: ${reserved.status}`;
+      }
+      if (reserved.status === 'booking') {
+        try {
+          const booked = await client.book(reserved.confirmation_code);
+          result.status = booked.status;
+          if (booked.status !== 'booked' && booked.status !== 'definite')
+            throw new Error(`وضعیت نهایی پس از Book: ${booked.status}`);
+        } catch (error) {
+          // A timed-out write may already have succeeded; reconcile without repeating Book.
+          const current = await client
+            .reserveDetails(reserved.confirmation_code)
+            .catch(() => null);
+          if (current?.status === 'booked' || current?.status === 'definite') {
+            result.status = current.status;
+            continue;
+          }
+          process.exitCode = 1;
+          result.status = `Book ناموفق: ${error instanceof Error ? error.message : 'error'}`;
+        }
+      }
     } catch (error) {
       process.exitCode = 1;
       rows.push({

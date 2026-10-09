@@ -248,6 +248,9 @@ export class GrsHttpClient extends GrsClient {
     if (params.cityId !== null) query.set('city_id', String(params.cityId));
     if (params.propertyId !== null)
       query.set('property_id', String(params.propertyId));
+    params.children?.forEach((age, index) =>
+      query.set(`children[${index}]`, String(age)),
+    );
     const [suggestions, properties] = await Promise.all([
       this.catalog('/v1/suggestion', 'suggestions', query),
       params.star > 0

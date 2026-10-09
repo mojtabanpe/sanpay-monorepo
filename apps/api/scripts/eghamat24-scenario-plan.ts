@@ -11,29 +11,48 @@ const normalize = (name: string) =>
 
 /** Resolve the current test catalog and validate every night before placing a hold. */
 export async function prepareScenarioRequest(
-  client: Pick<GrsClient, 'getPropertyDetails' | 'getAvailableRooms'>,
+  client: Pick<GrsClient, 'getPropertyDetails' | 'suggestion'>,
   request: GrsReserveRequest,
 ): Promise<GrsReserveRequest> {
   const detail = await client.getPropertyDetails(request.property_id);
   if (!detail) throw new Error('هتل تست در کاتالوگ فعلی پیدا نشد');
-  const available = await client.getAvailableRooms(
-    request.property_id,
-    request.check_in,
-    request.check_out,
-  );
   const needed = new Map<string, number>();
-  const rooms = request.rooms.map((room) => {
+  const rooms = [];
+  for (const room of request.rooms) {
+    const suggestions = await client.suggestion({
+      propertyId: request.property_id,
+      cityId: null,
+      checkIn: request.check_in,
+      checkOut: request.check_out,
+      adultsCount: room.adult_count,
+      children: room.children,
+      star: 0,
+    });
+    const available =
+      suggestions.find((s) => s.property_id === request.property_id)
+        ?.room_rates ?? [];
     const expectedName =
       room.room_type_id === TEST_DOUBLE_ROOM_ID ? 'دوتخته' : 'یکتخته';
     const type =
       detail.room_type?.find((type) => type.id === room.room_type_id) ??
-      detail.room_type?.find((type) => normalize(type.name) === expectedName);
+      detail.room_type?.find(
+        (type) =>
+          normalize(type.name).includes(expectedName) &&
+          !type.out_of_service &&
+          room.adult_count <= type.capacity + type.extra_capacity,
+      );
     if (!type || type.out_of_service)
       throw new Error(`اتاق ${expectedName} در هتل تست فعال نیست`);
     if (room.adult_count > type.capacity + type.extra_capacity)
       throw new Error(`ظرفیت اتاق ${expectedName} برای سناریو کافی نیست`);
-    const plans =
-      available.find((rate) => rate.room_type_id === type.id)?.rate_plans ?? [];
+    const plans = [
+      ...(available.find((rate) => rate.room_type_id === type.id)?.rate_plans ??
+        []),
+    ].sort(
+      (a, b) =>
+        Number((b.name ?? '').includes('صبحانه')) -
+        Number((a.name ?? '').includes('صبحانه')),
+    );
     const foreign = room.guest_country_id !== 222;
     const matchesNationality = (plan: GrsRatePlan) =>
       plan.nationality === 'both' ||
@@ -64,6 +83,12 @@ export async function prepareScenarioRequest(
             missingExtraRate = true;
             return false;
           }
+          if (
+            price &&
+            room.children?.length &&
+            !(Number(price.baby_cot_grs_rate) > 0)
+          )
+            return false;
           return (
             price &&
             !price.closed &&
@@ -84,7 +109,7 @@ export async function prepareScenarioRequest(
       `${type.id}:${plan.id}`,
       (needed.get(`${type.id}:${plan.id}`) ?? 0) + room.count,
     );
-    return { ...room, room_type_id: type.id, rate_plan_id: plan.id };
-  });
+    rooms.push({ ...room, room_type_id: type.id, rate_plan_id: plan.id });
+  }
   return { ...request, rooms };
 }
