@@ -50,6 +50,9 @@ model Employee {
   organizationalRank OrganizationalRank
   /// تا پیش از اولین ورود با OTP خالی است
   passwordHash       String?
+  /// نام فایل عکس پروفایل در `UPLOADS_DIR/avatars` (تصادفی، نه کد ملی) —
+  /// خالی یعنی بدون عکس؛ اپ حروف اول نام را نشان می‌دهد
+  avatarFile         String?
   isActive           Boolean            @default(true)
   createdAt          DateTime           @default(now())
   updatedAt          DateTime           @updatedAt

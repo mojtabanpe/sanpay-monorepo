@@ -1,3 +1,4 @@
+import { AvatarsModule } from './avatars/avatars.module';
 import { Module } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -24,6 +25,7 @@ import { SettlementsModule } from './settlements/settlements.module';
     TourismModule,
     AdminModule,
     SettlementsModule,
+    AvatarsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

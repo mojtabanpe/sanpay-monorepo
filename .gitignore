@@ -60,3 +60,6 @@ __screenshots__/
 apps/api/src/generated
 
 graphify-out/
+
+# عکس‌های آپلودی در محیط توسعه (UPLOADS_DIR)
+/data/

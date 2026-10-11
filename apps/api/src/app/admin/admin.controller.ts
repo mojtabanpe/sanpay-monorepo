@@ -11,8 +11,16 @@ import {
   Query,
   Req,
   Res,
+  UploadedFile,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import {
+  AVATAR_MAX_BYTES,
+  AvatarService,
+  type UploadedImage,
+} from '../avatars/avatar.service';
 import { Response } from 'express';
 import { AdminAuthService } from './admin-auth.service';
 import { AdminCompaniesService } from './admin-companies.service';
@@ -134,7 +142,27 @@ export class AdminCompaniesController {
 @Controller('admin/employees')
 @UseGuards(AdminJwtGuard)
 export class AdminEmployeesController {
-  constructor(private readonly employees: AdminEmployeesService) {}
+  constructor(
+    private readonly employees: AdminEmployeesService,
+    private readonly avatars: AvatarService,
+  ) {}
+
+  /** عکس پروفایل کارمند — فیلد multipart `file`، حداکثر ۲MB، JPEG/PNG/WebP */
+  @Post(':id/avatar')
+  @HttpCode(HttpStatus.OK)
+  @Roles(...WRITE_ROLES)
+  @UseInterceptors(
+    FileInterceptor('file', { limits: { fileSize: AVATAR_MAX_BYTES, files: 1 } }),
+  )
+  setAvatar(@Param('id') id: string, @UploadedFile() file: UploadedImage) {
+    return this.avatars.set(id, file);
+  }
+
+  @Delete(':id/avatar')
+  @Roles(...WRITE_ROLES)
+  removeAvatar(@Param('id') id: string) {
+    return this.avatars.remove(id);
+  }
 
   @Get()
   list(@Query() query: ListQueryDto) {

@@ -1,3 +1,4 @@
+import { AvatarService } from '../avatars/avatar.service';
 import {
   BadRequestException,
   Injectable,
@@ -511,6 +512,7 @@ function toRow(employee: {
   createdAt: Date;
   allocations: Array<{ cap: bigint; spent: bigint }>;
   passwordHash: string | null;
+  avatarFile?: string | null;
 }): AdminEmployeeRow {
   return {
     id: employee.id,
@@ -530,6 +532,7 @@ function toRow(employee: {
       0,
     ),
     hasPassword: employee.passwordHash !== null,
+    avatarUrl: AvatarService.url(employee.avatarFile),
   };
 }
 

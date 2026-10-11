@@ -328,6 +328,36 @@ export class EmployeeDetailPage implements OnInit {
   }
 
   /** اجرای یک عملیات با مدیریت خطا و بارگذاری دوباره */
+  protected async onAvatarPicked(event: Event): Promise<void> {
+    const employee = this.employee();
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = '';
+    if (!employee || !file) return;
+    // همان محدودیت سرور، تا فایل بزرگ بی‌جهت آپلود نشود
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+      this.error.set('فقط عکس JPEG، PNG یا WebP پذیرفته می‌شود');
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      this.error.set('حجم عکس باید حداکثر ۲ مگابایت باشد');
+      return;
+    }
+    await this.run(async () => {
+      await this.api.setEmployeeAvatar(employee.id, file);
+      this.notice.set('عکس کارمند ذخیره شد.');
+    }, 'ذخیرهٔ عکس ناموفق بود');
+  }
+
+  protected async removeAvatar(): Promise<void> {
+    const employee = this.employee();
+    if (!employee) return;
+    await this.run(async () => {
+      await this.api.removeEmployeeAvatar(employee.id);
+      this.notice.set('عکس کارمند حذف شد.');
+    }, 'حذف عکس ناموفق بود');
+  }
+
   private async run(
     action: () => Promise<void>,
     fallback: string,

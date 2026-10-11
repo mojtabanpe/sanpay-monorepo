@@ -55,15 +55,16 @@
 
 ## ۴. عکس پروفایل (کاربر خودش + ادمین) — اختیاری
 
-- [ ] API
-- [ ] اپ کارمند
-- [ ] داشبورد
+- [x] API
+- [x] اپ کارمند
+- [x] داشبورد
 
 این اولین آپلود فایل پروژه است (لوگوی فروشگاه در `product-roadmap.md` هم همین زیرساخت را لازم دارد) — یک‌بار درست بسازیم.
 
 - **مدل:** `Employee.avatarUrl String?` (+ migration). اجباری نیست؛ بدون عکس، حروف اول نام نمایش داده شود.
 - **API:** `POST/DELETE /api/profile/avatar` (کارمند) و `POST/DELETE /api/admin/employees/:id/avatar` (ادمین، فقط `WRITE_ROLES`). `FileInterceptor` با محدودیت نوع (`jpeg/png/webp`) و حجم (مثلاً ۲MB)، بررسی magic bytes نه فقط پسوند، resize/strip EXIF سمت سرور (`sharp`؛ به `onlyBuiltDependencies` اضافه شود).
-- **ذخیره‌سازی:** دیسک محلی پشت nginx یا object storage — باید با وضعیت deploy فعلی تصمیم گرفته شود. نام فایل تصادفی، نه کد ملی.
+- **ذخیره‌سازی (تصمیم گرفته شد):** volume دیتای API (`api_uploads` → `/app/data/uploads`)، نام فایل تصادفی ۱۲۸ بیتی، سرو از `GET /api/avatars/<name>.webp`.
+- ⚠ اگر جلوی gateway یک reverse proxy دیگر روی سرور هست، `client_max_body_size` آن هم باید ≥ ۳MB باشد.
 - **UI:** در تب پروفایل و صفحهٔ کارمند داشبورد، با preview و دکمهٔ حذف.
 
 ## ۵. اقامتگاه‌های اقامت۲۴ — پاسخ سؤال

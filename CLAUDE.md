@@ -263,6 +263,8 @@ Must pass AXE and meet WCAG AA: focus management, ≥4.5:1 contrast, correct ARI
 
 ## Backend (`apps/api`)
 
+- **File uploads (profile photos)** — `AvatarService` (`apps/api/src/app/avatars/`). The upload is never stored as received: `sharp` decodes it (so the type comes from the content, not the extension/Content-Type), applies EXIF orientation, crops to 512² and writes a fresh WebP, which carries no metadata (GPS from phone photos is dropped). JPEG/PNG/WebP only, 2 MB (multer limit + client check), `limitInputPixels` against decompression bombs. Files live in `UPLOADS_DIR/avatars` (prod: the `api_uploads` volume at `/app/data/uploads`) under a random 128-bit name stored in `Employee.avatarFile`, and are served **without auth** at `GET /api/avatars/<name>.webp` because `<img>` can't send the JWT — the unguessable name is the access control; a new upload gets a new name, so the response is `immutable`. Endpoints: `POST/DELETE /api/profile/avatar` (employee) and `POST/DELETE /api/admin/employees/:id/avatar` (`WRITE_ROLES`). Both nginx configs set `client_max_body_size 3m` (default is 1 MB). `sharp` is in `onlyBuiltDependencies`.
+
 - Prisma 7 layout: config in `prisma.config.ts` (root), schema in `apps/api/prisma/schema.prisma` (datasource has **no `url`** — it lives in the config), client generated to `apps/api/src/generated/prisma` (gitignored; run `pnpm prisma:generate` after schema changes).
 - Runtime connection uses the `@prisma/adapter-pg` driver adapter inside `PrismaService` (`apps/api/src/app/prisma/`), a `@Global()` module. `DATABASE_URL` comes from `.env` (gitignored).
 - Scripts: `pnpm prisma:generate | prisma:migrate | prisma:studio`.

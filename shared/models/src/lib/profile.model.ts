@@ -9,6 +9,8 @@ export interface EmployeeProfile {
   firstName: string;
   lastName: string;
   phone: string | null;
+  /** آدرس عکس پروفایل (`/api/avatars/…`)؛ null یعنی بدون عکس */
+  avatarUrl?: string | null;
   company: { id: string; name: string; logoUrl?: string | null };
   organizationalRank: import('./admin.model').OrganizationalRank;
 }

@@ -98,6 +98,22 @@ export class AdminApiService {
     return this.patch<AdminEmployeeRow>(`/api/admin/employees/${id}`, input);
   }
 
+  /** عکس پروفایل کارمند (multipart، فیلد `file`) */
+  setEmployeeAvatar(id: string, file: File) {
+    const body = new FormData();
+    body.append('file', file);
+    return this.post<{ avatarUrl: string | null }>(
+      `/api/admin/employees/${id}/avatar`,
+      body,
+    );
+  }
+
+  removeEmployeeAvatar(id: string) {
+    return firstValueFrom(
+      this.http.delete<{ avatarUrl: null }>(`/api/admin/employees/${id}/avatar`),
+    );
+  }
+
   deleteEmployee(id: string) {
     return firstValueFrom(
       this.http.delete<{ ok: boolean }>(`/api/admin/employees/${id}`),
