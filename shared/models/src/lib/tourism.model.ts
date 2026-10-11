@@ -82,6 +82,16 @@ export interface RoomOffer {
 export interface HotelAvailability {
   hotelId: string;
   hotelName: string;
+  /**
+   * مشخصات کارت هتل، همان‌طور که خود جست‌وجوی تأمین‌کننده برمی‌گرداند
+   * (هتل‌یار `searchHotel`، اقامت۲۴ `suggestion`) — تا فهرستِ تاریخ‌دار برای
+   * عکس و ستاره به کاتالوگ جدا نیازی نداشته باشد. در جست‌وجوی تک‌هتل
+   * (صفحهٔ هتل) ممکن است خالی بماند.
+   */
+  rate?: number;
+  type?: string;
+  address?: string;
+  photo?: string | null;
   /** ISO date (YYYY-MM-DD) */
   checkin: string;
   checkout: string;

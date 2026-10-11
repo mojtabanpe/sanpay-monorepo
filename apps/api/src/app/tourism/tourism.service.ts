@@ -91,24 +91,15 @@ export class TourismService {
       capacity: dto.capacity,
     };
 
-    // هتل یا شهر مشخص → فقط همان تأمین‌کننده
+    // هتل یا شهر مشخص → فقط همان تأمین‌کننده. جست‌وجوی تاریخ‌دارِ «همهٔ
+    // شهرها» عمداً پذیرفته نمی‌شود: یعنی searchHotel سراسری هتل‌یار به‌علاوهٔ
+    // suggestion سراسری اقامت۲۴، برای فهرستی که کسی تا ته نمی‌خواندش. بدون شهر،
+    // اپ کاتالوگ بی‌قیمت (`GET /hotels`) را نشان می‌دهد.
     const scope = dto.hotelId ?? dto.cityId;
-    if (scope) {
-      return this.providers.forId(scope).search(params);
+    if (!scope) {
+      throw new BadRequestException('برای جست‌وجوی اتاق خالی، شهر را انتخاب کنید');
     }
-
-    // جست‌وجوی سراسری: هر دو موازی. شکست یکی نباید نتیجهٔ دیگری را از بین
-    // ببرد — کارمندی که دنبال هتل شیراز است نباید به‌خاطر قطعی اقامت۲۴ دست
-    // خالی برگردد.
-    const results = await Promise.all(
-      this.providers
-        .all()
-        .map((provider) =>
-          this.safe(provider.key, () => provider.search(params)),
-        ),
-    );
-
-    return results.flat();
+    return this.providers.forId(scope).search(params);
   }
 
   /** پیش‌فاکتور: قیمت اتاق + کیف‌پول‌های گردشگری قابل استفاده */

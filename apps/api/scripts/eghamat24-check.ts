@@ -59,6 +59,15 @@ async function main() {
           mashhadHotels: catalog.length,
           firstHotel: detail.name,
           availableHotels: rooms.length,
+          // کارت فهرست تاریخ‌دار از همین فیلدها ساخته می‌شود — باید پر باشند
+          availabilitySample: rooms.slice(0, 3).map((hotel) => ({
+            hotelName: hotel.hotelName,
+            rate: hotel.rate,
+            address: hotel.address,
+            photo: hotel.photo,
+            rooms: hotel.rooms.length,
+            fromPrice: Math.min(...hotel.rooms.map((room) => room.price)),
+          })),
           airports: airports.length,
           flights: offers.length,
           date,

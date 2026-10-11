@@ -101,6 +101,10 @@ export function toAvailability(result: GdsSearchResult): HotelAvailability {
   return {
     hotelId: encodeId(HY, result.hotelId),
     hotelName: result.hotelName,
+    rate: Number(result.rate) || 0,
+    type: result.type ?? '',
+    address: result.address ?? '',
+    photo: result.photo || null,
     checkin: result.checkin,
     checkout: result.checkout,
     nights: nightsBetween(result.checkin, result.checkout),
