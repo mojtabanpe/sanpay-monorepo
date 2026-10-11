@@ -1,13 +1,15 @@
 import { SanpayAmountInput } from '@sanpay/forms';
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, inject, resource, signal } from '@angular/core';
 import { SanpayDatePickerWidth, isoToJalali, jalaliToIso } from '@sanpay/dates';
 import {
   AdminStoreRow,
   AdminCompanyRow,
+  AdminEmployeeRow,
   AdminWalletDefinitionRow,
   BulkAllocateEntry,
 } from '@sanpay/models';
 import { HlmAlertImports } from '@sanpay/ui/alert';
+import { HlmAutocompleteImports } from '@sanpay/ui/autocomplete';
 import { HlmBadgeImports } from '@sanpay/ui/badge';
 import { HlmButtonImports } from '@sanpay/ui/button';
 import { HlmCardImports } from '@sanpay/ui/card';
@@ -43,9 +45,12 @@ type Kind = 'CREDIT' | 'TOURISM';
  * تعریف کیف‌پول‌ها: نوع، سقف پیش‌فرض، فروشگاه‌های مجاز و تخصیص گروهی.
  * کیف پول گردشگری فروشگاه ندارد — انتخاب فروشگاه برایش پنهان می‌شود.
  *
- * تخصیص فقط گروهی است و در یک مدال باز می‌شود: یا سقف و انقضای یکسان برای همهٔ
- * کارمندان فعال، یا یک فایل اکسل/CSV که برای هر کد ملی سقف و انقضای خودش را
- * می‌آورد و تخصیص را به همان فهرست محدود می‌کند.
+ * تخصیص در یک مدال باز می‌شود، در دو حالت:
+ * - گروهی: یا سقف و انقضای یکسان برای همهٔ کارمندان فعال، یا یک فایل اکسل/CSV
+ *   که برای هر کد ملی سقف و انقضای خودش را می‌آورد.
+ * - فردی: یک کارمند با جست‌وجو (نام / کد ملی / کد پرسنلی).
+ * هر دو از `bulk-allocate` می‌گذرند، پس قاعدهٔ سرور یکی است: تخصیص فعالِ موجود
+ * به‌روز می‌شود نه تکرار، و سقفِ کمتر از مصرف‌شده رد می‌شود.
  */
 @Component({
   selector: 'app-wallets',
@@ -53,6 +58,7 @@ type Kind = 'CREDIT' | 'TOURISM';
     SanpayAmountInput,
     SanpayDatePickerWidth,
     HlmAlertImports,
+    HlmAutocompleteImports,
     HlmBadgeImports,
     HlmButtonImports,
     HlmCardImports,
@@ -132,7 +138,47 @@ export class WalletsPage {
   protected readonly firstFileErrors = computed(() =>
     this.fileErrors().slice(0, 5).join(' — '),
   );
+  protected readonly allocMode = signal<'group' | 'single'>('group');
+  /** کارمند انتخاب‌شده در حالت فردی */
+  protected readonly singleEmployee = signal<AdminEmployeeRow | null>(null);
+  protected readonly employeeSearch = signal('');
+  protected readonly employeeToString = (employee: AdminEmployeeRow): string =>
+    `${employee.firstName} ${employee.lastName} — ${employee.nationalCode}`;
+  /**
+   * جست‌وجوی سرور، محدود به شرکتِ همین کیف پول (سرور هم تخصیص بین دو شرکت را
+   * رد می‌کند). debounce کوتاه داخل loader؛ resource درخواست قبلی را abort
+   * می‌کند تا پاسخ کهنه جای تازه ننشیند.
+   */
+  protected readonly employeeOptions = resource({
+    defaultValue: [] as AdminEmployeeRow[],
+    params: () => ({
+      q: this.employeeSearch().trim(),
+      companyId: this.bulkFor()?.company.id,
+      mode: this.allocMode(),
+    }),
+    loader: async ({ params, abortSignal }) => {
+      if (params.mode !== 'single' || params.q.length < 2 || !params.companyId) {
+        return [];
+      }
+      await new Promise((resolve) => setTimeout(resolve, 250));
+      if (abortSignal.aborted) return [];
+      const page = await this.api.employees({
+        q: params.q,
+        companyId: params.companyId,
+        active: 'true',
+        pageSize: 10,
+      });
+      return page.items;
+    },
+  });
+
   protected readonly bulkSubmitLabel = computed(() => {
+    if (this.allocMode() === 'single') {
+      const employee = this.singleEmployee();
+      return employee
+        ? `تخصیص به ${employee.firstName} ${employee.lastName}`
+        : 'تخصیص به کارمند';
+    }
     const count = this.fileEntries().length;
     return count
       ? `تخصیص به ${fa(count)} کارمند`
@@ -291,7 +337,60 @@ export class WalletsPage {
     );
     this.bulkExpiry.set(defaultExpiry());
     this.clearFile();
+    this.allocMode.set('group');
+    this.singleEmployee.set(null);
+    this.employeeSearch.set('');
     this.error.set(null);
+  }
+
+  protected setAllocMode(mode: string | string[] | null | undefined): void {
+    if (mode !== 'group' && mode !== 'single') return;
+    this.allocMode.set(mode);
+    this.error.set(null);
+  }
+
+  protected onEmployeePicked(employee: AdminEmployeeRow | null): void {
+    this.singleEmployee.set(employee);
+  }
+
+  /** تخصیص فردی — همان endpoint گروهی با یک شناسه */
+  private async allocateSingle(definition: AdminWalletDefinitionRow): Promise<void> {
+    const employee = this.singleEmployee();
+    if (!employee) {
+      this.error.set('کارمند را انتخاب کنید');
+      return;
+    }
+    const cap = parseAmount(this.bulkCap());
+    if (cap <= 0) {
+      this.error.set('سقف اعتبار را وارد کنید');
+      return;
+    }
+    const name = `${employee.firstName} ${employee.lastName}`;
+    let skipped = false;
+    await this.run(async () => {
+      const result = await this.api.bulkAllocate({
+        definitionId: definition.id,
+        employeeIds: [employee.id],
+        cap,
+        expiresAt: this.bulkExpiry(),
+      });
+      if (result.skipped) {
+        skipped = true;
+        return;
+      }
+      this.closeBulk();
+      this.notice.set(
+        result.updated
+          ? `تخصیص فعالِ «${definition.name}» برای ${name} به‌روزرسانی شد.`
+          : `«${definition.name}» به ${name} تخصیص داده شد.`,
+      );
+    }, 'تخصیص ممکن نشد');
+    // run() پیام‌ها را پاک می‌کند؛ خطای «سقف کمتر از مصرف» بعد از آن می‌نشیند
+    if (skipped) {
+      this.error.set(
+        `سقف تازه کمتر از مبلغی است که ${name} از این کیف پول خرج کرده؛ تغییری اعمال نشد.`,
+      );
+    }
   }
 
   protected closeBulk(): void {
@@ -347,6 +446,7 @@ export class WalletsPage {
   protected async bulkAllocate(): Promise<void> {
     const definition = this.bulkFor();
     if (!definition) return;
+    if (this.allocMode() === 'single') return this.allocateSingle(definition);
 
     const entries = this.fileEntries();
     if (!entries.length) {

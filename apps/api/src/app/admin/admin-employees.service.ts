@@ -385,13 +385,29 @@ export class AdminEmployeesService {
       );
     }
 
+    // همان قاعدهٔ تخصیص گروهی: تخصیص فعالِ موجود به‌روز می‌شود، نه اینکه
+    // کیف دومی از همان نوع کنارش ساخته شود
+    const cap = BigInt(dto.cap);
+    const expiresAt = new Date(dto.expiresAt);
+    const existing = await this.prisma.walletAllocation.findFirst({
+      where: { employeeId, definitionId: dto.definitionId, isActive: true },
+    });
+    if (existing) {
+      if (cap < existing.spent) {
+        throw new BadRequestException(
+          'سقف نمی‌تواند کمتر از مبلغ مصرف‌شده باشد',
+        );
+      }
+      const allocation = await this.prisma.walletAllocation.update({
+        where: { id: existing.id },
+        data: { cap, expiresAt },
+        include: { definition: true },
+      });
+      return toAllocationRow(allocation);
+    }
+
     const allocation = await this.prisma.walletAllocation.create({
-      data: {
-        employeeId,
-        definitionId: dto.definitionId,
-        cap: BigInt(dto.cap),
-        expiresAt: new Date(dto.expiresAt),
-      },
+      data: { employeeId, definitionId: dto.definitionId, cap, expiresAt },
       include: { definition: true },
     });
     return toAllocationRow(allocation);
