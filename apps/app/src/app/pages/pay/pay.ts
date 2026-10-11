@@ -12,7 +12,10 @@ import {
 import { ActivatedRoute, Router } from '@angular/router';
 import { PayableWallet, Receipt, StoreCheckout } from '@sanpay/models';
 import { ReceiptCard } from '@sanpay/receipt';
+import { HlmAlertImports } from '@sanpay/ui/alert';
+import { HlmAlertDialogImports } from '@sanpay/ui/alert-dialog';
 import { HlmButtonImports } from '@sanpay/ui/button';
+import { SanpayAmountInput } from '@sanpay/forms';
 import { HlmCardImports } from '@sanpay/ui/card';
 import { HlmFieldImports } from '@sanpay/ui/field';
 import { HlmInputImports } from '@sanpay/ui/input';
@@ -28,12 +31,15 @@ type Step = 'scan' | 'amount' | 'done';
 @Component({
   selector: 'app-pay',
   imports: [
+    HlmAlertImports,
+    HlmAlertDialogImports,
     HlmButtonImports,
     HlmCardImports,
     HlmFieldImports,
     HlmInputImports,
     HlmInputGroupImports,
     ReceiptCard,
+    SanpayAmountInput,
   ],
   templateUrl: './pay.html',
 })
@@ -79,6 +85,17 @@ export class PayPage implements OnDestroy {
   );
   protected readonly multiWallet = computed(
     () => (this.checkout()?.wallets.length ?? 0) > 1,
+  );
+  /** مدال تأیید قبل از ارسال پرداخت */
+  protected readonly confirmOpen = signal(false);
+  /** تفکیک مبلغ هر کیف پول برای مدال تأیید */
+  protected readonly confirmLines = computed(() =>
+    (this.checkout()?.wallets ?? [])
+      .map((wallet) => ({
+        name: wallet.name,
+        amount: this.amounts()[wallet.allocationId] ?? 0,
+      }))
+      .filter((line) => line.amount > 0),
   );
   protected readonly canPay = computed(
     () => this.total() > 0 && !this.hasFraction() && !this.busy(),
@@ -209,31 +226,15 @@ export class PayPage implements OnDestroy {
 
   // ─── گام ۲: مبلغ ──────────────────────────────────────────────────
 
-  private rialOf(wallet: PayableWallet): number {
-    return this.rials()[wallet.allocationId] ?? 0;
+  /** ارقام ریالی اینپوت هر کیف پول — مدل `sanpayAmount` */
+  protected rialText(wallet: PayableWallet): string {
+    const rial = this.rials()[wallet.allocationId] ?? 0;
+    return rial === 0 ? '' : String(rial);
   }
 
-  /** مقدار نمایشی داخل اینپوت — با اعداد فارسی و جداکنندهٔ هزارگان */
-  protected amountText(wallet: PayableWallet): string {
-    const rial = this.rialOf(wallet);
-    return rial === 0 ? '' : this.faNumber.format(rial);
-  }
-
-  protected onAmountInput(wallet: PayableWallet, event: Event): void {
-    const input = event.target as HTMLInputElement;
-    // تعداد رقم‌های بعد از caret، تا بعد از فرمت‌شدن caret سر جایش بماند
-    const digitsAfterCaret = countDigits(
-      input.value.slice(input.selectionEnd ?? input.value.length),
-    );
-    const parsed = toLatinDigits(input.value).replace(/\D/g, '');
-    // مبلغ هرگز از سقف کیف پول بالاتر نمی‌رود — سقف در سرور هم دوباره چک می‌شود
-    const clamped = Math.min(parsed === '' ? 0 : Number(parsed), wallet.max * 10);
-    this.setRial(wallet, clamped);
-
-    const text = clamped === 0 ? '' : this.faNumber.format(clamped);
-    input.value = text;
-    const caret = caretBeforeDigits(text, Math.min(digitsAfterCaret, countDigits(text)));
-    input.setSelectionRange(caret, caret);
+  /** directive مبلغ را به سقف کیف پول رسانده — سقف در سرور هم دوباره چک می‌شود */
+  protected onAmount(wallet: PayableWallet, digits: string): void {
+    this.setRial(wallet, Number(digits || 0));
   }
 
   protected fillMax(wallet: PayableWallet): void {
@@ -252,6 +253,14 @@ export class PayPage implements OnDestroy {
     this.error.set(null);
   }
 
+  protected onConfirmStateChange(state: string): void {
+    // تا وقتی درخواست در جریان است مدال بسته نمی‌شود (Esc / کلیک بیرون)
+    if (state === 'closed' && !this.busy()) {
+      this.confirmOpen.set(false);
+      this.error.set(null);
+    }
+  }
+
   protected async pay(): Promise<void> {
     const checkout = this.checkout();
     if (!checkout || !this.canPay()) return;
@@ -267,6 +276,7 @@ export class PayPage implements OnDestroy {
         storeCode: checkout.storeCode,
         lines,
       });
+      this.confirmOpen.set(false);
       this.receipt.set(receipt);
       this.receivedAt.set(Date.now());
       this.step.set('done');
@@ -301,27 +311,6 @@ export class PayPage implements OnDestroy {
   protected count(value: number): string {
     return this.faNumber.format(value);
   }
-}
-
-/** ارقام فارسی و عربی (paste از جای دیگر) را لاتین می‌کند */
-function toLatinDigits(value: string): string {
-  return value
-    .replace(/[۰-۹]/g, (digit) => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(digit)))
-    .replace(/[٠-٩]/g, (digit) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(digit)));
-}
-
-function countDigits(value: string): number {
-  return toLatinDigits(value).replace(/\D/g, '').length;
-}
-
-/** جایگاهی در `text` که دقیقاً `digitsAfter` رقم بعد از آن باشد */
-function caretBeforeDigits(text: string, digitsAfter: number): number {
-  let seen = 0;
-  for (let i = text.length; i > 0; i--) {
-    if (seen === digitsAfter) return i;
-    if (/\d/.test(toLatinDigits(text[i - 1]))) seen++;
-  }
-  return 0;
 }
 
 function messageOf(caught: unknown, fallback: string): string {

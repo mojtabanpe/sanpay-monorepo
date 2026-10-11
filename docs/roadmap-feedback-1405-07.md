@@ -32,7 +32,7 @@
 
 ## ۲. مدال تأیید قبل از پرداخت
 
-- [ ] انجام شد
+- [x] انجام شد
 
 **محل:** `apps/app/src/app/pages/pay/pay.html` / `pay.ts` — قبل از `POST /api/payments`.
 
@@ -44,7 +44,7 @@
 
 ## ۳. کیف پولِ صفرشده در خانه نمایش داده نشود
 
-- [ ] انجام شد
+- [x] انجام شد
 
 **محل:** صفحهٔ خانه `apps/app/src/app/pages/home/home.ts` (+ `libs/applets/wallet`).
 
@@ -135,7 +135,7 @@
 
 ## ۱۱. متن فوتر
 
-- [ ] انجام شد
+- [x] انجام شد
 
 «طراحی و توسعه: **شرکت جهان صنعت پویا نگین مشیز**» به‌جای «شرکت طرح و توسعه دیار مانا» در:
 - `apps/app/src/app/pages/login/login.html:220`
@@ -145,10 +145,10 @@
 
 ## ۱۲. جداکنندهٔ سه‌رقمی در همهٔ ورودی‌های عددی
 
-- [ ] directive مشترک ساخته شد
-- [ ] اپ کارمند
-- [ ] پنل فروشگاه
-- [ ] داشبورد
+- [x] directive مشترک ساخته شد
+- [x] اپ کارمند
+- [x] پنل فروشگاه
+- [x] داشبورد
 
 - یک directive مشترک (مثلاً `sanpayAmountInput` در یک lib `scope:shared`) روی `hlmInput`: نمایش با `٬`، مقدار مدل عدد خالص، پذیرش ارقام فارسی/عربی/لاتین در تایپ و paste، حفظ موقعیت caret، `inputmode="numeric"`.
 - سازگار با Signal Forms / reactive forms (`ControlValueAccessor` یا `FormValueControl`).

@@ -325,7 +325,7 @@
   <section hlmCard>
     <div hlmCardContent class="py-10 text-center">
       <p class="text-muted-foreground text-sm">
-        هنوز کیف پولی برای شما فعال نشده است.
+        {{ allSpent() ? 'اعتباری برای خرید ندارید.' : 'هنوز کیف پولی برای شما فعال نشده است.' }}
       </p>
     </div>
   </section>

@@ -44,10 +44,9 @@
         <input
           id="merchant-amount"
           hlmInput
-          inputmode="numeric"
           dir="ltr"
-          [value]="amount()"
-          (input)="set('amount', $any($event.target).value)"
+          [sanpayAmount]="amount()"
+          (sanpayAmountChange)="set('amount', $event)"
         />
       </hlm-field>
     </div>

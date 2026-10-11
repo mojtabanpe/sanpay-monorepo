@@ -38,6 +38,9 @@
       "@sanpay/dates": [
         "./shared/dates/src/index.ts"
       ],
+      "@sanpay/forms": [
+        "./shared/forms/src/index.ts"
+      ],
       "@sanpay/models": [
         "./shared/models/src/index.ts"
       ],

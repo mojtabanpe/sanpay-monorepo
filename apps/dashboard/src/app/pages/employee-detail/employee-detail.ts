@@ -1,3 +1,4 @@
+import { SanpayAmountInput } from '@sanpay/forms';
 import {
   Component,
   OnInit,
@@ -45,6 +46,7 @@ import {
 @Component({
   selector: 'app-employee-detail',
   imports: [
+    SanpayAmountInput,
     SanpayDatePickerWidth,
     RouterModule,
     HlmAlertImports,

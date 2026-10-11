@@ -1,6 +1,6 @@
 # sanpay
 
-Welfare/credit platform for the employees of **شرکت جهان‌فولاد سیرجان** (Jahan Foolad Sirjan), built by **شرکت طرح و توسعه دیار مانا**. Employees receive purchase credit for contracted stores plus welfare credits; stores get their own panel; employees log in from the app's home page. Functional scope: `~/Downloads/jahan-foolad.pdf` (Persian proposal — virtual credit card, QR one-time-code purchases, contracted stores, rations/ارزاق distribution, reporting; phase 2 adds travel services).
+Welfare/credit platform for the employees of **شرکت جهان‌فولاد سیرجان** (Jahan Foolad Sirjan), built by **شرکت جهان صنعت پویا نگین مشیز**. Employees receive purchase credit for contracted stores plus welfare credits; stores get their own panel; employees log in from the app's home page. Functional scope: `~/Downloads/jahan-foolad.pdf` (Persian proposal — virtual credit card, QR one-time-code purchases, contracted stores, rations/ارزاق distribution, reporting; phase 2 adds travel services).
 
 **Current workflow: full-stack.** Design is approved; pages are being wired to the real API. Employee auth is JWT-based and uses the **national code (کد ملی)** as the login identifier (`POST /api/auth/login`); the app dev-server proxies `/api` to `localhost:6500`. Seed data: `pnpm prisma:seed` (demo employee `3060123456` / `12345678`, dashboard admin `admin` / `admin1234`). Remaining mock-only pages should be migrated to API data as they are touched.
 
@@ -16,6 +16,7 @@ Welfare/credit platform for the employees of **شرکت جهان‌فولاد س
 | `models`    | `shared/models`  | Shared domain models (TypeScript interfaces) used by app + dashboard: `import { Wallet } from '@sanpay/models'`                |
 | `dates`     | `shared/dates`   | Jalali date providers + ISO↔Jalali helpers: `import { providePersianDates, isoToJalali } from '@sanpay/dates'`                 |
 | *applets*   | `libs/applets/*` | Self-contained feature units the employee app lazy-loads — see **Applets** below                                               |
+| `forms`     | `shared/forms`   | Shared form helpers — `sanpayAmount` money input (thousands separator, Persian/Arabic digits, caret-safe, `max` clamp): `import { SanpayAmountInput } from '@sanpay/forms'` |
 | `receipt`   | `shared/receipt` | Shared receipt component used by both the employee app and the store panel: `import { ReceiptCard } from '@sanpay/receipt'`    |
 
 ## Purchase flow (approved design — merchant-presented QR)
@@ -106,6 +107,8 @@ Every `-fg` clears 4.5:1 on both its own tint and white (4.58–7.10, measured; 
 | Date | `hlm-date-picker` + `hlm-date-picker-trigger` | `<input type="date">` |
 | Counter (e.g. تعداد شب) | `hlm-input-group` with −/+ `hlmInputGroupButton`s | `<input type="number">` |
 | Error message | `hlmAlert variant="destructive"` | a bare `<p class="text-destructive">` |
+| Money amount | `<input hlmInput [(sanpayAmount)]="…">` (`@sanpay/forms`; model = bare Latin digits, input shows `50٬000`) — **not** on national code / phone / personnel code | `[value]` + `(input)` with hand-rolled digit parsing |
+| Confirm before an irreversible action | `hlm-alert-dialog` | `confirm()` |
 
 Control sizing, focus rings, badge/progress/tabs/skeleton/toggle styling all live in `glass.css` — style there via `[data-slot=…]`, never per call site. Spartan ships form controls at `h-8` and buttons at `h-8`/`h-7`; `glass.css` raises them to a 44px touch target for this mobile-first app.
 
@@ -151,7 +154,7 @@ Every project is tagged so `@nx/enforce-module-boundaries` (depConstraints in th
 | `apps/store`                                     | `type:app`, `scope:store`    |
 | `apps/dashboard`                                 | `type:app`, `scope:admin`    |
 | `apps/api`                                       | `type:app`, `scope:api`      |
-| `shared/models`, `shared/dates`, `shared/receipt`, `shared/ui/*` | `type:lib`, `scope:shared`   |
+| `shared/models`, `shared/dates`, `shared/forms`, `shared/receipt`, `shared/ui/*` | `type:lib`, `scope:shared`   |
 | `libs/applets/*`                                 | `type:applet`, `scope:employee` |
 
 Apps depend on applets + libs (never on each other); applets depend on applets + libs; plain libs depend on libs only. Each app reaches its own scope plus `scope:shared`. **Any new project needs tags** — pick the app's scope, `type:applet` + the owning app's scope for an applet, or `type:lib` + `scope:shared` for shared code.

@@ -108,8 +108,8 @@
             class="w-full"
             dir="ltr"
             placeholder="خالی = نامحدود"
-            [value]="form().defaultCap"
-            (input)="update('defaultCap', $any($event.target).value)"
+            [sanpayAmount]="form().defaultCap"
+            (sanpayAmountChange)="update('defaultCap', $event)"
           />
           <p hlmFieldDescription>
             خالی بگذارید تا نامحدود باشد؛ سقف هر کارمند هنگام تخصیص تعیین
@@ -375,8 +375,7 @@
           hlmInput
           class="w-full"
           dir="ltr"
-          [value]="bulkCap()"
-          (input)="bulkCap.set($any($event.target).value)"
+          [(sanpayAmount)]="bulkCap"
         />
       </hlm-field>
       <hlm-field>

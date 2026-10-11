@@ -1,3 +1,4 @@
+import { SanpayAmountInput } from '@sanpay/forms';
 import { Component, computed, inject, signal } from '@angular/core';
 import { SanpayDatePickerWidth, isoToJalali, jalaliToIso } from '@sanpay/dates';
 import {
@@ -49,6 +50,7 @@ type Kind = 'CREDIT' | 'TOURISM';
 @Component({
   selector: 'app-wallets',
   imports: [
+    SanpayAmountInput,
     SanpayDatePickerWidth,
     HlmAlertImports,
     HlmBadgeImports,

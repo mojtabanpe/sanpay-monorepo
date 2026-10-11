@@ -223,8 +223,8 @@
             hlmInput
             class="w-full"
             dir="ltr"
-            [value]="allocForm().cap"
-            (input)="updateAlloc('cap', $any($event.target).value)"
+            [sanpayAmount]="allocForm().cap"
+            (sanpayAmountChange)="updateAlloc('cap', $event)"
           />
         </hlm-field>
 
@@ -305,7 +305,7 @@
                   #capInput
                   class="w-32"
                   dir="ltr"
-                  [value]="allocation.cap * 10"
+                  [sanpayAmount]="'' + allocation.cap * 10"
                   (keyup.enter)="setCap(allocation.id, capInput.value)"
                 />
               </td>
@@ -313,6 +313,7 @@
                 <input
                   hlmInput
                   #refundInput
+                  sanpayAmount
                   class="w-32"
                   dir="ltr"
                   placeholder="مبلغ"
