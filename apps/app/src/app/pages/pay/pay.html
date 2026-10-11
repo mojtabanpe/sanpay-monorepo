@@ -173,6 +173,11 @@
         <span class="text-sm font-medium">جمع پرداخت</span>
         <span class="text-primary text-lg font-bold">{{ toman(total()) }}</span>
       </div>
+      @if (hasFraction() && total() > 0) {
+      <p class="text-(--warn-fg) text-xs" role="status">
+        مبلغ باید مضربی از ۱۰ ریال باشد.
+      </p>
+      }
       <button hlmBtn class="w-full" [disabled]="!canPay()" (click)="pay()">
         {{ busy() ? 'در حال ثبت…' : 'پرداخت' }}
       </button>

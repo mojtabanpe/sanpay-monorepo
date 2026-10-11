@@ -55,16 +55,34 @@ export class PayPage implements OnDestroy {
   protected readonly cameraFailed = signal(false);
   protected readonly manualCode = signal('');
 
-  /** مبلغ انتخاب‌شده از هر کیف پول (تومان) */
-  private readonly amounts = signal<Record<string, number>>({});
+  /**
+   * مبلغ تایپ‌شده برای هر کیف پول، به **ریال** — همان واحدی که در اینپوت
+   * نمایش داده می‌شود. API تومان می‌گیرد، ولی اگر state تومانی باشد هر رقم
+   * اول (`۵` ریال → `۰` تومان) پاک می‌شود و کاربر هیچ‌وقت نمی‌تواند شروع به
+   * تایپ کند؛ پس مقدار خام ریالی نگه داشته و تومان از رویش مشتق می‌شود.
+   */
+  private readonly rials = signal<Record<string, number>>({});
+
+  /** مبلغ هر کیف پول به تومان، برای API */
+  private readonly amounts = computed(() =>
+    Object.fromEntries(
+      Object.entries(this.rials()).map(([id, rial]) => [id, Math.floor(rial / 10)]),
+    ),
+  );
 
   protected readonly total = computed(() =>
     Object.values(this.amounts()).reduce((sum, amount) => sum + amount, 0),
   );
+  /** ریال کمتر از ۱۰ قابل کسر نیست؛ به‌جای گردکردنِ بی‌صدا پرداخت را می‌بندیم */
+  protected readonly hasFraction = computed(() =>
+    Object.values(this.rials()).some((rial) => rial % 10 !== 0),
+  );
   protected readonly multiWallet = computed(
     () => (this.checkout()?.wallets.length ?? 0) > 1,
   );
-  protected readonly canPay = computed(() => this.total() > 0 && !this.busy());
+  protected readonly canPay = computed(
+    () => this.total() > 0 && !this.hasFraction() && !this.busy(),
+  );
 
   /**
    * ساعتِ «زنده» روی صفحهٔ رسید. اسکرین‌شاتِ یک رسید قدیمی نه می‌تپد و نه
@@ -180,7 +198,7 @@ export class PayPage implements OnDestroy {
         return;
       }
       this.checkout.set(checkout);
-      this.amounts.set({});
+      this.rials.set({});
       this.step.set('amount');
     } catch (caught) {
       this.error.set(messageOf(caught, 'دریافت اطلاعات فروشگاه ممکن نشد'));
@@ -191,40 +209,45 @@ export class PayPage implements OnDestroy {
 
   // ─── گام ۲: مبلغ ──────────────────────────────────────────────────
 
-  protected amountOf(wallet: PayableWallet): number {
-    return this.amounts()[wallet.allocationId] ?? 0;
+  private rialOf(wallet: PayableWallet): number {
+    return this.rials()[wallet.allocationId] ?? 0;
   }
 
   /** مقدار نمایشی داخل اینپوت — با اعداد فارسی و جداکنندهٔ هزارگان */
   protected amountText(wallet: PayableWallet): string {
-    const amount = this.amountOf(wallet);
-    return amount === 0 ? '' : this.faNumber.format(amount * 10);
+    const rial = this.rialOf(wallet);
+    return rial === 0 ? '' : this.faNumber.format(rial);
   }
 
   protected onAmountInput(wallet: PayableWallet, event: Event): void {
     const input = event.target as HTMLInputElement;
+    // تعداد رقم‌های بعد از caret، تا بعد از فرمت‌شدن caret سر جایش بماند
+    const digitsAfterCaret = countDigits(
+      input.value.slice(input.selectionEnd ?? input.value.length),
+    );
     const parsed = toLatinDigits(input.value).replace(/\D/g, '');
     // مبلغ هرگز از سقف کیف پول بالاتر نمی‌رود — سقف در سرور هم دوباره چک می‌شود
-    const amount = Math.min(
-      parsed === '' ? 0 : Math.floor(Number(parsed) / 10),
-      wallet.max,
-    );
-    this.setAmount(wallet, amount);
-    input.value = amount === 0 ? '' : this.faNumber.format(amount * 10);
+    const clamped = Math.min(parsed === '' ? 0 : Number(parsed), wallet.max * 10);
+    this.setRial(wallet, clamped);
+
+    const text = clamped === 0 ? '' : this.faNumber.format(clamped);
+    input.value = text;
+    const caret = caretBeforeDigits(text, Math.min(digitsAfterCaret, countDigits(text)));
+    input.setSelectionRange(caret, caret);
   }
 
   protected fillMax(wallet: PayableWallet): void {
-    this.setAmount(wallet, wallet.max);
+    this.setRial(wallet, wallet.max * 10);
   }
 
   protected clearAmounts(): void {
-    this.amounts.set({});
+    this.rials.set({});
   }
 
-  private setAmount(wallet: PayableWallet, amount: number): void {
-    this.amounts.update((current) => ({
+  private setRial(wallet: PayableWallet, rial: number): void {
+    this.rials.update((current) => ({
       ...current,
-      [wallet.allocationId]: amount,
+      [wallet.allocationId]: rial,
     }));
     this.error.set(null);
   }
@@ -261,7 +284,7 @@ export class PayPage implements OnDestroy {
   protected restart(): void {
     this.checkout.set(null);
     this.receipt.set(null);
-    this.amounts.set({});
+    this.rials.set({});
     this.error.set(null);
     this.manualCode.set('');
     this.step.set('scan');
@@ -280,10 +303,25 @@ export class PayPage implements OnDestroy {
   }
 }
 
+/** ارقام فارسی و عربی (paste از جای دیگر) را لاتین می‌کند */
 function toLatinDigits(value: string): string {
-  return value.replace(/[۰-۹]/g, (digit) =>
-    String('۰۱۲۳۴۵۶۷۸۹'.indexOf(digit)),
-  );
+  return value
+    .replace(/[۰-۹]/g, (digit) => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(digit)))
+    .replace(/[٠-٩]/g, (digit) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(digit)));
+}
+
+function countDigits(value: string): number {
+  return toLatinDigits(value).replace(/\D/g, '').length;
+}
+
+/** جایگاهی در `text` که دقیقاً `digitsAfter` رقم بعد از آن باشد */
+function caretBeforeDigits(text: string, digitsAfter: number): number {
+  let seen = 0;
+  for (let i = text.length; i > 0; i--) {
+    if (seen === digitsAfter) return i;
+    if (/\d/.test(toLatinDigits(text[i - 1]))) seen++;
+  }
+  return 0;
 }
 
 function messageOf(caught: unknown, fallback: string): string {

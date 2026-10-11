@@ -71,6 +71,6 @@ export class ReceiptCard {
         ? 'ناموفق'
         : status === 'PROCESSING'
           ? 'در حال پردازش'
-          : 'در انتظار ارسال';
+          : 'در تسویهٔ شبانه';
   }
 }

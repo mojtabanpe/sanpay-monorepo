@@ -47,7 +47,10 @@ export class QrPage {
     this.busy.set(true);
     this.error.set(false);
     try {
-      const QRCode = await import('qrcode');
+      // `qrcode` پکیج CommonJS است: در build پروداکشن توابعش روی `default`
+      // می‌نشینند و `toDataURL` روی خودِ ماژول undefined است، در dev نه.
+      const mod = await import('qrcode');
+      const QRCode = mod.default ?? mod;
       this.dataUrl.set(
         await QRCode.toDataURL(payload, {
           // سطح تصحیح خطا H: برچسبی که ماه‌ها روی میز صندوق می‌ماند خط و خش و
@@ -59,7 +62,8 @@ export class QrPage {
           color: { dark: '#071a33ff', light: '#ffffffff' },
         }),
       );
-    } catch {
+    } catch (caught) {
+      console.error('QR render failed', caught);
       this.error.set(true);
     } finally {
       this.busy.set(false);

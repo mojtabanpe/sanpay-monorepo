@@ -24,6 +24,29 @@
     <div class="min-w-0">
       <p class="text-muted-foreground text-[0.65rem]">پرداخت در</p>
       <p class="truncate text-sm font-bold">{{ r.storeName }}</p>
+      <!--
+        وضعیت اصلی رسید «پرداخت شد» است: پول از کیف کارمند کسر شده. وضعیت
+        تسویه (واریز شبانه) جدا و کم‌رنگ پایین‌تر می‌آید — قبلاً همین‌جا
+        «در انتظار ارسال» می‌نشست و فروشنده آن را «پرداخت نشده» می‌خواند.
+      -->
+      <span
+        class="mt-1.5 inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-semibold"
+        style="color: var(--pos-fg); background-color: var(--pos-bg)"
+      >
+        <svg
+          aria-hidden="true"
+          viewBox="0 0 24 24"
+          class="size-3.5"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2.5"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path d="M20 6 9 17l-5-5" />
+        </svg>
+        پرداخت شد
+      </span>
     </div>
     <div class="shrink-0 text-left">
       <p class="text-primary font-bold" [class.text-lg]="!compact()">
@@ -53,17 +76,12 @@
   </div>
 
   @if (variant() === 'store' && r.settlement) {
-  <div
-    class="flex items-center justify-between gap-3 border-t border-dashed px-4 py-3"
+  <p
+    class="text-muted-foreground border-t border-dashed px-4 py-2 text-[0.65rem]"
     style="border-color: var(--hairline)"
   >
-    <span class="text-muted-foreground text-xs">وضعیت واریز</span>
-    <span
-      class="bg-secondary text-secondary-foreground rounded-md px-2 py-1 text-xs font-medium"
-    >
-      {{ settlementLabel() }}
-    </span>
-  </div>
+    واریز به حساب: {{ settlementLabel() }}
+  </p>
   }
 
   <!-- تفکیک کیف‌پول‌ها -->
