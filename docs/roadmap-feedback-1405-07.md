@@ -76,8 +76,8 @@
 
 ## ۶. تغییر تاریخ/تعداد شب باید هتل‌ها و پروازها را دوباره بگیرد
 
-- [ ] هتل‌ها
-- [ ] پروازها
+- [x] هتل‌ها
+- [x] پروازها
 
 **محل:** `libs/applets/tourism/src/lib/pages/hotel-list.ts`، `hotel-detail.ts`، `flights.ts`.
 

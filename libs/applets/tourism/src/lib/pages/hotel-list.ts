@@ -1,54 +1,46 @@
-import { SanpayDatePickerWidth } from '@sanpay/dates';
-import {
-  Component,
-  computed,
-  inject,
-  signal,
-} from '@angular/core';
+import { Component, computed, effect, inject, signal } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { NgIcon, provideIcons } from '@ng-icons/core';
-import { lucideMinus, lucidePlus, lucideHotel, lucidePlane } from '@ng-icons/lucide';
-import { JalaliDate } from '@spartan-ng/brain/date-time';
+import { lucideHotel, lucidePlane } from '@ng-icons/lucide';
 import { HotelSummary, TourismCity } from '@sanpay/models';
 import { HlmBadgeImports } from '@sanpay/ui/badge';
 import { HlmButtonImports } from '@sanpay/ui/button';
 import { HlmCardImports } from '@sanpay/ui/card';
-import { HlmDatePickerImports } from '@sanpay/ui/date-picker';
 import { HlmFieldImports } from '@sanpay/ui/field';
-import { HlmInputGroupImports } from '@sanpay/ui/input-group';
 import { HlmComboboxImports } from '@sanpay/ui/combobox';
 import { HlmSkeletonImports } from '@sanpay/ui/skeleton';
 import { firstValueFrom } from 'rxjs';
 import { TourismService } from '../data-access/tourism.service';
-import { addDays, faNumber, isoToJalali, jalaliLong, jalaliToIso, today } from '../format';
+import { addDays, faNumber, today } from '../format';
+import { StayPicker, clampNights, validCheckin } from '../ui/stay-picker';
 
 @Component({
   selector: 'tourism-hotel-list',
   imports: [
-    SanpayDatePickerWidth,
     RouterLink,
+    StayPicker,
     NgTemplateOutlet,
     FormsModule,
     NgIcon,
     HlmBadgeImports,
     HlmButtonImports,
     HlmCardImports,
-    HlmDatePickerImports,
     HlmFieldImports,
-    HlmInputGroupImports,
     HlmComboboxImports,
     HlmSkeletonImports,
   ],
   viewProviders: [
-    provideIcons({ lucideHotel, lucidePlane, lucideMinus, lucidePlus }),
+    provideIcons({ lucideHotel, lucidePlane }),
   ],
   templateUrl: './hotel-list.html',
 })
 export class HotelListPage {
   private readonly tourism = inject(TourismService);
   private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
+  private readonly query = this.route.snapshot.queryParamMap;
 
   protected readonly cities = signal<TourismCity[]>([]);
   protected readonly hotels = signal<HotelSummary[]>([]);
@@ -75,32 +67,43 @@ export class HotelListPage {
   });
 
 
+  /**
+   * شهر، تاریخ و تعداد شب در query string هم می‌نشینند تا back از صفحهٔ هتل
+   * یا refresh همان جست‌وجو را برگرداند، نه پیش‌فرض «فردا، یک شب» را.
+   */
   /** رشتهٔ خالی = همهٔ شهرها */
-  protected readonly cityId = signal('');
-  protected readonly checkin = signal(addDays(today(), 1));
-  protected readonly nights = signal(1);
-
-  /** hlm-date-picker با JalaliDate کار می‌کند؛ منبع حقیقت همان ISO بالاست */
-  protected readonly checkinDate = computed(() => isoToJalali(this.checkin()));
-  protected readonly minDate = isoToJalali(today());
+  protected readonly cityId = signal(this.query.get('cityId') ?? '');
+  protected readonly checkin = signal(
+    validCheckin(this.query.get('checkin'), addDays(today(), 1)),
+  );
+  protected readonly nights = signal(
+    clampNights(Number(this.query.get('nights') ?? 1)),
+  );
 
   /** هتل‌هایی که تصویرشان لود نشد — به‌جای کادر خالی، آیکون جایگزین می‌گیرند */
   protected readonly brokenImages = signal(new Set<string>());
 
-  protected readonly checkout = computed(() =>
-    addDays(this.checkin(), this.nights()),
-  );
-
-  protected readonly stayLabel = computed(
-    () =>
-      `${jalaliLong(this.checkin())} — ${faNumber(this.nights())} شب`,
-  );
-
   constructor() {
     void this.load();
+    effect(() => {
+      void this.router.navigate([], {
+        relativeTo: this.route,
+        queryParams: {
+          cityId: this.cityId() || null,
+          checkin: this.checkin(),
+          nights: this.nights(),
+        },
+        queryParamsHandling: 'merge',
+        replaceUrl: true,
+      });
+    });
   }
 
+  /** شمارهٔ آخرین درخواست — پاسخ کهنهٔ شهر قبلی روی شهر تازه ننشیند */
+  private loadId = 0;
+
   protected async load(): Promise<void> {
+    const id = ++this.loadId;
     this.loading.set(true);
     this.error.set(null);
     try {
@@ -110,12 +113,13 @@ export class HotelListPage {
           : firstValueFrom(this.tourism.cities()),
         firstValueFrom(this.tourism.hotels(this.cityId() || undefined)),
       ]);
+      if (id !== this.loadId) return;
       this.cities.set(cities);
       this.hotels.set(hotels);
     } catch {
-      this.error.set('دریافت فهرست هتل‌ها ناموفق بود');
+      if (id === this.loadId) this.error.set('دریافت فهرست هتل‌ها ناموفق بود');
     } finally {
-      this.loading.set(false);
+      if (id === this.loadId) this.loading.set(false);
     }
   }
 
@@ -134,14 +138,6 @@ export class HotelListPage {
   protected onCityChange(value: string | null | undefined): void {
     this.cityId.set(value ?? '');
     void this.load();
-  }
-
-  protected onCheckinChange(date: JalaliDate | null): void {
-    if (date) this.checkin.set(jalaliToIso(date));
-  }
-
-  protected stepNights(delta: number): void {
-    this.nights.update((n) => Math.min(30, Math.max(1, n + delta)));
   }
 
   /** تاریخ و تعداد شب در query param می‌روند تا صفحهٔ هتل هم قابل اشتراک باشد */

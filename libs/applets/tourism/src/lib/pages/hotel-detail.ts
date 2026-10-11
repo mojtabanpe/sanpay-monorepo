@@ -1,4 +1,5 @@
 import { Component, computed, inject, signal } from '@angular/core';
+import { rxResource, toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 import { NgIcon, provideIcons } from '@ng-icons/core';
 import {
@@ -14,9 +15,10 @@ import { HlmCardImports } from '@sanpay/ui/card';
 import { HlmDialogImports } from '@sanpay/ui/dialog';
 import { HlmSkeletonImports } from '@sanpay/ui/skeleton';
 import { HlmSheetImports } from '@sanpay/ui/sheet';
-import { firstValueFrom } from 'rxjs';
+import { firstValueFrom, map } from 'rxjs';
 import { TourismService } from '../data-access/tourism.service';
-import { addDays, faNumber, jalaliLong, toman } from '../format';
+import { addDays, faNumber, jalaliLong, toman, today } from '../format';
+import { StayPicker, clampNights, validCheckin } from '../ui/stay-picker';
 
 /** برچسب فارسی امکاناتی که ارزش نمایش دارند — بقیه نادیده گرفته می‌شوند */
 const FACILITY_LABELS: Record<string, string> = {
@@ -49,6 +51,7 @@ const FACILITY_LABELS: Record<string, string> = {
     HlmSheetImports,
     HlmSkeletonImports,
     NgIcon,
+    StayPicker,
   ],
   viewProviders: [
     provideIcons({
@@ -66,12 +69,8 @@ export class HotelDetailPage {
   private readonly router = inject(Router);
 
   protected readonly hotel = signal<HotelDetail | null>(null);
-  protected readonly rooms = signal<RoomOffer[]>([]);
   protected readonly loading = signal(true);
-  protected readonly roomsLoading = signal(true);
   protected readonly error = signal<string | null>(null);
-  /** جست‌وجوی اتاق جدا از اطلاعات هتل شکست می‌خورد — پیام جدا هم دارد */
-  protected readonly roomsError = signal<string | null>(null);
 
   protected readonly activeImage = signal(0);
 
@@ -123,18 +122,54 @@ export class HotelDetailPage {
   }
 
   private readonly hotelId = this.route.snapshot.paramMap.get('hotelId') ?? '';
-  protected readonly checkin =
-    this.route.snapshot.queryParamMap.get('checkin') ??
-    addDays(new Date().toISOString().slice(0, 10), 1);
-  protected readonly nights = Number(
-    this.route.snapshot.queryParamMap.get('nights') ?? 1,
+
+  /**
+   * تاریخ و تعداد شب از query string خوانده می‌شوند — reactive، نه snapshot:
+   * Angular وقتی فقط query param عوض شود کامپوننت را دوباره نمی‌سازد، پس
+   * snapshot اتاق‌های تاریخ قبلی را نگه می‌داشت.
+   */
+  private readonly stay = toSignal(
+    this.route.queryParamMap.pipe(
+      map((query) => ({
+        checkin: validCheckin(query.get('checkin'), addDays(today(), 1)),
+        nights: clampNights(Number(query.get('nights') ?? 1)),
+      })),
+    ),
+    { requireSync: true },
+  );
+  protected readonly checkin = computed(() => this.stay().checkin);
+  protected readonly nights = computed(() => this.stay().nights);
+
+  /**
+   * اتاق‌ها و قیمت‌ها به تاریخ وابسته‌اند. `rxResource` با هر تغییر تاریخ یا
+   * شب دوباره می‌گیرد و درخواست قبلی را لغو می‌کند، تا پاسخ کهنه روی پاسخ
+   * تازه ننشیند. جدا از اطلاعات هتل شکست می‌خورد و پیام جدا دارد.
+   */
+  protected readonly roomsResource = rxResource({
+    params: () => ({ checkin: this.checkin(), nights: this.nights() }),
+    stream: ({ params }) =>
+      this.tourism
+        .availability(this.hotelId, params.checkin, params.nights)
+        .pipe(map(([availability]) => availability?.rooms ?? [])),
+    defaultValue: [] as RoomOffer[],
+  });
+  protected readonly rooms = computed(() =>
+    this.roomsResource.error() ? [] : this.roomsResource.value(),
+  );
+  protected readonly roomsLoading = this.roomsResource.isLoading;
+  protected readonly roomsError = computed(() =>
+    this.roomsResource.error() ? 'بررسی اتاق‌های خالی ناموفق بود' : null,
   );
 
-  protected readonly stayLabel = computed(
-    // جداکننده «—» است نه «•»: نقطه‌وسط کنار رقم فارسی شبیه صفر دیده می‌شود
-    // و «• ۲ شب» را «۲۰ شب» می‌خواند.
-    () => `${jalaliLong(this.checkin)} — ${faNumber(this.nights)} شب`,
-  );
+  /** تغییر تاریخ در همین صفحه → query string (بدون entry تازه در history) */
+  protected setStay(change: { checkin?: string; nights?: number }): void {
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: change,
+      queryParamsHandling: 'merge',
+      replaceUrl: true,
+    });
+  }
 
   /** فقط امکانات موجود، با برچسب فارسی */
   protected readonly facilities = computed(() =>
@@ -153,7 +188,6 @@ export class HotelDetailPage {
 
   constructor() {
     void this.load();
-    void this.loadRooms();
   }
 
   protected async load(): Promise<void> {
@@ -168,19 +202,8 @@ export class HotelDetailPage {
     }
   }
 
-  protected async loadRooms(): Promise<void> {
-    this.roomsLoading.set(true);
-    this.roomsError.set(null);
-    try {
-      const [availability] = await firstValueFrom(
-        this.tourism.availability(this.hotelId, this.checkin, this.nights),
-      );
-      this.rooms.set(availability?.rooms ?? []);
-    } catch {
-      this.roomsError.set('بررسی اتاق‌های خالی ناموفق بود');
-    } finally {
-      this.roomsLoading.set(false);
-    }
+  protected loadRooms(): void {
+    this.roomsResource.reload();
   }
 
   protected selectRoom(room: RoomOffer): void {
@@ -188,14 +211,16 @@ export class HotelDetailPage {
       queryParams: {
         hotelId: this.hotelId,
         roomId: room.roomId,
-        checkin: this.checkin,
-        nights: this.nights,
+        checkin: this.checkin(),
+        nights: this.nights(),
       },
     });
   }
 
   protected back(): void {
-    void this.router.navigate(['/tourism']);
+    void this.router.navigate(['/tourism'], {
+      queryParams: { checkin: this.checkin(), nights: this.nights() },
+    });
   }
 
   protected stars(rate: number): number[] {

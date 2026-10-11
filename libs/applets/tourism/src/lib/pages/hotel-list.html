@@ -48,60 +48,7 @@
         </hlm-combobox>
       </hlm-field>
 
-      <div class="flex gap-3">
-        <hlm-field class="flex-1">
-          <label hlmFieldLabel>تاریخ ورود</label>
-          <hlm-date-picker
-                sanpayDatePickerWidth
-            [date]="checkinDate()"
-            [min]="minDate"
-            (dateChange)="onCheckinChange($event)"
-          >
-            <hlm-date-picker-trigger class="w-full">
-              انتخاب تاریخ
-            </hlm-date-picker-trigger>
-          </hlm-date-picker>
-        </hlm-field>
-
-        <hlm-field class="w-32">
-          <label hlmFieldLabel>تعداد شب</label>
-          <!-- استپر به‌جای input[type=number]: روی موبایل هدف لمسی درست‌تری
-               دارد و فلش‌های ریز مرورگر در RTL جای اشتباه می‌نشینند. -->
-          <hlm-input-group>
-            <hlm-input-group-addon align="inline-start">
-              <button
-                hlmInputGroupButton
-                type="button"
-                aria-label="یک شب کمتر"
-                size="icon-sm"
-                [disabled]="nights() <= 1"
-                (click)="stepNights(-1)"
-              >
-                <ng-icon name="lucideMinus" />
-              </button>
-            </hlm-input-group-addon>
-
-            <span class="flex-1 text-center text-sm font-medium tabular-nums">
-              {{ count(nights()) }}
-            </span>
-
-            <hlm-input-group-addon align="inline-end">
-              <button
-                hlmInputGroupButton
-                type="button"
-                aria-label="یک شب بیشتر"
-                size="icon-sm"
-                [disabled]="nights() >= 30"
-                (click)="stepNights(1)"
-              >
-                <ng-icon name="lucidePlus" />
-              </button>
-            </hlm-input-group-addon>
-          </hlm-input-group>
-        </hlm-field>
-      </div>
-
-      <p hlmFieldDescription>{{ stayLabel() }}</p>
+      <tourism-stay-picker [(checkin)]="checkin" [(nights)]="nights" />
 
     </div>
   </section>
