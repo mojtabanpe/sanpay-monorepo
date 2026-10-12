@@ -107,6 +107,8 @@ Every `-fg` clears 4.5:1 on both its own tint and white (4.58–7.10, measured; 
 | Date | `hlm-date-picker` + `hlm-date-picker-trigger` | `<input type="date">` |
 | Counter (e.g. تعداد شب) | `hlm-input-group` with −/+ `hlmInputGroupButton`s | `<input type="number">` |
 | Error message | `hlmAlert variant="destructive"` | a bare `<p class="text-destructive">` |
+| Confirmation / modal in the **employee app** (`apps/app`, `libs/applets/*`) | `hlm-sheet side="bottom"` — a bottom sheet, never a centred modal | `hlm-dialog`, `hlm-alert-dialog`, `window.confirm()` |
+| Confirmation in the **dashboard / store panel** | `hlm-alert-dialog` | `window.confirm()` — **never** a native browser dialog, anywhere |
 | Money amount | `<input hlmInput [(sanpayAmount)]="…">` (`@sanpay/forms`; model = bare Latin digits, input shows `50٬000`) — **not** on national code / phone / personnel code | `[value]` + `(input)` with hand-rolled digit parsing |
 | Confirm before an irreversible action | `hlm-alert-dialog` | `confirm()` |
 
@@ -192,6 +194,7 @@ Employees book hotels with a **`TOURISM` wallet** — hotels are *not* stores an
 - **Booking order matters:** validate → book at هتل‌یار → *then* debit the wallet. Debiting first would burn credit on any network error. The `HotelBooking` row is written **before** the GDS call with `transactionId: null`, so a booking that succeeded upstream but failed locally is findable rather than silent.
 - **Hotel list:** with a city picked, the list comes from the dated availability search (`POST /api/tourism/search` → هتل‌یار `searchHotel` / اقامت۲۴ `suggestion`), whose own responses carry the card fields (stars, address, photo) — only hotels with a free room, cheapest first, with «از … ریال». «همهٔ شهرها» shows the undated catalog; the API rejects a dated search with neither `cityId` nor `hotelId`. `pnpm gds:check` / `api:check-eghamat24` print those fields from the live search.
 - `statusCode: '1'` → `CONFIRMED` (online capacity), `'0'` → `PENDING` (offline; هتل‌یار confirms later via webhook).
+- **List filters** (hotel list + flight results) open in a bottom sheet (`ui/filter-sheet.ts`) and run **client-side** over the search result already loaded — they never call a provider. Logic is pure, in `pages/hotel-filters.ts` / `pages/flight-filters.ts`. Room-level hotel filters (price, breakfast, capacity, discount) are matched **per room**, and the card's «از …» price is the cheapest *matching* room. Option lists (type, airline, class) are built from the results; hotel types are keyed with ZWNJ/space folded, because the two providers spell «بوم‌گردی» differently.
 
 ### Webhook receiver (`POST /api/tourism/webhook`)
 

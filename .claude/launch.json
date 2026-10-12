@@ -3,43 +3,27 @@
   "configurations": [
     {
       "name": "app",
-      "runtimeExecutable": "npx",
-      "runtimeArgs": [
-        "nx",
-        "serve",
-        "app"
-      ],
-      "port": 4200
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["nx", "serve", "app"],
+      "port": 6200
     },
     {
       "name": "dashboard",
-      "runtimeExecutable": "npx",
-      "runtimeArgs": [
-        "nx",
-        "serve",
-        "dashboard"
-      ],
-      "port": 4300
-    },
-    {
-      "name": "api",
-      "runtimeExecutable": "npx",
-      "runtimeArgs": [
-        "nx",
-        "serve",
-        "api"
-      ],
-      "port": 3000
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["nx", "serve", "dashboard"],
+      "port": 6300
     },
     {
       "name": "store",
-      "runtimeExecutable": "npx",
-      "runtimeArgs": [
-        "nx",
-        "serve",
-        "store"
-      ],
-      "port": 4400
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["nx", "serve", "store"],
+      "port": 6400
+    },
+    {
+      "name": "api",
+      "runtimeExecutable": "env",
+      "runtimeArgs": ["SMS_MODE=console", "pnpm", "nx", "serve", "api"],
+      "port": 6500
     }
   ]
 }
