@@ -78,7 +78,9 @@ async function main() {
     console.log('هیچ شهری برنگشت؛ ادامهٔ چک ممکن نیست');
     return;
   }
-  const hotels = await post<{ id: string; description: string }[]>('getHotel', {
+  const hotels = await post<
+    { id: string; description: string; type?: string; typeCode?: string }[]
+  >('getHotel', {
     sessionId: login.sessionId,
     cityId: Number(firstCity.id),
     lang: 2,
@@ -87,6 +89,16 @@ async function main() {
     `✓ getHotel — ${hotels.length} هتل در ${firstCity.description}` +
       (hotels[0] ? ` (مثلاً ${hotels[0].description})` : ''),
   );
+  // آیا هتل‌یار غیر از هتل (هتل‌آپارتمان، بوم‌گردی، …) هم دارد؟
+  const types = new Map<string, number>();
+  for (const hotel of hotels) {
+    const key = `${hotel.type || '؟'} (typeCode ${hotel.typeCode ?? '؟'})`;
+    types.set(key, (types.get(key) ?? 0) + 1);
+  }
+  console.log('  نوع اقامتگاه‌ها:');
+  for (const [type, count] of [...types].sort((a, b) => b[1] - a[1])) {
+    console.log(`    ${type}: ${count}`);
+  }
 
   // جست‌وجوی فردا برای یک شب، فقط برای اطمینان از دسترسی به قیمت‌ها
   const checkin = new Date(Date.now() + 86_400_000).toISOString().slice(0, 10);
