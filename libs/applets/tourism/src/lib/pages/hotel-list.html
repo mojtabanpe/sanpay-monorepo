@@ -76,13 +76,25 @@
   } @else {
 
     @if (hotels().length > 0) {
-      <p class="text-muted-foreground px-1 text-xs">
-        @if (dated()) {
-          {{ count(hotels().length) }} هتل با اتاق خالی برای این تاریخ
-        } @else {
-          {{ count(hotels().length) }} هتل پیدا شد
-        }
-      </p>
+      <div class="flex items-center justify-between gap-3">
+        <p class="text-muted-foreground px-1 text-xs" role="status">
+          @if (activeFilters()) {
+            {{ count(visible().length) }} از {{ count(hotels().length) }} اقامتگاه
+          } @else if (dated()) {
+            {{ count(hotels().length) }} اقامتگاه با اتاق خالی برای این تاریخ
+          } @else {
+            {{ count(hotels().length) }} اقامتگاه پیدا شد
+          }
+        </p>
+        <tourism-filter-sheet
+          [(open)]="filtersOpen"
+          [resultCount]="visible().length"
+          [activeCount]="activeFilters()"
+          (clear)="clearFilters()"
+        >
+          <ng-container *ngTemplateOutlet="filterControls" />
+        </tourism-filter-sheet>
+      </div>
     }
 
     <!-- همیشه دو ستون. کارت تمام‌عرض روی موبایل یعنی قاب ۳۴۳ پیکسلی برای عکسی
@@ -99,6 +111,15 @@
               هتلی در این شهر پیدا نشد.
             }
           </p>
+        </div>
+      </section>
+    } @else if (visible().length === 0) {
+      <section hlmCard>
+        <div hlmCardContent class="flex flex-col items-center gap-3 py-10 text-center">
+          <p class="text-muted-foreground text-sm">با این فیلترها اقامتگاهی پیدا نشد.</p>
+          <button hlmBtn variant="outline" type="button" (click)="clearFilters()">
+            پاک کردن فیلترها
+          </button>
         </div>
       </section>
     }
@@ -192,4 +213,133 @@
       </button>
     }
   </div>
+</ng-template>
+
+<!-- کنترل‌های باتم‌شیت فیلتر. فیلترهای سطح اتاق (قیمت، صبحانه، ظرفیت، تخفیف)
+     فقط در جست‌وجوی تاریخ‌دار معنا دارند؛ کاتالوگ «همهٔ شهرها» اتاق و قیمت ندارد. -->
+<ng-template #filterControls>
+  <tourism-filter-group label="مرتب‌سازی">
+    <hlm-toggle-group
+      [spacing]="2"
+      class="flex-wrap"
+      [value]="filters().sort"
+      (valueChange)="$event && setFilter('sort', $any($event))"
+    >
+      @for (option of sortOptions(); track option.value) {
+        <button hlmToggleGroupItem [value]="option.value">{{ option.label }}</button>
+      }
+    </hlm-toggle-group>
+  </tourism-filter-group>
+
+  @if (typeOptions().length > 1 || filters().types.length) {
+    <tourism-filter-group label="نوع اقامتگاه">
+      <hlm-toggle-group
+        type="multiple"
+        [spacing]="2"
+        class="flex-wrap"
+        [value]="filters().types"
+        (valueChange)="setTypes($any($event))"
+      >
+        @for (option of typeOptions(); track option.type) {
+          <button hlmToggleGroupItem [value]="option.type">
+            {{ option.type }}
+            <span class="text-muted-foreground text-xs">{{ count(option.count) }}</span>
+          </button>
+        }
+      </hlm-toggle-group>
+    </tourism-filter-group>
+  }
+
+  <tourism-filter-group label="ستاره">
+    <hlm-toggle-group
+      type="multiple"
+      [spacing]="2"
+      class="flex-wrap"
+      [value]="filters().rates"
+      (valueChange)="setRates($any($event))"
+    >
+      @for (star of starOptions; track star) {
+        <button hlmToggleGroupItem [value]="star">
+          {{ count(star) }}<span class="sr-only"> ستاره</span>
+          <svg class="size-3.5" viewBox="0 0 24 24" fill="currentColor" style="color: var(--gold-500)" aria-hidden="true">
+            <path d="m12 2 3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01z" />
+          </svg>
+        </button>
+      }
+    </hlm-toggle-group>
+  </tourism-filter-group>
+
+  @if (dated() && priceBounds(); as bounds) {
+    @if (bounds[1] > bounds[0]) {
+      <tourism-filter-group label="قیمت کل اقامت">
+        <hlm-slider
+          aria-label="بازهٔ قیمت"
+          [min]="bounds[0]"
+          [max]="bounds[1]"
+          [step]="priceStep()"
+          [value]="$any(priceValue())"
+          (valueChange)="setPrice($event)"
+        />
+        <div class="text-muted-foreground flex justify-between text-xs tabular-nums">
+          <span>{{ money(priceValue()[0]) }}</span>
+          <span>{{ money(priceValue()[1]) }}</span>
+        </div>
+      </tourism-filter-group>
+    }
+
+    <tourism-filter-group label="اتاق">
+      <label class="flex min-h-11 items-center justify-between gap-3 text-sm" for="filter-breakfast">
+        با صبحانه
+        <hlm-switch
+          inputId="filter-breakfast"
+          [checked]="filters().breakfast"
+          (checkedChange)="setFilter('breakfast', $event)"
+        />
+      </label>
+      <label class="flex min-h-11 items-center justify-between gap-3 text-sm" for="filter-discount">
+        فقط تخفیف‌دار
+        <hlm-switch
+          inputId="filter-discount"
+          [checked]="filters().discountOnly"
+          (checkedChange)="setFilter('discountOnly', $event)"
+        />
+      </label>
+      @if (maxCapacity() > 1) {
+        <div class="flex min-h-11 items-center justify-between gap-3 text-sm">
+          <span id="filter-capacity-label">ظرفیت اتاق</span>
+          <hlm-input-group class="w-44" role="group" aria-labelledby="filter-capacity-label">
+            <hlm-input-group-addon align="inline-start">
+              <button
+                hlmInputGroupButton
+                type="button"
+                aria-label="ظرفیت کمتر"
+                [disabled]="filters().minCapacity === 0"
+                (click)="stepCapacity(-1)"
+              >
+                <ng-icon name="lucideMinus" />
+              </button>
+            </hlm-input-group-addon>
+            <span class="flex-1 text-center text-sm" aria-live="polite">
+              {{ filters().minCapacity ? count(filters().minCapacity) + ' نفر به بالا' : 'مهم نیست' }}
+            </span>
+            <hlm-input-group-addon align="inline-end">
+              <button
+                hlmInputGroupButton
+                type="button"
+                aria-label="ظرفیت بیشتر"
+                [disabled]="filters().minCapacity >= maxCapacity()"
+                (click)="stepCapacity(1)"
+              >
+                <ng-icon name="lucidePlus" />
+              </button>
+            </hlm-input-group-addon>
+          </hlm-input-group>
+        </div>
+      }
+    </tourism-filter-group>
+  } @else if (!dated()) {
+    <p class="text-muted-foreground text-xs">
+      برای فیلتر قیمت، صبحانه و ظرفیت، اول شهر را انتخاب کنید.
+    </p>
+  }
 </ng-template>

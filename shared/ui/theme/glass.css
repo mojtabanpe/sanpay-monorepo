@@ -666,8 +666,26 @@ button[data-slot='button'].bg-primary:hover:not(:disabled) {
   transition: background-color 200ms ease, border-color 200ms ease;
 }
 
-[data-slot='switch'][data-state='checked'] {
-  background-color: var(--primary);
+/*
+ * Same trap as the checkbox below: `hlm-switch` and `brn-switch` are both
+ * `display: contents`, so the box is the inner `button[role=switch]`. Its
+ * unchecked track is `--input`, which is pure white here — a white pill on a
+ * white sheet, invisible next to «با صبحانه». Spartan keeps the checked look.
+ */
+[data-slot='switch'] button[role='switch']:not([data-state='checked']) {
+  background-color: color-mix(in oklab, var(--foreground) 18%, transparent);
+}
+
+/*
+ * Slider thumbs ship at 12px, too small to grab on a phone (the price range in
+ * the hotel filter sheet). brain measures the thumb when positioning it, so
+ * only the size changes here.
+ */
+[data-slot='slider'] [brnsliderthumb] {
+  width: 1.375rem;
+  height: 1.375rem;
+  border-color: var(--primary);
+  box-shadow: var(--elev-1);
 }
 
 /*

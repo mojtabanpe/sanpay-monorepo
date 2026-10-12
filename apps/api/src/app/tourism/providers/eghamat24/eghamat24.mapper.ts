@@ -55,6 +55,8 @@ const PROPERTY_TYPE_NAMES: Record<string, string> = {
   ecotourism_resorts: 'اقامتگاه بوم‌گردی',
   residential_unit: 'واحد مسکونی',
   traveler_house: 'خانه مسافر',
+  boutique: 'هتل بوتیک',
+  tourism_complex: 'مجتمع گردشگری',
 };
 
 export function toCity(city: GrsCity): TourismCity {

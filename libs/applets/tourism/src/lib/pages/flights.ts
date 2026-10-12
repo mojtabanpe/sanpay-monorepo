@@ -7,6 +7,7 @@ import {
   signal,
 } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
+import { NgTemplateOutlet } from '@angular/common';
 import { NgIcon, provideIcons } from '@ng-icons/core';
 import {
   lucideArrowLeftRight,
@@ -45,6 +46,8 @@ import { HlmNativeSelectImports } from '@sanpay/ui/native-select';
 import { HlmToggleGroupImports } from '@sanpay/ui/toggle-group';
 import { HlmDatePickerImports } from '@sanpay/ui/date-picker';
 import { HlmBadgeImports } from '@sanpay/ui/badge';
+import { HlmSliderImports } from '@sanpay/ui/slider';
+import { HlmSwitchImports } from '@sanpay/ui/switch';
 import { firstValueFrom } from 'rxjs';
 import { FlightsService } from '../data-access/flights.service';
 import { TourismService } from '../data-access/tourism.service';
@@ -57,12 +60,34 @@ import {
   today,
   toman,
 } from '../format';
+import {
+  FilterGroup,
+  FilterSheet,
+  asArray,
+  priceStep,
+  toPriceRange,
+} from '../ui/filter-sheet';
+import {
+  DAY_SLOTS,
+  DaySlot,
+  FlightFilters,
+  FlightSort,
+  NO_FLIGHT_FILTERS,
+  activeFlightFilters,
+  applyFlightFilters,
+  baggageOptions,
+  flightClassLabel,
+  flightOptions,
+  flightPriceBounds,
+  flightTypeLabel,
+} from './flight-filters';
 
 @Component({
   selector: 'tourism-flights',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     FormsModule,
+    NgTemplateOutlet,
     NgIcon,
     RouterLink,
     SanpayDatePickerWidth,
@@ -75,6 +100,10 @@ import {
     HlmToggleGroupImports,
     HlmDatePickerImports,
     HlmBadgeImports,
+    HlmSliderImports,
+    HlmSwitchImports,
+    FilterSheet,
+    FilterGroup,
   ],
   providers: [
     provideIcons({
@@ -197,6 +226,76 @@ export class FlightsPage {
       profile.phone?.match(/^09\d{9}$/)
     );
   });
+  // ─── فیلترها (باتم‌شیت) ───────────────────────────────────────────
+  // روی همان نتیجهٔ جست‌وجو و سمت کاربر اعمال می‌شوند؛ جست‌وجوی تازه‌ای نمی‌رود.
+
+  protected readonly filters = signal<FlightFilters>(NO_FLIGHT_FILTERS);
+  protected readonly filtersOpen = signal(false);
+  protected readonly visibleOffers = computed(() =>
+    applyFlightFilters(this.offers(), this.filters()),
+  );
+  protected readonly activeFilters = computed(() =>
+    activeFlightFilters(this.filters()),
+  );
+  protected readonly airlineOptions = computed(() =>
+    flightOptions(this.offers(), (leg) => leg.airline, this.filters().airlines),
+  );
+  protected readonly classOptions = computed(() =>
+    flightOptions(this.offers(), (leg) => leg.flightClass, this.filters().classes),
+  );
+  protected readonly typeOptions = computed(() =>
+    flightOptions(this.offers(), (leg) => leg.flightType, this.filters().types),
+  );
+  protected readonly baggageOptions = computed(() => baggageOptions(this.offers()));
+  protected readonly priceBounds = computed(() => flightPriceBounds(this.offers()));
+  protected readonly priceStep = computed(() => {
+    const bounds = this.priceBounds();
+    return bounds ? priceStep(bounds[0], bounds[1]) : 1;
+  });
+  protected readonly priceValue = computed(
+    () => this.filters().price ?? this.priceBounds() ?? [0, 0],
+  );
+  protected readonly daySlots = DAY_SLOTS;
+  protected readonly sortOptions: { value: FlightSort; label: string }[] = [
+    { value: 'cheap', label: 'ارزان‌ترین' },
+    { value: 'early', label: 'زودترین' },
+    { value: 'short', label: 'کوتاه‌ترین' },
+  ];
+  protected readonly sortLabel = computed(
+    () =>
+      this.sortOptions.find((option) => option.value === this.filters().sort)
+        ?.label + ' ابتدا',
+  );
+  protected readonly classLabel = flightClassLabel;
+  protected readonly typeLabel = flightTypeLabel;
+
+  protected setFilter<K extends keyof FlightFilters>(
+    key: K,
+    value: FlightFilters[K],
+  ): void {
+    this.filters.update((filters) => ({ ...filters, [key]: value }));
+  }
+
+  protected setList(
+    key: 'airlines' | 'classes' | 'types',
+    value: string | string[] | null | undefined,
+  ): void {
+    this.setFilter(key, asArray(value));
+  }
+
+  protected setSlots(value: DaySlot | DaySlot[] | null | undefined): void {
+    this.setFilter('slots', asArray(value));
+  }
+
+  protected setPrice(value: number[]): void {
+    const bounds = this.priceBounds();
+    if (bounds) this.setFilter('price', toPriceRange(value, bounds));
+  }
+
+  protected clearFilters(): void {
+    this.filters.update((filters) => ({ ...NO_FLIGHT_FILTERS, sort: filters.sort }));
+  }
+
   protected readonly money = toman;
   protected readonly number = faNumber;
   protected readonly dateLabel = jalaliLong;
@@ -318,7 +417,9 @@ export class FlightsPage {
     try {
       const offers = await firstValueFrom(this.api.search(input));
       if (id !== this.searchId) return;
-      this.offers.set(offers.sort((a, b) => a.amount - b.amount));
+      this.offers.set(offers);
+      // لبه‌های اسلایدر قیمت با هر جست‌وجو عوض می‌شوند
+      this.setFilter('price', null);
       this.searchedInput = input;
       this.searched.set(true);
     } catch (error) {

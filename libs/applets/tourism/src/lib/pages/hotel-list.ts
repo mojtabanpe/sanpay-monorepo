@@ -3,7 +3,7 @@ import { NgTemplateOutlet } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { NgIcon, provideIcons } from '@ng-icons/core';
-import { lucideHotel, lucidePlane } from '@ng-icons/lucide';
+import { lucideHotel, lucideMinus, lucidePlane, lucidePlus } from '@ng-icons/lucide';
 import { HotelAvailability, HotelSummary, TourismCity } from '@sanpay/models';
 import { HlmBadgeImports } from '@sanpay/ui/badge';
 import { HlmButtonImports } from '@sanpay/ui/button';
@@ -11,10 +11,32 @@ import { HlmCardImports } from '@sanpay/ui/card';
 import { HlmFieldImports } from '@sanpay/ui/field';
 import { HlmComboboxImports } from '@sanpay/ui/combobox';
 import { HlmSkeletonImports } from '@sanpay/ui/skeleton';
+import { HlmSliderImports } from '@sanpay/ui/slider';
+import { HlmSwitchImports } from '@sanpay/ui/switch';
+import { HlmToggleGroupImports } from '@sanpay/ui/toggle-group';
+import { HlmInputGroupImports } from '@sanpay/ui/input-group';
 import { firstValueFrom } from 'rxjs';
 import { TourismService } from '../data-access/tourism.service';
 import { addDays, faNumber, today, toman } from '../format';
 import { StayPicker, clampNights, validCheckin } from '../ui/stay-picker';
+import {
+  FilterGroup,
+  FilterSheet,
+  asArray,
+  priceStep,
+  toPriceRange,
+} from '../ui/filter-sheet';
+import {
+  HotelCard,
+  HotelFilters,
+  HotelSort,
+  NO_HOTEL_FILTERS,
+  activeHotelFilters,
+  applyHotelFilters,
+  hotelMaxCapacity,
+  hotelPriceBounds,
+  hotelTypeOptions,
+} from './hotel-filters';
 
 @Component({
   selector: 'tourism-hotel-list',
@@ -30,9 +52,15 @@ import { StayPicker, clampNights, validCheckin } from '../ui/stay-picker';
     HlmFieldImports,
     HlmComboboxImports,
     HlmSkeletonImports,
+    HlmSliderImports,
+    HlmSwitchImports,
+    HlmToggleGroupImports,
+    HlmInputGroupImports,
+    FilterSheet,
+    FilterGroup,
   ],
   viewProviders: [
-    provideIcons({ lucideHotel, lucidePlane }),
+    provideIcons({ lucideHotel, lucidePlane, lucideMinus, lucidePlus }),
   ],
   templateUrl: './hotel-list.html',
 })
@@ -64,7 +92,7 @@ export class HotelListPage {
   private static readonly CHUNK = 12;
 
   protected readonly chunks = computed(() => {
-    const hotels = this.hotels();
+    const hotels = this.visible();
     const chunks: HotelCard[][] = [];
     for (let i = 0; i < hotels.length; i += HotelListPage.CHUNK) {
       chunks.push(hotels.slice(i, i + HotelListPage.CHUNK));
@@ -85,6 +113,77 @@ export class HotelListPage {
   protected readonly nights = signal(
     clampNights(Number(this.query.get('nights') ?? 1)),
   );
+
+  // ─── فیلترها (باتم‌شیت) ───────────────────────────────────────────
+  // روی نتیجهٔ همان جست‌وجو و سمت کاربر اعمال می‌شوند؛ هیچ درخواست تازه‌ای
+  // به تأمین‌کننده نمی‌رود.
+
+  protected readonly filters = signal<HotelFilters>(NO_HOTEL_FILTERS);
+  protected readonly filtersOpen = signal(false);
+  protected readonly visible = computed(() =>
+    applyHotelFilters(this.hotels(), this.filters()),
+  );
+  protected readonly activeFilters = computed(() =>
+    activeHotelFilters(this.filters()),
+  );
+  protected readonly typeOptions = computed(() =>
+    hotelTypeOptions(this.hotels(), this.filters().types),
+  );
+  protected readonly priceBounds = computed(() => hotelPriceBounds(this.hotels()));
+  protected readonly priceStep = computed(() => {
+    const bounds = this.priceBounds();
+    return bounds ? priceStep(bounds[0], bounds[1]) : 1;
+  });
+  protected readonly priceValue = computed(
+    () => this.filters().price ?? this.priceBounds() ?? [0, 0],
+  );
+  protected readonly maxCapacity = computed(() => hotelMaxCapacity(this.hotels()));
+  protected readonly sortOptions = computed<{ value: HotelSort; label: string }[]>(
+    () =>
+      this.dated()
+        ? [
+            { value: 'cheap', label: 'ارزان‌ترین' },
+            { value: 'expensive', label: 'گران‌ترین' },
+            { value: 'stars', label: 'بیشترین ستاره' },
+          ]
+        : [
+            { value: 'cheap', label: 'پیش‌فرض' },
+            { value: 'stars', label: 'بیشترین ستاره' },
+          ],
+  );
+  protected readonly starOptions = [5, 4, 3, 2, 1];
+
+  protected setFilter<K extends keyof HotelFilters>(
+    key: K,
+    value: HotelFilters[K],
+  ): void {
+    this.filters.update((filters) => ({ ...filters, [key]: value }));
+  }
+
+  protected setTypes(value: string | string[] | null | undefined): void {
+    this.setFilter('types', asArray(value));
+  }
+
+  protected setRates(value: number | number[] | null | undefined): void {
+    this.setFilter('rates', asArray(value));
+  }
+
+  protected setPrice(value: number[]): void {
+    const bounds = this.priceBounds();
+    if (bounds) this.setFilter('price', toPriceRange(value, bounds));
+  }
+
+  protected stepCapacity(delta: number): void {
+    const next = Math.min(
+      this.maxCapacity(),
+      Math.max(0, this.filters().minCapacity + delta),
+    );
+    this.setFilter('minCapacity', next);
+  }
+
+  protected clearFilters(): void {
+    this.filters.update((filters) => ({ ...NO_HOTEL_FILTERS, sort: filters.sort }));
+  }
 
   /** هتل‌هایی که تصویرشان لود نشد — به‌جای کادر خالی، آیکون جایگزین می‌گیرند */
   protected readonly brokenImages = signal(new Set<string>());
@@ -148,11 +247,16 @@ export class HotelListPage {
       const cityName = cities.find((city) => city.id === cityId)?.name ?? '';
       this.hotels.set(
         cityId
-          ? (hotels as HotelAvailability[])
-              .map((availability) => fromAvailability(availability, cityId, cityName))
-              .sort((a, b) => (a.fromPrice ?? 0) - (b.fromPrice ?? 0))
+          ? (hotels as HotelAvailability[]).map((availability) =>
+              fromAvailability(availability, cityId, cityName),
+            )
           : (hotels as HotelSummary[]),
       );
+      // لبه‌های اسلایدر قیمت با هر جست‌وجو عوض می‌شوند؛ بازهٔ قبلی دیگر معنا ندارد
+      this.setFilter('price', null);
+      if (!cityId && this.filters().sort === 'expensive') {
+        this.setFilter('sort', 'cheap');
+      }
     } catch {
       if (id === this.loadId) this.error.set('دریافت فهرست هتل‌ها ناموفق بود');
     } finally {
@@ -195,9 +299,6 @@ export class HotelListPage {
   protected readonly money = toman;
 }
 
-/** کارت فهرست — کاتالوگ، یا جست‌وجوی تاریخ‌دار با کمترین قیمت */
-type HotelCard = HotelSummary & { fromPrice?: number };
-
 function fromAvailability(
   availability: HotelAvailability,
   cityId: string,
@@ -212,6 +313,7 @@ function fromAvailability(
     cityName,
     address: availability.address ?? '',
     photo: availability.photo ?? null,
+    rooms: availability.rooms,
     fromPrice: Math.min(...availability.rooms.map((room) => room.price)),
   };
 }

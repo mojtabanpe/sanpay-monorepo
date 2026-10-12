@@ -296,13 +296,39 @@
     در حال بررسی پروازهای این مسیر…
   </p>
   } @if (searched()) {
-  <div class="flex flex-wrap items-center justify-between gap-2" role="status">
-    <h2 class="text-sm font-semibold">
-      {{ number(offers().length) }} پرواز پیدا شد
-    </h2>
-    <span class="text-muted-foreground text-xs">ارزان‌ترین ابتدا</span>
+  <div class="flex items-center justify-between gap-3">
+    <div role="status">
+      <h2 class="text-sm font-semibold">
+        @if (activeFilters()) {
+          {{ number(visibleOffers().length) }} از {{ number(offers().length) }} پرواز
+        } @else {
+          {{ number(offers().length) }} پرواز پیدا شد
+        }
+      </h2>
+      <span class="text-muted-foreground text-xs">{{ sortLabel() }}</span>
+    </div>
+    @if (offers().length > 0) {
+    <tourism-filter-sheet
+      [(open)]="filtersOpen"
+      [resultCount]="visibleOffers().length"
+      [activeCount]="activeFilters()"
+      (clear)="clearFilters()"
+    >
+      <ng-container *ngTemplateOutlet="flightFilterControls" />
+    </tourism-filter-sheet>
+    }
   </div>
-  @for (offer of offers(); track offer.id) {
+  @if (offers().length > 0 && visibleOffers().length === 0) {
+  <section hlmCard>
+    <div hlmCardContent class="flex flex-col items-center gap-3 py-8 text-center">
+      <p class="text-muted-foreground text-sm">با این فیلترها پروازی پیدا نشد.</p>
+      <button hlmBtn variant="outline" type="button" (click)="clearFilters()">
+        پاک کردن فیلترها
+      </button>
+    </div>
+  </section>
+  }
+  @for (offer of visibleOffers(); track offer.id) {
   <article hlmCard class="gap-0 overflow-hidden py-0">
     <div hlmCardContent class="flex flex-col gap-4 p-4">
       @for (leg of offer.returning ? [offer.departure, offer.returning] :
@@ -403,7 +429,7 @@
       </button>
     </div>
   </article>
-  } @empty {
+  } @empty { @if (offers().length === 0) {
   <section hlmCard>
     <div
       hlmCardContent
@@ -419,7 +445,7 @@
       </p>
     </div>
   </section>
-  } } } @if (quote(); as q) {
+  } } } } @if (quote(); as q) {
   <section hlmCard>
     <div hlmCardContent class="flex flex-col gap-3 pt-6">
       <div class="flex items-center justify-between gap-3">
@@ -735,3 +761,133 @@
   </section>
   }
 </div>
+
+<!-- کنترل‌های باتم‌شیت فیلتر پرواز. گزینه‌های ایرلاین، کلاس و نوع از خودِ
+     نتیجه‌ها ساخته می‌شوند؛ گروهی که فقط یک گزینه دارد چیزی برای انتخاب ندارد
+     و نشان داده نمی‌شود. -->
+<ng-template #flightFilterControls>
+  <tourism-filter-group label="مرتب‌سازی">
+    <hlm-toggle-group
+      [spacing]="2"
+      class="flex-wrap"
+      [value]="filters().sort"
+      (valueChange)="$event && setFilter('sort', $any($event))"
+    >
+      @for (option of sortOptions; track option.value) {
+      <button hlmToggleGroupItem [value]="option.value">{{ option.label }}</button>
+      }
+    </hlm-toggle-group>
+  </tourism-filter-group>
+
+  <tourism-filter-group label="ساعت حرکت" hint="پرواز رفت">
+    <hlm-toggle-group
+      type="multiple"
+      [spacing]="2"
+      class="grid w-full grid-cols-4"
+      [value]="filters().slots"
+      (valueChange)="setSlots($any($event))"
+    >
+      @for (slot of daySlots; track slot.value) {
+      <button hlmToggleGroupItem [value]="slot.value" class="h-auto w-full flex-col gap-0 px-1 py-2">
+        <span>{{ slot.label }}</span>
+        <span class="text-xs opacity-75">{{ slot.hint }}</span>
+      </button>
+      }
+    </hlm-toggle-group>
+  </tourism-filter-group>
+
+  @if (airlineOptions().length > 1 || filters().airlines.length) {
+  <tourism-filter-group label="ایرلاین">
+    <hlm-toggle-group
+      type="multiple"
+      [spacing]="2"
+      class="flex-wrap"
+      [value]="filters().airlines"
+      (valueChange)="setList('airlines', $any($event))"
+    >
+      @for (option of airlineOptions(); track option.value) {
+      <button hlmToggleGroupItem [value]="option.value">
+        <bdi>{{ option.value }}</bdi>
+        <span class="text-muted-foreground text-xs">{{ number(option.count) }}</span>
+      </button>
+      }
+    </hlm-toggle-group>
+  </tourism-filter-group>
+  }
+
+  <tourism-filter-group label="مسیر">
+    <label class="flex min-h-11 items-center justify-between gap-3 text-sm" for="filter-direct">
+      فقط پرواز مستقیم
+      <hlm-switch
+        inputId="filter-direct"
+        [checked]="filters().directOnly"
+        (checkedChange)="setFilter('directOnly', $event)"
+      />
+    </label>
+  </tourism-filter-group>
+
+  @if (classOptions().length > 1 || filters().classes.length) {
+  <tourism-filter-group label="کلاس پرواز">
+    <hlm-toggle-group
+      type="multiple"
+      [spacing]="2"
+      class="flex-wrap"
+      [value]="filters().classes"
+      (valueChange)="setList('classes', $any($event))"
+    >
+      @for (option of classOptions(); track option.value) {
+      <button hlmToggleGroupItem [value]="option.value">{{ classLabel(option.value) }}</button>
+      }
+    </hlm-toggle-group>
+  </tourism-filter-group>
+  }
+
+  @if (typeOptions().length > 1 || filters().types.length) {
+  <tourism-filter-group label="نوع پرواز">
+    <hlm-toggle-group
+      type="multiple"
+      [spacing]="2"
+      class="flex-wrap"
+      [value]="filters().types"
+      (valueChange)="setList('types', $any($event))"
+    >
+      @for (option of typeOptions(); track option.value) {
+      <button hlmToggleGroupItem [value]="option.value">{{ typeLabel(option.value) }}</button>
+      }
+    </hlm-toggle-group>
+  </tourism-filter-group>
+  }
+
+  @if (priceBounds(); as bounds) { @if (bounds[1] > bounds[0]) {
+  <tourism-filter-group label="مبلغ کل مسافران">
+    <hlm-slider
+      aria-label="بازهٔ قیمت"
+      [min]="bounds[0]"
+      [max]="bounds[1]"
+      [step]="priceStep()"
+      [value]="$any(priceValue())"
+      (valueChange)="setPrice($event)"
+    />
+    <div class="text-muted-foreground flex justify-between text-xs tabular-nums">
+      <span>{{ money(priceValue()[0]) }}</span>
+      <span>{{ money(priceValue()[1]) }}</span>
+    </div>
+  </tourism-filter-group>
+  } }
+
+  @if (baggageOptions().length > 1) {
+  <tourism-filter-group label="حداقل بار مجاز">
+    <hlm-toggle-group
+      [spacing]="2"
+      class="flex-wrap"
+      [value]="filters().minBaggage"
+      (valueChange)="setFilter('minBaggage', $any($event) ?? 0)"
+    >
+      <button hlmToggleGroupItem [value]="0">مهم نیست</button>
+      @for (kg of baggageOptions(); track kg) {
+      <button hlmToggleGroupItem [value]="kg">{{ number(kg) }} کیلو</button>
+      }
+    </hlm-toggle-group>
+  </tourism-filter-group>
+  }
+</ng-template>
