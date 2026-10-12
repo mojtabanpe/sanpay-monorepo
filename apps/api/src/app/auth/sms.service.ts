@@ -75,10 +75,10 @@ export class SmsService {
     for (const line of lines) {
       this.notify(phone, PAYMENT_NOTICE_TEMPLATE_ID, [
         { name: 'STORE', value: store },
-        { name: 'PRICE', value: toRial(line.amount) },
-        { name: 'CURRENCY', value: 'ریال' },
+        // قالب #CURRENCY# ندارد؛ واحد همراه خودِ مقدار می‌رود
+        { name: 'PRICE', value: `${toRial(line.amount)} ریال` },
         { name: 'WALLET', value: line.walletName },
-        { name: 'BALANCE', value: toRial(line.remainingAfter) },
+        { name: 'BALANCE', value: `${toRial(line.remainingAfter)} ریال` },
       ]);
     }
   }
