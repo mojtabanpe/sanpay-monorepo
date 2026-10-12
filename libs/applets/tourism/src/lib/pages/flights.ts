@@ -51,6 +51,7 @@ import { HlmSwitchImports } from '@sanpay/ui/switch';
 import { firstValueFrom } from 'rxjs';
 import { FlightsService } from '../data-access/flights.service';
 import { TourismService } from '../data-access/tourism.service';
+import { AirportPicker, airportShortName } from '../ui/airport-picker';
 import {
   addDays,
   faNumber,
@@ -97,6 +98,7 @@ import {
     HlmInputImports,
     HlmFieldImports,
     HlmNativeSelectImports,
+    AirportPicker,
     HlmToggleGroupImports,
     HlmDatePickerImports,
     HlmBadgeImports,
@@ -184,20 +186,7 @@ export class FlightsPage {
     );
   }
   protected airportLabel(iata: string): string {
-    const names: Record<string, string> = {
-      THR: 'تهران · مهرآباد',
-      IKA: 'تهران · امام خمینی',
-      MHD: 'مشهد',
-      SYZ: 'شیراز',
-      IFN: 'اصفهان',
-      KIH: 'کیش',
-      TBZ: 'تبریز',
-      KER: 'کرمان',
-    };
-    return (
-      names[iata] ??
-      this.airportName(iata).replace(/^فرودگاه\s+(بین[‌ ]المللی\s+)?/, '')
-    );
+    return airportShortName(iata, this.airports());
   }
   protected roundTrip = !!this.search().returnDate;
   protected allocationId = '';

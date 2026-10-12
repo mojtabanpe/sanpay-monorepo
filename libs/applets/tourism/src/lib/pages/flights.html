@@ -99,23 +99,14 @@
               class="text-muted-foreground text-xs"
               >مبدأ</label
             >
-            <hlm-native-select
-              selectId="flight-origin"
-              class="w-full min-w-0"
-              selectClass="h-12 rounded-xl bg-muted/30 text-sm font-medium"
-              name="origin"
-              required
-              [ngModel]="search().origin"
-              (ngModelChange)="updateSearch('origin', $event)"
-            >
-              <option value="" disabled>انتخاب مبدأ</option>
-              @for (airport of airports(); track airport.iata) {
-              <option [value]="airport.iata">
-                {{ search().origin === airport.iata ? airportLabel(airport.iata)
-                : airport.name + ' (' + airport.iata + ')' }}
-              </option>
-              }
-            </hlm-native-select>
+            <tourism-airport-picker
+              buttonId="flight-origin"
+              title="انتخاب مبدأ"
+              placeholder="انتخاب مبدأ"
+              [airports]="airports()"
+              [value]="search().origin"
+              (valueChange)="updateSearch('origin', $event)"
+            />
           </hlm-field>
           <button
             hlmBtn
@@ -138,24 +129,14 @@
               class="text-muted-foreground text-xs"
               >مقصد</label
             >
-            <hlm-native-select
-              selectId="flight-destination"
-              class="w-full min-w-0"
-              selectClass="h-12 rounded-xl bg-muted/30 text-sm font-medium"
-              name="destination"
-              required
-              [ngModel]="search().destination"
-              (ngModelChange)="updateSearch('destination', $event)"
-            >
-              <option value="" disabled>انتخاب مقصد</option>
-              @for (airport of airports(); track airport.iata) {
-              <option [value]="airport.iata">
-                {{ search().destination === airport.iata ?
-                airportLabel(airport.iata) : airport.name + ' (' + airport.iata
-                + ')' }}
-              </option>
-              }
-            </hlm-native-select>
+            <tourism-airport-picker
+              buttonId="flight-destination"
+              title="انتخاب مقصد"
+              placeholder="انتخاب مقصد"
+              [airports]="airports()"
+              [value]="search().destination"
+              (valueChange)="updateSearch('destination', $event)"
+            />
           </hlm-field>
         </div>
         <div class="grid min-w-0 grid-cols-2 gap-3">
@@ -283,7 +264,7 @@
           hlmBtn
           type="submit"
           class="h-12 gap-2 rounded-xl transition-[background-color,box-shadow,scale] motion-reduce:transition-none motion-safe:active:scale-[0.96]"
-          [disabled]="busy() || searching() || searchForm.invalid || search().origin === search().destination"
+          [disabled]="busy() || searching() || searchForm.invalid || !search().origin || !search().destination || search().origin === search().destination"
         >
           <ng-icon name="lucideSearch" aria-hidden="true" />{{ searching() ? 'در حال
           جست‌وجو…' : 'جست‌وجوی پرواز' }}
