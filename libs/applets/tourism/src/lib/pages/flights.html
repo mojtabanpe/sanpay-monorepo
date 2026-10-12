@@ -674,30 +674,17 @@
       }
       <section hlmCard>
         <div hlmCardContent class="flex flex-col gap-4 pt-6">
-          <hlm-field
-            ><label hlmFieldLabel for="flight-wallet">کیف پول گردشگری</label>
-            <hlm-native-select
-              selectId="flight-wallet"
-              name="wallet"
-              class="w-full"
-              required
-              [(ngModel)]="allocationId"
+          @if (q.wallets[0]; as wallet) {
+          <div class="flex items-center justify-between gap-3 text-sm">
+            <span class="font-medium">{{ wallet.name }}</span>
+            <span class="text-muted-foreground"
+              >مانده: {{ money(wallet.max) }}</span
             >
-              <option value="" disabled>انتخاب کیف پول</option>
-              @for (wallet of q.wallets; track wallet.allocationId) {
-              <option
-                [value]="wallet.allocationId"
-                [disabled]="wallet.max < q.offer.amount"
-              >
-                {{ wallet.name }} — {{ money(wallet.max) }}{{ wallet.max <
-                q.offer.amount ? '، مانده ناکافی' : '' }}
-              </option>
-              }
-            </hlm-native-select>
-          </hlm-field>
+          </div>
+          }
           @if (!canPay()) {
           <p role="status" class="text-destructive text-sm">
-            کیف پول گردشگری با اعتبار کافی ندارید.
+            ماندهٔ کیف پول گردشگری برای این پرواز کافی نیست.
           </p>
           } @if (!hasBookingContact()) {
           <p role="alert" class="text-destructive text-sm">

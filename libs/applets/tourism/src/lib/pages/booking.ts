@@ -16,7 +16,6 @@ import {
   BookingReceipt,
   PreviousTraveler,
 } from '@sanpay/models';
-import { HlmBadgeImports } from '@sanpay/ui/badge';
 import { HlmButtonImports } from '@sanpay/ui/button';
 import { HlmCardImports } from '@sanpay/ui/card';
 import { HlmFieldImports } from '@sanpay/ui/field';
@@ -29,7 +28,6 @@ import { faNumber, jalali, jalaliLong, toman } from '../format';
 @Component({
   selector: 'tourism-booking',
   imports: [
-    HlmBadgeImports,
     HlmButtonImports,
     HlmCardImports,
     HlmFieldImports,
@@ -137,13 +135,8 @@ export class BookingPage {
         ),
       );
       this.quote.set(quote);
-      // تک کیف پول = بدون انتخاب دستی؛ چند کیف پول = اولین کیف پولِ کافی
-      const affordable = quote.wallets.find(
-        (wallet) => wallet.max >= quote.amount,
-      );
-      this.allocationId.set(
-        (affordable ?? quote.wallets[0])?.allocationId ?? '',
-      );
+      // هر کارمند فقط یک کیف پول گردشگری دارد
+      this.allocationId.set(quote.wallets[0]?.allocationId ?? '');
     } catch (error) {
       this.error.set(message(error, 'دریافت اطلاعات رزرو ناموفق بود'));
     } finally {

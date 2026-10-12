@@ -129,59 +129,17 @@
       <div hlmCardContent class="flex flex-col gap-3 pt-6">
         <h2 class="text-sm font-bold">پرداخت از کیف پول گردشگری</h2>
 
-        @for (wallet of q.wallets; track wallet.allocationId) {
-        <button
-          type="button"
-          class="flex items-center gap-3 rounded-md border p-3 text-right transition-colors"
-          [class]="
-              wallet.allocationId === allocationId()
-                ? 'border-primary bg-secondary'
-                : 'border-border'
-            "
-          [disabled]="wallet.max < q.amount"
-          [class.opacity-50]="wallet.max < q.amount"
-          (click)="allocationId.set(wallet.allocationId)"
-        >
-          <span
-            class="flex size-5 shrink-0 items-center justify-center rounded-full border-2"
-            [class]="
-                wallet.allocationId === allocationId()
-                  ? 'border-primary bg-primary'
-                  : 'border-muted-foreground'
-              "
-          >
-            @if (wallet.allocationId === allocationId()) {
-            <svg
-              class="text-primary-foreground size-3"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="3"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              aria-hidden="true"
-            >
-              <path d="m5 12 5 5L20 7" />
-            </svg>
-            }
-          </span>
-          <span class="flex-1 leading-tight">
-            <span class="block text-sm font-medium">{{ wallet.name }}</span>
-            <span class="text-muted-foreground block text-xs">
-              مانده: {{ toman(wallet.max) }}
-            </span>
-          </span>
-          @if (wallet.max < q.amount) {
-          <span
-            hlmBadge
-            variant="secondary"
-            class="shrink-0 rounded-full font-normal"
-          >
-            ناکافی
-          </span>
-          }
-        </button>
-        } @empty {
+        @if (selectedWallet(); as wallet) {
+        <div class="flex items-center justify-between gap-3 text-sm">
+          <span class="font-medium">{{ wallet.name }}</span>
+          <span class="text-muted-foreground">مانده: {{ toman(wallet.max) }}</span>
+        </div>
+        @if (!enoughCredit()) {
+        <p role="status" class="text-destructive text-sm">
+          ماندهٔ کیف پول گردشگری برای این رزرو کافی نیست.
+        </p>
+        }
+        } @else {
         <p class="text-muted-foreground py-4 text-center text-sm">
           کیف پول گردشگری فعالی ندارید.
         </p>

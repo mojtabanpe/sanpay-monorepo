@@ -42,7 +42,6 @@ import { HlmButtonImports } from '@sanpay/ui/button';
 import { HlmCardImports } from '@sanpay/ui/card';
 import { HlmInputImports } from '@sanpay/ui/input';
 import { HlmFieldImports } from '@sanpay/ui/field';
-import { HlmNativeSelectImports } from '@sanpay/ui/native-select';
 import { HlmToggleGroupImports } from '@sanpay/ui/toggle-group';
 import { HlmDatePickerImports } from '@sanpay/ui/date-picker';
 import { HlmBadgeImports } from '@sanpay/ui/badge';
@@ -97,7 +96,6 @@ import {
     HlmCardImports,
     HlmInputImports,
     HlmFieldImports,
-    HlmNativeSelectImports,
     AirportPicker,
     HlmToggleGroupImports,
     HlmDatePickerImports,
@@ -205,7 +203,8 @@ export class FlightsPage {
   );
   protected readonly canPay = computed(() => {
     const q = this.quote();
-    return q?.wallets.some((w) => w.max >= q.offer.amount) ?? false;
+    const wallet = q?.wallets[0];
+    return !!wallet && wallet.max >= q.offer.amount;
   });
   protected readonly hasBookingContact = computed(() => {
     const profile = this.auth.profile();
@@ -426,8 +425,8 @@ export class FlightsPage {
         this.api.quote(this.searchedInput, offer.id),
       );
       this.quote.set(q);
-      this.allocationId =
-        q.wallets.find((w) => w.max >= q.offer.amount)?.allocationId ?? '';
+      // هر کارمند فقط یک کیف پول گردشگری دارد
+      this.allocationId = q.wallets[0]?.allocationId ?? '';
       this.passengers.set(
         (['adult', 'child', 'infant'] as const).flatMap((type) =>
           Array.from(
