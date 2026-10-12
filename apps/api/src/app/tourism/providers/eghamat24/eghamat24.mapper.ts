@@ -255,7 +255,7 @@ export function suggestionToAvailability(
   checkout: string,
   nights: number,
 ): HotelAvailability {
-  // ستاره/آدرس/عکس در خود پاسخ suggestion هست؛ نوع اقامتگاه نیست
+  // پاسخ زندهٔ suggestion معمولاً این‌ها را ندارد؛ provider از کاتالوگ شهر پرشان می‌کند
   const card = {
     rate: Number(suggestion.star) || 0,
     address: suggestion.address ?? '',

@@ -116,6 +116,26 @@ test('catalog follows total and actual page length, preserving opaque token and 
   );
 });
 
+test('a later page sent as a numeric-keyed object (PHP json_encode) is still read as a list', async () => {
+  await fixture(
+    async (client) => {
+      const hotels = await client.getProperties(37);
+      assert.deepEqual(
+        hotels.map((p) => p.id),
+        [1, 2, 3, 4],
+      );
+    },
+    (url) =>
+      ok({
+        total: 4,
+        properties:
+          url.searchParams.get('page') === '1'
+            ? [1, 2].map((id) => ({ ...detail, id }))
+            : { '3': { ...detail, id: 4 }, '2': { ...detail, id: 3 } },
+      }),
+  );
+});
+
 test('cities beyond first page are retained and repeated pages fail instead of looping', async () => {
   await fixture(
     async (client) => {

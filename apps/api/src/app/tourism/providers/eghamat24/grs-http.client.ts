@@ -38,10 +38,24 @@ function row(value: unknown): Row {
     throw new BadGatewayException('پاسخ نامعتبر سرویس اقامت۲۴');
   return value as Row;
 }
+/**
+ * اقامت۲۴ (PHP) صفحهٔ دوم به بعد را گاهی به‌جای آرایه، شیئی با کلیدهای
+ * عددی برمی‌گرداند (`{"100": …, "101": …}`): آرایهٔ برش‌خورده‌ای که اندیسش از
+ * صفر شروع نمی‌شود با `json_encode` شیء می‌شود. اندازه‌گیری‌شده روی
+ * `/v1/suggestion` مشهد (۲۰۰ نتیجه). قبلاً همین کل جست‌وجوی شهر را ۵۰۲ می‌کرد.
+ */
 function rows(value: unknown): Row[] {
-  if (!Array.isArray(value))
-    throw new BadGatewayException('فهرست نامعتبر سرویس اقامت۲۴');
-  return value.map(row);
+  if (Array.isArray(value)) return value.map(row);
+  if (
+    value &&
+    typeof value === 'object' &&
+    Object.keys(value).every((key) => /^\d+$/.test(key))
+  ) {
+    return Object.entries(value)
+      .sort(([a], [b]) => Number(a) - Number(b))
+      .map(([, item]) => row(item));
+  }
+  throw new BadGatewayException('فهرست نامعتبر سرویس اقامت۲۴');
 }
 function property(value: unknown): GrsPropertyDetails {
   const p = row(value);

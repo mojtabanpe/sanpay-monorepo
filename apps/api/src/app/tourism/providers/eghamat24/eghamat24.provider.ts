@@ -13,7 +13,7 @@
  * شاید ندارد.
  */
 
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import {
   HotelAvailability,
   HotelDetail,
@@ -48,6 +48,12 @@ export class Eghamat24Provider extends HotelProvider {
   readonly key: ProviderKey = 'eg';
 
   private cityCache: { at: number; value: TourismCity[] } | null = null;
+  /** کارت اقامتگاه‌های هر شهر (ستاره، نوع، آدرس، عکس) — برای تکمیل نتیجهٔ suggestion */
+  private readonly cardCache = new Map<
+    number,
+    { at: number; value: Map<string, HotelSummary> }
+  >();
+  private readonly logger = new Logger(Eghamat24Provider.name);
 
   constructor(private readonly grs: GrsClient) {
     super();
@@ -117,14 +123,18 @@ export class Eghamat24Provider extends HotelProvider {
       return rooms_.length > 0 ? [{ ...availability, rooms: rooms_ }] : [];
     }
 
-    const suggestions = await this.grs.suggestion({
-      cityId: params.cityId ? decodeNumericId(params.cityId).id : null,
-      propertyId: null,
-      checkIn: params.checkin,
-      checkOut: checkout,
-      adultsCount: params.capacity,
-      star: params.rate,
-    });
+    const cityId = params.cityId ? decodeNumericId(params.cityId).id : null;
+    const [suggestions, cards] = await Promise.all([
+      this.grs.suggestion({
+        cityId,
+        propertyId: null,
+        checkIn: params.checkin,
+        checkOut: checkout,
+        adultsCount: params.capacity,
+        star: params.rate,
+      }),
+      this.cityCards(cityId),
+    ]);
 
     return suggestions
       .map((suggestion) =>
@@ -135,6 +145,18 @@ export class Eghamat24Provider extends HotelProvider {
           params.nights,
         ),
       )
+      .map((availability) => {
+        const card = cards.get(availability.hotelId);
+        return card
+          ? {
+              ...availability,
+              rate: availability.rate || card.rate,
+              type: availability.type || card.type,
+              address: availability.address || card.address,
+              photo: availability.photo ?? card.photo,
+            }
+          : availability;
+      })
       .map((availability) => ({
         ...availability,
         rooms: availability.rooms.filter(
@@ -217,6 +239,38 @@ export class Eghamat24Provider extends HotelProvider {
 
   async rejectCancel(reserveRef: string): Promise<ProviderCancelResult> {
     return toCancelResult(await this.grs.rejectCancel(reserveRef));
+  }
+
+  /**
+   * پاسخ زندهٔ `/v1/suggestion` فقط شناسه، نام و اتاق‌ها را دارد — ستاره، نوع،
+   * آدرس و عکس نه (برخلاف آنچه قبلاً فرض شده بود؛ کارت‌های مشهد خالی و فیلتر
+   * ستاره/نوع بی‌اثر بود). این‌ها از کاتالوگ اقامتگاه‌های همان شهر می‌آیند،
+   * کش‌شده مثل فهرست شهرها چون GRS پنجرهٔ درخواست سخت‌گیرانه‌ای دارد.
+   * شکستِ کاتالوگ جست‌وجو را خراب نمی‌کند؛ فقط کارت‌ها ساده می‌مانند.
+   */
+  private async cityCards(
+    cityId: number | null,
+  ): Promise<Map<string, HotelSummary>> {
+    if (cityId === null) return new Map();
+    const cached = this.cardCache.get(cityId);
+    if (cached && Date.now() - cached.at < CATALOG_TTL_MS) return cached.value;
+    try {
+      const properties = await this.grs.getProperties(cityId);
+      const value = new Map(
+        properties
+          .map((property) => toHotelSummary(property, new Map()))
+          .map((card) => [card.id, card] as const),
+      );
+      this.cardCache.set(cityId, { at: Date.now(), value });
+      return value;
+    } catch (error) {
+      this.logger.warn(
+        `اقامت۲۴: کاتالوگ شهر ${cityId} برای کارت‌های جست‌وجو دریافت نشد — ${
+          error instanceof Error ? error.message : error
+        }`,
+      );
+      return cached?.value ?? new Map();
+    }
   }
 
   private async cityNames(): Promise<Map<number, string>> {
