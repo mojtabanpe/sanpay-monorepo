@@ -21,31 +21,12 @@
 
       <hlm-field>
         <label hlmFieldLabel for="hotel-city-trigger">شهر</label>
-        <hlm-combobox
+        <tourism-city-picker
+          buttonId="hotel-city-trigger"
+          [cities]="cities()"
           [value]="cityId()"
-          [itemToString]="cityLabel"
-          [filter]="filterCity"
           (valueChange)="onCityChange($event)"
-        >
-          <hlm-combobox-trigger buttonId="hotel-city-trigger" class="w-full justify-between">
-            {{ cityLabel(cityId()) }}
-          </hlm-combobox-trigger>
-          <hlm-combobox-content *hlmComboboxPortal>
-            <label class="sr-only" for="hotel-city-search">جست‌وجوی شهر</label>
-            <hlm-combobox-input
-              inputId="hotel-city-search"
-              placeholder="نام شهر را بنویسید…"
-              [showTrigger]="false"
-            />
-            <div hlmComboboxList>
-              <hlm-combobox-empty>شهری پیدا نشد</hlm-combobox-empty>
-              <hlm-combobox-item value="">همهٔ شهرها</hlm-combobox-item>
-              @for (city of cities(); track city.id) {
-                <hlm-combobox-item [value]="city.id">{{ city.name }}</hlm-combobox-item>
-              }
-            </div>
-          </hlm-combobox-content>
-        </hlm-combobox>
+        />
       </hlm-field>
 
       <tourism-stay-picker [(checkin)]="checkin" [(nights)]="nights" />

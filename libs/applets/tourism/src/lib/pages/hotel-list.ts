@@ -9,7 +9,6 @@ import { HlmBadgeImports } from '@sanpay/ui/badge';
 import { HlmButtonImports } from '@sanpay/ui/button';
 import { HlmCardImports } from '@sanpay/ui/card';
 import { HlmFieldImports } from '@sanpay/ui/field';
-import { HlmComboboxImports } from '@sanpay/ui/combobox';
 import { HlmSkeletonImports } from '@sanpay/ui/skeleton';
 import { HlmSliderImports } from '@sanpay/ui/slider';
 import { HlmSwitchImports } from '@sanpay/ui/switch';
@@ -19,6 +18,7 @@ import { firstValueFrom } from 'rxjs';
 import { TourismService } from '../data-access/tourism.service';
 import { addDays, faNumber, today, toman } from '../format';
 import { StayPicker, clampNights, validCheckin } from '../ui/stay-picker';
+import { CityPicker } from '../ui/city-picker';
 import {
   FilterGroup,
   FilterSheet,
@@ -50,7 +50,7 @@ import {
     HlmButtonImports,
     HlmCardImports,
     HlmFieldImports,
-    HlmComboboxImports,
+    CityPicker,
     HlmSkeletonImports,
     HlmSliderImports,
     HlmSwitchImports,
@@ -264,18 +264,6 @@ export class HotelListPage {
     }
   }
 
-  /**
-   * برچسبی که روی دکمهٔ select می‌نشیند. بدون این، مقدار خام (`0`) نمایش
-   * داده می‌شود. تابع پیکانی است تا `this` به کامپوننت بسته بماند.
-   */
-  protected readonly cityLabel = (id: string): string =>
-    !id
-      ? 'همهٔ شهرها'
-      : (this.cities().find((city) => city.id === id)?.name ?? '');
-
-  protected readonly filterCity = (id: string, search: string): boolean =>
-    normalizeCityName(this.cityLabel(id)).includes(normalizeCityName(search));
-
   protected onCityChange(value: string | null | undefined): void {
     this.cityId.set(value ?? '');
   }
@@ -316,14 +304,4 @@ function fromAvailability(
     rooms: availability.rooms,
     fromPrice: Math.min(...availability.rooms.map((room) => room.price)),
   };
-}
-
-/** Match Persian and Arabic keyboard variants, spacing and optional diacritics. */
-function normalizeCityName(value: string): string {
-  return value
-    .replace(/[يى]/g, 'ی')
-    .replace(/ك/g, 'ک')
-    .replace(/آ/g, 'ا')
-    .replace(/[\u064B-\u065F\u0670\u0640\u200c\s]/g, '')
-    .toLocaleLowerCase('fa');
 }
