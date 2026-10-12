@@ -20,6 +20,8 @@ const SMS_IR_OK_STATUS = 1;
 const OTP_PARAMETER_NAME = 'CODE';
 const LOGIN_TEMPLATE_ID = 938507;
 const PURCHASE_TEMPLATE_ID = 944060;
+const LOGIN_NOTICE_TEMPLATE_ID = 723463;
+const PAYMENT_NOTICE_TEMPLATE_ID = 279643;
 
 interface SmsParameter {
   name: string;
@@ -48,10 +50,47 @@ export class SmsService {
     await this.sendVerify(phone, PURCHASE_TEMPLATE_ID, [
       { name: 'CODE', value: code },
       { name: 'STORE', value: purchase.store },
-      { name: 'PRICE', value: (purchase.price * 10).toLocaleString('en-US') },
+      { name: 'PRICE', value: toRial(purchase.price) },
       { name: 'CURRENCY', value: 'ریال' },
       { name: 'WALLET', value: purchase.wallets.join('، ') },
     ]);
+  }
+
+  /** «ورود به حساب شما انجام شد» — هشدار ورود؛ خطایش ورود را خراب نمی‌کند */
+  sendLoginNotice(phone: string, at: Date): void {
+    this.notify(phone, LOGIN_NOTICE_TEMPLATE_ID, [
+      { name: 'TIME', value: formatTehranTime(at) },
+    ]);
+  }
+
+  /**
+   * «خرید شما ثبت شد» — یک پیامک برای هر کیف پولِ درگیر در خرید، تا مبلغ و
+   * ماندهٔ همان کیف پول در یک قالب ثابت جا شود. بعد از commit صدا زده می‌شود.
+   */
+  sendPaymentNotices(
+    phone: string,
+    store: string,
+    lines: { walletName: string; amount: number; remainingAfter: number }[],
+  ): void {
+    for (const line of lines) {
+      this.notify(phone, PAYMENT_NOTICE_TEMPLATE_ID, [
+        { name: 'STORE', value: store },
+        { name: 'PRICE', value: toRial(line.amount) },
+        { name: 'CURRENCY', value: 'ریال' },
+        { name: 'WALLET', value: line.walletName },
+        { name: 'BALANCE', value: toRial(line.remainingAfter) },
+      ]);
+    }
+  }
+
+  /** ارسال بدون انتظار: پیامکِ اطلاع‌رسانی نباید درخواست اصلی را fail کند */
+  private notify(
+    phone: string,
+    templateId: number,
+    parameters: SmsParameter[],
+  ): void {
+    // sendVerify خودش خطا را لاگ می‌کند
+    this.sendVerify(phone, templateId, parameters).catch(() => undefined);
   }
 
   private async sendVerify(
@@ -61,7 +100,9 @@ export class SmsService {
   ): Promise<void> {
     if (process.env.SMS_MODE === 'console') {
       this.logger.warn(
-        `[development only] OTP for ${phone}: ${parameters[0].value}`,
+        `[development only] SMS ${templateId} to ${phone}: ${parameters
+          .map((parameter) => `${parameter.name}=${parameter.value}`)
+          .join(' ')}`,
       );
       return;
     }
@@ -96,7 +137,7 @@ export class SmsService {
         );
       }
       this.logger.log(
-        'sms.ir accepted OTP request; delivery to the handset is not confirmed',
+        `sms.ir accepted template ${templateId}; delivery to the handset is not confirmed`,
       );
     } catch (error) {
       this.logger.error(
@@ -108,4 +149,27 @@ export class SmsService {
       );
     }
   }
+}
+
+/** مبالغ داخلی تومان‌اند؛ قالب‌های پیامک ریال نشان می‌دهند */
+function toRial(toman: number): string {
+  return (toman * 10).toLocaleString('en-US');
+}
+
+/** مثلاً `1405/07/20 ساعت 14:35` — تقویم شمسی، به وقت تهران */
+function formatTehranTime(at: Date): string {
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat('en-US-u-ca-persian-nu-latn', {
+      timeZone: 'Asia/Tehran',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hourCycle: 'h23',
+    })
+      .formatToParts(at)
+      .map((part) => [part.type, part.value]),
+  );
+  return `${parts.year}/${parts.month}/${parts.day} ساعت ${parts.hour}:${parts.minute}`;
 }

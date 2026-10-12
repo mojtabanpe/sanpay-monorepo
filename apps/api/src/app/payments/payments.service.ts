@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import { CreatePaymentInput, Receipt, StoreCheckout } from '@sanpay/models';
 import { randomInt } from 'node:crypto';
+import { SmsService } from '../auth/sms.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { PaymentEventsService } from './payment-events.service';
 
@@ -13,6 +14,7 @@ export class PaymentsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly events: PaymentEventsService,
+    private readonly sms: SmsService,
   ) {}
 
   /**
@@ -195,6 +197,10 @@ export class PaymentsService {
         amount: line.amount,
       })),
     });
+
+    if (employee.phone) {
+      this.sms.sendPaymentNotices(employee.phone, store.name, receipt.lines);
+    }
 
     return receipt;
   }

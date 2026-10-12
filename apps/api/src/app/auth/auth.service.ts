@@ -56,6 +56,7 @@ export class AuthService {
       requiresPasswordSetup: false,
     };
 
+    this.sms.sendLoginNotice(phone, new Date());
     return {
       accessToken: await this.jwt.signAsync(payload),
       employee: this.toProfile(employee),
@@ -161,6 +162,7 @@ export class AuthService {
       authMethod: 'OTP',
       requiresPasswordSetup: !employee.passwordHash,
     };
+    this.sms.sendLoginNotice(phone, new Date());
     return {
       accessToken: await this.jwt.signAsync(payload),
       employee: this.toProfile(employee),
