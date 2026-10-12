@@ -93,11 +93,25 @@
             (valueChange)="setKind($any($event))"
           >
             @for (kind of kinds; track kind) {
-            <button hlmToggleGroupItem [value]="kind">
+            <button
+              hlmToggleGroupItem
+              [value]="kind"
+              [disabled]="kind === 'TOURISM' && !!tourismTaken() && form().kind !== 'TOURISM'"
+            >
               {{ kindLabels[kind] }}
             </button>
             }
           </hlm-toggle-group>
+          @if (tourismTaken(); as taken) {
+          <p
+            class="text-sm"
+            [class]="form().kind === 'TOURISM' ? 'text-destructive' : 'text-muted-foreground'"
+            [attr.role]="form().kind === 'TOURISM' ? 'alert' : null"
+          >
+            این شرکت کیف پول گردشگری «{{ taken.name }}» را دارد؛ هر شرکت فقط
+            یک کیف پول گردشگری می‌تواند داشته باشد.
+          </p>
+          }
         </hlm-field>
 
         <hlm-field>
@@ -168,7 +182,7 @@
       <div class="flex gap-2">
         <button
           hlmBtn
-          [disabled]="saving() || !form().companyId"
+          [disabled]="saving() || !form().companyId || (form().kind === 'TOURISM' && !!tourismTaken())"
           (click)="save()"
         >
           ذخیره

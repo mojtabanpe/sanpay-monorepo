@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -105,6 +106,7 @@ export class AdminWalletsService {
   ): Promise<AdminWalletDefinitionRow> {
     this.assertStoresAllowed(dto.kind, dto.storeIds);
     await this.mustHaveActiveCompany(dto.companyId);
+    if (dto.kind === 'TOURISM') await this.assertNoOtherTourism(dto.companyId);
 
     const definition = await this.prisma.walletDefinition.create({
       data: {
@@ -154,6 +156,9 @@ export class AdminWalletsService {
 
     const kind = (dto.kind ?? existing.kind) as WalletKind;
     this.assertStoresAllowed(kind, dto.storeIds);
+    if (kind === 'TOURISM') {
+      await this.assertNoOtherTourism(dto.companyId ?? existing.companyId, id);
+    }
 
     await this.prisma.$transaction(async (tx) => {
       await tx.walletDefinition.update({
@@ -345,6 +350,30 @@ export class AdminWalletsService {
     });
     if (!company)
       throw new BadRequestException('شرکت معتبر و فعال انتخاب کنید');
+  }
+
+  /**
+   * هر شرکت حداکثر یک کیف پول گردشگری دارد — اپ کارمند انتخاب کیف پول ندارد
+   * و همیشه همان یکی را کسر می‌کند. کیف پول غیرفعال هم حساب است: به‌جای
+   * ساختن دومی، همان را دوباره فعال کنید.
+   */
+  private async assertNoOtherTourism(
+    companyId: string,
+    excludeId?: string,
+  ): Promise<void> {
+    const other = await this.prisma.walletDefinition.findFirst({
+      where: {
+        companyId,
+        kind: 'TOURISM',
+        ...(excludeId ? { id: { not: excludeId } } : {}),
+      },
+      select: { name: true },
+    });
+    if (other) {
+      throw new ConflictException(
+        `این شرکت از قبل کیف پول گردشگری «${other.name}» را دارد؛ هر شرکت فقط یک کیف پول گردشگری می‌تواند داشته باشد`,
+      );
+    }
   }
 
   /** کیف پول گردشگری فروشگاه ندارد — رزرو مستقیم روی هتل‌یار انجام می‌شود */

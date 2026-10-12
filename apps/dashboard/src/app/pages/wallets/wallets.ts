@@ -107,6 +107,20 @@ export class WalletsPage {
     companyId: '',
   });
 
+  /** کیف پول گردشگری دیگرِ همین شرکت — هر شرکت فقط یکی می‌تواند داشته باشد */
+  protected readonly tourismTaken = computed(() => {
+    const { companyId } = this.form();
+    const editingId = this.editingId();
+    return companyId
+      ? this.definitions().find(
+          (d) =>
+            d.kind === 'TOURISM' &&
+            d.company.id === companyId &&
+            d.id !== editingId,
+        )
+      : undefined;
+  });
+
   protected readonly companyLabel = (value: unknown): string =>
     this.companies().find((company) => company.id === value)?.name ??
     'انتخاب شرکت';
