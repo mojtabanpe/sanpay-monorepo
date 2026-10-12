@@ -1,3 +1,4 @@
+import { ConfirmService } from '../../core/confirm';
 import { SanpayAmountInput } from '@sanpay/forms';
 import {
   Component,
@@ -67,6 +68,7 @@ export class EmployeeDetailPage implements OnInit {
 
   private readonly router = inject(Router);
   private readonly api = inject(AdminApiService);
+  private readonly confirm = inject(ConfirmService);
   private readonly auth = inject(AdminAuthService);
 
   protected readonly canWrite = this.auth.canWrite;
@@ -220,11 +222,14 @@ export class EmployeeDetailPage implements OnInit {
   }
 
   protected async deleteEmployee(): Promise<void> {
-    if (
-      this.saving() ||
-      !confirm('کارمند حذف شود؟ دسترسی او بسته و سوابق مالی حفظ می‌شود.')
-    )
-      return;
+    if (this.saving()) return;
+    const confirmed = await this.confirm.ask({
+      title: 'حذف کارمند',
+      description: 'کارمند حذف شود؟ دسترسی او بسته و سوابق مالی حفظ می‌شود.',
+      action: 'حذف',
+      destructive: true,
+    });
+    if (!confirmed) return;
     this.saving.set(true);
     try {
       await this.api.deleteEmployee(this.id());

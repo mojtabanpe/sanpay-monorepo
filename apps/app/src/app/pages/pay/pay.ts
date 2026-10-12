@@ -13,13 +13,13 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { PayableWallet, Receipt, StoreCheckout } from '@sanpay/models';
 import { ReceiptCard } from '@sanpay/receipt';
 import { HlmAlertImports } from '@sanpay/ui/alert';
-import { HlmAlertDialogImports } from '@sanpay/ui/alert-dialog';
 import { HlmButtonImports } from '@sanpay/ui/button';
 import { SanpayAmountInput } from '@sanpay/forms';
 import { HlmCardImports } from '@sanpay/ui/card';
 import { HlmFieldImports } from '@sanpay/ui/field';
 import { HlmInputImports } from '@sanpay/ui/input';
 import { HlmInputGroupImports } from '@sanpay/ui/input-group';
+import { HlmSheetImports } from '@sanpay/ui/sheet';
 import {
   CheckoutService,
   parseStoreCode,
@@ -32,12 +32,12 @@ type Step = 'scan' | 'amount' | 'done';
   selector: 'app-pay',
   imports: [
     HlmAlertImports,
-    HlmAlertDialogImports,
     HlmButtonImports,
     HlmCardImports,
     HlmFieldImports,
     HlmInputImports,
     HlmInputGroupImports,
+    HlmSheetImports,
     ReceiptCard,
     SanpayAmountInput,
   ],
@@ -254,7 +254,7 @@ export class PayPage implements OnDestroy {
   }
 
   protected onConfirmStateChange(state: string): void {
-    // تا وقتی درخواست در جریان است مدال بسته نمی‌شود (Esc / کلیک بیرون)
+    // تا وقتی درخواست در جریان است شیت بسته نمی‌شود (Esc / کلیک بیرون)
     if (state === 'closed' && !this.busy()) {
       this.confirmOpen.set(false);
       this.error.set(null);

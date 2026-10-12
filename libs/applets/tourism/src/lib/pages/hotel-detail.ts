@@ -12,7 +12,6 @@ import { HotelDetail, RoomOffer } from '@sanpay/models';
 import { HlmBadgeImports } from '@sanpay/ui/badge';
 import { HlmButtonImports } from '@sanpay/ui/button';
 import { HlmCardImports } from '@sanpay/ui/card';
-import { HlmDialogImports } from '@sanpay/ui/dialog';
 import { HlmSkeletonImports } from '@sanpay/ui/skeleton';
 import { HlmSheetImports } from '@sanpay/ui/sheet';
 import { firstValueFrom, map } from 'rxjs';
@@ -47,7 +46,6 @@ const FACILITY_LABELS: Record<string, string> = {
     HlmBadgeImports,
     HlmButtonImports,
     HlmCardImports,
-    HlmDialogImports,
     HlmSheetImports,
     HlmSkeletonImports,
     NgIcon,

@@ -198,51 +198,64 @@
 
   <!--
     تأیید قبل از پرداخت: پرداخت برگشت‌پذیر نیست، پس بدون این مرحله هیچ
-    درخواستی به API نمی‌رود. خطای سرور هم داخل همین مدال نشان داده می‌شود
-    تا کاربر مجبور نباشد مدال را ببندد تا بفهمد چه شد.
+    درخواستی به API نمی‌رود. در اپ کارمند به‌جای مدالِ وسط صفحه باتم‌شیت
+    باز می‌شود (نزدیک انگشت). خطای سرور هم داخل همین شیت نشان داده می‌شود
+    تا کاربر مجبور نباشد آن را ببندد تا بفهمد چه شد.
   -->
-  <hlm-alert-dialog
+  <hlm-sheet
+    side="bottom"
+    role="alertdialog"
+    closeOnOutsidePointerEvents
+    [disableClose]="busy()"
     [state]="confirmOpen() ? 'open' : 'closed'"
     (stateChanged)="onConfirmStateChange($event)"
   >
-    <hlm-alert-dialog-content *hlmAlertDialogPortal>
-      <hlm-alert-dialog-header>
-        <h2 hlmAlertDialogTitle>تأیید پرداخت</h2>
-        <p hlmAlertDialogDescription>
+    <hlm-sheet-content
+      *hlmSheetPortal
+      [showCloseButton]="false"
+      class="rounded-t-2xl pb-[max(1rem,env(safe-area-inset-bottom))]"
+    >
+      <div hlmSheetHeader>
+        <h2 hlmSheetTitle>تأیید پرداخت</h2>
+        <p hlmSheetDescription>
           {{ toman(total()) }} در «{{ store.storeName }}» پرداخت می‌شود.
         </p>
-      </hlm-alert-dialog-header>
-
-      <ul class="flex flex-col gap-2 text-sm">
-        @for (line of confirmLines(); track line.name) {
-        <li class="flex items-center justify-between gap-3">
-          <span class="text-muted-foreground min-w-0 truncate">{{ line.name }}</span>
-          <span class="shrink-0 font-semibold tabular-nums">{{ toman(line.amount) }}</span>
-        </li>
-        }
-        <li
-          class="flex items-center justify-between gap-3 border-t pt-2 font-bold"
-          style="border-color: var(--hairline)"
-        >
-          <span>جمع</span>
-          <span class="text-primary tabular-nums">{{ toman(total()) }}</span>
-        </li>
-      </ul>
-
-      @if (error()) {
-      <div hlmAlert variant="destructive">
-        <p hlmAlertDescription>{{ error() }}</p>
       </div>
-      }
 
-      <hlm-alert-dialog-footer>
-        <button hlmAlertDialogCancel [disabled]="busy()">انصراف</button>
-        <button hlmAlertDialogAction [disabled]="busy()" (click)="pay()">
+      <div class="flex flex-col gap-4 px-4">
+        <ul class="flex flex-col gap-2 text-sm">
+          @for (line of confirmLines(); track line.name) {
+          <li class="flex items-center justify-between gap-3">
+            <span class="text-muted-foreground min-w-0 truncate">{{ line.name }}</span>
+            <span class="shrink-0 font-semibold tabular-nums">{{ toman(line.amount) }}</span>
+          </li>
+          }
+          <li
+            class="flex items-center justify-between gap-3 border-t pt-2 font-bold"
+            style="border-color: var(--hairline)"
+          >
+            <span>جمع</span>
+            <span class="text-primary tabular-nums">{{ toman(total()) }}</span>
+          </li>
+        </ul>
+
+        @if (error()) {
+        <div hlmAlert variant="destructive">
+          <p hlmAlertDescription>{{ error() }}</p>
+        </div>
+        }
+      </div>
+
+      <div hlmSheetFooter>
+        <button hlmBtn [disabled]="busy()" (click)="pay()">
           {{ busy() ? 'در حال ثبت…' : 'تأیید و پرداخت' }}
         </button>
-      </hlm-alert-dialog-footer>
-    </hlm-alert-dialog-content>
-  </hlm-alert-dialog>
+        <button hlmBtn variant="outline" hlmSheetClose [disabled]="busy()">
+          انصراف
+        </button>
+      </div>
+    </hlm-sheet-content>
+  </hlm-sheet>
   }
 
   <!-- ─── گام ۳: رسید ──────────────────────────────────────────── -->

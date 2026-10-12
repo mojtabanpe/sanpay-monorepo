@@ -1,3 +1,4 @@
+import { ConfirmService } from '../../core/confirm';
 import { Component, computed, inject, signal } from '@angular/core';
 import { RouterModule } from '@angular/router';
 import {
@@ -40,6 +41,7 @@ import {
 })
 export class EmployeesPage {
   private readonly api = inject(AdminApiService);
+  private readonly confirm = inject(ConfirmService);
   private readonly auth = inject(AdminAuthService);
 
   protected readonly canWrite = this.auth.canWrite;
@@ -199,12 +201,13 @@ export class EmployeesPage {
   }
 
   protected async deleteEmployee(row: AdminEmployeeRow): Promise<void> {
-    if (
-      !confirm(
-        `کارمند «${row.firstName} ${row.lastName}» حذف شود؟ دسترسی او بسته و سوابق مالی حفظ می‌شود.`,
-      )
-    )
-      return;
+    const confirmed = await this.confirm.ask({
+      title: 'حذف کارمند',
+      description: `کارمند «${row.firstName} ${row.lastName}» حذف شود؟ دسترسی او بسته و سوابق مالی حفظ می‌شود.`,
+      action: 'حذف',
+      destructive: true,
+    });
+    if (!confirmed) return;
     try {
       await this.api.deleteEmployee(row.id);
       await this.load();

@@ -397,23 +397,23 @@
     } }
   </div>
 
-  <!-- مدال گالری کامل. «+N» به‌جای باز کردن همهٔ بندانگشتی‌ها در نوار، اینجا
-         را باز می‌کند تا بالای صفحه دست‌نخورده بماند و تصویرها در اندازهٔ
-         قابل دیدن نشان داده شوند. انتخاب هر تصویر آن را به کادر اصلی می‌برد. -->
-  <hlm-dialog
+  <!-- گالری کامل در باتم‌شیت. «+N» به‌جای باز کردن همهٔ بندانگشتی‌ها در نوار،
+         اینجا را باز می‌کند تا بالای صفحه دست‌نخورده بماند و تصویرها در
+         اندازهٔ قابل دیدن نشان داده شوند. انتخاب هر تصویر آن را به کادر اصلی
+         می‌برد. -->
+  <hlm-sheet
+    side="bottom"
+    closeOnOutsidePointerEvents
     [state]="galleryState()"
     (stateChanged)="onGalleryStateChange($event)"
   >
-    <!-- عرض روی خودِ محتوا ست می‌شود، نه با برداشتن max-width: پنل CDK
-           عرضش را از محتوا می‌گیرد و محتوا `w-full` از پنل می‌خواست، پس هر دو
-           به عرض ذاتیِ گرید جمع می‌شدند (۳۳۱ پیکسل در ویوپورت ۶۱۲). -->
-    <hlm-dialog-content
-      *hlmDialogPortal
-      class="w-[min(550px,100vw)] max-w-none sm:max-w-none"
+    <hlm-sheet-content
+      *hlmSheetPortal
+      class="max-h-[85dvh] rounded-t-2xl pb-[max(1rem,env(safe-area-inset-bottom))]"
     >
-      <div hlmDialogHeader>
-        <h3 hlmDialogTitle>تصویرهای {{ h.name }}</h3>
-        <p hlmDialogDescription>
+      <div hlmSheetHeader>
+        <h3 hlmSheetTitle>تصویرهای {{ h.name }}</h3>
+        <p hlmSheetDescription>
           {{ count(h.images.length) }} تصویر — برای دیدن در کادر اصلی، روی تصویر
           بزنید.
         </p>
@@ -421,9 +421,9 @@
 
       <!-- اسکرول و گرید عمداً روی دو عنصر جدا هستند. وقتی `max-h` و `grid` روی
              یک عنصر بودند، ارتفاعِ قطعیِ ظرف بین ردیف‌های `auto` تقسیم می‌شد
-             (۸۱ پیکسل به‌جای ۹۲) ولی کاشی‌ها ارتفاع `aspect-ratio` خود را نگه
-             می‌داشتند، پس ردیف‌ها روی هم می‌افتادند و فاصله بلعیده می‌شد. -->
-      <div class="max-h-[65vh] overflow-y-auto">
+             ولی کاشی‌ها ارتفاع `aspect-ratio` خود را نگه می‌داشتند، پس ردیف‌ها
+             روی هم می‌افتادند و فاصله بلعیده می‌شد. -->
+      <div class="min-h-0 flex-1 overscroll-contain overflow-y-auto px-4">
         <div class="grid grid-cols-2 gap-3 sm:grid-cols-3">
           @for (image of h.images; track image; let i = $index) {
           <button
@@ -444,8 +444,8 @@
           }
         </div>
       </div>
-    </hlm-dialog-content>
-  </hlm-dialog>
+    </hlm-sheet-content>
+  </hlm-sheet>
 
   <!-- Sheet رفتاری فوکوس، Escape و بازگرداندن فوکوس را مدیریت می‌کند. -->
   <hlm-sheet

@@ -1,3 +1,4 @@
+import { ConfirmService } from '../../core/confirm';
 import { Component, computed, inject, signal } from '@angular/core';
 import { AdminStoreRow } from '@sanpay/models';
 import { HlmAlertImports } from '@sanpay/ui/alert';
@@ -29,6 +30,7 @@ import { fa, toman } from '../../core/format';
 })
 export class StoresPage {
   private readonly api = inject(AdminApiService);
+  private readonly confirm = inject(ConfirmService);
   private readonly auth = inject(AdminAuthService);
 
   protected readonly canWrite = this.auth.canWrite;
@@ -157,12 +159,13 @@ export class StoresPage {
   }
 
   protected async deleteStore(row: AdminStoreRow): Promise<void> {
-    if (
-      !confirm(
-        `فروشگاه «${row.name}» حذف شود؟ دسترسی آن بسته و سوابق مالی حفظ می‌شود.`,
-      )
-    )
-      return;
+    const confirmed = await this.confirm.ask({
+      title: 'حذف فروشگاه',
+      description: `فروشگاه «${row.name}» حذف شود؟ دسترسی آن بسته و سوابق مالی حفظ می‌شود.`,
+      action: 'حذف',
+      destructive: true,
+    });
+    if (!confirmed) return;
     await this.run(async () => {
       await this.api.deleteStore(row.id);
       this.notice.set('فروشگاه حذف شد.');
