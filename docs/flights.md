@@ -4,22 +4,11 @@
 
 ## قرارداد و فعال‌سازی
 
-منابع قرارداد: `Flight_Api_Collection_2026-09-01.postman_collection.json` و `Flight API Collection — Documentation (2).pdf` ارسالی کاربر. تنظیمات هتل اقامت۲۴ جدا هستند و برای پرواز استفاده نمی‌شوند.
+منابع قرارداد: `Flight_Api_Collection_2026-09-01.postman_collection.json` و `Flight API Collection — Documentation (2).pdf` ارسالی کاربر. آدرس پرواز از هتل جداست ولی توکن مشترک است.
 
 - `FLIGHT_MODE=live`
-- `FLIGHT_URL=https://gateway-test-01.denv.ir/flight` برای محیط تست.
-- `FLIGHT_CLIENT_TOKEN`: مقدار کامل و بدون تغییر Client-Token ارسالی تأمین‌کننده، حتی اگر شبیه URL باشد. فقط همین هدر ارسال می‌شود؛ `Auth-Token` لازم نیست. مسیر اتصال `/api/v2` است، نه `/agency/v1`.
-- `FLIGHT_CLIENT_TOKEN_BASE64`: جایگزین اختیاری با اولویت بالاتر برای جلوگیری از تغییر `# پرواز اقامت۲۴
-
-مسیر `/tourism/flights` از کنار تب هتل در گردشگری در دسترس است. شامل جست‌وجوی یک‌طرفه/رفت‌وبرگشت، بزرگسال/کودک/نوزاد، اطلاعات گذرنامه برای پرواز یا مسافر خارجی، پیش‌فاکتور، پرداخت از یک کیف پول `TOURISM` و تاریخچه و شماره بلیت‌ها است.
-
-## قرارداد و فعال‌سازی
-
-منابع قرارداد: `Flight_Api_Collection_2026-09-01.postman_collection.json` و `Flight API Collection — Documentation (2).pdf` ارسالی کاربر. تنظیمات هتل اقامت۲۴ جدا هستند و برای پرواز استفاده نمی‌شوند.
-
-- `FLIGHT_MODE=live`
-- `FLIGHT_URL=https://gateway-test-01.denv.ir/flight` برای محیط تست.
- توسط گسترش متغیرهای Nx. Base64 رمزنگاری نیست و این مقدار هم باید محرمانه بماند.
+- `FLIGHT_URL`: محیط اصلی `https://gateway.grschannel.com/flight` (Host Url مستند پرواز)، محیط تست `https://gateway-test-01.denv.ir/flight`. روی `api.grschannel.com/flight` مسیر پرواز وجود ندارد (404).
+- توکن: اقامت۲۴ برای هتل و پرواز **یک** Client-Token می‌دهد؛ پرواز همان `GRS_CLIENT_TOKEN` / `GRS_CLIENT_TOKEN_BASE64` هتل را در هدر `CLIENT-TOKEN` می‌فرستد و متغیر جدایی ندارد. `Auth-Token` لازم نیست. توکن نادرست جواب 403 `messages.client_not_set` می‌گیرد.
 - `FLIGHT_CURRENCY=IRR`: واحد ریال توسط کاربر تأیید شد؛ مبالغ اپ به تومان تبدیل می‌شوند.
 
 در نبود تنظیمات، سرویس با پیام فارسی غیرفعال است. داده نمونه به جای پرواز واقعی نمایش داده نمی‌شود. کلیدهای دسترسی فقط در بک‌اند هستند. تغییرات دیتابیس با `pnpm exec prisma migrate deploy` و کلاینت با `pnpm exec prisma generate` آماده می‌شوند. مایگریشن‌ها در دیتابیس محلی این کار اجرا شده‌اند.

@@ -51,10 +51,8 @@ async function fixture(
   const env = { ...process.env };
   const requests: URL[] = [];
   delete process.env.GRS_CLIENT_TOKEN_BASE64;
-  delete process.env.FLIGHT_CLIENT_TOKEN_BASE64;
   process.env.GRS_CLIENT_TOKEN = 'https://example.invalid/-$opaque-client';
   process.env.GRS_URL = 'https://example.invalid';
-  process.env.FLIGHT_CLIENT_TOKEN = process.env.GRS_CLIENT_TOKEN;
   process.env.FLIGHT_URL = 'https://example.invalid/flight';
   process.env.FLIGHT_MODE = 'live';
   process.env.FLIGHT_CURRENCY = 'IRR';
@@ -77,10 +75,8 @@ async function fixture(
     globalThis.fetch = original;
     for (const key of [
       'GRS_CLIENT_TOKEN_BASE64',
-      'FLIGHT_CLIENT_TOKEN_BASE64',
       'GRS_CLIENT_TOKEN',
       'GRS_URL',
-      'FLIGHT_CLIENT_TOKEN',
       'FLIGHT_URL',
       'FLIGHT_MODE',
       'FLIGHT_CURRENCY',
@@ -308,9 +304,7 @@ test('Base64 configuration preserves dollar signs even if Nx expands the plain v
         'https://example.invalid/-$opaque-client',
       ).toString('base64');
       process.env.GRS_CLIENT_TOKEN_BASE64 = encoded;
-      process.env.FLIGHT_CLIENT_TOKEN_BASE64 = encoded;
       process.env.GRS_CLIENT_TOKEN = 'expanded-incorrectly';
-      process.env.FLIGHT_CLIENT_TOKEN = 'expanded-incorrectly';
       assert.deepEqual(await client.getCities(), []);
       assert.deepEqual(await new FlightProvider().airports(), []);
     },

@@ -1,6 +1,7 @@
 import {
   BadGatewayException,
   Injectable,
+  Logger,
   ServiceUnavailableException,
 } from '@nestjs/common';
 import {
@@ -137,12 +138,20 @@ export class FlightProviderRejectedException extends BadGatewayException {
 
 @Injectable()
 export class FlightProvider {
+  private readonly logger = new Logger(FlightProvider.name);
+
+  /**
+   * اقامت۲۴ برای هتل و پرواز یک Client-Token می‌دهد، پس همان `GRS_CLIENT_TOKEN`
+   * هتل خوانده می‌شود. متغیر جدای پرواز عمداً حذف شد: مقدار کهنهٔ آن روی
+   * سرور جا مانده بود و پرواز با `client_not_set` رد می‌شد در حالی که هتل کار
+   * می‌کرد.
+   */
   private clientToken(): string {
-    return process.env.FLIGHT_CLIENT_TOKEN_BASE64
-      ? Buffer.from(process.env.FLIGHT_CLIENT_TOKEN_BASE64, 'base64').toString(
+    return process.env.GRS_CLIENT_TOKEN_BASE64
+      ? Buffer.from(process.env.GRS_CLIENT_TOKEN_BASE64, 'base64').toString(
           'utf8',
         )
-      : (process.env.FLIGHT_CLIENT_TOKEN ?? '');
+      : (process.env.GRS_CLIENT_TOKEN ?? '');
   }
   assertConfigured(): void {
     if (
@@ -162,6 +171,7 @@ export class FlightProvider {
   ): Promise<Record<string, unknown>> {
     this.assertConfigured();
     const base =
+      // آدرس محیط اصلی طبق مستند پرواز (Host Url)
       process.env.FLIGHT_URL || 'https://gateway.grschannel.com/flight';
     const url = new URL(`${base.replace(/\/$/, '')}${path}`);
     if (url.protocol !== 'https:')
@@ -197,11 +207,28 @@ export class FlightProvider {
           envelope['errors'].length > 0)) ||
       (envelope['error'] != null &&
         (!Array.isArray(envelope['error']) || envelope['error'].length > 0));
-    if (
+    const failed =
       (response.status >= 400 && response.status < 500) ||
-      (response.ok && (envelope['code'] !== 200 || hasErrors))
-    )
-      throw new FlightProviderRejectedException();
+      (response.ok && (envelope['code'] !== 200 || hasErrors));
+    if (failed || !response.ok) {
+      // پیام و fingerprint تأمین‌کننده تنها سرنخِ علت است (آدرس اشتباه → 404،
+      // توکنِ ثبت‌نشده → 403 `client_not_set`)؛ بدون این لاگ همه‌چیز یک خطای کلی بود.
+      this.logger.error(
+        `${body ? 'POST' : 'GET'} ${url.pathname} → HTTP ${response.status}, code ${String(
+          envelope['code'],
+        )}: ${String(envelope['message'] ?? '')} ${JSON.stringify(
+          envelope['errors'] ?? envelope['error'] ?? null,
+        )} fingerprint=${String(envelope['fingerprint'] ?? '-')}`,
+      );
+    }
+    if (failed) {
+      // فقط برای درخواستِ نوشتنی (رزرو) «رد قطعی» معنا دارد؛ خطای خواندن
+      // (فرودگاه‌ها، جست‌وجو) را «رزرو را نپذیرفت» گزارش کردن گمراه‌کننده بود.
+      if (body) throw new FlightProviderRejectedException();
+      throw new ServiceUnavailableException(
+        'سرویس پرواز فعلاً پاسخ نمی‌دهد؛ کمی بعد دوباره تلاش کنید',
+      );
+    }
     if (!response.ok)
       throw new BadGatewayException(
         'ارتباط با سرویس پرواز ناموفق بود؛ وضعیت رزرو را پیگیری کنید',

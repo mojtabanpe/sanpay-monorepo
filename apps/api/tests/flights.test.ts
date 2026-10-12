@@ -438,9 +438,9 @@ test('definitive rejection refunds once and duplicate requests do not debit agai
 test('HTTP adapter uses the documented paths and preserves return legs, passengers and tickets', async () => {
   const originalFetch = globalThis.fetch;
   const env = { ...process.env };
-  delete process.env.FLIGHT_CLIENT_TOKEN_BASE64;
+  delete process.env.GRS_CLIENT_TOKEN_BASE64;
   process.env.FLIGHT_MODE = 'live';
-  process.env.FLIGHT_CLIENT_TOKEN = 'https://example.invalid/-$fixture';
+  process.env.GRS_CLIENT_TOKEN = 'https://example.invalid/-$fixture';
   process.env.FLIGHT_CURRENCY = 'IRR';
   process.env.FLIGHT_URL = 'https://example.invalid/flight';
   const calls: { url: string; body: Record<string, unknown> | null }[] = [];
@@ -528,8 +528,8 @@ test('HTTP adapter uses the documented paths and preserves return legs, passenge
     globalThis.fetch = originalFetch;
     for (const key of [
       'FLIGHT_MODE',
-      'FLIGHT_CLIENT_TOKEN_BASE64',
-      'FLIGHT_CLIENT_TOKEN',
+      'GRS_CLIENT_TOKEN_BASE64',
+      'GRS_CLIENT_TOKEN',
       'FLIGHT_CURRENCY',
       'FLIGHT_URL',
     ]) {

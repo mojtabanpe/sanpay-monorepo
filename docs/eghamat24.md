@@ -9,7 +9,7 @@
 - `GRS_CLIENT_TOKEN` یا `GRS_CLIENT_TOKEN_BASE64`
 - `FLIGHT_MODE=live`
 - `FLIGHT_URL=https://gateway-test-01.denv.ir/flight`
-- `FLIGHT_CLIENT_TOKEN` یا `FLIGHT_CLIENT_TOKEN_BASE64`
+- توکن پرواز همان `GRS_CLIENT_TOKEN` هتل است (متغیر جدا ندارد)
 - `FLIGHT_CURRENCY=IRR` با تأیید کاربر
 
 متغیرهای دارای پسوند `BASE64` اولویت دارند؛ در اجرای Nx از تغییر کاراکترهای `$` در توکن جلوگیری می‌کنند. این صرفاً کدگذاری است، نه رمزنگاری. مقادیر واقعی فقط در `.env` گیت‌ایگنورشده قرار دارند. پس از تغییر تنظیمات، API را دوباره اجرا کنید.
