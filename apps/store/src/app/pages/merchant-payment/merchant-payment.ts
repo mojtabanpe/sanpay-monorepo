@@ -1,3 +1,4 @@
+import { SanpayAmountInput } from '@sanpay/forms';
 import { Component, inject, signal } from '@angular/core';
 import { Receipt } from '@sanpay/models';
 import { ReceiptCard } from '@sanpay/receipt';
@@ -12,6 +13,7 @@ import { StorePaymentsService } from '../../core/payments.service';
 @Component({
   selector: 'store-merchant-payment',
   imports: [
+    SanpayAmountInput,
     HlmAlertImports,
     HlmButtonImports,
     HlmCardImports,

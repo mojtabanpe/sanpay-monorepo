@@ -283,15 +283,15 @@
           hlmBtn
           type="submit"
           class="h-12 gap-2 rounded-xl transition-[background-color,box-shadow,scale] motion-reduce:transition-none motion-safe:active:scale-[0.96]"
-          [disabled]="busy() || searchForm.invalid || search().origin === search().destination"
+          [disabled]="busy() || searching() || searchForm.invalid || search().origin === search().destination"
         >
-          <ng-icon name="lucideSearch" aria-hidden="true" />{{ busy() ? 'در حال
+          <ng-icon name="lucideSearch" aria-hidden="true" />{{ searching() ? 'در حال
           جست‌وجو…' : 'جست‌وجوی پرواز' }}
         </button>
       </fieldset>
     </form>
   </section>
-  @if (busy() && !searched()) {
+  @if (searching()) {
   <p role="status" class="text-muted-foreground py-3 text-center text-sm">
     در حال بررسی پروازهای این مسیر…
   </p>

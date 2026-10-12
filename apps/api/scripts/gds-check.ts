@@ -90,7 +90,7 @@ async function main() {
 
   // جست‌وجوی فردا برای یک شب، فقط برای اطمینان از دسترسی به قیمت‌ها
   const checkin = new Date(Date.now() + 86_400_000).toISOString().slice(0, 10);
-  const results = await post<unknown[]>('searchHotel', {
+  const results = await post<Record<string, unknown>[]>('searchHotel', {
     sessionId: login.sessionId,
     checkin,
     nights: 1,
@@ -108,6 +108,24 @@ async function main() {
     hotelCapacityType: 10,
   });
   console.log(`✓ searchHotel (${checkin}) — ${results.length} نتیجه`);
+
+  // فهرست تاریخ‌دار اپ کارت هتل را از خودِ همین پاسخ می‌سازد — این فیلدها
+  // باید پر باشند. اگر نتیجه از تعداد هتل‌های شهر خیلی کمتر است و شهر واقعاً
+  // اتاق خالی دارد، `hotelCapacityType` نتیجه را بریده (GdsHttpClient.searchHotel).
+  const sample = results.slice(0, 3).map((result) => ({
+    hotelId: result['hotelId'],
+    hotelName: result['hotelName'],
+    rate: result['rate'],
+    type: result['type'],
+    address: result['address'],
+    photo: result['photo'],
+    rooms: Array.isArray(result['room']) ? result['room'].length : result['room'],
+  }));
+  console.log(`  نمونهٔ فیلدهای کارت:\n${JSON.stringify(sample, null, 2)}`);
+  console.log(
+    `  getHotel ${hotels.length} هتل ↔ searchHotel ${results.length} نتیجه` +
+      (results.length > 0 && results.length < hotels.length ? ' (کمتر بودن طبیعی است اگر بقیه پرند)' : ''),
+  );
   console.log('\nاتصال به هتل‌یار سالم است.');
 }
 

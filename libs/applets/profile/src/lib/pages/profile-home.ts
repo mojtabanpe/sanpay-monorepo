@@ -3,12 +3,13 @@ import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '@sanpay/applets/auth';
 import { EmployeeProfile, ProfileSummary } from '@sanpay/models';
+import { HlmAlertImports } from '@sanpay/ui/alert';
 import { HlmBadgeImports } from '@sanpay/ui/badge';
 import { HlmButtonImports } from '@sanpay/ui/button';
 import { HlmCardImports } from '@sanpay/ui/card';
 import { HlmInputImports } from '@sanpay/ui/input';
 import { HlmSkeletonImports } from '@sanpay/ui/skeleton';
-import { firstValueFrom } from 'rxjs';
+import { Observable, firstValueFrom } from 'rxjs';
 import { ProfileService } from '../data-access/profile.service';
 import { daysUntil, faNumber, jalali, toman } from '../format';
 
@@ -17,6 +18,7 @@ import { daysUntil, faNumber, jalali, toman } from '../format';
   imports: [
     FormsModule,
     RouterLink,
+    HlmAlertImports,
     HlmBadgeImports,
     HlmButtonImports,
     HlmCardImports,
@@ -37,6 +39,9 @@ export class ProfileHomePage {
   protected readonly summary = signal<ProfileSummary | null>(null);
   protected readonly loading = signal(true);
   protected readonly error = signal(false);
+
+  protected readonly savingAvatar = signal(false);
+  protected readonly avatarError = signal<string | null>(null);
 
   /** ویرایش شمارهٔ موبایل — درجا، بدون صفحهٔ جدا */
   protected readonly editingPhone = signal(false);
@@ -121,6 +126,43 @@ export class ProfileHomePage {
     }
   }
 
+  protected async onAvatarPicked(event: Event): Promise<void> {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    // تا انتخاب دوبارهٔ همان فایل هم رویداد بدهد
+    input.value = '';
+    if (!file) return;
+    const invalid = avatarFileError(file);
+    if (invalid) {
+      this.avatarError.set(invalid);
+      return;
+    }
+    await this.saveAvatar(() => this.profileService.uploadAvatar(file));
+  }
+
+  protected removeAvatar(): Promise<void> {
+    return this.saveAvatar(() => this.profileService.removeAvatar());
+  }
+
+  private async saveAvatar(
+    request: () => Observable<{ avatarUrl: string | null }>,
+  ): Promise<void> {
+    const profile = this.profile();
+    if (!profile || this.savingAvatar()) return;
+    this.savingAvatar.set(true);
+    this.avatarError.set(null);
+    try {
+      const { avatarUrl } = await firstValueFrom(request());
+      const updated = { ...profile, avatarUrl };
+      this.profile.set(updated);
+      this.auth.setProfile(updated);
+    } catch (caught) {
+      this.avatarError.set(avatarServerError(caught));
+    } finally {
+      this.savingAvatar.set(false);
+    }
+  }
+
   protected logout(): void {
     this.auth.logout();
     void this.router.navigate(['/login']);
@@ -129,6 +171,24 @@ export class ProfileHomePage {
   protected readonly toman = toman;
   protected readonly count = faNumber;
   protected readonly jalali = jalali;
+}
+
+/** همان محدودیت‌های سرور، تا کاربر برای فایل ۱۰ مگابایتی منتظر آپلود نماند */
+function avatarFileError(file: File): string | null {
+  if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+    return 'فقط عکس JPEG، PNG یا WebP پذیرفته می‌شود';
+  }
+  if (file.size > 2 * 1024 * 1024) return 'حجم عکس باید حداکثر ۲ مگابایت باشد';
+  return null;
+}
+
+function avatarServerError(caught: unknown): string {
+  const error = caught as { status?: number; error?: { message?: unknown } };
+  if (error?.status === 413) return 'حجم عکس باید حداکثر ۲ مگابایت باشد';
+  const message = error?.error?.message;
+  return typeof message === 'string' && error?.status === 400
+    ? message
+    : 'ذخیرهٔ عکس ناموفق بود';
 }
 
 const ORGANIZATIONAL_RANK_LABELS: Record<string, string> = {

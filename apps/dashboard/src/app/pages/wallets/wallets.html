@@ -108,8 +108,8 @@
             class="w-full"
             dir="ltr"
             placeholder="خالی = نامحدود"
-            [value]="form().defaultCap"
-            (input)="update('defaultCap', $any($event.target).value)"
+            [sanpayAmount]="form().defaultCap"
+            (sanpayAmountChange)="update('defaultCap', $event)"
           />
           <p hlmFieldDescription>
             خالی بگذارید تا نامحدود باشد؛ سقف هر کارمند هنگام تخصیص تعیین
@@ -271,7 +271,7 @@
           variant="secondary"
           (click)="openBulk(definition)"
         >
-          تخصیص گروهی
+          تخصیص اعتبار
         </button>
       </div>
       }
@@ -284,21 +284,81 @@
   </section>
 </div>
 
-<!-- مدال تخصیص گروهی — تنها راه دادن اعتبار به کارمندان از این صفحه -->
+<!-- مدال تخصیص — گروهی (همه / فایل) یا فردی -->
 <hlm-dialog [state]="bulkOpen()" (stateChanged)="onBulkStateChange($event)">
   <hlm-dialog-content *hlmDialogPortal class="sm:max-w-2xl">
     @if (bulkFor(); as definition) {
     <div hlmDialogHeader>
-      <h3 hlmDialogTitle>تخصیص گروهی «{{ definition.name }}»</h3>
+      <h3 hlmDialogTitle>تخصیص «{{ definition.name }}»</h3>
+      @if (allocMode() === 'single') {
+      <p hlmDialogDescription>
+        فقط به یک کارمند شرکت «{{ definition.company.name }}». اگر این کارمند
+        از قبل تخصیص فعالِ همین کیف پول را دارد، همان به‌روزرسانی می‌شود، نه
+        اضافه؛ سقف کمتر از مبلغ مصرف‌شده پذیرفته نمی‌شود.
+      </p>
+      } @else {
       <p hlmDialogDescription>
         بدون فایل، به همهٔ کارمندان فعال شرکت «{{ definition.company.name }}» با
         سقف و انقضای یکسان تخصیص داده می‌شود. با فایل، فقط به همان کد ملی‌ها، پس
         از تطبیق ردهٔ سازمانی، و با مقادیر خودشان تخصیص داده می‌شود. تخصیص فعالِ
         موجود به‌روزرسانی می‌شود، نه اضافه.
       </p>
+      }
     </div>
 
     <div class="flex max-h-[60vh] flex-col gap-4 overflow-y-auto">
+      <hlm-toggle-group
+        [spacing]="2"
+        [value]="allocMode()"
+        (valueChange)="setAllocMode($event)"
+        aria-label="نوع تخصیص"
+      >
+        <button hlmToggleGroupItem value="group">گروهی</button>
+        <button hlmToggleGroupItem value="single">فردی</button>
+      </hlm-toggle-group>
+
+      @if (allocMode() === 'single') {
+      <hlm-field>
+        <label hlmFieldLabel for="alloc-employee">کارمند</label>
+        <hlm-autocomplete
+          [(search)]="employeeSearch"
+          [value]="singleEmployee()"
+          (valueChange)="onEmployeePicked($any($event))"
+          [itemToString]="employeeToString"
+        >
+          <hlm-autocomplete-input
+            inputId="alloc-employee"
+            placeholder="نام، کد ملی یا کد پرسنلی"
+          />
+          <hlm-autocomplete-content *hlmAutocompletePortal>
+            <hlm-autocomplete-status class="justify-start">
+              @if (employeeOptions.error()) {
+              جست‌وجوی کارمند ناموفق بود
+              } @else if (employeeOptions.isLoading()) {
+              در حال جست‌وجو…
+              } @else if (employeeSearch().trim().length < 2) {
+              دست‌کم دو حرف یا رقم بنویسید
+              } @else if (employeeOptions.value().length === 0) {
+              کارمند فعالی با این مشخصات پیدا نشد
+              }
+            </hlm-autocomplete-status>
+            <div hlmAutocompleteList>
+              @for (employee of employeeOptions.value(); track employee.id) {
+              <hlm-autocomplete-item [value]="employee">
+                <div class="flex flex-col gap-0.5">
+                  <span>{{ employee.firstName }} {{ employee.lastName }}</span>
+                  <span class="text-muted-foreground text-xs">
+                    کد ملی <span dir="ltr">{{ employee.nationalCode }}</span> —
+                    کد پرسنلی <span dir="ltr">{{ employee.personnelCode }}</span>
+                  </span>
+                </div>
+              </hlm-autocomplete-item>
+              }
+            </div>
+          </hlm-autocomplete-content>
+        </hlm-autocomplete>
+      </hlm-field>
+      } @else {
       <!-- بارگذاری فایل -->
       <div
         class="border-border flex flex-col gap-2 rounded-md border border-dashed p-4"
@@ -366,8 +426,10 @@
         }
       </div>
 
-      <!-- سقف و انقضای یکسان — وقتی فایلی نیست -->
-      @if (!fileEntries().length) {
+      }
+
+      <!-- سقف و انقضا — حالت فردی، یا گروهی بدون فایل -->
+      @if (allocMode() === 'single' || !fileEntries().length) {
       <hlm-field>
         <label hlmFieldLabel for="fld-6">سقف اعتبار (ریال)</label>
         <input
@@ -375,8 +437,7 @@
           hlmInput
           class="w-full"
           dir="ltr"
-          [value]="bulkCap()"
-          (input)="bulkCap.set($any($event.target).value)"
+          [(sanpayAmount)]="bulkCap"
         />
       </hlm-field>
       <hlm-field>
@@ -394,6 +455,12 @@
       </hlm-field>
       }
     </div>
+
+    @if (error()) {
+    <div hlmAlert variant="destructive">
+      <p hlmAlertDescription>{{ error() }}</p>
+    </div>
+    }
 
     <div hlmDialogFooter>
       <button hlmBtn variant="ghost" (click)="closeBulk()">انصراف</button>

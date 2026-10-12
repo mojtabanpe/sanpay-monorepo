@@ -253,19 +253,29 @@ export function suggestionToAvailability(
   checkout: string,
   nights: number,
 ): HotelAvailability {
+  // ستاره/آدرس/عکس در خود پاسخ suggestion هست؛ نوع اقامتگاه نیست
+  const card = {
+    rate: Number(suggestion.star) || 0,
+    address: suggestion.address ?? '',
+    photo: photosOf(suggestion)[0] ?? null,
+  };
   if (suggestion.room_rates) {
-    return toAvailability(
-      suggestion.property_id,
-      suggestion.property_name ?? '',
-      checkin,
-      checkout,
-      nights,
-      suggestion.room_rates,
-    );
+    return {
+      ...toAvailability(
+        suggestion.property_id,
+        suggestion.property_name ?? '',
+        checkin,
+        checkout,
+        nights,
+        suggestion.room_rates,
+      ),
+      ...card,
+    };
   }
   return {
     hotelId: encodeId(EG, suggestion.property_id),
     hotelName: suggestion.property_name ?? '',
+    ...card,
     checkin,
     checkout,
     nights,

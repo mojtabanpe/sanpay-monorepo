@@ -502,3 +502,61 @@ test('suggestion sends each child age with the requested occupancy and hotel', a
     () => ok({ suggestions: [], total: 0 }),
   );
 });
+
+test('dated search results carry the hotel card fields (stars, address, photo)', async () => {
+  const { suggestionToAvailability } = await import(
+    '../src/app/tourism/providers/eghamat24/eghamat24.mapper'
+  );
+  const { toAvailability } = await import(
+    '../src/app/tourism/providers/hotelyar/hotelyar.mapper'
+  );
+
+  const grs = suggestionToAvailability(
+    {
+      property_id: 1416,
+      property_name: 'هتل تست',
+      star: 4,
+      address: 'مشهد، بلوار سجاد',
+      images: [{ name: 'a', caption: '', room_type_id: null, url: 'https://x/a.jpg' }],
+      rooms: [],
+    },
+    '2090-01-01',
+    '2090-01-02',
+    1,
+  );
+  assert.equal(grs.rate, 4);
+  assert.equal(grs.address, 'مشهد، بلوار سجاد');
+  assert.equal(grs.photo, 'https://x/a.jpg');
+
+  const gds = toAvailability({
+    checkin: '2090-01-01',
+    checkout: '2090-01-02',
+    hotelId: 362,
+    hotelName: 'هتل تست',
+    rate: '5',
+    type: 'هتل',
+    address: 'تهران',
+    photo: 'https://x/b.jpg',
+    room: [],
+  });
+  assert.deepEqual(
+    { rate: gds.rate, type: gds.type, address: gds.address, photo: gds.photo },
+    { rate: 5, type: 'هتل', address: 'تهران', photo: 'https://x/b.jpg' },
+  );
+  // GDS sends "" for a hotel without a photo — that must not become a broken <img>
+  assert.equal(toAvailability({ ...gdsRow(), photo: '' }).photo, null);
+});
+
+function gdsRow() {
+  return {
+    checkin: '2090-01-01',
+    checkout: '2090-01-02',
+    hotelId: 1,
+    hotelName: 'h',
+    rate: '0',
+    type: '',
+    address: '',
+    photo: null,
+    room: [],
+  };
+}

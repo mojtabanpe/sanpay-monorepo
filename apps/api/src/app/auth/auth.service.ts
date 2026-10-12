@@ -1,3 +1,4 @@
+import { AvatarService } from '../avatars/avatar.service';
 import {
   BadRequestException,
   Injectable,
@@ -280,6 +281,7 @@ export class AuthService {
     lastName: string;
     phone: string | null;
     organizationalRank: 'MANAGER' | 'DEPUTY' | 'HEAD' | 'EMPLOYEE';
+    avatarFile?: string | null;
     company: { id: string; name: string; logoUrl?: string | null };
   }): EmployeeProfile {
     return {
@@ -293,6 +295,7 @@ export class AuthService {
       firstName: employee.firstName,
       lastName: employee.lastName,
       phone: employee.phone,
+      avatarUrl: AvatarService.url(employee.avatarFile),
       company: {
         id: employee.company.id,
         name: employee.company.name,

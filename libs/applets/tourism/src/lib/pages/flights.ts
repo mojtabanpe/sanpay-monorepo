@@ -21,7 +21,7 @@ import {
   lucideMoveLeft,
 } from '@ng-icons/lucide';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, ParamMap, Router, RouterLink } from '@angular/router';
 import { AuthService } from '@sanpay/applets/auth';
 import {
   SanpayDatePickerWidth,
@@ -97,11 +97,16 @@ export class FlightsPage {
   private readonly tourism = inject(TourismService);
   private readonly auth = inject(AuthService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
   protected readonly airports = signal<FlightAirport[]>([]);
   protected readonly offers = signal<FlightOffer[]>([]);
   protected readonly quote = signal<FlightQuote | null>(null);
   protected readonly bookings = signal<FlightBookingReceipt[]>([]);
+  /** انتخاب پرواز / پیش‌فاکتور / رزرو — فرم را قفل می‌کند */
   protected readonly busy = signal(false);
+  /** جست‌وجوی پرواز؛ جدا از `busy` تا جست‌وجوی خودکار فرم را قفل نکند */
+  protected readonly searching = signal(false);
   protected readonly loadingAirports = signal(true);
   protected readonly error = signal('');
   protected readonly historyError = signal('');
@@ -113,14 +118,13 @@ export class FlightsPage {
   protected readonly selectedTravelers = signal<Record<number, string | null>>(
     {},
   );
-  protected readonly search = signal<FlightSearchInput>({
-    origin: '',
-    destination: '',
-    departureDate: addDays(today(), 1),
-    adults: 1,
-    children: 0,
-    infants: 0,
-  });
+  /**
+   * پارامترهای جست‌وجو در query string هم می‌نشینند تا back/refresh همان
+   * نتیجه را برگرداند.
+   */
+  protected readonly search = signal<FlightSearchInput>(
+    searchFromQuery(this.route.snapshot.queryParamMap),
+  );
   protected readonly passengerTypes = [
     { key: 'adults', label: 'بزرگسال', hint: '۱۲ سال به بالا' },
     { key: 'children', label: 'کودک', hint: '۲ تا ۱۲ سال' },
@@ -166,7 +170,7 @@ export class FlightsPage {
       this.airportName(iata).replace(/^فرودگاه\s+(بین[‌ ]المللی\s+)?/, '')
     );
   }
-  protected roundTrip = false;
+  protected roundTrip = !!this.search().returnDate;
   protected allocationId = '';
   protected readonly minDate = isoToJalali(today());
   protected readonly minJalaliBirthdate = isoToJalali('1900-01-01');
@@ -197,6 +201,11 @@ export class FlightsPage {
   protected readonly number = faNumber;
   protected readonly dateLabel = jalaliLong;
   private searchedInput: FlightSearchInput | null = null;
+  /** بعد از اولین جست‌وجو، هر تغییر پارامتر خودش دوباره جست‌وجو می‌کند */
+  private autoSearch = false;
+  /** شمارهٔ آخرین جست‌وجو — پاسخ کهنه روی پاسخ تازه ننشیند */
+  private searchId = 0;
+  private searchTimer: ReturnType<typeof setTimeout> | undefined;
   private historyLoading = false;
   constructor() {
     void this.loadAirports();
@@ -210,7 +219,12 @@ export class FlightsPage {
       )
         void this.loadBookings();
     }, 10000);
-    this.destroyRef.onDestroy(() => clearInterval(timer));
+    this.destroyRef.onDestroy(() => {
+      clearInterval(timer);
+      clearTimeout(this.searchTimer);
+    });
+    // مسیر کامل از URL آمده (back / refresh / لینک) → همان جست‌وجو
+    if (this.canSearch()) void this.findFlights();
   }
   protected async loadAirports(): Promise<void> {
     this.loadingAirports.set(true);
@@ -228,9 +242,48 @@ export class FlightsPage {
     value: FlightSearchInput[K],
   ): void {
     this.search.update((s) => ({ ...s, [key]: value }));
+    // قیمت‌های تاریخ/مسیر قبلی نباید با پارامترهای تازه دیده شوند
     this.offers.set([]);
     this.searched.set(false);
     this.quote.set(null);
+    this.syncQuery();
+    if (this.autoSearch) this.scheduleSearch();
+  }
+
+  private canSearch(): boolean {
+    const s = this.search();
+    return !!s.origin && !!s.destination && s.origin !== s.destination;
+  }
+
+  /**
+   * debounce کوتاه: استپر مسافر یا swap چند تغییر پشت‌سرهم می‌سازند و هرکدام
+   * نباید یک درخواست جدا بفرستد.
+   */
+  private scheduleSearch(): void {
+    clearTimeout(this.searchTimer);
+    // پاسخ در راهِ پارامترهای قبلی دیگر معتبر نیست
+    this.searchId++;
+    this.searching.set(false);
+    if (!this.canSearch()) return;
+    this.searching.set(true);
+    this.searchTimer = setTimeout(() => void this.findFlights(), 400);
+  }
+
+  private syncQuery(): void {
+    const s = this.search();
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: {
+        origin: s.origin || null,
+        destination: s.destination || null,
+        date: s.departureDate,
+        return: s.returnDate ?? null,
+        adults: s.adults,
+        children: s.children || null,
+        infants: s.infants || null,
+      },
+      replaceUrl: true,
+    });
   }
   protected setDate(date: JalaliDate | null, returning = false): void {
     if (date)
@@ -251,8 +304,11 @@ export class FlightsPage {
     this.updateSearch('destination', s.origin);
   }
   protected async findFlights(): Promise<void> {
-    if (this.busy()) return;
-    this.busy.set(true);
+    if (this.busy() || !this.canSearch()) return;
+    clearTimeout(this.searchTimer);
+    const id = ++this.searchId;
+    this.autoSearch = true;
+    this.searching.set(true);
     this.error.set('');
     this.quote.set(null);
     this.receipt.set(null);
@@ -260,17 +316,15 @@ export class FlightsPage {
     this.searched.set(false);
     const input = { ...this.search() };
     try {
-      this.offers.set(
-        (await firstValueFrom(this.api.search(input))).sort(
-          (a, b) => a.amount - b.amount,
-        ),
-      );
+      const offers = await firstValueFrom(this.api.search(input));
+      if (id !== this.searchId) return;
+      this.offers.set(offers.sort((a, b) => a.amount - b.amount));
       this.searchedInput = input;
       this.searched.set(true);
     } catch (error) {
-      this.error.set(this.message(error));
+      if (id === this.searchId) this.error.set(this.message(error));
     } finally {
-      this.busy.set(false);
+      if (id === this.searchId) this.searching.set(false);
     }
   }
   protected async select(offer: FlightOffer): Promise<void> {
@@ -482,4 +536,30 @@ export class FlightsPage {
 
 function isoDate(value: Date): string {
   return `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, '0')}-${String(value.getDate()).padStart(2, '0')}`;
+}
+
+function searchFromQuery(query: ParamMap): FlightSearchInput {
+  const iata = (key: string) => (query.get(key) ?? '').toUpperCase();
+  const date = (key: string) => {
+    const value = query.get(key);
+    return value && /^\d{4}-\d{2}-\d{2}$/.test(value) && value >= today()
+      ? value
+      : undefined;
+  };
+  const count = (key: string, fallback: number) => {
+    const value = Number(query.get(key) ?? fallback);
+    return Number.isInteger(value) && value >= 0 && value <= 9 ? value : fallback;
+  };
+  const departureDate = date('date') ?? addDays(today(), 1);
+  const returnDate = date('return');
+  const adults = Math.max(1, count('adults', 1));
+  return {
+    origin: iata('origin'),
+    destination: iata('destination'),
+    departureDate,
+    ...(returnDate && returnDate >= departureDate ? { returnDate } : {}),
+    adults,
+    children: Math.min(9 - adults, count('children', 0)),
+    infants: Math.min(adults, count('infants', 0)),
+  };
 }

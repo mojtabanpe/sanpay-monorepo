@@ -26,7 +26,11 @@ services:
       - ${SANPAY_ENV_FILE:-.env.production}
     environment:
       PORT: 6500
+      UPLOADS_DIR: /app/data/uploads
       DATABASE_URL: postgresql://${POSTGRES_USER:-sanpay}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-sanpay}?schema=public
+    # عکس‌های پروفایل — بیرون از image تا با هر deploy پاک نشوند
+    volumes:
+      - api_uploads:/app/data/uploads
     depends_on:
       postgres:
         condition: service_healthy
@@ -78,3 +82,4 @@ services:
 
 volumes:
   postgres_data:
+  api_uploads:

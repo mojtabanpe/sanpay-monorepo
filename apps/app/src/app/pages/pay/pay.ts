@@ -12,7 +12,10 @@ import {
 import { ActivatedRoute, Router } from '@angular/router';
 import { PayableWallet, Receipt, StoreCheckout } from '@sanpay/models';
 import { ReceiptCard } from '@sanpay/receipt';
+import { HlmAlertImports } from '@sanpay/ui/alert';
+import { HlmAlertDialogImports } from '@sanpay/ui/alert-dialog';
 import { HlmButtonImports } from '@sanpay/ui/button';
+import { SanpayAmountInput } from '@sanpay/forms';
 import { HlmCardImports } from '@sanpay/ui/card';
 import { HlmFieldImports } from '@sanpay/ui/field';
 import { HlmInputImports } from '@sanpay/ui/input';
@@ -28,12 +31,15 @@ type Step = 'scan' | 'amount' | 'done';
 @Component({
   selector: 'app-pay',
   imports: [
+    HlmAlertImports,
+    HlmAlertDialogImports,
     HlmButtonImports,
     HlmCardImports,
     HlmFieldImports,
     HlmInputImports,
     HlmInputGroupImports,
     ReceiptCard,
+    SanpayAmountInput,
   ],
   templateUrl: './pay.html',
 })
@@ -55,16 +61,45 @@ export class PayPage implements OnDestroy {
   protected readonly cameraFailed = signal(false);
   protected readonly manualCode = signal('');
 
-  /** مبلغ انتخاب‌شده از هر کیف پول (تومان) */
-  private readonly amounts = signal<Record<string, number>>({});
+  /**
+   * مبلغ تایپ‌شده برای هر کیف پول، به **ریال** — همان واحدی که در اینپوت
+   * نمایش داده می‌شود. API تومان می‌گیرد، ولی اگر state تومانی باشد هر رقم
+   * اول (`۵` ریال → `۰` تومان) پاک می‌شود و کاربر هیچ‌وقت نمی‌تواند شروع به
+   * تایپ کند؛ پس مقدار خام ریالی نگه داشته و تومان از رویش مشتق می‌شود.
+   */
+  private readonly rials = signal<Record<string, number>>({});
+
+  /** مبلغ هر کیف پول به تومان، برای API */
+  private readonly amounts = computed(() =>
+    Object.fromEntries(
+      Object.entries(this.rials()).map(([id, rial]) => [id, Math.floor(rial / 10)]),
+    ),
+  );
 
   protected readonly total = computed(() =>
     Object.values(this.amounts()).reduce((sum, amount) => sum + amount, 0),
   );
+  /** ریال کمتر از ۱۰ قابل کسر نیست؛ به‌جای گردکردنِ بی‌صدا پرداخت را می‌بندیم */
+  protected readonly hasFraction = computed(() =>
+    Object.values(this.rials()).some((rial) => rial % 10 !== 0),
+  );
   protected readonly multiWallet = computed(
     () => (this.checkout()?.wallets.length ?? 0) > 1,
   );
-  protected readonly canPay = computed(() => this.total() > 0 && !this.busy());
+  /** مدال تأیید قبل از ارسال پرداخت */
+  protected readonly confirmOpen = signal(false);
+  /** تفکیک مبلغ هر کیف پول برای مدال تأیید */
+  protected readonly confirmLines = computed(() =>
+    (this.checkout()?.wallets ?? [])
+      .map((wallet) => ({
+        name: wallet.name,
+        amount: this.amounts()[wallet.allocationId] ?? 0,
+      }))
+      .filter((line) => line.amount > 0),
+  );
+  protected readonly canPay = computed(
+    () => this.total() > 0 && !this.hasFraction() && !this.busy(),
+  );
 
   /**
    * ساعتِ «زنده» روی صفحهٔ رسید. اسکرین‌شاتِ یک رسید قدیمی نه می‌تپد و نه
@@ -180,7 +215,7 @@ export class PayPage implements OnDestroy {
         return;
       }
       this.checkout.set(checkout);
-      this.amounts.set({});
+      this.rials.set({});
       this.step.set('amount');
     } catch (caught) {
       this.error.set(messageOf(caught, 'دریافت اطلاعات فروشگاه ممکن نشد'));
@@ -191,42 +226,39 @@ export class PayPage implements OnDestroy {
 
   // ─── گام ۲: مبلغ ──────────────────────────────────────────────────
 
-  protected amountOf(wallet: PayableWallet): number {
-    return this.amounts()[wallet.allocationId] ?? 0;
+  /** ارقام ریالی اینپوت هر کیف پول — مدل `sanpayAmount` */
+  protected rialText(wallet: PayableWallet): string {
+    const rial = this.rials()[wallet.allocationId] ?? 0;
+    return rial === 0 ? '' : String(rial);
   }
 
-  /** مقدار نمایشی داخل اینپوت — با اعداد فارسی و جداکنندهٔ هزارگان */
-  protected amountText(wallet: PayableWallet): string {
-    const amount = this.amountOf(wallet);
-    return amount === 0 ? '' : this.faNumber.format(amount * 10);
-  }
-
-  protected onAmountInput(wallet: PayableWallet, event: Event): void {
-    const input = event.target as HTMLInputElement;
-    const parsed = toLatinDigits(input.value).replace(/\D/g, '');
-    // مبلغ هرگز از سقف کیف پول بالاتر نمی‌رود — سقف در سرور هم دوباره چک می‌شود
-    const amount = Math.min(
-      parsed === '' ? 0 : Math.floor(Number(parsed) / 10),
-      wallet.max,
-    );
-    this.setAmount(wallet, amount);
-    input.value = amount === 0 ? '' : this.faNumber.format(amount * 10);
+  /** directive مبلغ را به سقف کیف پول رسانده — سقف در سرور هم دوباره چک می‌شود */
+  protected onAmount(wallet: PayableWallet, digits: string): void {
+    this.setRial(wallet, Number(digits || 0));
   }
 
   protected fillMax(wallet: PayableWallet): void {
-    this.setAmount(wallet, wallet.max);
+    this.setRial(wallet, wallet.max * 10);
   }
 
   protected clearAmounts(): void {
-    this.amounts.set({});
+    this.rials.set({});
   }
 
-  private setAmount(wallet: PayableWallet, amount: number): void {
-    this.amounts.update((current) => ({
+  private setRial(wallet: PayableWallet, rial: number): void {
+    this.rials.update((current) => ({
       ...current,
-      [wallet.allocationId]: amount,
+      [wallet.allocationId]: rial,
     }));
     this.error.set(null);
+  }
+
+  protected onConfirmStateChange(state: string): void {
+    // تا وقتی درخواست در جریان است مدال بسته نمی‌شود (Esc / کلیک بیرون)
+    if (state === 'closed' && !this.busy()) {
+      this.confirmOpen.set(false);
+      this.error.set(null);
+    }
   }
 
   protected async pay(): Promise<void> {
@@ -244,6 +276,7 @@ export class PayPage implements OnDestroy {
         storeCode: checkout.storeCode,
         lines,
       });
+      this.confirmOpen.set(false);
       this.receipt.set(receipt);
       this.receivedAt.set(Date.now());
       this.step.set('done');
@@ -261,7 +294,7 @@ export class PayPage implements OnDestroy {
   protected restart(): void {
     this.checkout.set(null);
     this.receipt.set(null);
-    this.amounts.set({});
+    this.rials.set({});
     this.error.set(null);
     this.manualCode.set('');
     this.step.set('scan');
@@ -278,12 +311,6 @@ export class PayPage implements OnDestroy {
   protected count(value: number): string {
     return this.faNumber.format(value);
   }
-}
-
-function toLatinDigits(value: string): string {
-  return value.replace(/[۰-۹]/g, (digit) =>
-    String('۰۱۲۳۴۵۶۷۸۹'.indexOf(digit)),
-  );
 }
 
 function messageOf(caught: unknown, fallback: string): string {

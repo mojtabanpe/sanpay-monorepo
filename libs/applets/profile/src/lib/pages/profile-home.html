@@ -11,18 +11,61 @@
   <section hlmCard>
     <div hlmCardContent class="flex flex-col gap-4 pt-6">
       <div class="flex items-center gap-3">
+        <!-- همان قاب حروف اول؛ با عکس، عکس جای حروف را می‌گیرد -->
         <div
-          class="bg-primary text-primary-foreground flex size-14 shrink-0 items-center justify-center rounded-2xl text-lg font-bold"
+          class="bg-primary text-primary-foreground flex size-14 shrink-0 items-center justify-center overflow-hidden rounded-2xl text-lg font-bold"
+          [attr.aria-busy]="savingAvatar()"
         >
+          @if (profile()?.avatarUrl; as avatarUrl) {
+          <img
+            [src]="avatarUrl"
+            [alt]="'عکس ' + fullName()"
+            class="size-full object-cover"
+            [class.opacity-50]="savingAvatar()"
+          />
+          } @else {
           {{ initials() }}
+          }
         </div>
-        <div class="leading-tight">
+        <div class="min-w-0 flex-1 leading-tight">
           <h1 class="text-lg font-bold">{{ fullName() }}</h1>
           <p class="text-muted-foreground text-xs">
             {{ rankLabel() }} {{ profile()?.company?.name }}
           </p>
+          <div class="mt-1 flex items-center gap-3 text-xs">
+            <input
+              #avatarInput
+              type="file"
+              class="hidden"
+              accept="image/jpeg,image/png,image/webp"
+              (change)="onAvatarPicked($event)"
+            />
+            <button
+              type="button"
+              class="text-primary font-medium hover:underline disabled:opacity-50"
+              [disabled]="savingAvatar()"
+              (click)="avatarInput.click()"
+            >
+              {{ savingAvatar() ? 'در حال ذخیره…' : profile()?.avatarUrl ? 'تغییر عکس' : 'افزودن عکس' }}
+            </button>
+            @if (profile()?.avatarUrl && !savingAvatar()) {
+            <button
+              type="button"
+              class="text-muted-foreground hover:underline"
+              (click)="removeAvatar()"
+            >
+              حذف عکس
+            </button>
+            }
+          </div>
         </div>
       </div>
+
+      @if (avatarError()) {
+      <div hlmAlert variant="destructive">
+        <p hlmAlertDescription>{{ avatarError() }}</p>
+      </div>
+      }
 
       <dl class="flex flex-col gap-2 text-xs">
         <div class="flex items-center justify-between">

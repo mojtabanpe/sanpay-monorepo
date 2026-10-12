@@ -95,6 +95,8 @@ export interface AdminEmployeeRow {
   remaining: number;
   /** آیا کارمند پس از ورود با OTP برای خودش رمز تعیین کرده است؟ */
   hasPassword: boolean;
+  /** آدرس عکس پروفایل؛ null یعنی بدون عکس */
+  avatarUrl?: string | null;
 }
 
 export interface AdminAllocationRow {

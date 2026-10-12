@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { AvatarsModule } from '../avatars/avatars.module';
 import { AdminAuthService } from './admin-auth.service';
 import { AdminCompaniesService } from './admin-companies.service';
 import { AdminEmployeesService } from './admin-employees.service';
@@ -22,6 +23,7 @@ import {
  * پس اینجا فقط سرویس‌ها و کنترلرها می‌آیند.
  */
 @Module({
+  imports: [AvatarsModule],
   controllers: [
     AdminAuthController,
     AdminUsersController,

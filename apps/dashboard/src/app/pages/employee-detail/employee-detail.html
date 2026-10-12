@@ -13,6 +13,52 @@
   </div>
   } @if (employee(); as employee) {
   <header class="flex flex-wrap items-end justify-between gap-3">
+    <div class="flex items-center gap-4">
+    <div class="flex flex-col items-center gap-1.5">
+      <!-- بدون عکس، حروف اول نام — همان قاب اپ کارمند -->
+      <div
+        class="bg-primary text-primary-foreground flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-2xl text-xl font-bold"
+      >
+        @if (employee.avatarUrl) {
+        <img
+          [src]="employee.avatarUrl"
+          [alt]="'عکس ' + employee.firstName + ' ' + employee.lastName"
+          class="size-full object-cover"
+        />
+        } @else {
+        {{ employee.firstName.charAt(0) }}{{ employee.lastName.charAt(0) }}
+        }
+      </div>
+      @if (canWrite()) {
+      <input
+        #avatarInput
+        type="file"
+        class="hidden"
+        accept="image/jpeg,image/png,image/webp"
+        (change)="onAvatarPicked($event)"
+      />
+      <div class="flex gap-2 text-xs">
+        <button
+          type="button"
+          class="text-primary font-medium hover:underline disabled:opacity-50"
+          [disabled]="saving()"
+          (click)="avatarInput.click()"
+        >
+          {{ employee.avatarUrl ? 'تغییر' : 'افزودن عکس' }}
+        </button>
+        @if (employee.avatarUrl) {
+        <button
+          type="button"
+          class="text-muted-foreground hover:underline disabled:opacity-50"
+          [disabled]="saving()"
+          (click)="removeAvatar()"
+        >
+          حذف
+        </button>
+        }
+      </div>
+      }
+    </div>
     <div>
       <h1 class="text-2xl font-bold">
         {{ employee.firstName }} {{ employee.lastName }}
@@ -28,6 +74,7 @@
         {{ employee.company.name }} — {{ rankLabels[employee.organizationalRank]
         }}
       </p>
+    </div>
     </div>
     @if (canWrite()) {
     <div class="flex gap-2">
@@ -223,8 +270,8 @@
             hlmInput
             class="w-full"
             dir="ltr"
-            [value]="allocForm().cap"
-            (input)="updateAlloc('cap', $any($event.target).value)"
+            [sanpayAmount]="allocForm().cap"
+            (sanpayAmountChange)="updateAlloc('cap', $event)"
           />
         </hlm-field>
 
@@ -305,7 +352,7 @@
                   #capInput
                   class="w-32"
                   dir="ltr"
-                  [value]="allocation.cap * 10"
+                  [sanpayAmount]="'' + allocation.cap * 10"
                   (keyup.enter)="setCap(allocation.id, capInput.value)"
                 />
               </td>
@@ -313,6 +360,7 @@
                 <input
                   hlmInput
                   #refundInput
+                  sanpayAmount
                   class="w-32"
                   dir="ltr"
                   placeholder="مبلغ"

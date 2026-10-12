@@ -308,8 +308,19 @@
     <!-- اتاق‌ها -->
     <div class="mt-2 flex items-center justify-between px-1">
       <h2 class="font-bold">اتاق‌های موجود</h2>
-      <span class="text-muted-foreground text-xs">{{ stayLabel() }}</span>
     </div>
+
+    <!-- تاریخ همین‌جا قابل تغییر است؛ اتاق‌ها و قیمت‌ها با آن دوباره گرفته می‌شوند -->
+    <section hlmCard>
+      <div hlmCardContent>
+        <tourism-stay-picker
+          [checkin]="checkin()"
+          (checkinChange)="setStay({ checkin: $event })"
+          [nights]="nights()"
+          (nightsChange)="setStay({ nights: $event })"
+        />
+      </div>
+    </section>
 
     @if (roomsLoading()) {
     <hlm-skeleton class="h-28 w-full" />
@@ -360,7 +371,7 @@
             }
             <p class="text-base font-bold">{{ toman(room.price) }}</p>
             <p class="text-muted-foreground text-[0.65rem]">
-              برای {{ count(nights) }} شب
+              برای {{ count(nights()) }} شب
             </p>
           </div>
           <button hlmBtn size="sm" (click)="selectRoom(room)">

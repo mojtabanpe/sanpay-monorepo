@@ -37,6 +37,8 @@ export class HomePage {
   protected readonly wallets = signal<Wallet[]>([]);
   protected readonly stores = signal<EmployeeStore[]>([]);
   protected readonly payments = signal<PaymentHistoryItem[]>([]);
+  /** کیف پول داشته ولی اعتبار همه تمام شده — متن empty state فرق می‌کند */
+  protected readonly allSpent = signal(false);
   protected readonly loading = signal(true);
   protected readonly error = signal(false);
   protected readonly activeWalletIndex = signal(0);
@@ -93,11 +95,15 @@ export class HomePage {
         firstValueFrom(this.homeService.load()),
         this.auth.refreshProfile(),
       ]);
-      this.wallets.set(result.wallets);
+      // کیف پولِ صفرشده در خانه جایی ندارد — همان قاعدهٔ checkout و تب
+      // فروشگاه‌ها. سابقهٔ خریدش همچنان در پروفایل می‌ماند.
+      const spendable = result.wallets.filter((wallet) => wallet.remaining > 0);
+      this.allSpent.set(result.wallets.length > 0 && spendable.length === 0);
+      this.wallets.set(spendable);
       this.payments.set(result.payments);
       this.activeWalletIndex.set(0);
       this.activeSection.set('stores');
-      if (result.wallets[0]) await this.loadStores(result.wallets[0].id);
+      if (spendable[0]) await this.loadStores(spendable[0].id);
     } catch {
       this.error.set(true);
     } finally {

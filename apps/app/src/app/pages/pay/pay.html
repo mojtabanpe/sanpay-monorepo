@@ -134,13 +134,12 @@
         <hlm-input-group class="min-w-0 flex-1">
           <input
             hlmInputGroupInput
-            inputmode="numeric"
-            autocomplete="off"
             placeholder="۰"
             [attr.aria-label]="'مبلغ کسر از ' + wallet.name"
             class="text-left text-base font-semibold tabular-nums"
-            [value]="amountText(wallet)"
-            (input)="onAmountInput(wallet, $event)"
+            [sanpayAmount]="rialText(wallet)"
+            (sanpayAmountChange)="onAmount(wallet, $event)"
+            [sanpayAmountMax]="wallet.max * 10"
           />
           <hlm-input-group-addon align="inline-end">
             <span hlmInputGroupText>ریال</span>
@@ -158,7 +157,7 @@
       </div>
     </div>
   </section>
-  } @if (error()) {
+  } @if (error() && !confirmOpen()) {
   <p class="text-destructive px-1 text-xs">{{ error() }}</p>
   }
 
@@ -173,8 +172,18 @@
         <span class="text-sm font-medium">جمع پرداخت</span>
         <span class="text-primary text-lg font-bold">{{ toman(total()) }}</span>
       </div>
-      <button hlmBtn class="w-full" [disabled]="!canPay()" (click)="pay()">
-        {{ busy() ? 'در حال ثبت…' : 'پرداخت' }}
+      @if (hasFraction() && total() > 0) {
+      <p class="text-(--warn-fg) text-xs" role="status">
+        مبلغ باید مضربی از ۱۰ ریال باشد.
+      </p>
+      }
+      <button
+        hlmBtn
+        class="w-full"
+        [disabled]="!canPay()"
+        (click)="confirmOpen.set(true)"
+      >
+        پرداخت
       </button>
       @if (total() > 0) {
       <button
@@ -186,6 +195,54 @@
       }
     </div>
   </section>
+
+  <!--
+    تأیید قبل از پرداخت: پرداخت برگشت‌پذیر نیست، پس بدون این مرحله هیچ
+    درخواستی به API نمی‌رود. خطای سرور هم داخل همین مدال نشان داده می‌شود
+    تا کاربر مجبور نباشد مدال را ببندد تا بفهمد چه شد.
+  -->
+  <hlm-alert-dialog
+    [state]="confirmOpen() ? 'open' : 'closed'"
+    (stateChanged)="onConfirmStateChange($event)"
+  >
+    <hlm-alert-dialog-content *hlmAlertDialogPortal>
+      <hlm-alert-dialog-header>
+        <h2 hlmAlertDialogTitle>تأیید پرداخت</h2>
+        <p hlmAlertDialogDescription>
+          {{ toman(total()) }} در «{{ store.storeName }}» پرداخت می‌شود.
+        </p>
+      </hlm-alert-dialog-header>
+
+      <ul class="flex flex-col gap-2 text-sm">
+        @for (line of confirmLines(); track line.name) {
+        <li class="flex items-center justify-between gap-3">
+          <span class="text-muted-foreground min-w-0 truncate">{{ line.name }}</span>
+          <span class="shrink-0 font-semibold tabular-nums">{{ toman(line.amount) }}</span>
+        </li>
+        }
+        <li
+          class="flex items-center justify-between gap-3 border-t pt-2 font-bold"
+          style="border-color: var(--hairline)"
+        >
+          <span>جمع</span>
+          <span class="text-primary tabular-nums">{{ toman(total()) }}</span>
+        </li>
+      </ul>
+
+      @if (error()) {
+      <div hlmAlert variant="destructive">
+        <p hlmAlertDescription>{{ error() }}</p>
+      </div>
+      }
+
+      <hlm-alert-dialog-footer>
+        <button hlmAlertDialogCancel [disabled]="busy()">انصراف</button>
+        <button hlmAlertDialogAction [disabled]="busy()" (click)="pay()">
+          {{ busy() ? 'در حال ثبت…' : 'تأیید و پرداخت' }}
+        </button>
+      </hlm-alert-dialog-footer>
+    </hlm-alert-dialog-content>
+  </hlm-alert-dialog>
   }
 
   <!-- ─── گام ۳: رسید ──────────────────────────────────────────── -->
