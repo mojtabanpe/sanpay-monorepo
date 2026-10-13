@@ -10,6 +10,7 @@ import {
 } from '@sanpay/models';
 import {
   flightAmount,
+  formatCancellationRules,
   FlightProvider,
   FlightProviderRejectedException,
   mapFlightOffers,
@@ -127,6 +128,35 @@ test('reads cancellation rules in every spelling seen, on route or flight', () =
   // an unreadable rule is dropped (and logged) instead of failing the search
   assert.deepEqual(rules([{ from: 3, to: 24 }]), []);
 });
+test('cancellation rules: earliest window first, exact duplicates dropped, malformed rows skipped', () => {
+  const row = (
+    description: string,
+    percent: number,
+    from: { day?: number; hour?: number } = {},
+  ) => ({
+    rate_class: 'S',
+    penalty_percent: percent,
+    from_day_count: from.day ?? null,
+    from_hour_count: from.hour ?? null,
+    timeframe_description: description,
+  });
+  assert.deepEqual(
+    formatCancellationRules([
+      row('از 3 ساعت قبل از پرواز به بعد', 60, { hour: 3 }),
+      row('از زمان صدور بلیط تا 24 ساعت قبل از پرواز', 30),
+      row('از 12:00 ظهر 1 روز قبل از پرواز تا 3 ساعت قبل از پرواز', 40, { day: 1 }),
+      row('از زمان صدور بلیط تا 24 ساعت قبل از پرواز', 30),
+      { penalty_percent: 10 },
+    ]),
+    [
+      'از زمان صدور بلیط تا 24 ساعت قبل از پرواز — ۳۰٪ جریمه',
+      'از 12:00 ظهر 1 روز قبل از پرواز تا 3 ساعت قبل از پرواز — ۴۰٪ جریمه',
+      'از 3 ساعت قبل از پرواز به بعد — ۶۰٪ جریمه',
+    ],
+  );
+  assert.deepEqual(formatCancellationRules(null), []);
+});
+
 test('keeps paired return flights and rejects mismatched dates/routes or capacity', () => {
   assert.equal(mapFlightOffers(raw, { ...search, adults: 4 }, 'IRR').length, 0);
   assert.equal(

@@ -116,6 +116,7 @@ function leg(raw: unknown): FlightLeg {
     stops: num(f['stops']),
     capacity: num(f['capacity']),
     foreign: f['is_foreign'],
+    rateClass: optionalStr(first['rate_class']),
     cancellationRules: cancellationRules(f, routes),
   };
 }
@@ -151,6 +152,44 @@ export function mapFlightOffers(
           : !f.returning),
     );
 }
+const RULES_TTL = 6 * 60 * 60_000;
+
+/**
+ * تأمین‌کننده برای بعضی ایرلاین‌ها چند ردیفِ هم‌پوشان یا متناقض می‌فرستد
+ * (مثلاً ایران‌ایر S هم «۳۰٪ تا ۲۴ ساعت قبل» دارد هم «۳۰٪ تا ظهر ۳ روز قبل») و
+ * هیچ فیلدی آن‌ها را از هم جدا نمی‌کند. تفسیر نمی‌کنیم: فقط تکراری‌های دقیق
+ * حذف و از زودترین بازه به دیرترین مرتب می‌شوند تا کارمند همهٔ آن‌چه
+ * تأمین‌کننده گفته را ببیند.
+ */
+export function formatCancellationRules(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return [];
+  const hoursBefore = (day: unknown, hour: unknown): number =>
+    typeof hour === 'number'
+      ? hour
+      : typeof day === 'number'
+        ? day * 24
+        : Number.POSITIVE_INFINITY; // «از زمان صدور بلیط»
+  const rows = raw
+    .filter(
+      (r): r is Record<string, unknown> =>
+        !!r &&
+        typeof r === 'object' &&
+        typeof r['timeframe_description'] === 'string' &&
+        typeof r['penalty_percent'] === 'number',
+    )
+    .map((r) => ({
+      text: `${(r['timeframe_description'] as string).trim()} — ${new Intl.NumberFormat('fa-IR').format(r['penalty_percent'] as number)}٪ جریمه`,
+      start: hoursBefore(r['from_day_count'], r['from_hour_count']),
+      percent: r['penalty_percent'] as number,
+    }))
+    .sort(
+      (a, b) =>
+        (a.start === b.start ? 0 : a.start > b.start ? -1 : 1) ||
+        a.percent - b.percent,
+    );
+  return [...new Set(rows.map((r) => r.text))];
+}
+
 export interface ProviderReservation {
   confirmationCode: string;
   status: string;
@@ -271,6 +310,53 @@ export class FlightProvider {
     return list(result['airports'])
       .map(record)
       .map((a) => ({ iata: str(a['iata']), name: str(a['name']) }));
+  }
+  /**
+   * جست‌وجو `cancellation_rules` را همیشه خالی می‌فرستد (۲۰ از ۲۰ پرواز،
+   * اندازه‌گیری‌شده)؛ قوانین واقعی از اندپوینت جدا با شناسهٔ عددی ایرلاین +
+   * rate_class می‌آید. خطا رزرو را متوقف نمی‌کند — بدون قانون، اپ پیام
+   * «اعلام نشده» را نشان می‌دهد.
+   */
+  async cancellationRules(airline: string, rateClass: string): Promise<string[]> {
+    const key = `${airline}/${rateClass}`;
+    const cached = this.rulesCache.get(key);
+    if (cached && cached.until > Date.now()) return cached.rules;
+    try {
+      const airlineId = (await this.airlineIds()).get(airline);
+      if (airlineId === undefined) return [];
+      const query = new URLSearchParams({
+        airline_id: String(airlineId),
+        rate_class: rateClass,
+      });
+      const result = await this.request(
+        `/api/v1/cancellation-rules/get-all-by-airline-id-and-rate-class?${query}`,
+      );
+      const rules = formatCancellationRules(result['cancellation_rules']);
+      this.rulesCache.set(key, { rules, until: Date.now() + RULES_TTL });
+      return rules;
+    } catch (error) {
+      this.logger.warn(
+        `cancellation rules ${key} unavailable: ${(error as Error).message}`,
+      );
+      return [];
+    }
+  }
+  private readonly rulesCache = new Map<
+    string,
+    { rules: string[]; until: number }
+  >();
+  private airlineCache?: { ids: Map<string, number>; until: number };
+  private async airlineIds(): Promise<Map<string, number>> {
+    if (this.airlineCache && this.airlineCache.until > Date.now())
+      return this.airlineCache.ids;
+    const result = await this.request('/api/v1/airlines');
+    const ids = new Map<string, number>();
+    for (const a of list(result['airlines']).map(record)) {
+      const iata = optionalStr(a['iata']);
+      if (iata && typeof a['id'] === 'number') ids.set(iata, a['id']);
+    }
+    this.airlineCache = { ids, until: Date.now() + RULES_TTL };
+    return ids;
   }
   async search(input: FlightSearchInput): Promise<FlightOffer[]> {
     const query = new URLSearchParams({

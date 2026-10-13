@@ -10,6 +10,7 @@ import {
   FlightBookingInput,
   FlightBookingReceipt,
   FlightBookingStatus,
+  FlightLeg,
   FlightOffer,
   FlightQuote,
   FlightSearchInput,
@@ -125,11 +126,12 @@ export class FlightsService {
   }
   async quote(employeeId: string, input: QuoteFlightDto): Promise<FlightQuote> {
     const { offerId, ...search } = input;
-    const offer = (await this.search(search)).find((f) => f.id === offerId);
-    if (!offer)
+    const found = (await this.search(search)).find((f) => f.id === offerId);
+    if (!found)
       throw new ConflictException(
         'این پرواز دیگر موجود نیست؛ دوباره جست‌وجو کنید',
       );
+    const offer = await this.withCancellationRules(found);
     const quote = await this.prisma.flightQuote.create({
       data: {
         employeeId,
@@ -164,6 +166,24 @@ export class FlightsService {
         }))
         .filter((w) => w.max > 0),
     };
+  }
+  /** قوانین کنسلی فقط بعد از انتخاب پرواز گرفته می‌شود، نه برای هر نتیجهٔ جست‌وجو */
+  private async withCancellationRules(offer: FlightOffer): Promise<FlightOffer> {
+    const fill = async (leg: FlightLeg): Promise<FlightLeg> =>
+      leg.cancellationRules.length || !leg.rateClass
+        ? leg
+        : {
+            ...leg,
+            cancellationRules: await this.provider.cancellationRules(
+              leg.airline,
+              leg.rateClass,
+            ),
+          };
+    const [departure, returning] = await Promise.all([
+      fill(offer.departure),
+      offer.returning ? fill(offer.returning) : null,
+    ]);
+    return { ...offer, departure, returning };
   }
   async book(
     employeeId: string,

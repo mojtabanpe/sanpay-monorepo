@@ -27,6 +27,8 @@ export interface FlightLeg {
   stops: number;
   capacity: number;
   foreign: boolean;
+  /** Fare class of the first route; the key (with the airline) for cancellation rules. Charters often have none. */
+  rateClass?: string;
   cancellationRules: string[];
 }
 export interface FlightOffer {
