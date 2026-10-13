@@ -695,12 +695,17 @@
               >مانده: {{ money(wallet.max) }}</span
             >
           </div>
-          }
           @if (!canPay()) {
           <p role="status" class="text-destructive text-sm">
             ماندهٔ کیف پول گردشگری برای این پرواز کافی نیست.
           </p>
-          } @if (!hasBookingContact()) {
+          }
+          } @else {
+          <p role="status" class="text-destructive text-sm">
+            کیف پول گردشگری فعالی ندارید.
+          </p>
+          }
+          @if (!hasBookingContact()) {
           <p role="alert" class="text-destructive text-sm">
             برای رزرو پرواز، شماره همراه معتبر را در پروفایل خود ثبت کنید.
           </p>
