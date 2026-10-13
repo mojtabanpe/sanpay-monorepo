@@ -37,6 +37,7 @@ import {
   FlightQuote,
   FlightSearchInput,
   PreviousTraveler,
+  airlineName,
 } from '@sanpay/models';
 import { HlmButtonImports } from '@sanpay/ui/button';
 import { HlmCardImports } from '@sanpay/ui/card';
@@ -286,6 +287,7 @@ export class FlightsPage {
 
   protected readonly money = toman;
   protected readonly number = faNumber;
+  protected readonly airline = airlineName;
   protected readonly dateLabel = jalaliLong;
   private searchedInput: FlightSearchInput | null = null;
   /** بعد از اولین جست‌وجو، هر تغییر پارامتر خودش دوباره جست‌وجو می‌کند */

@@ -58,6 +58,13 @@
             </span>
           </div>
           <div class="flex justify-between gap-3">
+            <span class="text-muted-foreground">ایرلاین</span>
+            <span>
+              {{ airline(booking.offer.departure.airline) }} · پرواز
+              <bdi>{{ booking.offer.departure.flightNumber }}</bdi>
+            </span>
+          </div>
+          <div class="flex justify-between gap-3">
             <span class="text-muted-foreground">نوع سفر</span>
             <span
               >{{ booking.offer.returning ? 'رفت و برگشت' : 'یک‌طرفه' }}</span

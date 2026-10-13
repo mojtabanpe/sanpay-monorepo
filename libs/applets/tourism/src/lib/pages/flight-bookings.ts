@@ -10,6 +10,7 @@ import {
   FlightAirport,
   FlightBookingReceipt,
   FlightBookingStatus,
+  airlineName,
 } from '@sanpay/models';
 import { HlmBadgeImports } from '@sanpay/ui/badge';
 import { HlmButtonImports } from '@sanpay/ui/button';
@@ -75,6 +76,7 @@ export class FlightBookingsPage {
     }
   }
 
+  protected readonly airline = airlineName;
   protected airportName(iata: string): string {
     return (
       this.airports().find((airport) => airport.iata === iata)?.name ?? iata

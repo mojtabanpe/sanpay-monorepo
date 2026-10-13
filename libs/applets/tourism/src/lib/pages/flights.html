@@ -327,7 +327,9 @@
               >{{ leg.airline }}</span
             >
             <div class="text-xs">
-              <p class="font-medium">پرواز <bdi>{{ leg.flightNumber }}</bdi></p>
+              <p class="font-medium">
+                {{ airline(leg.airline) }} · پرواز <bdi>{{ leg.flightNumber }}</bdi>
+              </p>
               <p class="text-muted-foreground mt-0.5">
                 {{ leg.flightType === 'charter' ? 'چارتر' : 'سیستمی' }} · {{
                 leg.flightClass === 'economy' ? 'اکونومی' : leg.flightClass }}
@@ -441,7 +443,8 @@
         </button>
       </div>
       <p>
-        {{ airportName(q.offer.departure.origin) }} به {{
+        {{ airline(q.offer.departure.airline) }} · {{
+        airportName(q.offer.departure.origin) }} به {{
         airportName(q.offer.departure.destination) }} · {{
         dateLabel(q.search.departureDate) }}
       </p>
@@ -458,7 +461,9 @@
         <summary class="cursor-pointer text-sm">قوانین کنسلی</summary>
         @for (leg of q.offer.returning ? [q.offer.departure, q.offer.returning]
         : [q.offer.departure]; track leg.key) {
-        <p class="mt-2 text-sm">پرواز {{ leg.flightNumber }}</p>
+        <p class="mt-2 text-sm">
+          {{ airline(leg.airline) }} · پرواز <bdi>{{ leg.flightNumber }}</bdi>
+        </p>
         @for (rule of leg.cancellationRules; track $index) {
         <p class="text-muted-foreground text-sm">{{ rule }}</p>
         } @if (!leg.cancellationRules.length) {
@@ -775,7 +780,7 @@
     >
       @for (option of airlineOptions(); track option.value) {
       <button hlmToggleGroupItem [value]="option.value">
-        <bdi>{{ option.value }}</bdi>
+        <span>{{ airline(option.value) }}</span>
         <span class="text-muted-foreground text-xs">{{ number(option.count) }}</span>
       </button>
       }

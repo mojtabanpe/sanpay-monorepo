@@ -6,7 +6,11 @@ import {
   signal,
 } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { AdminFlightBookingRow, FlightBookingStatus } from '@sanpay/models';
+import {
+  AdminFlightBookingRow,
+  FlightBookingStatus,
+  airlineName,
+} from '@sanpay/models';
 import { HlmBadgeImports } from '@sanpay/ui/badge';
 import { HlmButtonImports } from '@sanpay/ui/button';
 import { HlmCardImports } from '@sanpay/ui/card';
@@ -41,6 +45,7 @@ export class FlightBookings {
   protected readonly fa = fa;
   protected readonly toman = toman;
   protected readonly jalaliTime = jalaliTime;
+  protected readonly airline = airlineName;
   protected readonly statusLabels = FLIGHT_BOOKING_STATUS_LABELS;
   protected readonly statuses: Array<FlightBookingStatus | ''> = [
     '',
