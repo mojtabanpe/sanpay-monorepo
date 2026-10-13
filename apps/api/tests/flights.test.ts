@@ -102,6 +102,31 @@ test('converts provider prices once and totals each passenger category', () => {
   );
   assert.throws(() => flightAmount({ adult_guest_price: -10 }, search, 'IRR'));
 });
+test('reads cancellation rules in every spelling seen, on route or flight', () => {
+  const withRules = (route: unknown[], flight?: unknown[]) => [
+    {
+      ...raw[0],
+      departure_flight: {
+        ...leg,
+        ...(flight ? { cancellation_rules: flight } : {}),
+        routes: [{ ...leg.routes[0], cancellation_rules: route }],
+      },
+    },
+  ];
+  const rules = (route: unknown[], flight?: unknown[]) =>
+    mapFlightOffers(withRules(route, flight), search, 'IRR')[0].departure
+      .cancellationRules;
+  assert.deepEqual(
+    rules([{ timeframe_description: 'تا ۲۴ ساعت قبل', penalty_percent: 30 }]),
+    ['تا ۲۴ ساعت قبل — ۳۰٪ جریمه'],
+  );
+  assert.deepEqual(rules([{ description: 'از ۳ ساعت قبل', percent: '80' }]), [
+    'از ۳ ساعت قبل — ۸۰٪ جریمه',
+  ]);
+  assert.deepEqual(rules([], ['غیرقابل استرداد']), ['غیرقابل استرداد']);
+  // an unreadable rule is dropped (and logged) instead of failing the search
+  assert.deepEqual(rules([{ from: 3, to: 24 }]), []);
+});
 test('keeps paired return flights and rejects mismatched dates/routes or capacity', () => {
   assert.equal(mapFlightOffers(raw, { ...search, adults: 4 }, 'IRR').length, 0);
   assert.equal(

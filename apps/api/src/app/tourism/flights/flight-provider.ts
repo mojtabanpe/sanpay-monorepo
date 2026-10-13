@@ -56,6 +56,46 @@ export function flightAmount(
     throw new BadGatewayException('مبلغ پرواز قابل پرداخت نیست');
   return amount;
 }
+/**
+ * The rules have been seen per route (`routes[].cancellation_rules`), but the
+ * contract never fixed their field names, and a rule that is silently dropped
+ * reads to the employee as «جریمه اعلام نشده». So: accept the rules on the
+ * route or on the flight, the known spellings of text/percent, and plain
+ * strings — and log any rule that still cannot be read, so the real shape
+ * shows up in the API log instead of vanishing.
+ */
+const RULE_TEXT = ['timeframe_description', 'description', 'title', 'text', 'timeframe', 'name'];
+const RULE_PERCENT = ['penalty_percent', 'percent', 'percentage', 'penalty', 'value'];
+const ruleLogger = new Logger('FlightCancellationRules');
+function cancellationRule(raw: unknown): string {
+  if (typeof raw === 'string') return raw.trim();
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return '';
+  const rule = raw as Record<string, unknown>;
+  const text = RULE_TEXT.map((k) => rule[k]).find(
+    (v): v is string => typeof v === 'string' && !!v.trim(),
+  );
+  const percent = RULE_PERCENT.map((k) => rule[k])
+    .map((v) => (typeof v === 'string' && v.trim() ? Number(v) : v))
+    .find((v): v is number => typeof v === 'number' && Number.isFinite(v));
+  if (text && percent !== undefined)
+    return `${text.trim()} — ${new Intl.NumberFormat('fa-IR').format(percent)}٪ جریمه`;
+  return text?.trim() ?? '';
+}
+function cancellationRules(
+  flight: Record<string, unknown>,
+  routes: Record<string, unknown>[],
+): string[] {
+  const raw = [flight, ...routes].flatMap((r) =>
+    Array.isArray(r['cancellation_rules']) ? r['cancellation_rules'] : [],
+  );
+  const rules = raw.map(cancellationRule);
+  const unread = raw.filter((_, i) => !rules[i]);
+  if (unread.length)
+    ruleLogger.warn(
+      `unreadable cancellation rule: ${JSON.stringify(unread[0]).slice(0, 500)}`,
+    );
+  return [...new Set(rules.filter(Boolean))];
+}
 function leg(raw: unknown): FlightLeg {
   const f = record(raw);
   const routes = list(f['routes']).map(record);
@@ -76,17 +116,7 @@ function leg(raw: unknown): FlightLeg {
     stops: num(f['stops']),
     capacity: num(f['capacity']),
     foreign: f['is_foreign'],
-    cancellationRules: routes
-      .flatMap((r) =>
-        list(r['cancellation_rules'])
-          .map(record)
-          .map((rule) =>
-            typeof rule['timeframe_description'] === 'string'
-              ? `${rule['timeframe_description']} — ${num(rule['penalty_percent'])}٪`
-              : '',
-          ),
-      )
-      .filter(Boolean),
+    cancellationRules: cancellationRules(f, routes),
   };
 }
 export function mapFlightOffers(

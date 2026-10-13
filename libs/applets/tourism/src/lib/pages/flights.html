@@ -445,9 +445,18 @@
       <p>
         {{ airline(q.offer.departure.airline) }} · {{
         airportName(q.offer.departure.origin) }} به {{
-        airportName(q.offer.departure.destination) }} · {{
-        dateLabel(q.search.departureDate) }}
+        airportName(q.offer.departure.destination) }}
       </p>
+      @for (leg of q.offer.returning ? [q.offer.departure, q.offer.returning]
+      : [q.offer.departure]; track leg.key) {
+      <p class="text-sm">
+        @if (q.offer.returning) {
+        <span class="text-muted-foreground">{{ $index === 0 ? 'رفت' : 'برگشت' }}: </span>
+        }
+        {{ dateLabel(leg.departureTime.slice(0, 10)) }} ساعت
+        <bdi>{{ leg.departureTime.slice(11, 16) }}</bdi>
+      </p>
+      }
       <p class="text-muted-foreground text-sm">
         {{ number(q.search.adults + q.search.children + q.search.infants) }}
         مسافر{{ q.offer.returning ? ' · رفت و برگشت' : ' · یک‌طرفه' }}
