@@ -1,5 +1,9 @@
 import { Type } from 'class-transformer';
 import {
+  ArrayMaxSize,
+  IsArray,
+  IsBoolean,
+  IsIn,
   IsInt,
   IsNotEmpty,
   IsOptional,
@@ -49,6 +53,81 @@ export class SearchHotelsDto {
   @Min(1)
   @Max(10)
   capacity = 2;
+}
+
+export class HotelFiltersDto {
+  @IsArray()
+  @ArrayMaxSize(20)
+  @IsString({ each: true })
+  types: string[] = [];
+
+  @IsArray()
+  @ArrayMaxSize(6)
+  @IsInt({ each: true })
+  @Min(0, { each: true })
+  @Max(5, { each: true })
+  rates: number[] = [];
+
+  /** [کمینه، بیشینه] به تومان؛ null یعنی بدون فیلتر */
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(2)
+  @IsInt({ each: true })
+  @Min(0, { each: true })
+  price: [number, number] | null = null;
+
+  @IsBoolean()
+  breakfast = false;
+
+  @IsInt()
+  @Min(0)
+  @Max(20)
+  minCapacity = 0;
+
+  @IsBoolean()
+  discountOnly = false;
+
+  @IsIn(['cheap', 'expensive', 'stars'])
+  sort: 'cheap' | 'expensive' | 'stars' = 'cheap';
+}
+
+/** یک صفحه از فهرست هتل — فیلترها روی کل نتیجه و سمت سرور */
+export class HotelPageDto {
+  /** شناسهٔ مبهم شهر؛ ندادن یعنی کاتالوگ «همهٔ شهرها» */
+  @IsOptional()
+  @IsString()
+  cityId?: string;
+
+  @Matches(ISO_DATE, { message: 'تاریخ ورود باید به شکل YYYY-MM-DD باشد' })
+  checkin!: string;
+
+  @Type(() => Number)
+  @IsInt()
+  @Min(1, { message: 'تعداد شب باید حداقل ۱ باشد' })
+  @Max(30, { message: 'حداکثر ۳۰ شب قابل رزرو است' })
+  nights!: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(10)
+  capacity = 2;
+
+  @ValidateNested()
+  @Type(() => HotelFiltersDto)
+  filters: HotelFiltersDto = new HotelFiltersDto();
+
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  page = 1;
+
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(50)
+  pageSize = 20;
 }
 
 export class BookingGuestDto {

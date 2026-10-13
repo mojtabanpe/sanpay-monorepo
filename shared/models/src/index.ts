@@ -3,6 +3,7 @@ export * from './lib/payment.model';
 export * from './lib/profile.model';
 export * from './lib/store.model';
 export * from './lib/tourism.model';
+export * from './lib/hotel-filters';
 export * from './lib/admin.model';
 export * from './lib/flight.model';
 export * from './lib/airline';

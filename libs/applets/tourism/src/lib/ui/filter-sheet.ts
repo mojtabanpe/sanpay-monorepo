@@ -3,6 +3,7 @@ import { NgIcon, provideIcons } from '@ng-icons/core';
 import { lucideSlidersHorizontal } from '@ng-icons/lucide';
 import { HlmButtonImports } from '@sanpay/ui/button';
 import { HlmSheetImports } from '@sanpay/ui/sheet';
+import type { PriceRange } from '@sanpay/models';
 import { faNumber } from '../format';
 
 /**
@@ -120,8 +121,8 @@ export function priceStep(min: number, max: number): number {
   return Math.ceil(raw / magnitude) * magnitude;
 }
 
-/** بازهٔ قیمت؛ null یعنی فیلتر قیمت فعال نیست */
-export type PriceRange = readonly [number, number] | null;
+/** بازهٔ قیمت؛ null یعنی فیلتر قیمت فعال نیست — تعریفش در `@sanpay/models` است */
+export type { PriceRange } from '@sanpay/models';
 
 /**
  * مقدار اسلایدر را به فیلتر تبدیل می‌کند: اگر هر دو سر روی لبه‌ها باشند، فیلتر

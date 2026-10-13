@@ -1,10 +1,17 @@
-import { Component, computed, effect, inject, signal, untracked } from '@angular/core';
+import {
+  Component,
+  computed,
+  effect,
+  inject,
+  linkedSignal,
+  signal,
+  untracked,
+} from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { NgIcon, provideIcons } from '@ng-icons/core';
 import { lucideHotel, lucideMinus, lucidePlane, lucidePlus } from '@ng-icons/lucide';
-import { HotelAvailability, HotelSummary, TourismCity } from '@sanpay/models';
 import { HlmBadgeImports } from '@sanpay/ui/badge';
 import { HlmButtonImports } from '@sanpay/ui/button';
 import { HlmCardImports } from '@sanpay/ui/card';
@@ -28,15 +35,14 @@ import {
 } from '../ui/filter-sheet';
 import {
   HotelCard,
+  HotelFacets,
   HotelFilters,
   HotelSort,
   NO_HOTEL_FILTERS,
+  TourismCity,
   activeHotelFilters,
-  applyHotelFilters,
-  hotelMaxCapacity,
-  hotelPriceBounds,
-  hotelTypeOptions,
-} from './hotel-filters';
+} from '@sanpay/models';
+import { LoadMore } from '../ui/load-more';
 
 @Component({
   selector: 'tourism-hotel-list',
@@ -58,6 +64,7 @@ import {
     HlmInputGroupImports,
     FilterSheet,
     FilterGroup,
+    LoadMore,
   ],
   viewProviders: [
     provideIcons({ lucideHotel, lucidePlane, lucideMinus, lucidePlus }),
@@ -71,7 +78,19 @@ export class HotelListPage {
   private readonly query = this.route.snapshot.queryParamMap;
 
   protected readonly cities = signal<TourismCity[]>([]);
+  /** کارت‌های صفحه‌های بارشده — فیلتر و مرتب‌سازی را سرور روی کل نتیجه انجام داده */
   protected readonly hotels = signal<HotelCard[]>([]);
+  /** تعداد بعد از فیلتر / پیش از فیلتر، از سرور */
+  protected readonly total = signal(0);
+  protected readonly unfilteredTotal = signal(0);
+  private readonly facets = signal<HotelFacets>({
+    types: [],
+    priceBounds: null,
+    maxCapacity: 0,
+  });
+  private page = 0;
+  protected readonly hasMore = computed(() => this.hotels().length < this.total());
+  protected readonly loadingMore = signal(false);
   /**
    * با شهر انتخاب‌شده فهرست از جست‌وجوی اتاق خالیِ همان تاریخ می‌آید (فقط
    * هتل‌های دارای اتاق، با «از … ریال»). «همهٔ شهرها» کاتالوگ بی‌قیمت است —
@@ -82,24 +101,10 @@ export class HotelListPage {
   protected readonly error = signal<string | null>(null);
 
   /**
-   * اسکرول تدریجی با `@defer`.
-   *
-   * «همهٔ شهرها» بیش از هزار هتل برمی‌گرداند و رندر یک‌جای آن‌ها یعنی هزار
-   * کارت و هزار درخواست تصویر — روی موبایل غیرقابل استفاده. سرور صفحه‌بندی
-   * ندارد، پس کل فهرست یک‌بار می‌آید و همین‌جا به دسته‌های کوچک تقسیم می‌شود؛
-   * قالب دستهٔ اول را مستقیم و بقیه را با `@defer (on viewport)` رندر می‌کند.
+   * صفحه‌بندی سمت سرور: نتیجهٔ کامل (با پروداکشنِ هتل‌یار حدود ۱ مگابایت، ۹۷٪
+   * آن فهرست اتاق‌ها) فقط در سرور می‌ماند و هر صفحه ۲۰ کارت بی‌اتاق است.
    */
-  private static readonly CHUNK = 12;
-
-  protected readonly chunks = computed(() => {
-    const hotels = this.visible();
-    const chunks: HotelCard[][] = [];
-    for (let i = 0; i < hotels.length; i += HotelListPage.CHUNK) {
-      chunks.push(hotels.slice(i, i + HotelListPage.CHUNK));
-    }
-    return chunks;
-  });
-
+  private static readonly PAGE_SIZE = 20;
 
   /**
    * شهر، تاریخ و تعداد شب در query string هم می‌نشینند تا back از صفحهٔ هتل
@@ -115,21 +120,39 @@ export class HotelListPage {
   );
 
   // ─── فیلترها (باتم‌شیت) ───────────────────────────────────────────
-  // روی نتیجهٔ همان جست‌وجو و سمت کاربر اعمال می‌شوند؛ هیچ درخواست تازه‌ای
-  // به تأمین‌کننده نمی‌رود.
+  // سمت سرور، روی نتیجهٔ کشِ همان جست‌وجو؛ هیچ درخواست تازه‌ای به تأمین‌کننده
+  // نمی‌رود.
 
-  protected readonly filters = signal<HotelFilters>(NO_HOTEL_FILTERS);
+  /**
+   * با عوض شدن شهر یا تاریخ لبه‌های اسلایدر قیمت عوض می‌شوند و بازهٔ قبلی
+   * معنا ندارد؛ کاتالوگ «همهٔ شهرها» هم «گران‌ترین» ندارد. `linkedSignal`
+   * این بازنشانی را در همان تیکِ تغییر شهر انجام می‌دهد، پس یک درخواست می‌رود نه دو.
+   */
+  protected readonly filters = linkedSignal<
+    { city: string; checkin: string; nights: number },
+    HotelFilters
+  >({
+    source: () => ({
+      city: this.cityId(),
+      checkin: this.checkin(),
+      nights: this.nights(),
+    }),
+    computation: (source, previous) => {
+      if (!previous) return NO_HOTEL_FILTERS;
+      const sort =
+        !source.city && previous.value.sort === 'expensive'
+          ? 'cheap'
+          : previous.value.sort;
+      return { ...previous.value, price: null, sort };
+    },
+  });
   protected readonly filtersOpen = signal(false);
-  protected readonly visible = computed(() =>
-    applyHotelFilters(this.hotels(), this.filters()),
-  );
+  protected readonly visible = this.hotels.asReadonly();
   protected readonly activeFilters = computed(() =>
     activeHotelFilters(this.filters()),
   );
-  protected readonly typeOptions = computed(() =>
-    hotelTypeOptions(this.hotels(), this.filters().types),
-  );
-  protected readonly priceBounds = computed(() => hotelPriceBounds(this.hotels()));
+  protected readonly typeOptions = computed(() => this.facets().types);
+  protected readonly priceBounds = computed(() => this.facets().priceBounds);
   protected readonly priceStep = computed(() => {
     const bounds = this.priceBounds();
     return bounds ? priceStep(bounds[0], bounds[1]) : 1;
@@ -137,7 +160,7 @@ export class HotelListPage {
   protected readonly priceValue = computed(
     () => this.filters().price ?? this.priceBounds() ?? [0, 0],
   );
-  protected readonly maxCapacity = computed(() => hotelMaxCapacity(this.hotels()));
+  protected readonly maxCapacity = computed(() => this.facets().maxCapacity);
   protected readonly sortOptions = computed<{ value: HotelSort; label: string }[]>(
     () =>
       this.dated()
@@ -189,11 +212,12 @@ export class HotelListPage {
   protected readonly brokenImages = signal(new Set<string>());
 
   constructor() {
-    // شهر، تاریخ یا تعداد شب عوض شد → دوباره بگیر
+    // شهر، تاریخ، تعداد شب یا فیلتر عوض شد → صفحهٔ اول از نو
     effect(() => {
       this.cityId();
       this.checkin();
       this.nights();
+      this.filters();
       untracked(() => void this.load());
     });
     effect(() => {
@@ -213,54 +237,65 @@ export class HotelListPage {
   /** شمارهٔ آخرین درخواست — پاسخ کهنهٔ شهر قبلی روی شهر تازه ننشیند */
   private loadId = 0;
 
+  private request(page: number) {
+    return firstValueFrom(
+      this.tourism.hotelPage({
+        cityId: this.cityId() || undefined,
+        checkin: this.checkin(),
+        nights: this.nights(),
+        // همان ظرفیتی که صفحهٔ هتل برای اتاق‌ها می‌پرسد، تا هتلی که اینجا
+        // هست آنجا خالی درنیاید
+        capacity: 2,
+        filters: this.filters(),
+        page,
+        pageSize: HotelListPage.PAGE_SIZE,
+      }),
+    );
+  }
+
   protected async load(): Promise<void> {
     const id = ++this.loadId;
-    const cityId = this.cityId();
     this.loading.set(true);
+    this.loadingMore.set(false);
     this.error.set(null);
     try {
-      if (cityId) {
-        // استپر شب چند تغییر پشت‌سرهم می‌سازد — یک جست‌وجو کافی است
-        await new Promise((resolve) => setTimeout(resolve, 300));
-        if (id !== this.loadId) return;
-      }
-      const [cities, hotels] = await Promise.all([
+      // استپر شب و اسلایدر قیمت چند تغییر پشت‌سرهم می‌سازند — یک درخواست کافی است
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      if (id !== this.loadId) return;
+      const [cities, result] = await Promise.all([
         this.cities().length > 0
           ? Promise.resolve(this.cities())
           : firstValueFrom(this.tourism.cities()),
-        cityId
-          ? firstValueFrom(
-              this.tourism.search({
-                cityId,
-                checkin: this.checkin(),
-                nights: this.nights(),
-                rate: 0,
-                // همان ظرفیتی که صفحهٔ هتل برای اتاق‌ها می‌پرسد، تا هتلی که
-                // اینجا هست آنجا خالی درنیاید
-                capacity: 2,
-              }),
-            )
-          : firstValueFrom(this.tourism.hotels()),
+        this.request(1),
       ]);
       if (id !== this.loadId) return;
       this.cities.set(cities);
-      const cityName = cities.find((city) => city.id === cityId)?.name ?? '';
-      this.hotels.set(
-        cityId
-          ? (hotels as HotelAvailability[]).map((availability) =>
-              fromAvailability(availability, cityId, cityName),
-            )
-          : (hotels as HotelSummary[]),
-      );
-      // لبه‌های اسلایدر قیمت با هر جست‌وجو عوض می‌شوند؛ بازهٔ قبلی دیگر معنا ندارد
-      this.setFilter('price', null);
-      if (!cityId && this.filters().sort === 'expensive') {
-        this.setFilter('sort', 'cheap');
-      }
+      this.page = 1;
+      this.hotels.set(result.items);
+      this.total.set(result.total);
+      this.unfilteredTotal.set(result.unfilteredTotal);
+      this.facets.set(result.facets);
     } catch {
       if (id === this.loadId) this.error.set('دریافت فهرست هتل‌ها ناموفق بود');
     } finally {
       if (id === this.loadId) this.loading.set(false);
+    }
+  }
+
+  protected async loadMore(): Promise<void> {
+    if (this.loading() || this.loadingMore() || !this.hasMore()) return;
+    const id = this.loadId;
+    this.loadingMore.set(true);
+    try {
+      const result = await this.request(this.page + 1);
+      if (id !== this.loadId) return;
+      this.page = result.page;
+      this.hotels.update((hotels) => [...hotels, ...result.items]);
+      this.total.set(result.total);
+    } catch {
+      // دکمهٔ «نمایش بیشتر» می‌ماند تا دوباره امتحان شود
+    } finally {
+      if (id === this.loadId) this.loadingMore.set(false);
     }
   }
 
@@ -285,23 +320,4 @@ export class HotelListPage {
 
   protected readonly count = faNumber;
   protected readonly money = toman;
-}
-
-function fromAvailability(
-  availability: HotelAvailability,
-  cityId: string,
-  cityName: string,
-): HotelCard {
-  return {
-    id: availability.hotelId,
-    name: availability.hotelName,
-    rate: availability.rate ?? 0,
-    type: availability.type ?? '',
-    cityId,
-    cityName,
-    address: availability.address ?? '',
-    photo: availability.photo ?? null,
-    rooms: availability.rooms,
-    fromPrice: Math.min(...availability.rooms.map((room) => room.price)),
-  };
 }

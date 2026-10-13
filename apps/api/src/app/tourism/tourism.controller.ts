@@ -2,6 +2,8 @@ import {
   Body,
   Controller,
   Get,
+  HttpCode,
+  HttpStatus,
   Param,
   ParseIntPipe,
   Post,
@@ -14,6 +16,7 @@ import {
   BookingReceipt,
   HotelAvailability,
   HotelDetail,
+  HotelPage,
   HotelSummary,
   PreviousTraveler,
   TourismCity,
@@ -21,7 +24,11 @@ import {
 import { Request } from 'express';
 import { JwtPayload } from '../auth/auth.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { CreateBookingDto, SearchHotelsDto } from './dto/tourism.dto';
+import {
+  CreateBookingDto,
+  HotelPageDto,
+  SearchHotelsDto,
+} from './dto/tourism.dto';
 import { TourismService } from './tourism.service';
 
 @Controller('tourism')
@@ -38,6 +45,13 @@ export class TourismController {
   @Get('hotels')
   hotels(@Query('cityId') cityId?: string): Promise<HotelSummary[]> {
     return this.tourism.hotels(cityId || null);
+  }
+
+  /** فهرست صفحه‌بندی‌شده — فیلتر و مرتب‌سازی سمت سرور، روی کل نتیجه */
+  @Post('hotels/page')
+  @HttpCode(HttpStatus.OK)
+  hotelPage(@Body() dto: HotelPageDto): Promise<HotelPage> {
+    return this.tourism.hotelPage(dto);
   }
 
   @Get('hotels/:hotelId')

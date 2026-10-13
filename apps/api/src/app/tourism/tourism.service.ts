@@ -10,14 +10,24 @@ import {
   PreviousTraveler,
   BookingStatus,
   HotelAvailability,
+  HotelCard,
   HotelDetail,
+  HotelPage,
   HotelSummary,
   TourismCity,
   TourismWallet,
+  applyHotelFilters,
+  hotelMaxCapacity,
+  hotelPriceBounds,
+  hotelTypeOptions,
 } from '@sanpay/models';
 import { randomInt } from 'node:crypto';
 import { PrismaService } from '../prisma/prisma.service';
-import { CreateBookingDto, SearchHotelsDto } from './dto/tourism.dto';
+import {
+  CreateBookingDto,
+  HotelPageDto,
+  SearchHotelsDto,
+} from './dto/tourism.dto';
 import { HotelProviderRouter } from './providers/hotel-provider.router';
 import {
   PROVIDER_NAMES,
@@ -25,6 +35,15 @@ import {
   providerOf,
   sameProvider,
 } from './providers/provider-id';
+
+/**
+ * نتیجهٔ کامل هر جست‌وجو چند دقیقه نگه داشته می‌شود تا ورق زدن و عوض کردن
+ * فیلتر دوباره سراغ تأمین‌کننده نرود — جست‌وجوی مشهد ۹ ثانیه و کاتالوگ
+ * «همهٔ شهرها» ۲۰ ثانیه طول کشید (اندازه‌گیری‌شده). قیمت‌ها در این بازه
+ * ممکن است کهنه شوند؛ پیش‌فاکتور (`quote`) همیشه قیمت تازه می‌گیرد.
+ */
+const LIST_TTL_MS = 5 * 60 * 1000;
+const LIST_CACHE_MAX = 100;
 
 @Injectable()
 export class TourismService {
@@ -68,6 +87,78 @@ export class TourismService {
           providerOf(hotel.id) === 'eg' ||
           !this.providers.servedByEghamat24(hotel.cityName),
       );
+  }
+
+  /**
+   * یک صفحه از فهرست هتل. فیلتر و مرتب‌سازی روی **کل** نتیجه اجرا می‌شود و فقط
+   * همان صفحه — بدون فهرست اتاق‌ها، که ۹۷٪ حجم پاسخ بود — به اپ می‌رود.
+   */
+  async hotelPage(dto: HotelPageDto): Promise<HotelPage> {
+    const cityId = dto.cityId || null;
+    if (cityId) this.assertFutureDate(dto.checkin);
+    const key = cityId
+      ? `${cityId}|${dto.checkin}|${dto.nights}|${dto.capacity}`
+      : 'catalog';
+    const cards = await this.cachedList(key, async () => {
+      if (!cityId) return this.hotels(null);
+      const [results, cities] = await Promise.all([
+        this.providers.forId(cityId).search({
+          checkin: dto.checkin,
+          nights: dto.nights,
+          hotelId: null,
+          cityId,
+          rate: 0,
+          capacity: dto.capacity,
+        }),
+        this.cities(),
+      ]);
+      const cityName = cities.find((city) => city.id === cityId)?.name ?? '';
+      return results
+        .filter((result) => result.rooms.length > 0)
+        .map((result) => cardOf(result, cityId, cityName));
+    });
+
+    const filtered = applyHotelFilters([...cards], dto.filters);
+    const start = (dto.page - 1) * dto.pageSize;
+    return {
+      items: filtered
+        .slice(start, start + dto.pageSize)
+        .map((card) => ({ ...card, rooms: undefined })),
+      total: filtered.length,
+      unfilteredTotal: cards.length,
+      page: dto.page,
+      pageSize: dto.pageSize,
+      facets: {
+        types: hotelTypeOptions(cards, dto.filters.types),
+        priceBounds: hotelPriceBounds(cards),
+        maxCapacity: hotelMaxCapacity(cards),
+      },
+    };
+  }
+
+  private readonly listCache = new Map<
+    string,
+    { at: number; value: Promise<HotelCard[]> }
+  >();
+
+  /** درخواست‌های هم‌زمانِ یک کلید یک تماس مشترک دارند؛ خطا کش نمی‌شود */
+  private cachedList(
+    key: string,
+    load: () => Promise<HotelCard[]>,
+  ): Promise<HotelCard[]> {
+    const hit = this.listCache.get(key);
+    if (hit && Date.now() - hit.at < LIST_TTL_MS) return hit.value;
+    const value = load();
+    this.listCache.delete(key);
+    this.listCache.set(key, { at: Date.now(), value });
+    value.catch(() => {
+      if (this.listCache.get(key)?.value === value) this.listCache.delete(key);
+    });
+    // Map ترتیب درج را نگه می‌دارد؛ قدیمی‌ترین اول حذف می‌شود
+    while (this.listCache.size > LIST_CACHE_MAX) {
+      this.listCache.delete(this.listCache.keys().next().value as string);
+    }
+    return value;
   }
 
   async hotel(hotelId: string): Promise<HotelDetail> {
@@ -694,4 +785,24 @@ function addDays(isoDate: string, days: number): string {
   const date = new Date(`${isoDate}T00:00:00Z`);
   date.setUTCDate(date.getUTCDate() + days);
   return date.toISOString().slice(0, 10);
+}
+
+/** کارت فهرست از نتیجهٔ جست‌وجوی تاریخ‌دار — «از …» ارزان‌ترین اتاق است */
+function cardOf(
+  availability: HotelAvailability,
+  cityId: string,
+  cityName: string,
+): HotelCard {
+  return {
+    id: availability.hotelId,
+    name: availability.hotelName,
+    rate: availability.rate ?? 0,
+    type: availability.type ?? '',
+    cityId,
+    cityName,
+    address: availability.address ?? '',
+    photo: availability.photo ?? null,
+    rooms: availability.rooms,
+    fromPrice: Math.min(...availability.rooms.map((room) => room.price)),
+  };
 }

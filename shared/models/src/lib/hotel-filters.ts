@@ -1,5 +1,13 @@
-import { HotelSummary, RoomOffer } from '@sanpay/models';
-import { PriceRange } from '../ui/filter-sheet';
+import { HotelSummary, RoomOffer } from './tourism.model';
+
+/**
+ * فیلتر و مرتب‌سازی فهرست هتل — منطق خالص و مشترک. سرور صفحه‌بندی را با همین
+ * انجام می‌دهد (`POST /api/tourism/hotels/page`) تا اسلایدر قیمت و تعداد هر نوع
+ * از کل نتیجه حساب شود، نه از همان ۲۰ کارتی که به اپ رسیده.
+ */
+
+/** بازهٔ قیمت [کمینه، بیشینه] به تومان؛ null یعنی بدون فیلتر */
+export type PriceRange = readonly [number, number] | null;
 
 /** کارت فهرست — کاتالوگ، یا جست‌وجوی تاریخ‌دار با اتاق‌ها و کمترین قیمت */
 export type HotelCard = HotelSummary & {
@@ -140,4 +148,38 @@ export function hotelMaxCapacity(hotels: HotelCard[]): number {
     0,
     ...hotels.flatMap((hotel) => (hotel.rooms ?? []).map((room) => room.capacity)),
   );
+}
+
+/** درخواست یک صفحه از فهرست هتل */
+export interface HotelPageRequest {
+  /** شناسهٔ مبهم شهر؛ ندادن = کاتالوگ بی‌قیمت «همهٔ شهرها» */
+  cityId?: string;
+  /** YYYY-MM-DD — فقط با شهر معنا دارد */
+  checkin: string;
+  nights: number;
+  /** تعداد نفرات هر اتاق */
+  capacity: number;
+  filters: HotelFilters;
+  /** از ۱ */
+  page: number;
+  pageSize: number;
+}
+
+/** گزینه‌های فیلتر، از **کل** نتیجه (نه فقط این صفحه) */
+export interface HotelFacets {
+  types: { type: string; count: number }[];
+  priceBounds: readonly [number, number] | null;
+  maxCapacity: number;
+}
+
+export interface HotelPage {
+  /** کارت‌ها بدون فهرست اتاق — فقط «از …» (`fromPrice`) */
+  items: HotelCard[];
+  /** تعداد بعد از فیلتر */
+  total: number;
+  /** تعداد کل نتیجهٔ جست‌وجو، پیش از فیلتر */
+  unfilteredTotal: number;
+  page: number;
+  pageSize: number;
+  facets: HotelFacets;
 }

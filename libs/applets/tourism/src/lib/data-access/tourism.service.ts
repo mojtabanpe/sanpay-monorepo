@@ -6,6 +6,8 @@ import {
   CreateBookingInput,
   HotelAvailability,
   HotelDetail,
+  HotelPage,
+  HotelPageRequest,
   HotelSummary,
   PreviousTraveler,
   TourismCity,
@@ -36,6 +38,15 @@ export class TourismService {
   hotels(cityId?: string): Observable<HotelSummary[]> {
     const params = cityId ? new HttpParams().set('cityId', cityId) : undefined;
     return this.http.get<HotelSummary[]>('/api/tourism/hotels', { params });
+  }
+
+  /** یک صفحه از فهرست هتل؛ فیلتر و مرتب‌سازی سمت سرور روی کل نتیجه */
+  hotelPage(request: HotelPageRequest): Observable<HotelPage> {
+    const { cityId, ...rest } = request;
+    return this.http.post<HotelPage>('/api/tourism/hotels/page', {
+      ...rest,
+      ...(cityId ? { cityId } : {}),
+    });
   }
 
   hotel(hotelId: string): Observable<HotelDetail> {
