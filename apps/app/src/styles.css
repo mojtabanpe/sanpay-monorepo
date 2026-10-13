@@ -256,3 +256,15 @@ html {
     transition: none;
   }
 }
+
+/*
+ * Bottom sheet on a wide screen: the app itself is a 550px column (shell.html),
+ * so a sheet spanning the whole window detached from it. Same width, centred
+ * under the column; on a phone it is still edge to edge.
+ */
+@media (min-width: 550px) {
+  [data-slot='sheet-content'][data-side='bottom'] {
+    max-width: 550px;
+    margin-inline: auto;
+  }
+}

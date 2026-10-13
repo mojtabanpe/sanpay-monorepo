@@ -67,7 +67,7 @@ export function airportShortName(
     >
       <hlm-sheet-content
         *hlmSheetPortal
-        class="max-h-[85dvh] rounded-t-2xl pb-[max(1rem,env(safe-area-inset-bottom))]"
+        class="max-h-[85dvh] min-h-[85dvh] rounded-t-2xl pb-[max(1rem,env(safe-area-inset-bottom))]"
       >
         <div hlmSheetHeader>
           <h2 hlmSheetTitle>{{ title() }}</h2>

@@ -47,9 +47,12 @@ import { HlmSheetImports } from '@sanpay/ui/sheet';
       [state]="open() ? 'open' : 'closed'"
       (stateChanged)="onStateChange($event)"
     >
+      <!-- ارتفاع ثابت (min = max) تا با تایپ در جست‌وجو و کوتاه شدن فهرست، شیت
+           بالا و پایین نپرد. h-[…] کار نمی‌کند: data-[side=bottom]:h-auto اسپارتن
+           برنده است، ولی min/max-height بر height می‌چربند. -->
       <hlm-sheet-content
         *hlmSheetPortal
-        class="max-h-[85dvh] rounded-t-2xl pb-[max(1rem,env(safe-area-inset-bottom))]"
+        class="max-h-[85dvh] min-h-[85dvh] rounded-t-2xl pb-[max(1rem,env(safe-area-inset-bottom))]"
       >
         <div hlmSheetHeader>
           <h2 hlmSheetTitle>انتخاب شهر</h2>
