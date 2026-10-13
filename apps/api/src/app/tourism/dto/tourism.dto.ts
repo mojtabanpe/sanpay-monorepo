@@ -144,6 +144,10 @@ export class BookingGuestDto {
 
   @Matches(/^09\d{9}$/, { message: 'شمارهٔ موبایل معتبر نیست' })
   mobile!: string;
+
+  /** فقط برای دفترچهٔ مسافران — به تأمین‌کننده فرستاده نمی‌شود */
+  @Matches(ISO_DATE, { message: 'تاریخ تولد باید به شکل YYYY-MM-DD باشد' })
+  birthdate!: string;
 }
 
 export class CreateBookingDto {

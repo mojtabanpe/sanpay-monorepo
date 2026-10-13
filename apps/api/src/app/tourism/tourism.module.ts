@@ -16,12 +16,14 @@ import { TourismWebhookController } from './tourism-webhook.controller';
 import { TourismWebhookService } from './tourism-webhook.service';
 import { TourismController } from './tourism.controller';
 import { TourismService } from './tourism.service';
+import { TravelersService } from './travelers.service';
 import { FlightsService } from './flights/flights.service';
 
 @Module({
   controllers: [TourismController, TourismWebhookController, FlightsController],
   providers: [
     TourismService,
+    TravelersService,
     TourismWebhookService,
     HotelProviderRouter,
     HotelyarProvider,

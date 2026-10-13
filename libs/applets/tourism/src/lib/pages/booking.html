@@ -290,6 +290,34 @@
             </p>
             }
           </hlm-field>
+
+          <hlm-field>
+            <label hlmFieldLabel for="traveller-birthdate"
+              >تاریخ تولد (شمسی)</label
+            >
+            <hlm-date-picker
+              sanpayDatePickerWidth
+              [date]="jalaliBirthdate()"
+              [defaultFocusedDate]="defaultJalaliBirthdate"
+              [min]="minJalaliBirthdate"
+              [max]="maxJalaliBirthdate"
+              captionLayout="dropdown"
+              (dateChange)="updateBirthdate($event)"
+            >
+              <hlm-date-picker-trigger
+                id="traveller-birthdate"
+                class="h-12 w-full rounded-xl"
+              >
+                انتخاب تاریخ تولد
+              </hlm-date-picker-trigger>
+            </hlm-date-picker>
+            @if (travelerForm.birthdate().touched() &&
+            travelerForm.birthdate().invalid()) {
+            <p id="traveller-birthdate-error" role="alert" class="text-xs text-red-700">
+              {{ travelerForm.birthdate().errors()[0].message }}
+            </p>
+            }
+          </hlm-field>
         </hlm-field-group>
       </div>
     </section>

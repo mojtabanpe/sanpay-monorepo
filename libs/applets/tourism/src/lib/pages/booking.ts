@@ -10,30 +10,43 @@ import {
 } from '@angular/forms/signals';
 import { ActivatedRoute, Router } from '@angular/router';
 import { AuthService } from '@sanpay/applets/auth';
+import { SanpayDatePickerWidth } from '@sanpay/dates';
 import {
-  BookingGuest,
   BookingQuote,
   BookingReceipt,
+  HotelBookingGuest,
   PreviousTraveler,
 } from '@sanpay/models';
+import { JalaliDate } from '@spartan-ng/brain/date-time';
 import { HlmButtonImports } from '@sanpay/ui/button';
 import { HlmCardImports } from '@sanpay/ui/card';
+import { HlmDatePickerImports } from '@sanpay/ui/date-picker';
 import { HlmFieldImports } from '@sanpay/ui/field';
 import { HlmInputImports } from '@sanpay/ui/input';
 import { HlmSkeletonImports } from '@sanpay/ui/skeleton';
 import { firstValueFrom } from 'rxjs';
 import { TourismService } from '../data-access/tourism.service';
-import { faNumber, jalali, jalaliLong, toman } from '../format';
+import {
+  faNumber,
+  isoToJalali,
+  jalali,
+  jalaliLong,
+  jalaliToIso,
+  today,
+  toman,
+} from '../format';
 
 @Component({
   selector: 'tourism-booking',
   imports: [
     HlmButtonImports,
     HlmCardImports,
+    HlmDatePickerImports,
     HlmFieldImports,
     HlmInputImports,
     HlmSkeletonImports,
     FormField,
+    SanpayDatePickerWidth,
   ],
   templateUrl: './booking.html',
 })
@@ -52,11 +65,12 @@ export class BookingPage {
   protected readonly previousTravelers = signal<PreviousTraveler[]>([]);
   protected readonly selectedTraveler = signal<string | null>(null);
 
-  protected readonly travelerModel = signal<BookingGuest>({
+  protected readonly travelerModel = signal<HotelBookingGuest>({
     firstName: '',
     lastName: '',
     nationalCode: '',
     mobile: '',
+    birthdate: '',
   });
   protected readonly travelerForm = form(this.travelerModel, (traveler) => {
     required(traveler.firstName, { message: 'نام مسافر را وارد کنید' });
@@ -73,6 +87,16 @@ export class BookingPage {
     pattern(traveler.mobile, /^09\d{9}$/, {
       message: 'شمارهٔ موبایل معتبر نیست',
     });
+    required(traveler.birthdate, { message: 'تاریخ تولد مسافر را وارد کنید' });
+  });
+
+  // همان بازهٔ فرم پرواز
+  protected readonly minJalaliBirthdate = isoToJalali('1900-01-01');
+  protected readonly defaultJalaliBirthdate = isoToJalali('2000-01-01');
+  protected readonly maxJalaliBirthdate = isoToJalali(today());
+  protected readonly jalaliBirthdate = computed(() => {
+    const value = this.travelerModel().birthdate;
+    return value ? isoToJalali(value) : undefined;
   });
   protected readonly allocationId = signal('');
 
@@ -109,17 +133,30 @@ export class BookingPage {
         lastName: profile.lastName,
         nationalCode: profile.nationalCode,
         mobile: profile.phone ?? '',
+        birthdate: profile.birthDate ?? '',
       },
       'self',
     );
   }
 
   protected selectPrevious(traveler: PreviousTraveler): void {
-    this.fillTraveler(traveler, traveler.nationalCode);
+    this.fillTraveler(
+      { ...traveler, birthdate: traveler.birthdate ?? '' },
+      traveler.nationalCode,
+    );
   }
 
   protected travelerEdited(): void {
     this.selectedTraveler.set(null);
+  }
+
+  protected updateBirthdate(value: JalaliDate | null): void {
+    this.travelerModel.update((traveler) => ({
+      ...traveler,
+      birthdate: value ? jalaliToIso(value) : '',
+    }));
+    this.travelerForm.birthdate().markAsTouched();
+    this.travelerEdited();
   }
 
   protected async load(): Promise<void> {
@@ -156,12 +193,13 @@ export class BookingPage {
     }
   }
 
-  private fillTraveler(traveler: BookingGuest, key: string): void {
+  private fillTraveler(traveler: HotelBookingGuest, key: string): void {
     this.travelerModel.set({
       firstName: traveler.firstName,
       lastName: traveler.lastName,
       nationalCode: traveler.nationalCode,
       mobile: traveler.mobile,
+      birthdate: traveler.birthdate,
     });
     this.selectedTraveler.set(key);
   }
@@ -187,6 +225,7 @@ export class BookingPage {
                 lastName: traveler.lastName.trim(),
                 nationalCode: traveler.nationalCode.trim(),
                 mobile: traveler.mobile.trim(),
+                birthdate: traveler.birthdate,
               },
             }),
           ),

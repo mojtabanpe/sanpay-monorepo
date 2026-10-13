@@ -135,7 +135,7 @@ export interface BookingGuest {
 export interface PreviousTraveler extends BookingGuest {
   /** آخرین زمانی که این مشخصات در یک رزرو استفاده شده است. */
   lastUsedAt: string;
-  /** مشخصات تکمیلی فقط وقتی منبع، رزرو پرواز باشد موجود است. */
+  /** مشخصات تکمیلی؛ تاریخ تولد از هتل و پرواز، بقیه فقط از پرواز. */
   birthdate?: string;
   gender?: 'male' | 'female';
   nationality?: string;
@@ -144,13 +144,19 @@ export interface PreviousTraveler extends BookingGuest {
   passportIssueCountry?: string;
 }
 
+/** مسافر رزرو هتل؛ تاریخ تولد فقط در دفترچهٔ مسافران ذخیره می‌شود */
+export interface HotelBookingGuest extends BookingGuest {
+  /** YYYY-MM-DD */
+  birthdate: string;
+}
+
 export interface CreateBookingInput {
   hotelId: string;
   roomId: string;
   /** ISO date (YYYY-MM-DD) */
   checkin: string;
   nights: number;
-  guest: BookingGuest;
+  guest: HotelBookingGuest;
   /** کیف پول گردشگری که مبلغ از آن کم می‌شود */
   allocationId: string;
 }

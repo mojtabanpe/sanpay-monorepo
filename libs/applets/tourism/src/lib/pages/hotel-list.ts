@@ -174,7 +174,8 @@ export class HotelListPage {
             { value: 'stars', label: 'بیشترین ستاره' },
           ],
   );
-  protected readonly starOptions = [5, 4, 3, 2, 1];
+  /** سرور فقط سه‌ستاره و بالاتر را برمی‌گرداند (`MIN_HOTEL_RATE`) */
+  protected readonly starOptions = [5, 4, 3];
 
   protected setFilter<K extends keyof HotelFilters>(
     key: K,
