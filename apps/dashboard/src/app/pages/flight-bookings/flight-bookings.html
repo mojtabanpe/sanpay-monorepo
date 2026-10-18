@@ -71,7 +71,7 @@
                 {{ row.origin }} → {{ row.destination }}
               </td>
               <td hlmTd>
-                {{ airline(row.airline) }}
+                {{ airline(row.airline, row.airlineName) }}
                 <div class="text-muted-foreground text-xs" dir="ltr">
                   {{ row.flightNumber }}
                 </div>

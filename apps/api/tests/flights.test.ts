@@ -144,7 +144,9 @@ test('cancellation rules: earliest window first, exact duplicates dropped, malfo
     formatCancellationRules([
       row('از 3 ساعت قبل از پرواز به بعد', 60, { hour: 3 }),
       row('از زمان صدور بلیط تا 24 ساعت قبل از پرواز', 30),
-      row('از 12:00 ظهر 1 روز قبل از پرواز تا 3 ساعت قبل از پرواز', 40, { day: 1 }),
+      row('از 12:00 ظهر 1 روز قبل از پرواز تا 3 ساعت قبل از پرواز', 40, {
+        day: 1,
+      }),
       row('از زمان صدور بلیط تا 24 ساعت قبل از پرواز', 30),
       { penalty_percent: 10 },
     ]),
@@ -591,5 +593,79 @@ test('HTTP adapter uses the documented paths and preserves return legs, passenge
       if (env[key] === undefined) delete process.env[key];
       else process.env[key] = env[key];
     }
+  }
+});
+
+test('supplier airline catalog names reach both legs, override static names and share the rules cache', async () => {
+  const provider = new FlightProvider();
+  const requests: string[] = [];
+  // Stub the transport only: exercise search mapping and catalog/rule resolution together.
+  const transport = provider as unknown as {
+    request: (path: string) => Promise<Record<string, unknown>>;
+  };
+  transport.request = async (path) => {
+    requests.push(path);
+    if (path === '/api/v1/airlines')
+      return {
+        airlines: [
+          { id: 1, iata: ' ir ', name: 'نام رسمی ایران ایر' },
+          { id: 9, iata: 'J1', name: 'هواپیمایی معراج' },
+          { iata: 'NEW', name: 'ایرلاین جدید' },
+          { iata: 'LAT', name: ' ', latin_name: 'Latin Airline' },
+        ],
+      };
+    if (path.includes('cancellation-rules')) return { cancellation_rules: [] };
+    return {
+      flights: [
+        {
+          ...raw[0],
+          return_flight: {
+            ...leg,
+            origin: 'MHD',
+            destination: 'THR',
+            departure_time: '2090-01-03 20:00:00',
+            routes: [{ ...leg.routes[0], airline: 'J1' }],
+          },
+        },
+      ],
+    };
+  };
+  const previousCurrency = process.env.FLIGHT_CURRENCY;
+  process.env.FLIGHT_CURRENCY = 'IRR';
+  try {
+    const result = await provider.search({
+      ...search,
+      returnDate: '2090-01-03',
+    });
+    assert.equal(result[0].departure.airline, 'IR');
+    assert.equal(result[0].departure.airlineName, 'نام رسمی ایران ایر');
+    assert.equal(result[0].returning?.airline, 'J1');
+    assert.equal(result[0].returning?.airlineName, 'هواپیمایی معراج');
+    await provider.search({ ...search, returnDate: '2090-01-03' });
+    await provider.cancellationRules(' ir ', 'Y');
+    assert.equal(requests.filter((p) => p === '/api/v1/airlines').length, 1);
+    assert.ok(requests.some((p) => p.includes('airline_id=1')));
+  } finally {
+    if (previousCurrency === undefined) delete process.env.FLIGHT_CURRENCY;
+    else process.env.FLIGHT_CURRENCY = previousCurrency;
+  }
+});
+
+test('catalog failure preserves search results for the existing display fallback', async () => {
+  const provider = new FlightProvider();
+  const transport = provider as unknown as {
+    request: (path: string) => Promise<Record<string, unknown>>;
+  };
+  transport.request = async (path) => {
+    if (path === '/api/v1/airlines') throw new Error('catalog unavailable');
+    return { flights: raw };
+  };
+  const previousCurrency = process.env.FLIGHT_CURRENCY;
+  process.env.FLIGHT_CURRENCY = 'IRR';
+  try {
+    assert.deepEqual(await provider.search(search), [offer]);
+  } finally {
+    if (previousCurrency === undefined) delete process.env.FLIGHT_CURRENCY;
+    else process.env.FLIGHT_CURRENCY = previousCurrency;
   }
 });

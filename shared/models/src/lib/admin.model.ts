@@ -338,6 +338,8 @@ export interface AdminFlightBookingRow {
   departureTime: string;
   returnTime: string | null;
   airline: string;
+  /** Display name from the supplier airline catalog. */
+  airlineName?: string;
   flightNumber: string;
   passengerCount: number;
   amount: number;

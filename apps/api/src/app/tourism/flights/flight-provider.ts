@@ -317,12 +317,17 @@ export class FlightProvider {
    * rate_class می‌آید. خطا رزرو را متوقف نمی‌کند — بدون قانون، اپ پیام
    * «اعلام نشده» را نشان می‌دهد.
    */
-  async cancellationRules(airline: string, rateClass: string): Promise<string[]> {
+  async cancellationRules(
+    airline: string,
+    rateClass: string,
+  ): Promise<string[]> {
     const key = `${airline}/${rateClass}`;
     const cached = this.rulesCache.get(key);
     if (cached && cached.until > Date.now()) return cached.rules;
     try {
-      const airlineId = (await this.airlineIds()).get(airline);
+      const airlineId = (await this.airlines()).get(
+        airline.trim().toUpperCase(),
+      )?.id;
       if (airlineId === undefined) return [];
       const query = new URLSearchParams({
         airline_id: String(airlineId),
@@ -345,18 +350,63 @@ export class FlightProvider {
     string,
     { rules: string[]; until: number }
   >();
-  private airlineCache?: { ids: Map<string, number>; until: number };
-  private async airlineIds(): Promise<Map<string, number>> {
+  private airlineCache?: {
+    entries: Map<string, { id?: number; name?: string }>;
+    until: number;
+  };
+  private airlinesPending?: Promise<
+    Map<string, { id?: number; name?: string }>
+  >;
+  private async airlines(): Promise<
+    Map<string, { id?: number; name?: string }>
+  > {
     if (this.airlineCache && this.airlineCache.until > Date.now())
-      return this.airlineCache.ids;
-    const result = await this.request('/api/v1/airlines');
-    const ids = new Map<string, number>();
-    for (const a of list(result['airlines']).map(record)) {
-      const iata = optionalStr(a['iata']);
-      if (iata && typeof a['id'] === 'number') ids.set(iata, a['id']);
+      return this.airlineCache.entries;
+    if (this.airlinesPending) return this.airlinesPending;
+    this.airlinesPending = (async () => {
+      const result = await this.request('/api/v1/airlines');
+      const entries = new Map<string, { id?: number; name?: string }>();
+      for (const a of list(result['airlines']).map(record)) {
+        const iata = optionalStr(a['iata'])?.trim().toUpperCase();
+        if (!iata) continue;
+        entries.set(iata, {
+          id: typeof a['id'] === 'number' ? a['id'] : undefined,
+          name:
+            optionalStr(a['name'])?.trim() ||
+            optionalStr(a['latin_name'])?.trim(),
+        });
+      }
+      this.airlineCache = { entries, until: Date.now() + RULES_TTL };
+      return entries;
+    })();
+    try {
+      return await this.airlinesPending;
+    } finally {
+      this.airlinesPending = undefined;
     }
-    this.airlineCache = { ids, until: Date.now() + RULES_TTL };
-    return ids;
+  }
+  private async withAirlineNames(
+    offers: FlightOffer[],
+  ): Promise<FlightOffer[]> {
+    if (!offers.length) return offers;
+    let airlines: Map<string, { id?: number; name?: string }>;
+    try {
+      airlines = await this.airlines();
+    } catch (error) {
+      this.logger.warn(
+        `airline catalog unavailable: ${(error as Error).message}`,
+      );
+      airlines = this.airlineCache?.entries ?? new Map();
+    }
+    const fill = (leg: FlightLeg): FlightLeg => {
+      const name = airlines.get(leg.airline.trim().toUpperCase())?.name;
+      return name ? { ...leg, airlineName: name } : leg;
+    };
+    return offers.map((offer) => ({
+      ...offer,
+      departure: fill(offer.departure),
+      returning: offer.returning ? fill(offer.returning) : null,
+    }));
   }
   async search(input: FlightSearchInput): Promise<FlightOffer[]> {
     const query = new URLSearchParams({
@@ -374,10 +424,12 @@ export class FlightProvider {
       true,
     );
     if (!('flights' in result)) return [];
-    return mapFlightOffers(
-      result['flights'],
-      input,
-      process.env.FLIGHT_CURRENCY ?? '',
+    return this.withAirlineNames(
+      mapFlightOffers(
+        result['flights'],
+        input,
+        process.env.FLIGHT_CURRENCY ?? '',
+      ),
     );
   }
   async create(

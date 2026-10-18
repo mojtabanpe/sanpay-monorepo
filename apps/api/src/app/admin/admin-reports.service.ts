@@ -394,6 +394,7 @@ export class AdminReportsService {
           departureTime: offer.departure.departureTime,
           returnTime: offer.returning?.departureTime ?? null,
           airline: offer.departure.airline,
+          airlineName: offer.departure.airlineName,
           flightNumber: offer.departure.flightNumber,
           passengerCount: Array.isArray(passengers) ? passengers.length : 0,
           amount: Number(booking.amount),

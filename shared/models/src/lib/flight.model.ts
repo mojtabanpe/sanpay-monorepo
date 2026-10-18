@@ -20,6 +20,8 @@ export interface FlightLeg {
   departureTime: string;
   arrivalTime: string;
   airline: string;
+  /** Display name from the supplier airline catalog. */
+  airlineName?: string;
   flightNumber: string;
   flightClass: string;
   flightType: string;

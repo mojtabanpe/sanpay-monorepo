@@ -227,7 +227,20 @@ export class FlightsPage {
     activeFlightFilters(this.filters()),
   );
   protected readonly airlineOptions = computed(() =>
-    flightOptions(this.offers(), (leg) => leg.airline, this.filters().airlines),
+    flightOptions(
+      this.offers(),
+      (leg) => leg.airline,
+      this.filters().airlines,
+    ).map((option) => {
+      const leg = this.offers()
+        .flatMap((offer) =>
+          offer.returning
+            ? [offer.departure, offer.returning]
+            : [offer.departure],
+        )
+        .find((leg) => leg.airline === option.value && leg.airlineName);
+      return { ...option, label: airlineName(option.value, leg?.airlineName) };
+    }),
   );
   protected readonly classOptions = computed(() =>
     flightOptions(this.offers(), (leg) => leg.flightClass, this.filters().classes),

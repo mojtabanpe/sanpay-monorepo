@@ -1,8 +1,8 @@
 /**
  * Persian names for the airlines the flight supplier returns. The supplier
- * sends only the IATA code (`W5`, `IR`, …) in `FlightLeg.airline`, which
- * employees cannot read. Unknown codes fall back to the code itself, so a new
- * airline still shows something instead of an empty label.
+ * supplies names through `/airlines`; prefer that name when available.
+ * This table supports older bookings and temporary catalog failures.
+ * Unknown codes fall back to the code itself.
  */
 const AIRLINES: Record<string, string> = {
   IR: 'ایران‌ایر',
@@ -12,6 +12,7 @@ const AIRLINES: Record<string, string> = {
   ZV: 'زاگرس',
   QB: 'قشم‌ایر',
   I3: 'آتا',
+  J1: 'معراج',
   JI: 'معراج',
   Y9: 'کیش‌ایر',
   HH: 'تابان',
@@ -27,6 +28,6 @@ const AIRLINES: Record<string, string> = {
   J2: 'آزال',
 };
 
-export function airlineName(code: string): string {
-  return AIRLINES[code.trim().toUpperCase()] ?? code;
+export function airlineName(code: string, name?: string): string {
+  return name?.trim() || AIRLINES[code.trim().toUpperCase()] || code;
 }

@@ -60,7 +60,7 @@
           <div class="flex justify-between gap-3">
             <span class="text-muted-foreground">ایرلاین</span>
             <span>
-              {{ airline(booking.offer.departure.airline) }} · پرواز
+              {{ airline(booking.offer.departure.airline, booking.offer.departure.airlineName) }} · پرواز
               <bdi>{{ booking.offer.departure.flightNumber }}</bdi>
             </span>
           </div>
