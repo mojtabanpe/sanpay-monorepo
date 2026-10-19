@@ -8,13 +8,19 @@ import { FlightProvider } from '../src/app/tourism/flights/flight-provider';
 
 async function main() {
   const fetchOriginal = globalThis.fetch;
+  // پاسخ خامِ جست‌وجوی پرواز، برای دیدنِ اینکه چارتر/سیستمی در کدام فیلد می‌آید
+  let rawFlightSearch: unknown;
   globalThis.fetch = (async (input: URL, init: RequestInit) => {
     assert.equal(init.method, 'GET', 'Smoke check must never book or pay');
     const headers = new Headers(init.headers);
     assert.ok(headers.get('Client-Token'));
     assert.equal(headers.has('Auth-Token'), false);
     assert.equal(headers.has('Authorization'), false);
-    return fetchOriginal(input, init);
+    const response = await fetchOriginal(input, init);
+    if (String(input).includes('/flights/search')) {
+      rawFlightSearch = await response.clone().json().catch(() => null);
+    }
+    return response;
   }) as typeof fetch;
   try {
     const hotels = new Eghamat24Provider(new GrsHttpClient());
@@ -73,6 +79,7 @@ async function main() {
           date,
           authentication: 'Client-Token only',
           currency: process.env.FLIGHT_CURRENCY,
+          flightTypes: flightTypeSummary(rawFlightSearch),
         },
         null,
         2,
@@ -82,6 +89,36 @@ async function main() {
     globalThis.fetch = fetchOriginal;
   }
 }
+/**
+ * مقدارهای `flight_type` (روی پرواز و روی هر route) با تعدادشان، به‌علاوهٔ یک
+ * نمونهٔ خام بدون قوانین کنسلی — تا معلوم شود تأمین‌کننده سیستمی را کجا و
+ * با چه مقداری می‌فرستد.
+ */
+function flightTypeSummary(raw: unknown) {
+  const value = (raw as { value?: { flights?: unknown[] } } | null)?.value;
+  const flights = (value?.flights ?? []) as Record<string, unknown>[];
+  const counts: Record<string, number> = {};
+  const count = (key: string) => (counts[key] = (counts[key] ?? 0) + 1);
+  for (const offer of flights) {
+    for (const legKey of ['departure_flight', 'return_flight']) {
+      const leg = offer[legKey] as Record<string, unknown> | null;
+      if (!leg) continue;
+      count(`flight.flight_type=${JSON.stringify(leg['flight_type'])}`);
+      for (const route of (leg['routes'] ?? []) as Record<string, unknown>[]) {
+        count(`route.flight_type=${JSON.stringify(route['flight_type'])}`);
+      }
+    }
+  }
+  const sample = flights[0]
+    ? JSON.parse(
+        JSON.stringify(flights[0], (key, v) =>
+          key === 'cancellation_rules' ? undefined : v,
+        ),
+      )
+    : null;
+  return { counts, sample };
+}
+
 main().catch((error: unknown) => {
   console.error(
     error instanceof Error ? error.message : 'Connection check failed',
