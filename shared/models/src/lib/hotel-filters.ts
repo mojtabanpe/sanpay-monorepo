@@ -18,6 +18,23 @@ export type HotelCard = HotelSummary & {
 
 export type HotelSort = 'cheap' | 'expensive' | 'stars';
 
+/**
+ * قاعدهٔ کسب‌وکار: سامانه فقط هتل‌های **۳ ستاره و بالاتر** را نشان می‌دهد، برای
+ * هر دو تأمین‌کننده (مشهد از اقامت۲۴ و بقیهٔ شهرها از هتل‌یار). سرور فهرست را
+ * با همین فیلتر می‌کند و فیلتر ستاره در اپ هم از همین‌جا شروع می‌شود.
+ */
+export const MIN_HOTEL_STARS = 3;
+
+/**
+ * آیا هتل با این ستاره مجاز است؟ ستارهٔ ۰ یعنی «نامعلوم»: در فهرست‌ها کنار
+ * گذاشته می‌شود (`unknownOk = false`)، ولی وقتی هتلی مشخص با شناسه خواسته
+ * شده و پاسخ تأمین‌کننده ستاره ندارد (`unknownOk = true`) جلوی رزرو را نمی‌گیرد.
+ */
+export function allowedHotelRate(rate: number, unknownOk = false): boolean {
+  if (!rate) return unknownOk;
+  return rate >= MIN_HOTEL_STARS;
+}
+
 export interface HotelFilters {
   /** نوع اقامتگاه (هتل، هتل‌آپارتمان، …) — خالی یعنی همه */
   types: string[];

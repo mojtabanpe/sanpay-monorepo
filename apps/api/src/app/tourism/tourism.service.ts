@@ -16,6 +16,7 @@ import {
   HotelSummary,
   TourismCity,
   TourismWallet,
+  allowedHotelRate,
   applyHotelFilters,
   hotelMaxCapacity,
   hotelPriceBounds,
@@ -67,7 +68,8 @@ export class TourismService {
    */
   async hotels(cityId: string | null): Promise<HotelSummary[]> {
     if (cityId) {
-      return this.providers.forId(cityId).hotels(cityId);
+      const hotels = await this.providers.forId(cityId).hotels(cityId);
+      return hotels.filter((hotel) => allowedHotelRate(hotel.rate));
     }
 
     const lists = await Promise.all(
@@ -84,8 +86,9 @@ export class TourismService {
       .flat()
       .filter(
         (hotel) =>
-          providerOf(hotel.id) === 'eg' ||
-          !this.providers.servedByEghamat24(hotel.cityName),
+          allowedHotelRate(hotel.rate) &&
+          (providerOf(hotel.id) === 'eg' ||
+            !this.providers.servedByEghamat24(hotel.cityName)),
       );
   }
 
@@ -114,7 +117,10 @@ export class TourismService {
       ]);
       const cityName = cities.find((city) => city.id === cityId)?.name ?? '';
       return results
-        .filter((result) => result.rooms.length > 0)
+        .filter(
+          (result) =>
+            result.rooms.length > 0 && allowedHotelRate(result.rate ?? 0),
+        )
         .map((result) => cardOf(result, cityId, cityName));
     });
 
@@ -163,7 +169,7 @@ export class TourismService {
 
   async hotel(hotelId: string): Promise<HotelDetail> {
     const hotel = await this.providers.forId(hotelId).hotel(hotelId);
-    if (!hotel) {
+    if (!hotel || !allowedHotelRate(hotel.rate, true)) {
       throw new NotFoundException('هتل پیدا نشد');
     }
     return hotel;
@@ -190,7 +196,11 @@ export class TourismService {
     if (!scope) {
       throw new BadRequestException('برای جست‌وجوی اتاق خالی، شهر را انتخاب کنید');
     }
-    return this.providers.forId(scope).search(params);
+    const results = await this.providers.forId(scope).search(params);
+    // هتلِ مشخص با ستارهٔ نامعلوم رد نمی‌شود؛ جست‌وجوی شهری فقط ۳ ستاره به بالا
+    return results.filter((result) =>
+      allowedHotelRate(result.rate ?? 0, !!dto.hotelId),
+    );
   }
 
   /** پیش‌فاکتور: قیمت اتاق + کیف‌پول‌های گردشگری قابل استفاده */

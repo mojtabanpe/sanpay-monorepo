@@ -38,6 +38,7 @@ import {
   HotelFacets,
   HotelFilters,
   HotelSort,
+  MIN_HOTEL_STARS,
   NO_HOTEL_FILTERS,
   TourismCity,
   activeHotelFilters,
@@ -174,7 +175,10 @@ export class HotelListPage {
             { value: 'stars', label: 'بیشترین ستاره' },
           ],
   );
-  protected readonly starOptions = [5, 4, 3, 2, 1];
+  /** فقط ۳ ستاره به بالا — زیر آن را سرور اصلاً برنمی‌گرداند */
+  protected readonly starOptions = [5, 4, 3, 2, 1].filter(
+    (rate) => rate >= MIN_HOTEL_STARS,
+  );
 
   protected setFilter<K extends keyof HotelFilters>(
     key: K,
