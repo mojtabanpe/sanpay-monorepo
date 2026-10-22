@@ -21,6 +21,7 @@ import {
   RoomOffer,
   TourismCity,
 } from '@sanpay/models';
+import { rialToToman } from '../money';
 import { encodeId } from '../provider-id';
 import {
   GrsCity,
@@ -33,11 +34,6 @@ import {
 
 /** پیشوند شناسه‌های این تأمین‌کننده */
 const EG = 'eg' as const;
-
-/** GRS ریال می‌دهد؛ اپ تومان نشان می‌دهد */
-export function rialToToman(rial: number): number {
-  return Math.round((rial ?? 0) / 10);
-}
 
 /** نام فارسی انواع اقامتگاه (بخش Property Type داکیومنت v1.18.4) */
 const PROPERTY_TYPE_NAMES: Record<string, string> = {
