@@ -1,11 +1,15 @@
 import { Logger } from '@nestjs/common';
-import { TomanOAuth, tomanCredentialsFromEnv } from '../../../toman/toman-oauth';
+import {
+  TomanOAuth,
+  tomanCredentialsFromEnv,
+} from '../../../toman/toman-oauth';
 import {
   TomanCreatePaymentBody,
   TomanIpgApi,
   TomanIpgError,
   TomanIpgPayment,
   TomanIpgRefund,
+  TomanRefundWallet,
 } from './toman-ipg.types';
 
 /**
@@ -20,10 +24,13 @@ export const TOMAN_IPG_SCOPES = {
   refundCreate: 'ipg.refund.create',
   /** پیگیری بازگشت پول — در فهرست اولیهٔ scopeها نبود ولی بدون آن پیگیری ممکن نیست */
   refundRead: 'ipg.refund.read',
+  /** موجودی کیف پول بازگشت، برای هشدار داشبورد */
+  refundWallet: 'ipg.wallet.read',
 } as const;
 
-const STAGING_URL = 'https://ipg-staging.toman.ir';
-const STAGING_AUTH_URL = 'https://auth.qbitpay.org/oauth2/token/';
+export const TOMAN_IPG_STAGING_URL = 'https://ipg-staging.toman.ir';
+export const TOMAN_IPG_STAGING_AUTH_URL =
+  'https://auth.qbitpay.org/oauth2/token/';
 
 /**
  * کلاینت واقعی IPG تومان.
@@ -38,7 +45,7 @@ export class TomanIpgHttpClient implements TomanIpgApi {
   private readonly logger = new Logger(TomanIpgHttpClient.name);
   private readonly oauth = new TomanOAuth({
     label: 'درگاه پرداخت تومان',
-    authUrl: () => process.env.TOMAN_IPG_AUTH_URL || STAGING_AUTH_URL,
+    authUrl: () => this.authUrl,
     credentials: () =>
       tomanCredentialsFromEnv('TOMAN_IPG_') ??
       tomanCredentialsFromEnv('TOMAN_'),
@@ -46,7 +53,14 @@ export class TomanIpgHttpClient implements TomanIpgApi {
   });
 
   get baseUrl(): string {
-    return (process.env.TOMAN_IPG_URL || STAGING_URL).replace(/\/+$/, '');
+    return (process.env.TOMAN_IPG_URL || TOMAN_IPG_STAGING_URL).replace(
+      /\/+$/,
+      '',
+    );
+  }
+
+  get authUrl(): string {
+    return process.env.TOMAN_IPG_AUTH_URL || TOMAN_IPG_STAGING_AUTH_URL;
   }
 
   createPayment(body: TomanCreatePaymentBody) {
@@ -79,7 +93,10 @@ export class TomanIpgHttpClient implements TomanIpgApi {
     );
   }
 
-  createRefund(paymentUuid: string, body: { amount: number; tracker_id: string }) {
+  createRefund(
+    paymentUuid: string,
+    body: { amount: number; tracker_id: string },
+  ) {
     return this.request<TomanIpgRefund>(
       'POST',
       `/payments/${encodeURIComponent(paymentUuid)}/refund`,
@@ -93,6 +110,14 @@ export class TomanIpgHttpClient implements TomanIpgApi {
       'GET',
       `/refunds/tracking/${encodeURIComponent(trackerId)}`,
       TOMAN_IPG_SCOPES.refundRead,
+    );
+  }
+
+  getRefundWallet() {
+    return this.request<TomanRefundWallet>(
+      'GET',
+      '/wallet/refund',
+      TOMAN_IPG_SCOPES.refundWallet,
     );
   }
 

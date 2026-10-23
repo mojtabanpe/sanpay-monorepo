@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   HttpException,
   Injectable,
@@ -17,6 +18,7 @@ import {
 import { randomUUID } from 'node:crypto';
 import {
   GatewayPayment,
+  GatewayPaymentStatus,
   PaymentIntent,
   PaymentIntentPurpose,
   PaymentIntentStatus,
@@ -372,12 +374,12 @@ export class UpgService {
       return;
     }
 
-    const toppedUp = await this.prisma.$transaction(async (tx) => {
-      const claimed = await tx.gatewayPayment.updateMany({
-        where: { id: payment.id, status: { in: ['CREATED', 'REDIRECTED'] } },
-        data: {
-          status: 'VERIFIED',
-          verifiedAt: new Date(),
+    const toppedUp = await this.prisma.$transaction((tx) =>
+      this.topUpVerified(
+        tx,
+        payment,
+        ['CREATED', 'REDIRECTED'],
+        {
           psp: verified.psp ?? null,
           terminal: verified.terminal ?? null,
           traceNumber: verified.traceNumber ?? null,
@@ -385,27 +387,9 @@ export class UpgService {
           maskedCard: verified.maskedCard ?? null,
           raw: json(verified.raw),
         },
-      });
-      if (claimed.count !== 1) return false;
-
-      const personal = await ensurePersonalWallet(tx, payment.employeeId);
-      await tx.walletAllocation.update({
-        where: { id: personal.id },
-        data: { cap: { increment: payment.amount } },
-      });
-      await tx.transaction.create({
-        data: {
-          type: 'TOPUP',
-          amount: payment.amount,
-          employeeId: payment.employeeId,
-          allocationId: personal.id,
-          intentId: intent.id,
-          gatewayPaymentId: payment.id,
-          note: `پرداخت با کارت — ${intent.title}`,
-        },
-      });
-      return true;
-    });
+        `پرداخت با کارت — ${intent.title}`,
+      ),
+    );
 
     if (toppedUp && waiting) {
       await this.settle(intent.id, ['AWAITING_GATEWAY']);
@@ -414,6 +398,46 @@ export class UpgService {
         `پرداخت ${payment.id} بعد از بسته‌شدن intent تأیید شد — مبلغ در کیف پول شخصی ماند`,
       );
     }
+  }
+
+  /**
+   * پول قطعاً گرفته شد: پرداخت VERIFIED و مبلغش به کیف پول شخصی واریز می‌شود
+   * (`cap += amount` + تراکنش `TOPUP`). **تنها جای این پول** — callback،
+   * استعلام cron و تأیید دستی داشبورد همه از همین می‌گذرند. ادعای وضعیت
+   * شرطی است (`from`)، پس دو مسیر هم‌زمان هرگز دوبار واریز نمی‌کنند.
+   *
+   * @returns `false` اگر پرداخت دیگر در یکی از وضعیت‌های `from` نبود
+   */
+  private async topUpVerified(
+    tx: Tx,
+    payment: GatewayPayment,
+    from: GatewayPaymentStatus[],
+    details: Prisma.GatewayPaymentUpdateManyMutationInput,
+    note: string,
+  ): Promise<boolean> {
+    const claimed = await tx.gatewayPayment.updateMany({
+      where: { id: payment.id, status: { in: from } },
+      data: { ...details, status: 'VERIFIED', verifiedAt: new Date() },
+    });
+    if (claimed.count !== 1) return false;
+
+    const personal = await ensurePersonalWallet(tx, payment.employeeId);
+    await tx.walletAllocation.update({
+      where: { id: personal.id },
+      data: { cap: { increment: payment.amount } },
+    });
+    await tx.transaction.create({
+      data: {
+        type: 'TOPUP',
+        amount: payment.amount,
+        employeeId: payment.employeeId,
+        allocationId: personal.id,
+        intentId: payment.intentId,
+        gatewayPaymentId: payment.id,
+        note,
+      },
+    });
+    return true;
   }
 
   /** intent در انتظار درگاه است و آخرین تلاشش همین پرداخت است */
@@ -471,7 +495,100 @@ export class UpgService {
       data: { status: 'UNKNOWN', error, raw: json(raw) },
     });
     if (marked.count === 1) {
-      this.logger.error(`نتیجهٔ پرداخت ${payment.id} نامعلوم ماند — بررسی دستی: ${error}`);
+      this.logger.error(
+        `نتیجهٔ پرداخت ${payment.id} نامعلوم ماند — بررسی دستی: ${error}`,
+      );
+    }
+  }
+
+  // ─── بررسی دستی (داشبورد) ─────────────────────────────────────────────────
+
+  /**
+   * تصمیم دستی مدیر روی پرداخت UNKNOWN (صف بررسی داشبورد):
+   * - `verified`: پول گرفته شده — همان واریز callback (`topUpVerified`). اگر
+   *   intent هنوز منتظر همین پرداخت بود، خرید هم نهایی می‌شود؛ وگرنه مبلغ در
+   *   کیف پول شخصی می‌ماند و کارمند می‌تواند به کارت برگرداند.
+   * - `failed`: پولی گرفته نشده — فقط وضعیت بسته می‌شود، پولی جابه‌جا نمی‌شود.
+   *
+   * `audit` (یادداشت حسابرسی) در همان تراکنش DB نوشته می‌شود؛ اگر وضعیت
+   * هم‌زمان عوض شده باشد هیچ‌کدام ثبت نمی‌شوند.
+   */
+  async resolveUnknownPayment(
+    paymentId: string,
+    outcome: 'verified' | 'failed',
+    audit: (tx: Tx, payment: GatewayPayment) => Promise<unknown>,
+  ): Promise<void> {
+    const payment = await this.prisma.gatewayPayment.findUnique({
+      where: { id: paymentId },
+      include: { intent: { select: { title: true } } },
+    });
+    if (!payment) throw new NotFoundException('پرداخت درگاه پیدا نشد');
+    if (payment.status !== 'UNKNOWN') {
+      throw new ConflictException(
+        'فقط پرداختی که وضعیتش نامعلوم است دستی بررسی می‌شود',
+      );
+    }
+
+    const done = await this.prisma.$transaction(async (tx) => {
+      const changed =
+        outcome === 'verified'
+          ? await this.topUpVerified(
+              tx,
+              payment,
+              ['UNKNOWN'],
+              {},
+              `پرداخت با کارت (تأیید دستی) — ${payment.intent.title}`,
+            )
+          : (
+              await tx.gatewayPayment.updateMany({
+                where: { id: payment.id, status: 'UNKNOWN' },
+                data: { status: 'FAILED' },
+              })
+            ).count === 1;
+      if (!changed) return false;
+      await audit(tx, payment);
+      return true;
+    });
+    if (!done) {
+      throw new ConflictException(
+        'وضعیت پرداخت هم‌زمان تغییر کرد؛ صفحه را تازه کنید',
+      );
+    }
+
+    if (outcome === 'failed') {
+      await this.reopenIntent(payment);
+      return;
+    }
+    const intent = await this.prisma.paymentIntent.findUniqueOrThrow({
+      where: { id: payment.intentId },
+    });
+    if (await this.isWaitingFor(intent, payment)) {
+      await this.settle(intent.id, ['AWAITING_GATEWAY']);
+    } else {
+      this.logger.warn(
+        `پرداخت ${payment.id} دستی تأیید شد و intent بسته بود — مبلغ در کیف پول شخصی ماند`,
+      );
+    }
+  }
+
+  /** وضعیت فعلی یک پرداخت نزد درگاه، برای کمک به تصمیم دستی — چیزی را تغییر نمی‌دهد */
+  async inquirePayment(paymentId: string): Promise<GatewayInquiry> {
+    const payment = await this.prisma.gatewayPayment.findUnique({
+      where: { id: paymentId },
+    });
+    if (!payment) throw new NotFoundException('پرداخت درگاه پیدا نشد');
+    const gateway = this.gateways.get(payment.gateway);
+    if (!gateway || !payment.ref) {
+      throw new BadRequestException(
+        'این پرداخت هرگز به درگاه نرسید؛ استعلامی ممکن نیست',
+      );
+    }
+    try {
+      return await gateway.inquire(gatewayRef(payment));
+    } catch (error) {
+      throw new ServiceUnavailableException(
+        `استعلام از درگاه ممکن نشد: ${messageOf(error)}`,
+      );
     }
   }
 

@@ -3,6 +3,7 @@
  *
  * ۱. برای هر scope جداگانه توکن می‌گیرد و می‌گوید کدام برای حساب ما فعال است.
  * ۲. یک پرداخت ۱۰٬۰۰۰ ریالی **می‌سازد** (POST /payments) و آن را استعلام می‌کند.
+ * ۳. موجودی کیف پول بازگشت (GET /wallet/refund) را می‌خواند، اگر scope دارد.
  *    هیچ verify، refund یا reverseی انجام نمی‌شود: پرداخت ساخته‌شده‌ای که کسی
  *    به آن نرود بعد از ۳۰ دقیقه در خود تومان منقضی می‌شود و پولی جابه‌جا نمی‌شود.
  *
@@ -30,7 +31,8 @@ async function main() {
       const method = init?.method ?? 'GET';
       const allowed =
         (method === 'POST' && url.pathname === '/payments') ||
-        (method === 'GET' && /^\/payments\/[\w-]+$/.test(url.pathname));
+        (method === 'GET' && /^\/payments\/[\w-]+$/.test(url.pathname)) ||
+        (method === 'GET' && url.pathname === '/wallet/refund');
       assert.ok(allowed, `check must not call ${method} ${url.pathname}`);
     }
     return fetchOriginal(input, init);
@@ -96,6 +98,14 @@ async function main() {
     }
   } else {
     console.log('\npayment.list not granted — skipped the inquiry (the reconciliation cron needs it)');
+  }
+  if (granted.has(TOMAN_IPG_SCOPES.refundWallet)) {
+    const wallet = await client.getRefundWallet();
+    console.log('\nRefund wallet (GET /wallet/refund):');
+    console.log(`  balance    ${wallet.balance} rial`);
+    console.log(`  address    ${wallet.address ?? '—'}`);
+  } else {
+    console.log('\nipg.wallet.read not granted — the dashboard cannot show the refund wallet balance');
   }
   console.log('\nOK — nothing was verified, refunded or reversed.');
 }

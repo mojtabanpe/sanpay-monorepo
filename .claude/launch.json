@@ -24,6 +24,20 @@
       "runtimeExecutable": "env",
       "runtimeArgs": ["SMS_MODE=console", "pnpm", "nx", "serve", "api"],
       "port": 6500
+    },
+    {
+      "name": "api-upg-toman-mock",
+      "runtimeExecutable": "env",
+      "runtimeArgs": [
+        "SMS_MODE=console",
+        "UPG_GATEWAYS=toman",
+        "TOMAN_IPG_MODE=mock",
+        "pnpm",
+        "nx",
+        "serve",
+        "api"
+      ],
+      "port": 6500
     }
   ]
 }

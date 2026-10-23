@@ -16,6 +16,7 @@ const ENV_KEYS = [
   'TOMAN_IPG_CLIENT_SECRET',
   'TOMAN_IPG_TERMINAL',
   'UPG_MOCK_REFUND_RESULT',
+  'UPG_MOCK_REFUND_WALLET_RIAL',
 ];
 
 type Handler = (
@@ -50,6 +51,7 @@ beforeEach(() => {
   process.env.TOMAN_IPG_CLIENT_SECRET = 'secret';
   delete process.env.TOMAN_IPG_TERMINAL;
   delete process.env.UPG_MOCK_REFUND_RESULT;
+  delete process.env.UPG_MOCK_REFUND_WALLET_RIAL;
 
   globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) => {
     const url = new URL(String(input));
@@ -276,6 +278,32 @@ test('refund create and status mapping', async () => {
     Response.json({ non_field_errors: [{ code: 'refund_not_found' }] }, { status: 404 }),
   );
   assert.equal((await live().refundStatus(ref)).state, 'missing');
+});
+
+test('refund wallet reads GET /wallet/refund with its own scope', async () => {
+  route('GET', '/wallet/refund', () =>
+    Response.json({ balance: 1_234_560, address: 'ipgrw-abc' }),
+  );
+  assert.deepEqual(await live().refundWallet(), {
+    balanceRial: 1_234_560,
+    address: 'ipgrw-abc',
+  });
+  assert.equal(calls[0].scope, 'ipg.wallet.read');
+
+  // a missing scope / network error surfaces to the dashboard instead of a fake 0
+  routes.clear();
+  route('GET', '/wallet/refund', () =>
+    Response.json({ detail: 'forbidden' }, { status: 403 }),
+  );
+  await assert.rejects(live().refundWallet(), /403/);
+});
+
+test('mock refund wallet has a fixed balance, overridable for the low warning', async () => {
+  const gateway = new TomanIpgGateway(new TomanIpgMockClient());
+  assert.equal(gateway.simulated, true);
+  assert.equal((await gateway.refundWallet()).balanceRial, 100_000_000);
+  process.env.UPG_MOCK_REFUND_WALLET_RIAL = '2000000';
+  assert.equal((await gateway.refundWallet()).balanceRial, 2_000_000);
 });
 
 test('error bodies follow non_field_errors / <field>', () => {

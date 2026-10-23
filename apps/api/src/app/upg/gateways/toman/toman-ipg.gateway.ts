@@ -6,6 +6,7 @@ import {
   GatewayPaymentRef,
   GatewayRefundRef,
   GatewayRefundResult,
+  GatewayRefundWallet,
   GatewayUnavailableError,
   GatewayVerified,
   PaymentGateway,
@@ -48,6 +49,10 @@ export class TomanIpgGateway implements PaymentGateway {
 
   get live(): boolean {
     return this.api.live;
+  }
+
+  get simulated(): boolean {
+    return !this.api.live;
   }
 
   /** شبیه‌ساز، برای صفحهٔ بانک آزمایشی — در حالت live تهی */
@@ -208,6 +213,15 @@ export class TomanIpgGateway implements PaymentGateway {
       }
       return { state: 'unreachable', error: messageOf(error) };
     }
+  }
+
+  /** خطای شبکه یا نبودِ scope `ipg.wallet.read` پرتاب می‌شود */
+  async refundWallet(): Promise<GatewayRefundWallet> {
+    const wallet = await this.api.getRefundWallet();
+    return {
+      balanceRial: Number(wallet.balance),
+      address: wallet.address ?? null,
+    };
   }
 }
 

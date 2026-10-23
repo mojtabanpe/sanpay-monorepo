@@ -3,6 +3,7 @@ import {
   ConflictException,
   Injectable,
   Logger,
+  NotFoundException,
 } from '@nestjs/common';
 import { Interval } from '@nestjs/schedule';
 import { CardRefundSummary } from '@sanpay/models';
@@ -91,7 +92,10 @@ export class CardRefundService {
   }
 
   /** @param amount تومان */
-  async request(employeeId: string, amount: number): Promise<CardRefundSummary> {
+  async request(
+    employeeId: string,
+    amount: number,
+  ): Promise<CardRefundSummary> {
     if (!Number.isSafeInteger(amount) || amount <= 0) {
       throw new BadRequestException('مبلغ بازگشت باید بیشتر از صفر باشد');
     }
@@ -291,13 +295,14 @@ export class CardRefundService {
         return;
       case 'failed':
       case 'denied':
-        return this.creditBack(
+        await this.creditBack(
           refund,
           result.state === 'denied' ? 'DENIED' : 'FAILED',
           result.error ?? 'بازگشت به کارت انجام نشد',
           result.ref ?? refund.ref,
           raw,
         );
+        return;
       // unreachable / missing: وضعیت عوض نمی‌شود، استعلام بعدی
       default:
         if (result.error) {
@@ -309,31 +314,40 @@ export class CardRefundService {
     }
   }
 
-  /** پولی به کارت نرفت: سهم رزروشدهٔ پرداخت آزاد و مبلغ به مانده برمی‌گردد */
+  /**
+   * پولی به کارت نرفت: سهم رزروشدهٔ پرداخت آزاد و مبلغ به مانده برمی‌گردد
+   * (`cap += amount` + تراکنش `TOPUP`). **تنها جای این پول** — cron، پاسخ
+   * درگاه و تصمیم دستی داشبورد همه از همین می‌گذرند. ادعای وضعیت شرطی است،
+   * پس دو مسیر هم‌زمان دوبار برنمی‌گردانند. با `tx` داخل تراکنش فراخواننده
+   * اجرا می‌شود (یادداشت حسابرسی داشبورد در همان تراکنش).
+   *
+   * @returns `false` اگر بازگشت دیگر باز نبود
+   */
   private async creditBack(
     refund: GatewayRefund,
     status: 'FAILED' | 'DENIED',
     error: string,
     ref: string | null,
     raw: Prisma.InputJsonValue | undefined,
-  ): Promise<void> {
-    await this.prisma.$transaction(async (tx) => {
-      const claimed = await tx.gatewayRefund.updateMany({
+    tx?: Prisma.TransactionClient,
+  ): Promise<boolean> {
+    const run = async (db: Prisma.TransactionClient): Promise<boolean> => {
+      const claimed = await db.gatewayRefund.updateMany({
         where: { id: refund.id, status: { in: OPEN } },
         data: { status, error, ref, raw, completedAt: new Date() },
       });
-      if (claimed.count !== 1) return;
+      if (claimed.count !== 1) return false;
 
-      await tx.gatewayPayment.update({
+      await db.gatewayPayment.update({
         where: { id: refund.gatewayPaymentId },
         data: { refundedAmount: { decrement: refund.amount } },
       });
-      const personal = await ensurePersonalWallet(tx, refund.employeeId);
-      await tx.walletAllocation.update({
+      const personal = await ensurePersonalWallet(db, refund.employeeId);
+      await db.walletAllocation.update({
         where: { id: personal.id },
         data: { cap: { increment: refund.amount } },
       });
-      await tx.transaction.create({
+      await db.transaction.create({
         data: {
           type: 'TOPUP',
           amount: refund.amount,
@@ -343,8 +357,82 @@ export class CardRefundService {
           note: 'بازگشت به کارت انجام نشد — مبلغ به مانده برگشت',
         },
       });
+      return true;
+    };
+    const done = tx ? await run(tx) : await this.prisma.$transaction(run);
+    if (done) this.logger.warn(`بازگشت ${refund.id} ${status}: ${error}`);
+    return done;
+  }
+
+  // ─── بررسی دستی (داشبورد) ─────────────────────────────────────────────────
+
+  /**
+   * تصمیم دستی مدیر روی بازگشتی که خودکار نهایی نمی‌شود (UNKNOWN یا
+   * SUBMITTING/PENDING گیرکرده):
+   * - `succeeded`: پول به کارت رسید — مانده قبلاً هنگام درخواست کسر شده بود،
+   *   پس پولی جابه‌جا نمی‌شود.
+   * - `failed`: پولی به کارت نرفت — `creditBack`، مبلغ به مانده برمی‌گردد و
+   *   پرداختش از تقسیم‌های بعدی کنار می‌رود.
+   *
+   * `audit` در همان تراکنش DB نوشته می‌شود.
+   */
+  async resolveManually(
+    refundId: string,
+    outcome: 'succeeded' | 'failed',
+    note: string,
+    audit: (
+      tx: Prisma.TransactionClient,
+      refund: GatewayRefund,
+    ) => Promise<unknown>,
+  ): Promise<void> {
+    const refund = await this.prisma.gatewayRefund.findUnique({
+      where: { id: refundId },
     });
-    this.logger.warn(`بازگشت ${refund.id} ${status}: ${error}`);
+    if (!refund) throw new NotFoundException('بازگشت پیدا نشد');
+    if (!OPEN.includes(refund.status)) {
+      throw new ConflictException('این بازگشت قبلاً نهایی شده است');
+    }
+
+    const done = await this.prisma.$transaction(async (tx) => {
+      const changed =
+        outcome === 'failed'
+          ? await this.creditBack(
+              refund,
+              'FAILED',
+              `بررسی دستی: ${note}`,
+              refund.ref,
+              undefined,
+              tx,
+            )
+          : (
+              await tx.gatewayRefund.updateMany({
+                where: { id: refund.id, status: { in: OPEN } },
+                data: { status: 'SUCCEEDED', completedAt: new Date() },
+              })
+            ).count === 1;
+      if (!changed) return false;
+      await audit(tx, refund);
+      return true;
+    });
+    if (!done) {
+      throw new ConflictException(
+        'وضعیت بازگشت هم‌زمان تغییر کرد؛ صفحه را تازه کنید',
+      );
+    }
+  }
+
+  /** وضعیت فعلی یک بازگشت نزد درگاه (با tracker) — چیزی را تغییر نمی‌دهد */
+  async inquire(refundId: string): Promise<GatewayRefundResult> {
+    const refund = await this.prisma.gatewayRefund.findUnique({
+      where: { id: refundId },
+      include: { gatewayPayment: true },
+    });
+    if (!refund) throw new NotFoundException('بازگشت پیدا نشد');
+    const gateway = this.refundGateway(refund.gateway);
+    if (!gateway) {
+      throw new BadRequestException('این درگاه استعلام بازگشت ندارد');
+    }
+    return gateway.refundStatus(this.ref(refund, refund.gatewayPayment));
   }
 
   // ─── کمکی‌ها ─────────────────────────────────────────────────────────────
@@ -380,12 +468,16 @@ export class CardRefundService {
       },
       orderBy: [{ verifiedAt: 'asc' }, { createdAt: 'asc' }],
     });
-    return payments.filter((payment) => payment.amount > payment.refundedAmount);
+    return payments.filter(
+      (payment) => payment.amount > payment.refundedAmount,
+    );
   }
 
   private refundGateway(key: string): PaymentGatewayWithRefund | null {
     const gateway = this.gateways.get(key);
-    return gateway?.capabilities.refund && gateway.refund && gateway.refundStatus
+    return gateway?.capabilities.refund &&
+      gateway.refund &&
+      gateway.refundStatus
       ? (gateway as PaymentGatewayWithRefund)
       : null;
   }

@@ -1,0 +1,290 @@
+<div class="flex w-full flex-col gap-5">
+  <header class="flex flex-wrap items-end justify-between gap-3">
+    <div>
+      <a class="text-primary text-sm" routerLink="/gateway-payments">پرداخت‌های درگاه</a>
+      <h1 class="text-2xl font-bold">جزئیات پرداخت درگاه</h1>
+    </div>
+    @if (payment(); as p) {
+      <div class="flex items-center gap-2">
+        <span class="text-xl font-bold">{{ toman(p.amount) }}</span>
+        <span hlmBadge [variant]="variant(p.status)">{{ paymentLabels[p.status] }}</span>
+      </div>
+    }
+  </header>
+
+  @if (error()) {
+    <div hlmAlert variant="destructive"><p hlmAlertDescription>{{ error() }}</p></div>
+  }
+  @if (notice()) {
+    <div hlmAlert role="status"><p hlmAlertDescription>{{ notice() }}</p></div>
+  }
+
+  @if (payment(); as p) {
+    @if (p.status === 'UNKNOWN') {
+      <section hlmCard>
+        <div hlmCardHeader>
+          <h2 hlmCardTitle>نیاز به بررسی دستی</h2>
+          <p hlmCardDescription>
+            نتیجهٔ این پرداخت از درگاه روشن نشد و هیچ cronی دوباره سراغش نمی‌رود. وضعیت را در پنل
+            {{ p.gatewayLabel }} با شمارهٔ پیگیری یا شناسهٔ درگاه پیدا کنید، بعد تصمیم بگیرید.
+          </p>
+        </div>
+        <div hlmCardContent class="flex flex-wrap gap-2">
+          <button hlmBtn variant="outline" [disabled]="busy()" (click)="inquirePayment()">
+            استعلام از درگاه
+          </button>
+          @if (canWrite()) {
+            <button hlmBtn [disabled]="busy()" (click)="reviewPayment('verified')">
+              پول گرفته شده — تأیید
+            </button>
+            <button hlmBtn variant="destructive" [disabled]="busy()" (click)="reviewPayment('failed')">
+              پولی گرفته نشده — ناموفق
+            </button>
+          }
+        </div>
+      </section>
+    }
+
+    @if (inquiry(); as found) {
+      <section hlmCard>
+        <div hlmCardHeader>
+          <h2 hlmCardTitle>
+            نتیجهٔ استعلام {{ found.target === 'payment' ? 'پرداخت' : 'بازگشت' }}:
+            <span dir="ltr">{{ found.result.state }}</span>
+          </h2>
+          @if (found.result.error) {
+            <p hlmCardDescription>{{ found.result.error }}</p>
+          }
+        </div>
+        @if (inquiryJson(); as raw) {
+          <div hlmCardContent>
+            <pre dir="ltr" class="bg-muted max-h-72 overflow-auto rounded-lg p-3 text-xs">{{ raw }}</pre>
+          </div>
+        }
+      </section>
+    }
+
+    <div class="grid gap-5 xl:grid-cols-2">
+      <section hlmCard>
+        <div hlmCardHeader><h2 hlmCardTitle>پرداخت</h2></div>
+        <div hlmCardContent>
+          <dl class="grid grid-cols-[auto_1fr] gap-x-6 gap-y-2 text-sm">
+            <dt class="text-muted-foreground">کارمند</dt>
+            <dd>
+              <a class="text-primary me-2" [routerLink]="['/employees', p.employee.id]">{{ p.employee.name }}</a>
+              <span class="text-muted-foreground" dir="ltr">{{ p.employee.nationalCode }}</span>
+            </dd>
+            <dt class="text-muted-foreground">درگاه</dt>
+            <dd>{{ p.gatewayLabel }} <span class="text-muted-foreground" dir="ltr">({{ p.gateway }})</span></dd>
+            <dt class="text-muted-foreground">مبلغ</dt>
+            <dd>{{ toman(p.amount) }}</dd>
+            <dt class="text-muted-foreground">بازگشت به کارت</dt>
+            <dd>{{ toman(p.refundedAmount) }}</dd>
+            <dt class="text-muted-foreground">شناسهٔ ما (tracker)</dt>
+            <dd dir="ltr" class="text-end break-all">{{ p.trackerId }}</dd>
+            <dt class="text-muted-foreground">شناسهٔ درگاه</dt>
+            <dd dir="ltr" class="text-end break-all">{{ p.ref ?? '—' }}</dd>
+            <dt class="text-muted-foreground">PSP / ترمینال</dt>
+            <dd dir="ltr" class="text-end">{{ p.psp ?? '—' }} / {{ p.terminal ?? '—' }}</dd>
+            <dt class="text-muted-foreground">شمارهٔ پیگیری</dt>
+            <dd dir="ltr" class="text-end">{{ p.traceNumber ?? '—' }}</dd>
+            <dt class="text-muted-foreground">شمارهٔ مرجع</dt>
+            <dd dir="ltr" class="text-end">{{ p.referenceNumber ?? '—' }}</dd>
+            <dt class="text-muted-foreground">کارت</dt>
+            <dd dir="ltr" class="text-end">{{ p.maskedCard ?? '—' }}</dd>
+            <dt class="text-muted-foreground">ساخته‌شده</dt>
+            <dd>{{ jalaliTime(p.createdAt) }}</dd>
+            <dt class="text-muted-foreground">تأیید</dt>
+            <dd>{{ jalaliTime(p.verifiedAt) }}</dd>
+            <dt class="text-muted-foreground">آخرین استعلام cron</dt>
+            <dd>{{ jalaliTime(p.checkedAt) }}</dd>
+          </dl>
+          @if (p.error) {
+            <div hlmAlert variant="destructive" class="mt-4">
+              <p hlmAlertDescription>آخرین خطا: {{ p.error }}</p>
+            </div>
+          }
+        </div>
+      </section>
+
+      <section hlmCard>
+        <div hlmCardHeader>
+          <h2 hlmCardTitle>درخواست پرداخت</h2>
+          <p hlmCardDescription>{{ purposeLabels[p.intent.purpose] }} — {{ p.intent.title }}</p>
+        </div>
+        <div hlmCardContent class="flex flex-col gap-4">
+          <dl class="grid grid-cols-[auto_1fr] gap-x-6 gap-y-2 text-sm">
+            <dt class="text-muted-foreground">وضعیت</dt>
+            <dd>{{ intentLabels[p.intent.status] }}</dd>
+            <dt class="text-muted-foreground">مبلغ کل</dt>
+            <dd>{{ toman(p.intent.amount) }}</dd>
+            <dt class="text-muted-foreground">سهم کارت</dt>
+            <dd>{{ toman(p.intent.gatewayAmount) }}</dd>
+            <dt class="text-muted-foreground">برگشت‌داده‌شده</dt>
+            <dd>{{ toman(p.intent.refundedAmount) }}</dd>
+            <dt class="text-muted-foreground">ساخته‌شده / پایان</dt>
+            <dd>{{ jalaliTime(p.intent.createdAt) }} — {{ jalaliTime(p.intent.completedAt) }}</dd>
+            @if (p.intent.failureReason) {
+              <dt class="text-muted-foreground">علت شکست</dt>
+              <dd>{{ p.intent.failureReason }}</dd>
+            }
+            <dt class="text-muted-foreground">شناسه</dt>
+            <dd dir="ltr" class="text-end break-all">{{ p.intent.id }}</dd>
+          </dl>
+
+          @if (p.intent.attempts.length > 1) {
+            <div hlmTableContainer>
+              <table hlmTable class="w-full">
+                <caption class="text-muted-foreground pb-2 text-start text-sm">تلاش‌های کارت این خرید</caption>
+                <thead hlmTHead>
+                  <tr hlmTr><th hlmTh>زمان</th><th hlmTh>درگاه</th><th hlmTh>مبلغ</th><th hlmTh>وضعیت</th></tr>
+                </thead>
+                <tbody hlmTBody>
+                  @for (attempt of p.intent.attempts; track attempt.id) {
+                    <tr hlmTr>
+                      <td hlmTd>
+                        @if (attempt.id === p.id) {
+                          <span class="font-medium">{{ jalaliTime(attempt.createdAt) }} (همین)</span>
+                        } @else {
+                          <a class="text-primary" [routerLink]="['/gateway-payments', attempt.id]">{{ jalaliTime(attempt.createdAt) }}</a>
+                        }
+                      </td>
+                      <td hlmTd dir="ltr" class="text-end">{{ attempt.gateway }}</td>
+                      <td hlmTd>{{ toman(attempt.amount) }}</td>
+                      <td hlmTd><span hlmBadge [variant]="variant(attempt.status)">{{ paymentLabels[attempt.status] }}</span></td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          }
+        </div>
+      </section>
+    </div>
+
+    <section hlmCard>
+      <div hlmCardHeader>
+        <h2 hlmCardTitle>بازگشت‌ها به کارت</h2>
+        <p hlmCardDescription>درخواست‌های «بازگشت پول» پروفایل کارمند که از این پرداخت برداشته شده‌اند</p>
+      </div>
+      <div hlmCardContent>
+        <div hlmTableContainer>
+          <table hlmTable class="w-full">
+            <thead hlmTHead>
+              <tr hlmTr>
+                <th hlmTh>زمان</th><th hlmTh>مبلغ</th><th hlmTh>وضعیت</th>
+                <th hlmTh>شناسهٔ ما / درگاه</th><th hlmTh>پایان</th><th hlmTh><span class="sr-only">اقدام</span></th>
+              </tr>
+            </thead>
+            <tbody hlmTBody>
+              @for (refund of p.refunds; track refund.id) {
+                <tr hlmTr>
+                  <td hlmTd class="text-xs whitespace-nowrap">{{ jalaliTime(refund.createdAt) }}</td>
+                  <td hlmTd class="whitespace-nowrap">{{ toman(refund.amount) }}</td>
+                  <td hlmTd>
+                    <span hlmBadge [variant]="variant(refund.status)">{{ refundLabels[refund.status] }}</span>
+                    @if (refund.error) {
+                      <p class="text-destructive mt-1 min-w-40 text-xs whitespace-normal">{{ refund.error }}</p>
+                    }
+                  </td>
+                  <td hlmTd dir="ltr" class="text-end text-xs break-all">
+                    {{ refund.trackerId }}
+                    <p class="text-muted-foreground">{{ refund.ref ?? '—' }}</p>
+                  </td>
+                  <td hlmTd class="text-xs whitespace-nowrap">{{ jalaliTime(refund.completedAt) }}</td>
+                  <td hlmTd>
+                    @if (isOpen(refund)) {
+                      <div class="flex flex-wrap gap-1">
+                        <button hlmBtn variant="outline" size="sm" [disabled]="busy()" (click)="inquireRefund(refund)">استعلام</button>
+                        @if (canWrite()) {
+                          <button hlmBtn size="sm" [disabled]="busy()" (click)="reviewRefund(refund, 'succeeded')">به کارت رسید</button>
+                          <button hlmBtn variant="destructive" size="sm" [disabled]="busy()" (click)="reviewRefund(refund, 'failed')">نرسید</button>
+                        }
+                      </div>
+                    }
+                  </td>
+                </tr>
+              } @empty {
+                <tr hlmTr><td hlmTd colspan="6" class="text-muted-foreground text-center">بازگشتی ثبت نشده است.</td></tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <div class="grid gap-5 xl:grid-cols-2">
+      <section hlmCard>
+        <div hlmCardHeader>
+          <h2 hlmCardTitle>گردش کیف پول</h2>
+          <p hlmCardDescription>«کارت بانکی» همان ماندهٔ پنهان پرداخت‌های کارتی کارمند است</p>
+        </div>
+        <div hlmCardContent>
+          <div hlmTableContainer>
+            <table hlmTable class="w-full">
+              <thead hlmTHead>
+                <tr hlmTr><th hlmTh>زمان</th><th hlmTh>نوع</th><th hlmTh>کیف پول</th><th hlmTh>مبلغ</th></tr>
+              </thead>
+              <tbody hlmTBody>
+                @for (row of p.transactions; track row.id) {
+                  <tr hlmTr>
+                    <td hlmTd class="text-xs whitespace-nowrap">{{ jalaliTime(row.createdAt) }}</td>
+                    <td hlmTd>
+                      {{ transactionLabels[row.type] }}
+                      @if (row.note) {
+                        <p class="text-muted-foreground min-w-40 text-xs whitespace-normal">{{ row.note }}</p>
+                      }
+                    </td>
+                    <td hlmTd>{{ row.walletName }}</td>
+                    <td hlmTd class="whitespace-nowrap">{{ toman(row.amount) }}</td>
+                  </tr>
+                } @empty {
+                  <tr hlmTr><td hlmTd colspan="4" class="text-muted-foreground text-center">گردشی ثبت نشده است.</td></tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section hlmCard>
+        <div hlmCardHeader>
+          <h2 hlmCardTitle>یادداشت‌های بررسی دستی</h2>
+          <p hlmCardDescription>هر تصمیم دستی با نام مدیر ثبت می‌شود و ویرایش‌شدنی نیست</p>
+        </div>
+        <div hlmCardContent>
+          <ol class="flex flex-col gap-3">
+            @for (review of p.reviews; track review.id) {
+              <li class="border-border rounded-lg border p-3 text-sm">
+                <p class="font-medium">
+                  {{ reviewLabels[review.action] }}
+                  <span class="text-muted-foreground font-normal">— {{ review.adminUsername }}، {{ jalaliTime(review.createdAt) }}</span>
+                </p>
+                <p class="mt-1">{{ review.note }}</p>
+                <p class="text-muted-foreground mt-1 text-xs">وضعیت پیشین: <span dir="ltr">{{ review.fromStatus }}</span></p>
+              </li>
+            } @empty {
+              <li class="text-muted-foreground text-sm">تصمیم دستی‌ای ثبت نشده است.</li>
+            }
+          </ol>
+        </div>
+      </section>
+    </div>
+
+    <section hlmCard>
+      <div hlmCardHeader>
+        <h2 hlmCardTitle>پاسخ خام درگاه</h2>
+        <p hlmCardDescription>آخرین پاسخی که از درگاه ذخیره شد — موبایل کارمند از آن حذف شده است</p>
+      </div>
+      <div hlmCardContent>
+        @if (rawJson(); as raw) {
+          <pre dir="ltr" class="bg-muted max-h-96 overflow-auto rounded-lg p-3 text-xs">{{ raw }}</pre>
+        } @else {
+          <p class="text-muted-foreground text-sm">پاسخی ذخیره نشده است.</p>
+        }
+      </div>
+    </section>
+  } @else if (loading()) {
+    <section hlmCard><div hlmCardContent class="text-muted-foreground py-10 text-center">در حال بارگذاری…</div></section>
+  }
+</div>

@@ -1,0 +1,138 @@
+<div class="flex w-full flex-col gap-5">
+  <header class="flex flex-wrap items-end justify-between gap-3">
+    <div>
+      <h1 class="text-2xl font-bold">بررسی دستی درگاه</h1>
+      <p class="text-muted-foreground text-sm">
+        پرداخت‌ها و بازگشت‌هایی که خودکار نهایی نمی‌شوند. هر تصمیم با یادداشت شما در سابقه ثبت می‌شود.
+      </p>
+    </div>
+    <button hlmBtn variant="outline" [disabled]="loading()" (click)="load()">تازه‌کردن</button>
+  </header>
+
+  @for (wallet of lowWallets(); track wallet.gateway) {
+    <div hlmAlert variant="destructive">
+      <h2 hlmAlertTitle>موجودی کیف پول بازگشت {{ wallet.gatewayLabel }} کم است</h2>
+      <p hlmAlertDescription>
+        مانده {{ toman(wallet.balance) }}، کمتر از کف {{ toman(wallet.minimum) }}. تا شارژ نشود، بازگشت‌های تازه
+        «رد شد» می‌شوند و مبلغ به ماندهٔ کارمند برمی‌گردد.
+        <a class="underline" routerLink="/gateways">جزئیات</a>
+      </p>
+    </div>
+  }
+
+  @if (error()) {
+    <div hlmAlert variant="destructive"><p hlmAlertDescription>{{ error() }}</p></div>
+  }
+  @if (notice()) {
+    <div hlmAlert role="status"><p hlmAlertDescription>{{ notice() }}</p></div>
+  }
+
+  @if (queue(); as q) {
+    <section hlmCard>
+      <div hlmCardHeader>
+        <h2 hlmCardTitle>پرداخت‌های نامعلوم ({{ fa(q.payments.length) }})</h2>
+        <p hlmCardDescription>
+          درگاه نتیجه را روشن نکرد. پیش از تصمیم، وضعیت را در پنل درگاه یا در صفحهٔ پرداخت (زمان را بزنید) با «استعلام از درگاه» بررسی کنید.
+        </p>
+      </div>
+      <div hlmCardContent>
+        <div hlmTableContainer>
+          <table hlmTable class="w-full">
+            <thead hlmTHead>
+              <tr hlmTr>
+                <th hlmTh>زمان</th><th hlmTh>کارمند</th><th hlmTh>خرید و خطا</th><th hlmTh>مبلغ</th>
+                <th hlmTh><span class="sr-only">اقدام</span></th>
+              </tr>
+            </thead>
+            <tbody hlmTBody>
+              @for (payment of q.payments; track payment.id) {
+                <tr hlmTr>
+                  <td hlmTd class="text-xs whitespace-nowrap">
+                    <a class="text-primary" [routerLink]="['/gateway-payments', payment.id]">{{ jalaliTime(payment.createdAt) }}</a>
+                  </td>
+                  <td hlmTd>
+                    {{ payment.employee.name }}
+                    <p class="text-muted-foreground text-xs" dir="ltr">{{ payment.employee.nationalCode }}</p>
+                  </td>
+                  <td hlmTd class="min-w-40 whitespace-normal">
+                    {{ payment.intent.title }}
+                    <p class="text-muted-foreground text-xs">{{ purposeLabels[payment.intent.purpose] }} — {{ payment.gatewayLabel }}</p>
+                    @if (payment.error) {
+                      <p class="text-destructive mt-1 text-xs">{{ payment.error }}</p>
+                    }
+                  </td>
+                  <td hlmTd class="font-semibold whitespace-nowrap">{{ toman(payment.amount) }}</td>
+                  <td hlmTd>
+                    <div class="flex gap-1">
+                      @if (canWrite()) {
+                        <button hlmBtn size="sm" [disabled]="busy()" (click)="reviewPayment(payment, 'verified')">پول گرفته شده</button>
+                        <button hlmBtn variant="destructive" size="sm" [disabled]="busy()" (click)="reviewPayment(payment, 'failed')">گرفته نشده</button>
+                      }
+                    </div>
+                  </td>
+                </tr>
+              } @empty {
+                <tr hlmTr><td hlmTd colspan="5" class="text-muted-foreground text-center">پرداخت نامعلومی نیست.</td></tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section hlmCard>
+      <div hlmCardHeader>
+        <h2 hlmCardTitle>بازگشت‌های گیرکرده ({{ fa(q.refunds.length) }})</h2>
+        <p hlmCardDescription>
+          «نامعلوم»، «در حال ثبت» بیش از {{ fa(q.stuck.submittingMinutes) }} دقیقه، یا «در جریان» بیش از
+          {{ fa(q.stuck.pendingDays) }} روز. مانده‌ی کارمند هنگام درخواست کسر شده است.
+        </p>
+      </div>
+      <div hlmCardContent>
+        <div hlmTableContainer>
+          <table hlmTable class="w-full">
+            <thead hlmTHead>
+              <tr hlmTr>
+                <th hlmTh>زمان</th><th hlmTh>کارمند</th><th hlmTh>کارت</th><th hlmTh>مبلغ</th>
+                <th hlmTh>وضعیت</th><th hlmTh><span class="sr-only">اقدام</span></th>
+              </tr>
+            </thead>
+            <tbody hlmTBody>
+              @for (refund of q.refunds; track refund.id) {
+                <tr hlmTr>
+                  <td hlmTd class="text-xs whitespace-nowrap">
+                    <a class="text-primary" [routerLink]="['/gateway-payments', refund.gatewayPaymentId]">{{ jalaliTime(refund.createdAt) }}</a>
+                  </td>
+                  <td hlmTd>
+                    {{ refund.employee.name }}
+                    <p class="text-muted-foreground text-xs" dir="ltr">{{ refund.employee.nationalCode }}</p>
+                  </td>
+                  <td hlmTd dir="ltr" class="text-end text-xs">{{ refund.maskedCard ?? '—' }}</td>
+                  <td hlmTd class="font-semibold whitespace-nowrap">{{ toman(refund.amount) }}</td>
+                  <td hlmTd>
+                    <span hlmBadge [variant]="variant(refund.status)">{{ refundLabels[refund.status] }}</span>
+                    @if (refund.error) {
+                      <p class="text-destructive mt-1 min-w-40 text-xs whitespace-normal">{{ refund.error }}</p>
+                    }
+                  </td>
+                  <td hlmTd>
+                    <div class="flex gap-1">
+                      @if (canWrite()) {
+                        <button hlmBtn size="sm" [disabled]="busy()" (click)="reviewRefund(refund, 'succeeded')">به کارت رسید</button>
+                        <button hlmBtn variant="destructive" size="sm" [disabled]="busy()" (click)="reviewRefund(refund, 'failed')">نرسید</button>
+                      }
+                    </div>
+                  </td>
+                </tr>
+              } @empty {
+                <tr hlmTr><td hlmTd colspan="6" class="text-muted-foreground text-center">بازگشت گیرکرده‌ای نیست.</td></tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  } @else if (loading()) {
+    <section hlmCard><div hlmCardContent class="text-muted-foreground py-10 text-center">در حال بارگذاری…</div></section>
+  }
+</div>

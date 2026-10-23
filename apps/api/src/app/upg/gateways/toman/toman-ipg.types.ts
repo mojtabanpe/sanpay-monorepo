@@ -56,6 +56,13 @@ export interface TomanIpgPayment {
   verified_at?: string | null;
 }
 
+/** کیف پول بازگشت (`GET /wallet/refund`) — refundها از این مانده برداشت می‌شوند */
+export interface TomanRefundWallet {
+  /** ریال */
+  balance: number;
+  address?: string | null;
+}
+
 export interface TomanIpgRefund {
   uuid: string;
   payment: string;
@@ -113,4 +120,5 @@ export interface TomanIpgApi {
     body: { amount: number; tracker_id: string },
   ): Promise<TomanIpgRefund>;
   getRefundByTracker(trackerId: string): Promise<TomanIpgRefund>;
+  getRefundWallet(): Promise<TomanRefundWallet>;
 }

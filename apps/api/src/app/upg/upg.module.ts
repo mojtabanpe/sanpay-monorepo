@@ -1,5 +1,8 @@
 import { Module } from '@nestjs/common';
+import { AdminJwtGuard } from '../admin/admin-jwt.guard';
 import { AuthModule } from '../auth/auth.module';
+import { UpgAdminController } from './admin/upg-admin.controller';
+import { UpgAdminService } from './admin/upg-admin.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { CardRefundService } from './card-refund.service';
 import { GatewayRegistry } from './gateways/gateway.registry';
@@ -16,8 +19,20 @@ import { UpgService } from './upg.service';
  */
 @Module({
   imports: [AuthModule],
-  controllers: [UpgController, UpgCardRefundController, UpgCallbackController],
-  providers: [UpgService, CardRefundService, GatewayRegistry, JwtAuthGuard],
+  controllers: [
+    UpgController,
+    UpgCardRefundController,
+    UpgCallbackController,
+    UpgAdminController,
+  ],
+  providers: [
+    UpgService,
+    CardRefundService,
+    GatewayRegistry,
+    UpgAdminService,
+    JwtAuthGuard,
+    AdminJwtGuard,
+  ],
   exports: [UpgService],
 })
 export class UpgModule {}

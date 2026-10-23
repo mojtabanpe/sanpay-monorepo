@@ -209,7 +209,10 @@ export class UpgCallbackController {
     @Query('callback') callback: string,
     @Res() response: Response,
   ) {
-    if (!this.gateways.isEnabled('mock') || !callback?.startsWith(`${this.upg.publicUrl}/`)) {
+    if (
+      !this.gateways.isEnabled('mock') ||
+      !callback?.startsWith(`${this.upg.publicUrl}/`)
+    ) {
       throw new NotFoundException();
     }
     const field = (name: string, value: string) =>

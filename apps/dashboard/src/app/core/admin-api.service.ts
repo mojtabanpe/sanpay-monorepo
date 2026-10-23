@@ -4,6 +4,14 @@ import {
   AdminBookingRow,
   AdminFlightBookingRow,
   AdminCompanyRow,
+  AdminGatewayPaymentDetail,
+  AdminGatewayPaymentRow,
+  AdminRefundWallet,
+  AdminUpgInquiry,
+  AdminUpgReviewCount,
+  AdminUpgReviewInput,
+  AdminUpgReviewQueue,
+  AdminUpgSettings,
   AdminEmployeeDetail,
   AdminEmployeeRow,
   AdminOverview,
@@ -110,7 +118,9 @@ export class AdminApiService {
 
   removeEmployeeAvatar(id: string) {
     return firstValueFrom(
-      this.http.delete<{ avatarUrl: null }>(`/api/admin/employees/${id}/avatar`),
+      this.http.delete<{ avatarUrl: null }>(
+        `/api/admin/employees/${id}/avatar`,
+      ),
     );
   }
 
@@ -248,6 +258,62 @@ export class AdminApiService {
       `/api/admin/settlements/items/${id}/retry`,
       {},
     );
+  }
+
+  // ─── UPG: پرداخت‌های درگاه ──────────────────────────────────────────────
+  gatewayPayments(query: Query = {}) {
+    return this.get<Paginated<AdminGatewayPaymentRow>>(
+      '/api/admin/upg/payments',
+      query,
+    );
+  }
+
+  gatewayPayment(id: string) {
+    return this.get<AdminGatewayPaymentDetail>(`/api/admin/upg/payments/${id}`);
+  }
+
+  inquireGatewayPayment(id: string) {
+    return this.post<AdminUpgInquiry>(
+      `/api/admin/upg/payments/${id}/inquire`,
+      {},
+    );
+  }
+
+  reviewGatewayPayment(id: string, input: AdminUpgReviewInput) {
+    return this.post<AdminGatewayPaymentDetail>(
+      `/api/admin/upg/payments/${id}/review`,
+      input,
+    );
+  }
+
+  inquireGatewayRefund(id: string) {
+    return this.post<AdminUpgInquiry>(
+      `/api/admin/upg/refunds/${id}/inquire`,
+      {},
+    );
+  }
+
+  reviewGatewayRefund(id: string, input: AdminUpgReviewInput) {
+    return this.post<AdminGatewayPaymentDetail>(
+      `/api/admin/upg/refunds/${id}/review`,
+      input,
+    );
+  }
+
+  upgReviewQueue() {
+    return this.get<AdminUpgReviewQueue>('/api/admin/upg/review-queue');
+  }
+
+  upgReviewCount() {
+    return this.get<AdminUpgReviewCount>('/api/admin/upg/review-queue/count');
+  }
+
+  refundWallets() {
+    return this.get<AdminRefundWallet[]>('/api/admin/upg/refund-wallets');
+  }
+
+  upgSettings() {
+    return this.get<AdminUpgSettings>('/api/admin/upg/settings');
   }
 
   // ─── کاربران داشبورد ──────────────────────────────────────────────────

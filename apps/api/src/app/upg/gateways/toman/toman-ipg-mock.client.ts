@@ -7,7 +7,14 @@ import {
   TomanIpgRefund,
   TomanPaymentStatus,
   TomanRefundStatus,
+  TomanRefundWallet,
 } from './toman-ipg.types';
+
+/**
+ * ماندهٔ ثابت کیف پول بازگشت شبیه‌ساز (ریال) — با بازگشت‌ها کم نمی‌شود.
+ * `UPG_MOCK_REFUND_WALLET_RIAL` برای دیدن هشدار «موجودی کم» داشبورد.
+ */
+const MOCK_REFUND_WALLET_RIAL = 100_000_000;
 
 /** تومان پرداخت‌های غیرنهایی را بعد از ۳۰ دقیقه منقضی می‌کند */
 const PAYMENT_TTL_MS = 30 * 60_000;
@@ -85,7 +92,9 @@ export class TomanIpgMockClient implements TomanIpgApi {
     if (payment.status !== TomanPaymentStatus.VERIFIED) {
       throw new TomanIpgError(400, ['refund_not_allowed']);
     }
-    if ([...this.refunds.values()].some((r) => r.tracker_id === body.tracker_id)) {
+    if (
+      [...this.refunds.values()].some((r) => r.tracker_id === body.tracker_id)
+    ) {
       throw new TomanIpgError(400, ['unique'], ['tracker_id']);
     }
     if (body.amount <= 0 || body.amount > payment.amount - payment.refunded) {
@@ -127,6 +136,17 @@ export class TomanIpgMockClient implements TomanIpgApi {
     return { ...refund };
   }
 
+  async getRefundWallet(): Promise<TomanRefundWallet> {
+    const configured = Number(process.env.UPG_MOCK_REFUND_WALLET_RIAL);
+    return {
+      balance:
+        Number.isSafeInteger(configured) && configured >= 0
+          ? configured
+          : MOCK_REFUND_WALLET_RIAL,
+      address: 'ipgrw-mock',
+    };
+  }
+
   // ─── صفحهٔ بانک آزمایشی ──────────────────────────────────────────────────
 
   /** برای صفحهٔ بانک: مبلغ، یا null اگر پرداخت وجود ندارد/دیگر باز نیست */
@@ -158,7 +178,9 @@ export class TomanIpgMockClient implements TomanIpgApi {
     }
     if (outcome === 'success') {
       payment.status = TomanPaymentStatus.CALLED_BACK;
-      payment.trace_number = String(Math.floor(100000 + Math.random() * 900000));
+      payment.trace_number = String(
+        Math.floor(100000 + Math.random() * 900000),
+      );
       payment.reference_number = String(Date.now());
       payment.digital_receipt_number = randomUUID().replace(/-/g, '');
       payment.masked_paid_card_number = '603799******1234';

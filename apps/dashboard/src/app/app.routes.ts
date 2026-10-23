@@ -54,6 +54,30 @@ export const appRoutes: Route[] = [
           import('./pages/payments/payments').then((m) => m.PaymentsPage),
       },
       {
+        path: 'gateway-payments',
+        loadComponent: () =>
+          import('./pages/gateway-payments/gateway-payments').then(
+            (m) => m.GatewayPaymentsPage,
+          ),
+      },
+      {
+        path: 'gateway-payments/:id',
+        loadComponent: () =>
+          import('./pages/gateway-payment/gateway-payment').then(
+            (m) => m.GatewayPaymentPage,
+          ),
+      },
+      {
+        path: 'upg-review',
+        loadComponent: () =>
+          import('./pages/upg-review/upg-review').then((m) => m.UpgReviewPage),
+      },
+      {
+        path: 'gateways',
+        loadComponent: () =>
+          import('./pages/gateways/gateways').then((m) => m.GatewaysPage),
+      },
+      {
         path: 'settlements',
         loadComponent: () =>
           import('./pages/settlements/settlements').then((m) => m.Settlements),

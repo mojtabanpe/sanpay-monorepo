@@ -85,7 +85,8 @@ export interface GatewayInquiry {
  * - `unreachable`: پاسخی نرسید — نمی‌دانیم ثبت شد یا نه، بعداً با tracker پیگیری می‌شود
  */
 export interface GatewayRefundResult {
-  state: 'pending' | 'succeeded' | 'failed' | 'denied' | 'missing' | 'unreachable';
+  state:
+    'pending' | 'succeeded' | 'failed' | 'denied' | 'missing' | 'unreachable';
   /** وضعیت خام درگاه، برای نمایش «نامعلوم» به کارمند */
   unknown?: boolean;
   ref?: string | null;
@@ -104,11 +105,23 @@ export interface GatewayRefundRef {
   amountRial: number;
 }
 
+/** موجودی کیف پولی که درگاه بازگشت‌ها را از آن برمی‌دارد */
+export interface GatewayRefundWallet {
+  /** ریال */
+  balanceRial: number;
+  address: string | null;
+}
+
 export interface PaymentGateway {
   /** کلید پایدار؛ در `GatewayPayment.gateway` ذخیره می‌شود */
   readonly key: string;
   /** نام نمایشی */
   readonly label: string;
+  /**
+   * درگاه آزمایشی یا شبیه‌ساز — هر پرداختی را «موفق» می‌پذیرد، پس در
+   * production بدون `UPG_ALLOW_MOCK=true` فعال نمی‌شود.
+   */
+  readonly simulated: boolean;
   /**
    * `refund` = بازگشت پول به همان کارت از طریق همین درگاه؛ `partialRefund` =
    * کمتر از کل مبلغ یک پرداخت. درگاهی که refund ندارد سهمش در «بازگشت پول»
@@ -133,6 +146,11 @@ export interface PaymentGateway {
   refund?(refund: GatewayRefundRef): Promise<GatewayRefundResult>;
   /** وضعیت بازگشتی که قبلاً ثبت شده (با `trackerId`، حتی اگر `ref` نرسیده) */
   refundStatus?(refund: GatewayRefundRef): Promise<GatewayRefundResult>;
+  /**
+   * موجودی کیف پول بازگشت، برای هشدار داشبورد (Denied تومان یعنی خالی شده).
+   * درگاهی که بازگشت را از کیف پول جدا برنمی‌دارد این را ندارد.
+   */
+  refundWallet?(): Promise<GatewayRefundWallet>;
 }
 
 /** خطای ساخت پرداخت — راهبرد `priority` با آن سراغ درگاه بعدی می‌رود */

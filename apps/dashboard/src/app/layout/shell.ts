@@ -1,9 +1,13 @@
 import { Component, computed, inject, signal } from '@angular/core';
-import { Router, RouterModule } from '@angular/router';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { NavigationEnd, Router, RouterModule } from '@angular/router';
+import { HlmBadgeImports } from '@sanpay/ui/badge';
 import { HlmButtonImports } from '@sanpay/ui/button';
 import { HlmSeparatorImports } from '@sanpay/ui/separator';
 import { AdminAuthService } from '../core/admin-auth.service';
-import { ADMIN_ROLE_LABELS } from '../core/format';
+import { ADMIN_ROLE_LABELS, fa } from '../core/format';
+import { UpgQueueCount } from '../core/upg-queue-count';
+import { filter } from 'rxjs';
 
 interface NavItem {
   path: string;
@@ -11,6 +15,8 @@ interface NavItem {
   /** مسیر SVG آیکون (۲۴×۲۴، stroke) */
   icon: string;
   superAdminOnly?: boolean;
+  /** شمارندهٔ کارهای مانده کنار برچسب */
+  counter?: 'upg-review';
 }
 
 /**
@@ -19,12 +25,19 @@ interface NavItem {
  */
 @Component({
   selector: 'app-shell',
-  imports: [RouterModule, HlmButtonImports, HlmSeparatorImports],
+  imports: [
+    RouterModule,
+    HlmBadgeImports,
+    HlmButtonImports,
+    HlmSeparatorImports,
+  ],
   templateUrl: './shell.html',
 })
 export class Shell {
   private readonly auth = inject(AdminAuthService);
   private readonly router = inject(Router);
+  private readonly upgQueue = inject(UpgQueueCount);
+  protected readonly fa = fa;
 
   protected readonly profile = this.auth.profile;
   protected readonly roleLabel = computed(
@@ -40,6 +53,21 @@ export class Shell {
   protected readonly items = computed(() =>
     NAV.filter((item) => !item.superAdminOnly || this.auth.isSuperAdmin()),
   );
+
+  constructor() {
+    // صف با تصمیم هر مدیری کوتاه می‌شود؛ با هر جابه‌جایی صفحه تازه می‌شود
+    void this.upgQueue.refresh();
+    this.router.events
+      .pipe(
+        filter((event) => event instanceof NavigationEnd),
+        takeUntilDestroyed(),
+      )
+      .subscribe(() => void this.upgQueue.refresh());
+  }
+
+  protected counter(item: NavItem): number {
+    return item.counter === 'upg-review' ? this.upgQueue.total() : 0;
+  }
 
   protected logout(): void {
     this.auth.logout();
@@ -77,6 +105,22 @@ const NAV: NavItem[] = [
     path: '/payments',
     label: 'پرداخت‌ها',
     icon: 'M3 10h18M6 6h12a3 3 0 0 1 3 3v6a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3V9a3 3 0 0 1 3-3Zm10 8h2',
+  },
+  {
+    path: '/gateway-payments',
+    label: 'پرداخت‌های درگاه',
+    icon: 'M2 7a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V7Zm0 3h20M6 15h4',
+  },
+  {
+    path: '/upg-review',
+    label: 'بررسی دستی درگاه',
+    icon: 'M12 3 2 20h20L12 3Zm0 6v5m0 3h.01',
+    counter: 'upg-review',
+  },
+  {
+    path: '/gateways',
+    label: 'درگاه‌ها',
+    icon: 'M4 4h16v6H4V4Zm0 10h16v6H4v-6Zm4-7h.01M8 17h.01',
   },
   {
     path: '/settlements',

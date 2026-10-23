@@ -22,6 +22,8 @@ type Strategy = 'priority' | 'weighted';
 export class GatewayRegistry {
   private readonly logger = new Logger(GatewayRegistry.name);
   private readonly known = new Map<string, PaymentGateway>();
+  private readonly configured: string[];
+  private readonly rejected: { key: string; reason: string }[] = [];
   private readonly enabled: string[];
   private readonly strategy: Strategy;
   private readonly weights: Map<string, number>;
@@ -34,21 +36,24 @@ export class GatewayRegistry {
     }
 
     const production = process.env.NODE_ENV === 'production';
-    const configured = (process.env.UPG_GATEWAYS ?? (production ? '' : 'mock'))
+    this.configured = (process.env.UPG_GATEWAYS ?? (production ? '' : 'mock'))
       .split(',')
       .map((key) => key.trim().toLowerCase())
       .filter(Boolean);
-    this.enabled = configured.filter((key) => {
-      if (!this.known.has(key)) {
-        this.logger.error(`درگاه ناشناخته در UPG_GATEWAYS: ${key}`);
+    this.enabled = this.configured.filter((key) => {
+      const gateway = this.known.get(key);
+      if (!gateway) {
+        this.reject(key, 'درگاه ناشناخته در UPG_GATEWAYS');
         return false;
       }
       // درگاه آزمایشی و شبیه‌ساز تومان هر پرداختی را «موفق» می‌پذیرند؛ در
       // production یعنی پول مجانی
-      const simulated =
-        key === 'mock' || (key === this.toman.key && !this.toman.live);
-      if (simulated && production && process.env.UPG_ALLOW_MOCK !== 'true') {
-        this.logger.error(`درگاه آزمایشی ${key} در production غیرفعال شد`);
+      if (
+        gateway.simulated &&
+        production &&
+        process.env.UPG_ALLOW_MOCK !== 'true'
+      ) {
+        this.reject(key, 'درگاه آزمایشی در production غیرفعال شد');
         return false;
       }
       return true;
@@ -69,6 +74,17 @@ export class GatewayRegistry {
           ? ` (toman: ${this.toman.live ? 'live' : 'mock'})`
           : ''),
     );
+  }
+
+  /** پیکربندی خوانده‌شده از env — برای نمایش فقط-خواندنی در داشبورد */
+  config() {
+    return {
+      configured: [...this.configured],
+      rejected: [...this.rejected],
+      enabled: [...this.enabled],
+      strategy: this.strategy,
+      weights: new Map(this.weights),
+    };
   }
 
   /** درگاه یک پرداخت موجود — فعال بودن شرط نیست */
@@ -102,6 +118,11 @@ export class GatewayRegistry {
       keys.unshift(first);
     }
     return keys.map((key) => this.known.get(key) as PaymentGateway);
+  }
+
+  private reject(key: string, reason: string): void {
+    this.logger.error(`${reason}: ${key}`);
+    this.rejected.push({ key, reason });
   }
 
   private weightedPick(keys: string[]): string {

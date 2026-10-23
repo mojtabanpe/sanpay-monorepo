@@ -572,6 +572,8 @@ model Admin {
   lastLoginAt  DateTime?
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
+
+  gatewayReviews GatewayReview[]
 }
 
 /// Server-priced flight selection; short lived and owned by the employee.
@@ -735,6 +737,7 @@ model GatewayPayment {
   employee     Employee        @relation(fields: [employeeId], references: [id], onDelete: Restrict)
   transactions Transaction[]
   refunds      GatewayRefund[]
+  reviews      GatewayReview[]
 
   @@unique([gateway, ref])
   @@index([intentId])
@@ -778,11 +781,49 @@ model GatewayRefund {
   createdAt        DateTime            @default(now())
   updatedAt        DateTime            @updatedAt
 
-  gatewayPayment GatewayPayment @relation(fields: [gatewayPaymentId], references: [id], onDelete: Restrict)
-  employee       Employee       @relation(fields: [employeeId], references: [id], onDelete: Restrict)
+  gatewayPayment GatewayPayment  @relation(fields: [gatewayPaymentId], references: [id], onDelete: Restrict)
+  employee       Employee        @relation(fields: [employeeId], references: [id], onDelete: Restrict)
   transactions   Transaction[]
+  reviews        GatewayReview[]
 
   @@index([gatewayPaymentId])
   @@index([employeeId, createdAt])
   @@index([status, checkedAt])
+}
+
+enum GatewayReviewAction {
+  /// پرداخت نامعلوم دستی «پول گرفته شد» اعلام شد — مبلغ به کیف پول شخصی رفت
+  PAYMENT_VERIFIED
+  /// پرداخت نامعلوم دستی «پولی گرفته نشد» اعلام شد
+  PAYMENT_FAILED
+  /// بازگشت نامعلوم/گیرکرده دستی «به کارت رسید» اعلام شد
+  REFUND_SUCCEEDED
+  /// بازگشت نامعلوم/گیرکرده دستی «به کارت نرسید» اعلام شد — مبلغ به مانده برگشت
+  REFUND_FAILED
+}
+
+/// تصمیم دستی مدیر داشبورد روی پرداخت یا بازگشت درگاه (صف بررسی دستی UPG).
+/// یادداشت حسابرسی است: در همان تراکنش DB تغییر وضعیت ساخته می‌شود و هرگز
+/// ویرایش یا حذف نمی‌شود.
+model GatewayReview {
+  id               String              @id @default(uuid())
+  action           GatewayReviewAction
+  /// برای بازگشت هم پرداختِ آن پر می‌شود تا تاریخچهٔ یک پرداخت یک‌جا دیده شود
+  gatewayPaymentId String
+  gatewayRefundId  String?
+  /// وضعیت پیش از تصمیم
+  fromStatus       String
+  /// چرا — مثلاً «در پنل تومان موفق بود، شمارهٔ پیگیری …»
+  note             String
+  adminId          String
+  /// نام کاربری در لحظهٔ تصمیم — اگر مدیر بعداً تغییر نام داد، سابقه عوض نشود
+  adminUsername    String
+  createdAt        DateTime            @default(now())
+
+  gatewayPayment GatewayPayment @relation(fields: [gatewayPaymentId], references: [id], onDelete: Restrict)
+  gatewayRefund  GatewayRefund? @relation(fields: [gatewayRefundId], references: [id], onDelete: Restrict)
+  admin          Admin          @relation(fields: [adminId], references: [id], onDelete: Restrict)
+
+  @@index([gatewayPaymentId, createdAt])
+  @@index([gatewayRefundId])
 }

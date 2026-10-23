@@ -1,0 +1,188 @@
+<div class="flex w-full flex-col gap-5">
+  <header class="flex flex-wrap items-end justify-between gap-3">
+    <div>
+      <h1 class="text-2xl font-bold">درگاه‌های پرداخت</h1>
+      <p class="text-muted-foreground text-sm">موجودی کیف پول بازگشت و پیکربندی فعلی UPG</p>
+    </div>
+    <button hlmBtn variant="outline" [disabled]="loading()" (click)="load()">تازه‌کردن</button>
+  </header>
+
+  @if (error()) {
+    <div hlmAlert variant="destructive"><p hlmAlertDescription>{{ error() }}</p></div>
+  }
+
+  @for (wallet of wallets(); track wallet.gateway) {
+    <section hlmCard>
+      <div hlmCardHeader>
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h2 hlmCardTitle>کیف پول بازگشت — {{ wallet.gatewayLabel }}</h2>
+            <p hlmCardDescription>
+              بازگشت پول به کارت از این مانده برداشت می‌شود. اگر خالی باشد درگاه بازگشت را رد می‌کند.
+            </p>
+          </div>
+          <div class="flex gap-2">
+            <span hlmBadge [variant]="wallet.mode === 'live' ? 'default' : 'secondary'">
+              {{ wallet.mode === 'live' ? 'حساب واقعی' : 'شبیه‌ساز' }}
+            </span>
+            @if (!wallet.enabled) {
+              <span hlmBadge variant="outline">غیرفعال برای پرداخت تازه</span>
+            }
+          </div>
+        </div>
+      </div>
+      <div hlmCardContent class="flex flex-col gap-4">
+        @if (wallet.error) {
+          <div hlmAlert variant="destructive">
+            <h3 hlmAlertTitle>خواندن موجودی ممکن نشد</h3>
+            <p hlmAlertDescription>
+              {{ wallet.error }} — دسترسی <span dir="ltr">ipg.wallet.read</span> حساب تومان را بررسی کنید.
+            </p>
+          </div>
+        } @else if (wallet.low) {
+          <div hlmAlert variant="destructive">
+            <h3 hlmAlertTitle>موجودی کم است</h3>
+            <p hlmAlertDescription>
+              مانده از کف {{ toman(wallet.minimum) }} کمتر است. پیش از اینکه بازگشت‌ها «رد شد» شوند، کیف پول را از
+              پنل تومان شارژ کنید.
+            </p>
+          </div>
+        }
+        <dl class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <div>
+            <dt class="text-muted-foreground text-sm">مانده</dt>
+            <dd class="text-2xl font-bold">{{ toman(wallet.balance) }}</dd>
+          </div>
+          <div>
+            <dt class="text-muted-foreground text-sm">کف هشدار</dt>
+            <dd class="text-lg font-semibold">{{ toman(wallet.minimum) }}</dd>
+          </div>
+          <div>
+            <dt class="text-muted-foreground text-sm">بازگشت‌های در جریان</dt>
+            <dd class="text-lg font-semibold">{{ toman(wallet.openRefunds) }}</dd>
+          </div>
+          <div>
+            <dt class="text-muted-foreground text-sm">ردشده در ۷ روز گذشته</dt>
+            <dd class="text-lg font-semibold">{{ fa(wallet.deniedRecently) }}</dd>
+          </div>
+        </dl>
+        @if (wallet.address) {
+          <p class="text-muted-foreground text-xs">نشانی کیف پول: <span dir="ltr">{{ wallet.address }}</span></p>
+        }
+      </div>
+    </section>
+  }
+
+  @if (settings(); as s) {
+    <section hlmCard>
+      <div hlmCardHeader>
+        <h2 hlmCardTitle>پیکربندی</h2>
+        <p hlmCardDescription>
+          از متغیرهای محیطی API خوانده می‌شود (<span dir="ltr">UPG_GATEWAYS</span>،
+          <span dir="ltr">UPG_STRATEGY</span>، <span dir="ltr">TOMAN_IPG_MODE</span>…). ویرایش از این صفحه هنوز ممکن نیست.
+        </p>
+      </div>
+      <div hlmCardContent class="flex flex-col gap-4">
+        @if (!s.available) {
+          <div hlmAlert variant="destructive">
+            <p hlmAlertDescription>هیچ درگاهی فعال نیست — کارمندان فقط از اعتبار می‌توانند پرداخت کنند.</p>
+          </div>
+        }
+        @for (item of s.rejected; track item.key) {
+          <div hlmAlert variant="destructive">
+            <p hlmAlertDescription><span dir="ltr">{{ item.key }}</span>: {{ item.reason }}</p>
+          </div>
+        }
+
+        <dl class="grid grid-cols-[auto_1fr] gap-x-6 gap-y-2 text-sm">
+          <dt class="text-muted-foreground">ترتیب در UPG_GATEWAYS</dt>
+          <dd dir="ltr" class="text-end">{{ s.configured.length ? s.configured.join(', ') : '—' }}</dd>
+          <dt class="text-muted-foreground">راهبرد</dt>
+          <dd>{{ s.strategy === 'weighted' ? 'وزنی (weighted)' : 'اولویت با failover (priority)' }}</dd>
+          <dt class="text-muted-foreground">محیط</dt>
+          <dd>
+            {{ s.production ? 'production' : 'توسعه' }}
+            @if (s.production && s.allowMock) {
+              <span hlmBadge variant="destructive">UPG_ALLOW_MOCK فعال است</span>
+            }
+          </dd>
+          <dt class="text-muted-foreground">نشانی عمومی (callback)</dt>
+          <dd dir="ltr" class="text-end break-all">{{ s.publicUrl }}</dd>
+          @if (s.mockRefundResult) {
+            <dt class="text-muted-foreground">نتیجهٔ بازگشت آزمایشی</dt>
+            <dd dir="ltr" class="text-end">{{ s.mockRefundResult }}</dd>
+          }
+        </dl>
+
+        <div hlmTableContainer>
+          <table hlmTable class="w-full">
+            <thead hlmTHead>
+              <tr hlmTr>
+                <th hlmTh>درگاه</th><th hlmTh>وضعیت</th><th hlmTh>بازگشت به کارت</th>
+                <th hlmTh>وزن</th><th hlmTh>آدرس callback (برای ثبت نزد درگاه)</th>
+              </tr>
+            </thead>
+            <tbody hlmTBody>
+              @for (gateway of s.gateways; track gateway.key) {
+                <tr hlmTr>
+                  <td hlmTd>
+                    {{ gateway.label }}
+                    <span class="text-muted-foreground text-xs" dir="ltr">({{ gateway.key }})</span>
+                  </td>
+                  <td hlmTd>
+                    <span class="flex flex-wrap gap-1">
+                      <span hlmBadge [variant]="gateway.enabled ? 'default' : 'outline'">
+                        {{ gateway.enabled ? 'فعال' : 'غیرفعال' }}
+                      </span>
+                      @if (gateway.simulated) {
+                        <span hlmBadge variant="secondary">آزمایشی</span>
+                      }
+                    </span>
+                  </td>
+                  <td hlmTd>
+                    {{ gateway.capabilities.refund ? (gateway.capabilities.partialRefund ? 'دارد، جزئی هم' : 'فقط کل مبلغ') : 'ندارد' }}
+                  </td>
+                  <td hlmTd>{{ gateway.weight === null ? '—' : fa(gateway.weight) }}</td>
+                  <td hlmTd dir="ltr" class="text-end text-xs break-all">{{ gateway.callbackUrl }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section hlmCard>
+      <div hlmCardHeader>
+        <h2 hlmCardTitle>تومان</h2>
+        <p hlmCardDescription>هیچ رمز یا کلیدی این‌جا نمایش داده نمی‌شود</p>
+      </div>
+      <div hlmCardContent>
+        <dl class="grid grid-cols-[auto_1fr] gap-x-6 gap-y-2 text-sm">
+          <dt class="text-muted-foreground">حالت</dt>
+          <dd>
+            <span hlmBadge [variant]="s.toman.mode === 'live' ? 'default' : 'secondary'">
+              {{ s.toman.mode === 'live' ? 'live — حساب واقعی' : 'mock — شبیه‌ساز درون‌حافظه‌ای' }}
+            </span>
+          </dd>
+          <dt class="text-muted-foreground">نشانی IPG</dt>
+          <dd dir="ltr" class="text-end break-all">{{ s.toman.ipgUrl ?? '—' }}</dd>
+          <dt class="text-muted-foreground">نشانی احراز هویت</dt>
+          <dd dir="ltr" class="text-end break-all">{{ s.toman.authUrl ?? '—' }}</dd>
+          <dt class="text-muted-foreground">اعتبارنامه</dt>
+          <dd>
+            @switch (s.toman.credentials) {
+              @case ('TOMAN_IPG_*') { <span dir="ltr">TOMAN_IPG_*</span> (جدا برای درگاه) }
+              @case ('TOMAN_*') { <span dir="ltr">TOMAN_*</span> (همان بانکداری شرکتی) }
+              @default { تنظیم نشده }
+            }
+          </dd>
+          <dt class="text-muted-foreground">ترمینال</dt>
+          <dd dir="ltr" class="text-end">{{ s.toman.terminal ?? 'پیش‌فرض حساب' }}</dd>
+        </dl>
+      </div>
+    </section>
+  } @else if (loading()) {
+    <section hlmCard><div hlmCardContent class="text-muted-foreground py-10 text-center">در حال بارگذاری…</div></section>
+  }
+</div>

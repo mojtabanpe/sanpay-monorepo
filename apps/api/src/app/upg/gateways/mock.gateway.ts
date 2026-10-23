@@ -22,6 +22,7 @@ import {
 export class MockGateway implements PaymentGateway {
   readonly key = 'mock';
   readonly label = 'درگاه آزمایشی';
+  readonly simulated = true;
   readonly capabilities = { refund: true, partialRefund: true };
 
   async create(input: GatewayCreateInput): Promise<GatewayCreated> {

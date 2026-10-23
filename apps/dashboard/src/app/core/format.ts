@@ -91,3 +91,73 @@ export const ADMIN_ROLE_LABELS: Record<string, string> = {
   ADMIN: 'مدیر',
   VIEWER: 'فقط مشاهده',
 };
+
+// ─── UPG ────────────────────────────────────────────────────────────────
+
+export const GATEWAY_PAYMENT_STATUS_LABELS: Record<string, string> = {
+  CREATED: 'ساخته‌شده',
+  REDIRECTED: 'در صفحهٔ بانک',
+  VERIFIED: 'تأییدشده',
+  FAILED: 'ناموفق',
+  EXPIRED: 'منقضی',
+  UNKNOWN: 'نامعلوم',
+};
+
+export const GATEWAY_REFUND_STATUS_LABELS: Record<string, string> = {
+  SUBMITTING: 'در حال ثبت',
+  PENDING: 'در جریان',
+  UNKNOWN: 'نامعلوم',
+  SUCCEEDED: 'به کارت رسید',
+  FAILED: 'ناموفق',
+  DENIED: 'رد شد',
+};
+
+export const INTENT_STATUS_LABELS: Record<string, string> = {
+  PENDING: 'منتظر پرداخت',
+  AWAITING_GATEWAY: 'منتظر درگاه',
+  PROCESSING: 'در حال نهایی‌سازی',
+  COMPLETED: 'انجام شد',
+  FAILED: 'ناموفق — برگشت داده شد',
+  EXPIRED: 'منقضی',
+  CANCELED: 'لغو شد',
+};
+
+export const INTENT_PURPOSE_LABELS: Record<string, string> = {
+  STORE: 'خرید فروشگاهی',
+  HOTEL: 'رزرو هتل',
+  FLIGHT: 'بلیت پرواز',
+};
+
+export const TRANSACTION_TYPE_LABELS: Record<string, string> = {
+  PURCHASE: 'کسر برای خرید',
+  REFUND: 'برگشت',
+  ADJUSTMENT: 'اصلاح دستی',
+  TOPUP: 'واریز',
+  WITHDRAWAL: 'برداشت',
+};
+
+export const GATEWAY_REVIEW_ACTION_LABELS: Record<string, string> = {
+  PAYMENT_VERIFIED: 'پرداخت تأیید شد',
+  PAYMENT_FAILED: 'پرداخت ناموفق اعلام شد',
+  REFUND_SUCCEEDED: 'بازگشت موفق اعلام شد',
+  REFUND_FAILED: 'بازگشت ناموفق اعلام شد',
+};
+
+/** رنگ نشان وضعیت پرداخت/بازگشت درگاه — قرمز فقط برای آنچه کار دارد یا شکست خورده */
+export function gatewayStatusVariant(
+  status: string,
+): 'default' | 'secondary' | 'destructive' | 'outline' {
+  switch (status) {
+    case 'VERIFIED':
+    case 'SUCCEEDED':
+      return 'default';
+    case 'UNKNOWN':
+    case 'FAILED':
+    case 'DENIED':
+      return 'destructive';
+    case 'EXPIRED':
+      return 'outline';
+    default:
+      return 'secondary';
+  }
+}

@@ -35,7 +35,12 @@
           >
             <path [attr.d]="item.icon" />
           </svg>
-          {{ item.label }}
+          <span class="flex-1">{{ item.label }}</span>
+          @if (counter(item); as count) {
+            <span hlmBadge variant="destructive" [attr.aria-label]="fa(count) + ' مورد منتظر بررسی'">
+              {{ fa(count) }}
+            </span>
+          }
         </a>
       }
     </nav>
