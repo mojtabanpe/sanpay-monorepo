@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { EmployeeStore } from '@sanpay/models';
+import { WELFARE_DEFINITION } from '../upg/personal-wallet';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
@@ -21,7 +22,7 @@ export class StoresService {
         employeeId,
         isActive: true,
         expiresAt: { gt: new Date() },
-        definition: { isActive: true },
+        definition: { ...WELFARE_DEFINITION, isActive: true },
       },
       include: {
         definition: { include: { stores: { include: { store: true } } } },

@@ -17,8 +17,12 @@ import { TourismWebhookService } from './tourism-webhook.service';
 import { TourismController } from './tourism.controller';
 import { TourismService } from './tourism.service';
 import { FlightsService } from './flights/flights.service';
+import { FlightBookingFulfiller } from './flights/flight-booking.fulfiller';
+import { HotelBookingFulfiller } from './hotel-booking.fulfiller';
+import { UpgModule } from '../upg/upg.module';
 
 @Module({
+  imports: [UpgModule],
   controllers: [TourismController, TourismWebhookController, FlightsController],
   providers: [
     TourismService,
@@ -41,6 +45,8 @@ import { FlightsService } from './flights/flights.service';
     },
     FlightsService,
     FlightProvider,
+    HotelBookingFulfiller,
+    FlightBookingFulfiller,
   ],
 })
 export class TourismModule {}

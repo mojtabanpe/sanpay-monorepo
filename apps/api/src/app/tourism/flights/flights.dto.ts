@@ -58,7 +58,8 @@ export class FlightPassengerDto implements FlightPassenger {
 }
 export class BookFlightDto implements FlightBookingInput {
   @IsUUID() quoteId!: string;
-  @IsUUID() allocationId!: string;
+  /** منسوخ — تقسیم پرداخت در UPG انجام می‌شود */
+  @IsOptional() @IsUUID() allocationId?: string;
   @IsString() @MinLength(1) @MaxLength(70) bookerFirstName!: string;
   @IsString() @MinLength(1) @MaxLength(70) bookerLastName!: string;
   @Matches(/^09\d{9}$/) mobile!: string;

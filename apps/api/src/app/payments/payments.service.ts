@@ -3,10 +3,13 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { CreatePaymentInput, Receipt, StoreCheckout } from '@sanpay/models';
+import { Receipt, StoreCheckout } from '@sanpay/models';
 import { randomInt } from 'node:crypto';
+import { PaymentIntent, Prisma } from '../../generated/prisma/client';
 import { SmsService } from '../auth/sms.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { WELFARE_DEFINITION } from '../upg/personal-wallet';
+import { UpgService } from '../upg/upg.service';
 import { PaymentEventsService } from './payment-events.service';
 
 @Injectable()
@@ -15,6 +18,7 @@ export class PaymentsService {
     private readonly prisma: PrismaService,
     private readonly events: PaymentEventsService,
     private readonly sms: SmsService,
+    private readonly upg: UpgService,
   ) {}
 
   /**
@@ -39,6 +43,7 @@ export class PaymentsService {
         isActive: true,
         expiresAt: { gt: new Date() },
         definition: {
+          ...WELFARE_DEFINITION,
           isActive: true,
           stores: { some: { storeId: store.id } },
         },
@@ -68,141 +73,129 @@ export class PaymentsService {
   }
 
   /**
-   * ثبت پرداخت. مبلغ می‌تواند بین چند کیف پول شکسته شود؛ همهٔ سطرها در یک
-   * تراکنش دیتابیس ثبت می‌شوند تا یا همه انجام شود یا هیچ‌کدام.
+   * شروع پرداخت فروشگاهی: کارمند مبلغ کل را وارد کرده و از اینجا به UPG
+   * می‌رود. کیف‌پول‌های مرتبط با فروشگاه منابع مجازند؛ کسر پول و ثبت رسید با
+   * UPG است (`StorePaymentFulfiller`).
    */
-  async create(
+  async startPayment(
     employeeId: string,
-    input: CreatePaymentInput,
+    input: { storeCode: string; amount: number },
     merchantIntentId?: string,
-  ): Promise<Receipt> {
+  ): Promise<PaymentIntent> {
     const store = await this.prisma.store.findUnique({
       where: { code: input.storeCode.trim().toUpperCase() },
     });
     if (!store || !store.isActive) {
       throw new NotFoundException('فروشگاهی با این کد پیدا نشد');
     }
-
-    const lines = input.lines.filter((line) => line.amount > 0);
-    if (lines.length === 0) {
-      throw new BadRequestException('مبلغ پرداخت باید بیشتر از صفر باشد');
-    }
-    if (new Set(lines.map((line) => line.allocationId)).size !== lines.length) {
-      throw new BadRequestException('هر کیف پول فقط یک‌بار قابل انتخاب است');
-    }
-
-    const employee = await this.prisma.employee.findUnique({
-      where: { id: employeeId },
+    const allocations = await this.prisma.walletAllocation.findMany({
+      where: {
+        employeeId,
+        definition: {
+          ...WELFARE_DEFINITION,
+          stores: { some: { storeId: store.id } },
+        },
+      },
+      select: { id: true },
     });
-    if (!employee) {
-      throw new NotFoundException('کارمند پیدا نشد');
+    return this.upg.createIntent({
+      employeeId,
+      purpose: 'STORE',
+      targetId: store.id,
+      storeId: store.id,
+      title: store.name,
+      subtitle: store.category,
+      amount: input.amount,
+      allowedAllocationIds: allocations.map((allocation) => allocation.id),
+      merchantIntentId,
+    });
+  }
+
+  /**
+   * ثبت رسید بعد از اینکه UPG کل مبلغ را کسر کرد. تراکنش‌های خرید از قبل با
+   * همین intent وجود دارند و اینجا فقط به رسید وصل می‌شوند.
+   */
+  async completeFromIntent(intent: PaymentIntent): Promise<void> {
+    const store = await this.prisma.store.findUniqueOrThrow({
+      where: { id: intent.targetId },
+    });
+    if (!store.isActive) {
+      throw new BadRequestException('فروشگاه غیرفعال شده است');
     }
 
-    const receipt = await this.prisma.$transaction(async (tx) => {
+    const paymentId = await this.prisma.$transaction(async (tx) => {
       const payment = await tx.payment.create({
         data: {
           receiptNo: await this.nextReceiptNo(tx),
-          employeeId,
+          employeeId: intent.employeeId,
           storeId: store.id,
-          amount: BigInt(lines.reduce((sum, line) => sum + line.amount, 0)),
-          merchantIntentId,
+          amount: intent.amount,
+          intentId: intent.id,
+          merchantIntentId: intent.merchantIntentId,
         },
       });
-
-      const receiptLines = [];
-      for (const line of lines) {
-        const allocation = await tx.walletAllocation.findUnique({
-          where: { id: line.allocationId },
-          include: {
-            definition: {
-              include: { stores: { where: { storeId: store.id } } },
-            },
-          },
-        });
-
-        if (!allocation || allocation.employeeId !== employeeId) {
-          throw new NotFoundException('کیف پول انتخاب‌شده پیدا نشد');
-        }
-        if (!allocation.isActive || !allocation.definition.isActive) {
-          throw new BadRequestException(
-            `کیف پول «${allocation.definition.name}» غیرفعال است`,
-          );
-        }
-        if (allocation.expiresAt <= new Date()) {
-          throw new BadRequestException(
-            `اعتبار کیف پول «${allocation.definition.name}» منقضی شده است`,
-          );
-        }
-        if (allocation.definition.stores.length === 0) {
-          throw new BadRequestException(
-            `کیف پول «${allocation.definition.name}» در ${store.name} قابل استفاده نیست`,
-          );
-        }
-
-        const remaining = allocation.cap - allocation.spent;
-        if (BigInt(line.amount) > remaining) {
-          throw new BadRequestException(
-            `مبلغ واردشده از ماندهٔ کیف پول «${allocation.definition.name}» بیشتر است`,
-          );
-        }
-
-        // شرط `spent` در where باعث می‌شود دو پرداخت هم‌زمان نتوانند از یک
-        // مانده بیش از حد برداشت کنند (به‌روزرسانی خوش‌بینانه).
-        const updated = await tx.walletAllocation.updateMany({
-          where: { id: allocation.id, spent: allocation.spent },
-          data: { spent: allocation.spent + BigInt(line.amount) },
-        });
-        if (updated.count !== 1) {
-          throw new BadRequestException(
-            'ماندهٔ کیف پول هم‌زمان تغییر کرد؛ لطفاً دوباره تلاش کنید',
-          );
-        }
-
-        await tx.transaction.create({
-          data: {
-            type: 'PURCHASE',
-            amount: BigInt(line.amount),
-            employeeId,
-            allocationId: allocation.id,
-            storeId: store.id,
-            paymentId: payment.id,
-          },
-        });
-
-        receiptLines.push({
-          walletName: allocation.definition.name,
-          icon: allocation.definition.icon,
-          amount: line.amount,
-          remainingAfter: Number(remaining - BigInt(line.amount)),
-        });
-      }
-
-      return {
-        id: payment.id,
-        receiptNo: payment.receiptNo,
-        storeName: store.name,
-        employeeName: `${employee.firstName} ${employee.lastName}`,
-        amount: Number(payment.amount),
-        createdAt: payment.createdAt.toISOString(),
-        lines: receiptLines,
-      } satisfies Receipt;
+      await tx.transaction.updateMany({
+        where: { intentId: intent.id, type: 'PURCHASE' },
+        data: { paymentId: payment.id, storeId: store.id },
+      });
+      return payment.id;
     });
+
+    const receipt = await this.employeeReceipt(paymentId);
 
     // پنل فروشگاه بلافاصله رسید را می‌بیند — بدون ماندهٔ کیف‌پول‌های کارمند
-    this.events.emit(store.id, {
-      ...receipt,
-      lines: receipt.lines.map((line) => ({
-        walletName: line.walletName,
-        icon: line.icon,
-        amount: line.amount,
-      })),
+    this.events.emit(store.id, await this.receipt(paymentId));
+
+    const employee = await this.prisma.employee.findUniqueOrThrow({
+      where: { id: intent.employeeId },
+      select: { phone: true },
     });
-
     if (employee.phone) {
-      this.sms.sendPaymentNotices(employee.phone, store.name, receipt.lines);
+      this.sms.sendPaymentNotices(
+        employee.phone,
+        store.name,
+        receipt.lines.flatMap((line) =>
+          line.remainingAfter === undefined
+            ? []
+            : [{ ...line, remainingAfter: line.remainingAfter }],
+        ),
+      );
     }
+  }
 
-    return receipt;
+  /** رسید پرداخت یک intent — برای صفحهٔ نتیجهٔ UPG */
+  async receiptForIntent(intentId: string): Promise<Receipt> {
+    const payment = await this.prisma.payment.findUniqueOrThrow({
+      where: { intentId },
+      select: { id: true },
+    });
+    return this.employeeReceipt(payment.id);
+  }
+
+  /**
+   * رسید با ماندهٔ فعلی هر کیف پول رفاهی — فقط برای خود کارمند. سطر کارت
+   * بانکی مانده ندارد.
+   */
+  private async employeeReceipt(paymentId: string): Promise<Receipt> {
+    const receipt = await this.receipt(paymentId);
+    const rows = await this.prisma.transaction.findMany({
+      where: { paymentId },
+      include: { allocation: { include: { definition: true } } },
+      orderBy: { createdAt: 'asc' },
+    });
+    return {
+      ...receipt,
+      lines: rows.map((row) => ({
+        walletName: row.allocation.definition.name,
+        icon: row.allocation.definition.icon,
+        amount: Number(row.amount),
+        ...(row.allocation.definition.kind === 'PERSONAL'
+          ? {}
+          : {
+              remainingAfter: Number(row.allocation.cap - row.allocation.spent),
+            }),
+      })),
+    };
   }
 
   async receipt(paymentId: string): Promise<Receipt> {
@@ -212,7 +205,9 @@ export class PaymentsService {
         employee: true,
         store: true,
         transactions: {
+          where: { type: 'PURCHASE' },
           include: { allocation: { include: { definition: true } } },
+          orderBy: { createdAt: 'asc' },
         },
       },
     });
@@ -223,6 +218,7 @@ export class PaymentsService {
       employeeName: `${payment.employee.firstName} ${payment.employee.lastName}`,
       amount: Number(payment.amount),
       createdAt: payment.createdAt.toISOString(),
+      merchantIntentId: payment.merchantIntentId,
       lines: payment.transactions.map((transaction) => ({
         walletName: transaction.allocation.definition.name,
         icon: transaction.allocation.definition.icon,
@@ -233,7 +229,7 @@ export class PaymentsService {
 
   /** شمارهٔ رسید ۸ رقمی خوانا، با تلاش مجدد در صورت برخورد */
   private async nextReceiptNo(
-    tx: Pick<PrismaService, 'payment'>,
+    tx: Pick<Prisma.TransactionClient, 'payment'>,
   ): Promise<string> {
     for (let attempt = 0; attempt < 10; attempt++) {
       const candidate = String(randomInt(10_000_000, 100_000_000));

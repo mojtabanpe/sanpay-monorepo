@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { WELFARE_DEFINITION } from '../upg/personal-wallet';
 import { PrismaService } from '../prisma/prisma.service';
 
 export interface WalletView {
@@ -24,7 +25,7 @@ export class WalletsService {
       where: {
         employeeId,
         isActive: true,
-        definition: { isActive: true },
+        definition: { ...WELFARE_DEFINITION, isActive: true },
       },
       include: {
         definition: {

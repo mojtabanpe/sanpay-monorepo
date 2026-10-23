@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PaymentHistoryItem, ProfileSummary } from '@sanpay/models';
+import { WELFARE_DEFINITION } from '../upg/personal-wallet';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
@@ -17,7 +18,7 @@ export class ProfileService {
           employeeId,
           isActive: true,
           expiresAt: { gt: now },
-          definition: { isActive: true },
+          definition: { ...WELFARE_DEFINITION, isActive: true },
         },
         select: { cap: true, spent: true, expiresAt: true },
         orderBy: { expiresAt: 'asc' },

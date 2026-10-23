@@ -1,3 +1,5 @@
+import { Receipt } from './payment.model';
+
 /** کیف پولی که در یک فروشگاه قابل خرج است — نمای خلاصه برای فهرست فروشگاه‌ها */
 export interface StoreWalletBadge {
   /** شناسهٔ WalletAllocation */
@@ -113,3 +115,19 @@ export interface VerifyMerchantPaymentIntentInput {
   intentId: string;
   code: string;
 }
+
+/**
+ * نتیجهٔ تأیید OTP در پنل فروشگاه. اگر اعتبار کارمند کافی بود همان‌جا رسید
+ * برمی‌گردد؛ وگرنه لینک پرداخت باقی مبلغ با پیامک برای کارمند می‌رود و رسید
+ * بعد از پرداخت او از طریق جریان زندهٔ پنل (SSE) می‌رسد.
+ */
+export type MerchantPaymentVerifyResult =
+  | { status: 'COMPLETED'; receipt: Receipt }
+  | {
+      status: 'AWAITING_EMPLOYEE';
+      upgIntentId: string;
+      /** سهم اعتبار (تومان) */
+      creditAmount: number;
+      /** سهمی که کارمند باید با کارت بدهد (تومان) */
+      cardAmount: number;
+    };

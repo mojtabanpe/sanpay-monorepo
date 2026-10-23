@@ -32,6 +32,7 @@
       "@sanpay/applets/tourism": [
         "./libs/applets/tourism/src/index.ts"
       ],
+      "@sanpay/applets/upg": ["./libs/applets/upg/src/index.ts"],
       "@sanpay/receipt": [
         "./shared/receipt/src/index.ts"
       ],

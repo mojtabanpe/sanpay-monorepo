@@ -11,11 +11,13 @@ import { HlmInputImports } from '@sanpay/ui/input';
 import { HlmSkeletonImports } from '@sanpay/ui/skeleton';
 import { Observable, firstValueFrom } from 'rxjs';
 import { ProfileService } from '../data-access/profile.service';
+import { CardRefundCard } from '../ui/card-refund';
 import { daysUntil, faNumber, jalali, toman } from '../format';
 
 @Component({
   selector: 'profile-home',
   imports: [
+    CardRefundCard,
     FormsModule,
     RouterLink,
     HlmAlertImports,

@@ -7,6 +7,7 @@ import {
   FlightOffer,
   FlightQuote,
   FlightSearchInput,
+  UpgIntentCreated,
 } from '@sanpay/models';
 
 @Injectable({ providedIn: 'root' })
@@ -24,8 +25,9 @@ export class FlightsService {
       offerId,
     });
   }
+  /** رزرو ثبت می‌شود و پرداخت به UPG می‌رود */
   book(input: FlightBookingInput) {
-    return this.http.post<FlightBookingReceipt>(
+    return this.http.post<UpgIntentCreated>(
       '/api/tourism/flights/bookings',
       input,
     );

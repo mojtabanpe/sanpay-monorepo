@@ -1,6 +1,6 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, inject, signal } from '@angular/core';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { AuthService } from '@sanpay/applets/auth';
 import { HlmButtonImports } from '@sanpay/ui/button';
 import { HlmCardImports } from '@sanpay/ui/card';
@@ -31,6 +31,7 @@ function toEnglishDigits(value: string): string {
 export class LoginPage {
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
 
   protected readonly mode = signal<LoginMode>('password');
   protected readonly otpStep = signal<OtpStep>('identity');
@@ -62,7 +63,7 @@ export class LoginPage {
     }
     await this.run(async () => {
       await this.auth.login(phone, passwordEl.value);
-      await this.router.navigate(['/home']);
+      await this.afterLogin();
     });
   }
 
@@ -111,9 +112,16 @@ export class LoginPage {
         this.otpStep.set('setPassword');
         this.notice.set('برای ورودهای بعدی یک رمز عبور تعیین کنید.');
       } else {
-        await this.router.navigate(['/home']);
+        await this.afterLogin();
       }
     });
+  }
+
+  /** برگشت به صفحه‌ای که قبل از ورود خواسته شده بود — فقط مسیر داخلی */
+  private async afterLogin(): Promise<void> {
+    const target = this.route.snapshot.queryParamMap.get('returnUrl');
+    const safe = target && target.startsWith('/') && !target.startsWith('//');
+    await this.router.navigateByUrl(safe ? target : '/home');
   }
 
   protected async setInitialPassword(
@@ -130,7 +138,7 @@ export class LoginPage {
     }
     await this.run(async () => {
       await this.auth.setInitialPassword(passwordEl.value);
-      await this.router.navigate(['/home']);
+      await this.afterLogin();
     });
   }
 

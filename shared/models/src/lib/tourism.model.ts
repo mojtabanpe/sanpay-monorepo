@@ -151,8 +151,6 @@ export interface CreateBookingInput {
   checkin: string;
   nights: number;
   guest: BookingGuest;
-  /** کیف پول گردشگری که مبلغ از آن کم می‌شود */
-  allocationId: string;
 }
 
 /**
@@ -166,6 +164,7 @@ export interface CreateBookingInput {
  * - `REJECTED` / `CANCELED` وضعیت‌های نهایی.
  */
 export type BookingStatus =
+  | 'AWAITING_PAYMENT'
   | 'CONFIRMED'
   | 'HOLD'
   | 'PENDING'

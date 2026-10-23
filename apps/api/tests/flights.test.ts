@@ -26,6 +26,8 @@ import {
   SearchFlightsDto,
 } from '../src/app/tourism/flights/flights.dto';
 import { PrismaService } from '../src/app/prisma/prisma.service';
+import { UpgService } from '../src/app/upg/upg.service';
+import { PaymentIntent } from '../src/generated/prisma/client';
 
 const search: FlightSearchInput = {
   origin: 'THR',
@@ -69,7 +71,6 @@ const raw = [
 const offer = mapFlightOffers(raw, search, 'IRR')[0];
 const input: FlightBookingInput = {
   quoteId: 'c177b991-0735-421b-a4e8-edff6e5d9a71',
-  allocationId: '4f3e52b1-a2a0-4c72-9ec9-990fa5ba91ae',
   bookerFirstName: 'علی',
   bookerLastName: 'احمدی',
   mobile: '09121234567',
@@ -247,8 +248,6 @@ function harness(
   options: {
     existing?: boolean;
     foreignOwner?: boolean;
-    usableWallet?: boolean;
-    concurrentDebit?: boolean;
     timeoutAt?: 'create' | 'book';
     rejectCreate?: boolean;
     status?: string;
@@ -259,13 +258,16 @@ function harness(
     ? {
         id: 'booking',
         employeeId: options.foreignOwner ? 'other' : 'employee',
+        intentId: 'intent',
         status: 'CONFIRMED',
         amount: 1000n,
+        refunded: false,
         confirmationCode: 'ABC',
         createdAt: new Date(),
       }
     : null;
-  const counts = { create: 0, book: 0, debit: 0, transaction: 0, refunds: 0 };
+  const counts = { intent: 0, create: 0, book: 0, refunds: 0 };
+  let refunded = 0n;
   const quote = {
     id: input.quoteId,
     employeeId: 'employee',
@@ -274,62 +276,76 @@ function harness(
     offer,
     amount: 1000n,
   };
+  /** شرط‌های where که سرویس برای ادعای یک‌باره روی آن‌ها حساب می‌کند */
+  const matches = (where: Record<string, unknown>) => {
+    if (!row) return false;
+    const status = where['status'] as string | { in?: string[] } | undefined;
+    if (typeof status === 'string' && row['status'] !== status) return false;
+    if (
+      status &&
+      typeof status === 'object' &&
+      status.in &&
+      !status.in.includes(row['status'] as string)
+    )
+      return false;
+    if (where['refunded'] === false && row['refunded']) return false;
+    if (where['amount'] !== undefined && row['amount'] !== where['amount'])
+      return false;
+    return true;
+  };
   const db = {
     flightQuote: { findFirst: async () => quote },
     flightBooking: {
       findUnique: async () => row,
-      findUniqueOrThrow: async () => row,
+      findUniqueOrThrow: async () => ({ ...row, quote }),
       findMany: async () => (row ? [row] : []),
       findFirst: async ({ where }: { where: { employeeId: string } }) =>
         row?.['employeeId'] === where.employeeId
-          ? { ...row, quote, allocation: { definition: { name: 'گردشگری' } } }
+          ? { ...row, quote, allocation: null }
           : null,
-      create: async () => {
+      create: async ({ data }: { data: Record<string, unknown> }) => {
         row = {
           id: 'booking',
-          employeeId: 'employee',
-          status: 'PROCESSING',
-          amount: 1000n,
           refunded: false,
           tickets: [],
           confirmationCode: null,
           createdAt: new Date(),
+          ...data,
         };
         return row;
       },
       update: async ({ data }: { data: Record<string, unknown> }) => {
         Object.assign(row ?? {}, data);
       },
-      updateMany: async ({ data }: { data: Record<string, unknown> }) => {
-        if (data['refunded'] && row?.['refunded']) return { count: 0 };
+      updateMany: async ({
+        where,
+        data,
+      }: {
+        where: Record<string, unknown>;
+        data: Record<string, unknown>;
+      }) => {
+        if (!matches(where)) return { count: 0 };
         Object.assign(row ?? {}, data);
         return { count: 1 };
       },
     },
-    walletAllocation: {
-      update: async () => {
-        counts.refunds++;
-      },
-      findFirst: async () =>
-        options.usableWallet === false
-          ? null
-          : {
-              id: input.allocationId,
-              cap: 2000n,
-              spent: 0n,
-              employee: { isActive: true },
-            },
-      updateMany: async () => {
-        counts.debit++;
-        return { count: options.concurrentDebit ? 0 : 1 };
-      },
-    },
-    transaction: {
-      create: async () => {
-        counts.transaction++;
-      },
-    },
+    walletAllocation: { findMany: async () => [{ id: 'tourism-wallet' }] },
     $transaction: async (fn: (tx: unknown) => Promise<unknown>) => fn(db),
+  };
+  /** UPG: کسر و برگشت پول فقط از اینجا — اینجا فقط شمرده می‌شود */
+  const upg = {
+    createIntent: async () => {
+      counts.intent++;
+      return { id: 'intent' };
+    },
+    refund: async (_intentId: string, amount: bigint) => {
+      counts.refunds++;
+      refunded += BigInt(amount);
+      return BigInt(amount);
+    },
+    paidSources: async () => [
+      { name: 'گردشگری', icon: null, amount: 1000, personal: false },
+    ],
   };
   const provider = {
     assertConfigured: () => undefined,
@@ -362,88 +378,85 @@ function harness(
       tickets: [],
     }),
   };
+  const service = new FlightsService(
+    db as unknown as PrismaService,
+    provider as unknown as FlightProvider,
+    upg as unknown as UpgService,
+  );
+  const intent = { id: 'intent' } as unknown as PaymentIntent;
   return {
-    service: new FlightsService(
-      db as unknown as PrismaService,
-      provider as unknown as FlightProvider,
-    ),
+    service,
     counts,
+    refunded: () => refunded,
+    /** آنچه UPG بعد از کسر کامل پول صدا می‌زند */
+    fulfill: () => service.fulfillBooking(intent),
+    receipt: () => service.receipt('employee', 'booking'),
   };
 }
-test('duplicate quote returns existing receipt without charging or calling provider', async () => {
+test('duplicate quote returns the existing payment intent without charging or calling provider', async () => {
   const h = harness({ existing: true });
-  assert.equal((await h.service.book('employee', input)).status, 'CONFIRMED');
-  assert.deepEqual(h.counts, {
-    create: 0,
-    book: 0,
-    debit: 0,
-    transaction: 0,
-    refunds: 0,
+  assert.deepEqual(await h.service.book('employee', input), {
+    intentId: 'intent',
   });
+  assert.deepEqual(h.counts, { intent: 0, create: 0, book: 0, refunds: 0 });
 });
 test('cannot access another employee reservation by guessing a quote', async () => {
   const h = harness({ existing: true, foreignOwner: true });
   await assert.rejects(h.service.book('employee', input));
   assert.equal(h.counts.create, 0);
 });
-test('invalid wallet fails before contacting reservation API', async () => {
-  for (const options of [{ usableWallet: false }, { concurrentDebit: true }]) {
-    const h = harness(options);
-    await assert.rejects(h.service.book('employee', input));
-    assert.equal(h.counts.create, 0);
-    assert.equal(h.counts.transaction, 0);
-  }
-});
-test('successful booking records one debit and runs create then book once', async () => {
+test('booking only opens a UPG intent; nothing reaches the provider before payment', async () => {
   const h = harness();
-  assert.equal((await h.service.book('employee', input)).status, 'CONFIRMED');
-  assert.deepEqual(h.counts, {
-    create: 1,
-    book: 1,
-    debit: 1,
-    transaction: 1,
-    refunds: 0,
+  assert.deepEqual(await h.service.book('employee', input), {
+    intentId: 'intent',
   });
+  assert.equal((await h.receipt()).status, 'AWAITING_PAYMENT');
+  assert.deepEqual(h.counts, { intent: 1, create: 0, book: 0, refunds: 0 });
+});
+test('successful fulfillment runs create then book once', async () => {
+  const h = harness();
   await h.service.book('employee', input);
-  assert.deepEqual(h.counts, {
-    create: 1,
-    book: 1,
-    debit: 1,
-    transaction: 1,
-    refunds: 0,
-  });
+  await h.fulfill();
+  assert.equal((await h.receipt()).status, 'CONFIRMED');
+  // UPG ممکن است دوباره صدا بزند (مثلاً callback تکراری) — نباید دوباره صادر شود
+  await h.fulfill();
+  assert.deepEqual(h.counts, { intent: 1, create: 1, book: 1, refunds: 0 });
 });
 test('ambiguous provider outcomes retain a durable review record without retrying writes', async () => {
   for (const timeoutAt of ['create', 'book'] as const) {
     const h = harness({ timeoutAt });
-    const receipt = await h.service.book('employee', input);
+    await h.service.book('employee', input);
+    await h.fulfill(); // نتیجهٔ نامعلوم = پول نگه داشته می‌شود، خطا نیست
+    const receipt = await h.receipt();
     assert.equal(receipt.status, 'REVIEW');
-    assert.equal(h.counts.debit, 1);
     assert.equal(
       receipt.confirmationCode,
       timeoutAt === 'create' ? null : 'ABC',
     );
-    await h.service.book('employee', input);
+    assert.equal(h.counts.refunds, 0);
+    await h.fulfill();
     assert.equal(h.counts.create, 1);
   }
-  assert.equal(
-    (await harness({ status: 'booking' }).service.book('employee', input))
-      .status,
-    'PROCESSING',
-  );
-  assert.equal(
-    (await harness({ status: 'unknown' }).service.book('employee', input))
-      .status,
-    'REVIEW',
-  );
+  for (const [status, expected] of [
+    ['booking', 'PROCESSING'],
+    ['unknown', 'REVIEW'],
+  ] as const) {
+    const h = harness({ status });
+    await h.service.book('employee', input);
+    await h.fulfill();
+    assert.equal((await h.receipt()).status, expected);
+  }
 });
 
-test('definitive create rejection fails and refunds immediately', async () => {
+test('definitive create rejection fails the fulfillment so UPG refunds everything', async () => {
   const h = harness({ rejectCreate: true });
-  const receipt = await h.service.book('employee', input);
+  await h.service.book('employee', input);
+  await assert.rejects(h.fulfill());
+  const receipt = await h.receipt();
   assert.equal(receipt.status, 'REJECTED');
   assert.equal(receipt.refunded, true);
-  assert.equal(h.counts.refunds, 1);
+  // برگشت کامل کار خود UPG است، نه سرویس پرواز
+  assert.equal(h.counts.refunds, 0);
 });
 
 test('reconciliation completes an approved reservation even after the original book timed out', async () => {
@@ -451,12 +464,14 @@ test('reconciliation completes an approved reservation even after the original b
   process.env.FLIGHT_MODE = 'live';
   try {
     const h = harness({ timeoutAt: 'book' });
-    assert.equal((await h.service.book('employee', input)).status, 'REVIEW');
+    await h.service.book('employee', input);
+    await h.fulfill();
+    assert.equal((await h.receipt()).status, 'REVIEW');
     assert.equal(h.counts.book, 1);
 
     await h.service.reconcile();
 
-    assert.equal((await h.service.book('employee', input)).status, 'CONFIRMED');
+    assert.equal((await h.receipt()).status, 'CONFIRMED');
     assert.equal(h.counts.book, 2);
   } finally {
     if (previousMode === undefined) delete process.env.FLIGHT_MODE;
@@ -464,32 +479,39 @@ test('reconciliation completes an approved reservation even after the original b
   }
 });
 
-test('changed locked price stops issuance and releases funds once', async () => {
+test('changed locked price stops issuance and releases funds once through UPG', async () => {
   const h = harness({ lockedAmount: 1200 });
-  const receipt = await h.service.book('employee', input);
+  await h.service.book('employee', input);
+  await h.fulfill();
+  const receipt = await h.receipt();
   assert.equal(receipt.status, 'REJECTED');
   assert.equal(receipt.refunded, true);
   assert.equal(h.counts.book, 0);
   assert.equal(h.counts.refunds, 1);
-  await h.service.book('employee', input);
+  assert.equal(h.refunded(), 1000n);
+  await h.fulfill();
   assert.equal(h.counts.refunds, 1);
 });
-test('lower locked price refunds only the difference and still issues', async () => {
+test('lower locked price refunds only the difference through UPG and still issues', async () => {
   const h = harness({ lockedAmount: 800 });
-  const receipt = await h.service.book('employee', input);
+  await h.service.book('employee', input);
+  await h.fulfill();
+  const receipt = await h.receipt();
   assert.equal(receipt.status, 'CONFIRMED');
   assert.equal(receipt.refunded, false);
   assert.equal(receipt.amount, 800);
   assert.equal(h.counts.book, 1);
   assert.equal(h.counts.refunds, 1);
-  assert.equal(h.counts.transaction, 2);
+  assert.equal(h.refunded(), 200n);
 });
-test('definitive rejection refunds once and duplicate requests do not debit again', async () => {
+test('definitive rejection refunds once and repeated fulfillment does not refund again', async () => {
   const h = harness({ status: 'rejected' });
-  assert.equal((await h.service.book('employee', input)).refunded, true);
   await h.service.book('employee', input);
+  await h.fulfill();
+  assert.equal((await h.receipt()).refunded, true);
+  await h.fulfill();
   assert.equal(h.counts.refunds, 1);
-  assert.equal(h.counts.debit, 1);
+  assert.equal(h.refunded(), 1000n);
 });
 
 test('HTTP adapter uses the documented paths and preserves return legs, passengers and tickets', async () => {

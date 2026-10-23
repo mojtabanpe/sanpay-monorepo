@@ -3,11 +3,15 @@ import {
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
-import { MerchantPaymentIntentResult, Receipt } from '@sanpay/models';
+import {
+  MerchantPaymentIntentResult,
+  MerchantPaymentVerifyResult,
+} from '@sanpay/models';
 import { createHmac, randomInt, randomUUID } from 'node:crypto';
 import { SmsService } from '../auth/sms.service';
 import { PaymentsService } from '../payments/payments.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { UpgService } from '../upg/upg.service';
 import {
   CreateMerchantPaymentIntentDto,
   VerifyMerchantPaymentIntentDto,
@@ -23,6 +27,7 @@ export class MerchantPaymentsService {
     private readonly prisma: PrismaService,
     private readonly sms: SmsService,
     private readonly payments: PaymentsService,
+    private readonly upg: UpgService,
   ) {}
 
   async request(
@@ -54,13 +59,9 @@ export class MerchantPaymentsService {
     });
     if (!store) throw new BadRequestException('فروشگاه فعال نیست');
 
+    // اعتبار ناکافی دیگر مانع نیست: باقی مبلغ بعد از OTP با لینک پرداخت
+    // کارتی برای کارمند پیامک می‌شود (UPG)
     const checkout = await this.payments.checkout(employee.id, store.code);
-    if (checkout.totalAvailable < dto.amount) {
-      throw new BadRequestException(
-        'اعتبار قابل استفاده برای این مبلغ کافی نیست',
-      );
-    }
-
     let remaining = dto.amount;
     const wallets = checkout.wallets.flatMap((wallet) => {
       if (remaining <= 0) return [];
@@ -68,6 +69,7 @@ export class MerchantPaymentsService {
       remaining -= used;
       return [wallet.name];
     });
+    if (remaining > 0) wallets.push('کارت بانکی');
 
     const cooldown = await this.prisma.merchantPaymentIntent.findFirst({
       where: {
@@ -101,15 +103,29 @@ export class MerchantPaymentsService {
     return this.result(intent);
   }
 
+  /**
+   * تأیید OTP و پرداخت از طریق UPG. اگر اعتبار کفاف داد، رسید همین‌جا
+   * برمی‌گردد. وگرنه سهم اعتبار کسر **نمی‌شود** تا کارمند باقی را با کارت
+   * بدهد؛ لینک پرداخت پیامک می‌شود و رسید بعد از پرداخت او از جریان زندهٔ
+   * پنل (SSE) می‌رسد. کارمند در صفحهٔ UPG می‌تواند تقسیم را هم تغییر دهد.
+   */
   async verify(
     storeId: string,
     dto: VerifyMerchantPaymentIntentDto,
-  ): Promise<Receipt> {
+  ): Promise<MerchantPaymentVerifyResult> {
     const intent = await this.prisma.merchantPaymentIntent.findFirst({
       where: { id: dto.intentId, storeId },
-      include: { store: true, payment: true },
+      include: { store: true, payment: true, upgIntent: true },
     });
-    if (intent?.payment) return this.payments.receipt(intent.payment.id);
+    if (intent?.payment) {
+      return {
+        status: 'COMPLETED',
+        receipt: await this.payments.receipt(intent.payment.id),
+      };
+    }
+    if (intent?.upgIntent && intent.status === 'USED') {
+      return this.awaiting(intent.upgIntent.id);
+    }
     if (
       !intent ||
       intent.status !== 'PENDING' ||
@@ -126,33 +142,69 @@ export class MerchantPaymentsService {
       throw new UnauthorizedException('کد نامعتبر یا منقضی شده است');
     }
 
-    const checkout = await this.payments.checkout(
-      intent.employeeId,
-      intent.store.code,
-    );
-    let remaining = Number(intent.amount);
-    const lines = checkout.wallets.flatMap((wallet) => {
-      if (remaining <= 0) return [];
-      const amount = Math.min(wallet.max, remaining);
-      remaining -= amount;
-      return [{ allocationId: wallet.allocationId, amount }];
+    // OTP یک‌بار مصرف است، حتی اگر پرداخت در ادامه به کارت نیاز داشته باشد
+    const claimed = await this.prisma.merchantPaymentIntent.updateMany({
+      where: { id: intent.id, status: 'PENDING' },
+      data: { status: 'USED' },
     });
-    if (remaining > 0) {
+    if (claimed.count !== 1) {
+      throw new UnauthorizedException('کد نامعتبر یا منقضی شده است');
+    }
+
+    const upgIntent = await this.payments.startPayment(
+      intent.employeeId,
+      { storeCode: intent.store.code, amount: Number(intent.amount) },
+      intent.id,
+    );
+    const settled = await this.upg.settleWithCredit(upgIntent.id);
+
+    if (settled.intent.status === 'COMPLETED') {
+      const payment = await this.prisma.payment.findUniqueOrThrow({
+        where: { intentId: upgIntent.id },
+      });
+      return {
+        status: 'COMPLETED',
+        receipt: await this.payments.receipt(payment.id),
+      };
+    }
+    if (settled.cardAmount === 0) {
+      // اعتبار کافی بود ولی کسر یا ثبت شکست خورد
       throw new BadRequestException(
-        'اعتبار کارمند از زمان ارسال کد تغییر کرده است',
+        settled.intent.failureReason ?? 'ثبت پرداخت ممکن نشد',
       );
     }
 
-    const receipt = await this.payments.create(
-      intent.employeeId,
-      { storeCode: intent.store.code, lines },
-      intent.id,
-    );
-    await this.prisma.merchantPaymentIntent.update({
-      where: { id: intent.id },
-      data: { status: 'USED' },
+    const employee = await this.prisma.employee.findUniqueOrThrow({
+      where: { id: intent.employeeId },
+      select: { phone: true },
     });
-    return receipt;
+    if (employee.phone) {
+      this.sms.sendPaymentLink(employee.phone, {
+        store: intent.store.name,
+        amount: settled.cardAmount,
+        link: `${this.upg.publicUrl}/upg/${upgIntent.id}`,
+      });
+    }
+    return {
+      status: 'AWAITING_EMPLOYEE',
+      upgIntentId: upgIntent.id,
+      creditAmount: settled.creditAmount,
+      cardAmount: settled.cardAmount,
+    };
+  }
+
+  private async awaiting(
+    upgIntentId: string,
+  ): Promise<MerchantPaymentVerifyResult> {
+    const intent = await this.prisma.paymentIntent.findUniqueOrThrow({
+      where: { id: upgIntentId },
+    });
+    return {
+      status: 'AWAITING_EMPLOYEE',
+      upgIntentId,
+      creditAmount: Number(intent.amount - intent.gatewayAmount),
+      cardAmount: Number(intent.gatewayAmount),
+    };
   }
 
   private result(intent: { id: string; expiresAt: Date; sentAt: Date }) {

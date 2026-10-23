@@ -695,14 +695,16 @@
               >مانده: {{ money(wallet.max) }}</span
             >
           </div>
-          @if (!canPay()) {
-          <p role="status" class="text-destructive text-sm">
-            ماندهٔ کیف پول گردشگری برای این پرواز کافی نیست.
+          @if (shortfall() > 0) {
+          <p role="status" class="text-muted-foreground text-xs">
+            ماندهٔ کیف پول گردشگری کافی نیست؛ {{ money(shortfall()) }}
+            باقی‌مانده را با کارت بانکی می‌پردازید.
           </p>
           }
           } @else {
-          <p role="status" class="text-destructive text-sm">
-            کیف پول گردشگری فعالی ندارید.
+          <p role="status" class="text-muted-foreground text-xs">
+            کیف پول گردشگری فعالی ندارید؛ مبلغ پرواز با کارت بانکی پرداخت
+            می‌شود.
           </p>
           }
           @if (!hasBookingContact()) {
@@ -711,17 +713,17 @@
           </p>
           }
           <p class="text-muted-foreground text-sm">
-            با پرداخت، {{ money(q.offer.amount) }} از کیف پول گردشگری کسر و
-            درخواست صدور ثبت می‌شود. تا مشخص شدن نتیجه، رزرو دیگری برای همین سفر
-            ثبت نکنید.
+            بعد از پرداخت {{ money(q.offer.amount) }}، درخواست صدور بلیت ثبت
+            می‌شود و اگر صادر نشد مبلغ برمی‌گردد. تا مشخص شدن نتیجه، رزرو دیگری
+            برای همین سفر ثبت نکنید.
           </p>
           <button
             hlmBtn
             type="submit"
-            [disabled]="busy() || bookingForm.invalid || !canPay() || !hasBookingContact()"
+            [disabled]="busy() || bookingForm.invalid || !hasBookingContact()"
           >
-            {{ busy() ? 'در حال ثبت رزرو…' : 'پرداخت ' + money(q.offer.amount) +
-            ' و رزرو' }}
+            {{ busy() ? 'در حال آماده‌سازی…' : 'ادامه به پرداخت — ' +
+            money(q.offer.amount) }}
           </button>
         </div>
       </section>

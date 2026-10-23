@@ -11,6 +11,7 @@ import {
   HotelSummary,
   PreviousTraveler,
   TourismCity,
+  UpgIntentCreated,
 } from '@sanpay/models';
 import { Observable } from 'rxjs';
 
@@ -96,8 +97,9 @@ export class TourismService {
     return this.http.get<BookingQuote>('/api/tourism/quote', { params });
   }
 
-  book(input: CreateBookingInput): Observable<BookingReceipt> {
-    return this.http.post<BookingReceipt>('/api/tourism/bookings', input);
+  /** رزرو ثبت می‌شود و پرداخت به UPG می‌رود */
+  book(input: CreateBookingInput): Observable<UpgIntentCreated> {
+    return this.http.post<UpgIntentCreated>('/api/tourism/bookings', input);
   }
 
   myBookings(): Observable<BookingReceipt[]> {

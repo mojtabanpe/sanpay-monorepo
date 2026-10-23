@@ -1,6 +1,6 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { CreatePaymentInput, Receipt, StoreCheckout } from '@sanpay/models';
+import { StoreCheckout, UpgIntentCreated } from '@sanpay/models';
 import { firstValueFrom } from 'rxjs';
 
 @Injectable({ providedIn: 'root' })
@@ -14,8 +14,9 @@ export class CheckoutService {
     );
   }
 
-  pay(input: CreatePaymentInput): Promise<Receipt> {
-    return firstValueFrom(this.http.post<Receipt>('/api/payments', input));
+  /** پرداخت از UPG رد می‌شود: اینجا فقط intent ساخته می‌شود */
+  start(input: { storeCode: string; amount: number }): Promise<UpgIntentCreated> {
+    return firstValueFrom(this.http.post<UpgIntentCreated>('/api/payments', input));
   }
 }
 

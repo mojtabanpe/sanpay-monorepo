@@ -16,6 +16,7 @@ import {
   HotelSummary,
   TourismCity,
   TourismWallet,
+  UpgIntentCreated,
   allowedHotelRate,
   applyHotelFilters,
   hotelMaxCapacity,
@@ -23,7 +24,9 @@ import {
   hotelTypeOptions,
 } from '@sanpay/models';
 import { randomInt } from 'node:crypto';
+import { PaymentIntent } from '../../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { UpgService } from '../upg/upg.service';
 import {
   CreateBookingDto,
   HotelPageDto,
@@ -53,6 +56,7 @@ export class TourismService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly providers: HotelProviderRouter,
+    private readonly upg: UpgService,
   ) {}
 
   /** شهرهای هر دو تأمین‌کننده، با اعمال قاعدهٔ «مشهد → اقامت۲۴» */
@@ -244,32 +248,27 @@ export class TourismService {
   }
 
   /**
-   * ثبت رزرو.
+   * شروع رزرو: رکورد رزرو و درخواست پرداخت UPG ساخته می‌شود و کارمند برای
+   * پرداخت (اعتبار، کارت یا هر دو) به `/upg/:intentId` می‌رود.
    *
-   * ترتیب عمداً این است و برای هر دو تأمین‌کننده یکی است:
+   * ترتیب با UPG عمداً این است:
    *
-   *   ۱. ظرفیت و اعتبار چک می‌شود
-   *   ۲. رکورد رزرو **قبل از** تماس با تأمین‌کننده نوشته می‌شود
-   *   ۳. رزرو نزد تأمین‌کننده ثبت می‌شود
-   *   ۴. فقط اگر موفق بود، اعتبار کارمند کم می‌شود
-   *   ۵. اگر تأمین‌کننده رزرو را فقط «نگه داشته» بود (HOLD)، حالا نهایی می‌شود
+   *   ۱. پیش‌فاکتور و ظرفیت چک می‌شود؛ رکورد `AWAITING_PAYMENT` نوشته می‌شود
+   *   ۲. UPG کل مبلغ را جمع و کسر می‌کند (`HotelBookingFulfiller`)
+   *   ۳. تازه آن موقع رزرو نزد تأمین‌کننده ثبت (و اگر HOLD بود نهایی) می‌شود
+   *   ۴. هر شکستی در گام ۳ یعنی UPG همهٔ پول را به منبعش برمی‌گرداند
    *
-   * چرا کسر اعتبار بعد از رزرو: برعکسش یعنی هر خطای شبکه‌ای اعتبار کارمند را
-   * می‌سوزاند بدون اینکه اتاقی گرفته شده باشد.
-   *
-   * چرا رکورد قبل از تماس: اگر رزرو نزد تأمین‌کننده موفق شود ولی نوشتن در
-   * دیتابیس شکست بخورد، رزروی داریم که پولش کم نشده. رکوردِ PENDING با
-   * `transactionId: null` باعث می‌شود چنین موردی در گزارش تسویه پیدا شود، نه
-   * اینکه بی‌صدا گم شود.
+   * چرا پول قبل از رزرو: با درگاه، کاربر چند دقیقه بیرون از اپ است. اگر
+   * اول رزرو می‌کردیم و او درگاه را رها می‌کرد، یک رزرو قطعیِ بی‌پول نزد
+   * هتل‌یار می‌ماند. برگشت پول کاملاً داخل سیستم و آنی است، پس ریسکی ندارد.
    */
   async book(
     employeeId: string,
     dto: CreateBookingDto,
-  ): Promise<BookingReceipt> {
+  ): Promise<UpgIntentCreated> {
     this.assertFutureDate(dto.checkin);
 
     const providerKey = sameProvider(dto.hotelId, dto.roomId);
-    const provider = this.providers.byKey(providerKey);
 
     const employee = await this.prisma.employee.findUnique({
       where: { id: employeeId },
@@ -286,92 +285,169 @@ export class TourismService {
       dto.nights,
     );
 
-    const allocation = await this.assertUsableWallet(
-      employeeId,
-      dto.allocationId,
-      quote.amount,
-    );
-
+    const allowed = await this.prisma.walletAllocation.findMany({
+      where: { employeeId, definition: { kind: 'TOURISM' } },
+      select: { id: true },
+    });
     const referenceNo = await this.nextReferenceNo();
 
-    const booking = await this.prisma.hotelBooking.create({
-      data: {
-        referenceNo,
-        provider: providerKey,
-        status: 'PENDING',
-        employeeId,
-        allocationId: allocation.id,
-        hotelId: quote.hotelId,
-        hotelName: quote.hotelName,
-        roomId: quote.room.roomId,
-        roomType: quote.room.roomType,
-        checkin: new Date(`${quote.checkin}T00:00:00Z`),
-        nights: quote.nights,
-        guestName: `${dto.guest.firstName} ${dto.guest.lastName}`,
-        guestIdNo: dto.guest.nationalCode,
-        guestFirstName: dto.guest.firstName,
-        guestLastName: dto.guest.lastName,
-        guestMobile: dto.guest.mobile,
-        amount: BigInt(quote.amount),
-        payable: BigInt(quote.amount),
-      },
+    const intentId = await this.prisma.$transaction(async (tx) => {
+      const booking = await tx.hotelBooking.create({
+        data: {
+          referenceNo,
+          provider: providerKey,
+          status: 'AWAITING_PAYMENT',
+          employeeId,
+          hotelId: quote.hotelId,
+          hotelName: quote.hotelName,
+          roomId: quote.room.roomId,
+          roomType: quote.room.roomType,
+          checkin: new Date(`${quote.checkin}T00:00:00Z`),
+          nights: quote.nights,
+          guestName: `${dto.guest.firstName} ${dto.guest.lastName}`,
+          guestIdNo: dto.guest.nationalCode,
+          guestFirstName: dto.guest.firstName,
+          guestLastName: dto.guest.lastName,
+          guestMobile: dto.guest.mobile,
+          amount: BigInt(quote.amount),
+          payable: BigInt(quote.amount),
+        },
+      });
+      const intent = await this.upg.createIntent(
+        {
+          employeeId,
+          purpose: 'HOTEL',
+          targetId: booking.id,
+          title: `رزرو ${quote.hotelName}`,
+          subtitle: `${quote.room.roomType} — ${quote.nights} شب`,
+          amount: quote.amount,
+          allowedAllocationIds: allowed.map((allocation) => allocation.id),
+        },
+        tx,
+      );
+      await tx.hotelBooking.update({
+        where: { id: booking.id },
+        data: { intentId: intent.id },
+      });
+      return intent.id;
     });
 
-    const reserved = await provider
+    return { intentId };
+  }
+
+  /**
+   * نهایی‌سازی رزرو بعد از اینکه UPG پول را کسر کرد. هر خطایی یعنی رزرو
+   * نشد؛ رزرو REJECTED می‌شود و UPG کل مبلغ را برمی‌گرداند.
+   */
+  async fulfillBooking(intent: PaymentIntent): Promise<void> {
+    const booking = await this.prisma.hotelBooking.findUniqueOrThrow({
+      where: { intentId: intent.id },
+    });
+    const providerKey = booking.provider as ProviderKey;
+    const checkin = booking.checkin.toISOString().slice(0, 10);
+
+    const reject = async (note: string) => {
+      await this.prisma.hotelBooking.update({
+        where: { id: booking.id },
+        data: {
+          status: 'REJECTED',
+          statusNote: note,
+          canceledAt: new Date(),
+          // UPG بلافاصله بعد از همین خطا کل مبلغ را برمی‌گرداند
+          refundedAmount: booking.amount,
+          payable: 0n,
+        },
+      });
+      return new BadRequestException(`${note}؛ مبلغ برگشت داده شد`);
+    };
+
+    // قیمت دوباره گرفته می‌شود — پرداخت ممکن است چند دقیقه طول کشیده باشد
+    let quote: BookingQuote;
+    try {
+      quote = await this.quote(
+        booking.employeeId,
+        booking.hotelId,
+        booking.roomId,
+        checkin,
+        booking.nights,
+      );
+    } catch {
+      throw await reject('این اتاق دیگر در دسترس نیست');
+    }
+    if (BigInt(quote.amount) > booking.amount) {
+      throw await reject('قیمت اتاق از زمان پیش‌فاکتور بیشتر شده است');
+    }
+
+    const reserved = await this.providers
+      .byKey(providerKey)
       .reserve({
-        hotelId: dto.hotelId,
-        roomId: dto.roomId,
-        checkin: dto.checkin,
-        nights: dto.nights,
-        guest: dto.guest,
-        referenceNo,
+        hotelId: booking.hotelId,
+        roomId: booking.roomId,
+        checkin,
+        nights: booking.nights,
+        guest: {
+          firstName: booking.guestFirstName ?? '',
+          lastName: booking.guestLastName ?? '',
+          nationalCode: booking.guestIdNo,
+          mobile: booking.guestMobile ?? '',
+        },
+        referenceNo: booking.referenceNo,
       })
       .catch(async (error) => {
-        await this.prisma.hotelBooking.update({
-          where: { id: booking.id },
-          data: { status: 'REJECTED' },
-        });
-        throw error;
+        this.logger.error(
+          `رزرو ${booking.referenceNo} نزد ${PROVIDER_NAMES[providerKey]} شکست خورد`,
+          error instanceof Error ? error.stack : String(error),
+        );
+        throw await reject('ثبت رزرو نزد هتل انجام نشد');
       });
 
     if (reserved.status === 'REJECTED') {
       await this.prisma.hotelBooking.update({
         where: { id: booking.id },
-        data: {
-          status: 'REJECTED',
-          providerReserveId: reserved.reserveRef || null,
-          statusNote: reserved.message,
-        },
+        data: { providerReserveId: reserved.reserveRef || null },
       });
-      throw new BadRequestException(
-        reserved.message ?? 'رزرو از سوی هتل پذیرفته نشد',
-      );
+      throw await reject(reserved.message ?? 'رزرو از سوی هتل پذیرفته نشد');
     }
 
-    // رزرو گرفته شد → حالا اعتبار کم می‌شود
-    const debited = await this.debit(
-      booking.id,
-      employeeId,
-      allocation.id,
-      quote.amount,
-      quote.hotelName,
-      referenceNo,
-      reserved,
-    );
+    await this.prisma.hotelBooking.update({
+      where: { id: booking.id },
+      data: {
+        status: reserved.status as BookingStatus,
+        providerReserveId: reserved.reserveRef || null,
+        holdExpiresAt: reserved.expiresAt,
+        payable: BigInt(reserved.payable ?? quote.amount),
+        statusNote: reserved.message,
+      },
+    });
 
     // HOLD یعنی اتاق فقط نگه داشته شده و تا وقتی نهایی نکنیم رزرو نیست
-    const status =
-      reserved.status === 'HOLD'
-        ? await this.finalizeHold(booking.id, providerKey, reserved.reserveRef)
-        : reserved.status;
+    if (reserved.status === 'HOLD') {
+      await this.finalizeHold(booking.id, providerKey, reserved.reserveRef);
+    }
 
-    return this.receipt(
-      { ...debited.booking, status },
-      allocation.definition.name,
-      debited.remainingAfter,
-      quote.checkin,
-      quote.checkout,
-    );
+    // ارزان‌تر شد: مابه‌التفاوت همین حالا برمی‌گردد
+    const saving = booking.amount - BigInt(quote.amount);
+    if (saving > 0n) {
+      await this.prisma.$transaction(async (tx) => {
+        await this.upg.refund(
+          intent.id,
+          saving,
+          `کاهش قیمت رزرو ${booking.hotelName} — پیگیری ${booking.referenceNo}`,
+          tx,
+        );
+        await tx.hotelBooking.update({
+          where: { id: booking.id },
+          data: { amount: BigInt(quote.amount) },
+        });
+      });
+    }
+  }
+
+  /** پرداخت انجام نشد (انقضا/انصراف) — رزرو هرگز سراغ تأمین‌کننده نرفته بود */
+  async abandonBooking(intent: PaymentIntent): Promise<void> {
+    await this.prisma.hotelBooking.deleteMany({
+      where: { intentId: intent.id, status: 'AWAITING_PAYMENT' },
+    });
   }
 
   /**
@@ -498,149 +574,70 @@ export class TourismService {
         `نهایی‌سازی رزرو ${bookingId} نزد ${PROVIDER_NAMES[providerKey]} شکست خورد — اعتبار برگشت داده می‌شود`,
         error instanceof Error ? error.stack : String(error),
       );
+      const booking = await this.prisma.hotelBooking.update({
+        where: { id: bookingId },
+        data: {
+          status: 'REJECTED',
+          canceledAt: new Date(),
+          statusNote: 'نهایی‌سازی رزرو نزد تأمین‌کننده انجام نشد؛ مبلغ برگشت داده شد',
+        },
+      });
+      await this.prisma.hotelBooking.update({
+        where: { id: bookingId },
+        data: { refundedAmount: booking.amount, payable: 0n },
+      });
 
-      await this.refund(
-        bookingId,
-        'نهایی‌سازی رزرو نزد تأمین‌کننده انجام نشد؛ مبلغ برگشت داده شد',
-      );
-
+      // UPG با همین خطا کل مبلغ را برمی‌گرداند
       throw new BadRequestException(
-        'رزرو در مهلت مقرر نهایی نشد؛ مبلغ به کیف پول شما برگشت. لطفاً دوباره تلاش کنید',
+        'رزرو در مهلت مقرر نهایی نشد؛ مبلغ برگشت داده شد. لطفاً دوباره تلاش کنید',
       );
     }
   }
 
-  /** کسر اعتبار + ثبت تراکنش، اتمیک و مقاوم در برابر رزرو هم‌زمان */
-  private async debit(
-    bookingId: string,
-    employeeId: string,
-    allocationId: string,
-    amount: number,
-    hotelName: string,
-    referenceNo: string,
-    reserved: {
-      status: string;
-      reserveRef: string;
-      payable: number | null;
-      expiresAt: Date | null;
-      message: string | null;
-    },
-  ) {
-    return this.prisma.$transaction(async (tx) => {
-      const current = await tx.walletAllocation.findUniqueOrThrow({
-        where: { id: allocationId },
-      });
-      const remaining = current.cap - current.spent;
-
-      if (BigInt(amount) > remaining) {
-        throw new BadRequestException(
-          'ماندهٔ کیف پول گردشگری کافی نیست؛ رزرو ثبت شد اما پرداخت انجام نشد — با پشتیبانی تماس بگیرید',
-        );
-      }
-
-      // شرط spent در where: دو رزرو هم‌زمان نمی‌توانند از یک مانده بیش از حد بردارند
-      const updated = await tx.walletAllocation.updateMany({
-        where: { id: current.id, spent: current.spent },
-        data: { spent: current.spent + BigInt(amount) },
-      });
-      if (updated.count !== 1) {
-        throw new BadRequestException(
-          'ماندهٔ کیف پول هم‌زمان تغییر کرد؛ لطفاً دوباره تلاش کنید',
-        );
-      }
-
-      const transaction = await tx.transaction.create({
-        data: {
-          type: 'PURCHASE',
-          amount: BigInt(amount),
-          employeeId,
-          allocationId: current.id,
-          note: `رزرو هتل ${hotelName} — پیگیری ${referenceNo}`,
-        },
-      });
-
-      const booking = await tx.hotelBooking.update({
-        where: { id: bookingId },
-        data: {
-          status: reserved.status as BookingStatus,
-          providerReserveId: reserved.reserveRef || null,
-          holdExpiresAt: reserved.expiresAt,
-          transactionId: transaction.id,
-          payable: BigInt(reserved.payable ?? amount),
-          statusNote: reserved.message,
-        },
-      });
-
-      return {
-        booking,
-        remainingAfter: Number(remaining - BigInt(amount)),
-      };
-    });
-  }
-
-  /**
-   * برگشت مبلغ به کیف پول.
-   *
-   * `refundedAmount` نگهبان یکتایی است: اگر قبلاً پر شده باشد یعنی این رزرو
-   * یک‌بار برگشت خورده و دومین تلاش بی‌اثر می‌ماند. بدون این، یک retry می‌توانست
-   * دوبار اعتبار برگرداند.
-   */
-  private async refund(bookingId: string, note: string): Promise<void> {
-    await this.prisma.$transaction(async (tx) => {
-      const booking = await tx.hotelBooking.findUniqueOrThrow({
-        where: { id: bookingId },
-      });
-
-      if (booking.refundedAmount !== null || booking.transactionId === null) {
-        return;
-      }
-
-      await tx.walletAllocation.update({
-        where: { id: booking.allocationId },
-        data: { spent: { decrement: booking.amount } },
-      });
-
-      await tx.transaction.create({
-        data: {
-          type: 'REFUND',
-          amount: booking.amount,
-          employeeId: booking.employeeId,
-          allocationId: booking.allocationId,
-          note: `${note} — پیگیری ${booking.referenceNo}`,
-        },
-      });
-
-      await tx.hotelBooking.update({
-        where: { id: bookingId },
-        data: {
-          status: 'REJECTED',
-          refundedAmount: booking.amount,
-          canceledAt: new Date(),
-          statusNote: note,
-        },
-      });
-    });
-  }
-
   /** رزروهای کارمند، تازه‌ترین اول */
   async myBookings(employeeId: string): Promise<BookingReceipt[]> {
+    // رزروی که پرداختش هنوز انجام نشده در فهرست نیست
     const bookings = await this.prisma.hotelBooking.findMany({
-      where: { employeeId, transactionId: { not: null } },
+      where: {
+        employeeId,
+        OR: [
+          { transactionId: { not: null } },
+          { intentId: { not: null }, status: { not: 'AWAITING_PAYMENT' } },
+        ],
+      },
       include: { allocation: { include: { definition: true } } },
       orderBy: { createdAt: 'desc' },
       take: 50,
     });
+    const wallets = await this.tourismWallets(employeeId);
+    const tourismRemaining = wallets.reduce((sum, w) => sum + w.max, 0);
 
-    return bookings.map((booking) => {
-      const checkin = booking.checkin.toISOString().slice(0, 10);
-      return this.receipt(
-        booking,
-        booking.allocation.definition.name,
-        Number(booking.allocation.cap - booking.allocation.spent),
-        checkin,
-        addDays(checkin, booking.nights),
-      );
-    });
+    return Promise.all(
+      bookings.map(async (booking) => {
+        const checkin = booking.checkin.toISOString().slice(0, 10);
+        // رزروهای قبل از UPG یک کیف پول داشتند؛ رزروهای UPG ممکن است از
+        // چند منبع (اعتبار + کارت) پرداخت شده باشند
+        const walletName = booking.allocation
+          ? booking.allocation.definition.name
+          : await this.paidWith(booking.intentId);
+        const remaining = booking.allocation
+          ? Number(booking.allocation.cap - booking.allocation.spent)
+          : tourismRemaining;
+        return this.receipt(
+          booking,
+          walletName,
+          remaining,
+          checkin,
+          addDays(checkin, booking.nights),
+        );
+      }),
+    );
+  }
+
+  private async paidWith(intentId: string | null): Promise<string> {
+    if (!intentId) return '';
+    const sources = await this.upg.paidSources(intentId);
+    return [...new Set(sources.map((source) => source.name))].join(' + ');
   }
 
   private receipt(
@@ -713,38 +710,6 @@ export class TourismService {
         expiresAt: allocation.expiresAt.toISOString(),
       }))
       .filter((wallet) => wallet.max > 0);
-  }
-
-  private async assertUsableWallet(
-    employeeId: string,
-    allocationId: string,
-    amount: number,
-  ) {
-    const allocation = await this.prisma.walletAllocation.findUnique({
-      where: { id: allocationId },
-      include: { definition: true },
-    });
-
-    if (!allocation || allocation.employeeId !== employeeId) {
-      throw new NotFoundException('کیف پول انتخاب‌شده پیدا نشد');
-    }
-    if (allocation.definition.kind !== 'TOURISM') {
-      throw new BadRequestException(
-        'رزرو هتل فقط با کیف پول گردشگری امکان‌پذیر است',
-      );
-    }
-    if (!allocation.isActive || !allocation.definition.isActive) {
-      throw new BadRequestException('کیف پول گردشگری غیرفعال است');
-    }
-    if (allocation.expiresAt <= new Date()) {
-      throw new BadRequestException('اعتبار کیف پول گردشگری منقضی شده است');
-    }
-    if (BigInt(amount) > allocation.cap - allocation.spent) {
-      throw new BadRequestException(
-        'ماندهٔ کیف پول گردشگری برای این رزرو کافی نیست',
-      );
-    }
-    return allocation;
   }
 
   private assertFutureDate(checkin: string): void {

@@ -168,6 +168,8 @@ export class CreateBookingDto {
   @Type(() => BookingGuestDto)
   guest!: BookingGuestDto;
 
+  /** منسوخ — تقسیم پرداخت در UPG انجام می‌شود؛ برای سازگاری با کلاینت قدیمی پذیرفته می‌شود */
+  @IsOptional()
   @IsUUID(undefined, { message: 'کیف پول انتخاب‌شده معتبر نیست' })
-  allocationId!: string;
+  allocationId?: string;
 }

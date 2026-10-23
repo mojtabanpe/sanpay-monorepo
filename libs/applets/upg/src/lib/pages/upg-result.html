@@ -1,0 +1,211 @@
+<div class="flex flex-col gap-4 px-4 py-6">
+  @if (loading()) {
+  <div hlmSkeleton class="mx-auto size-16 rounded-full"></div>
+  <div hlmSkeleton class="h-40 w-full"></div>
+  } @else if (failed() || !intent()) {
+  <section hlmCard>
+    <div
+      hlmCardContent
+      class="flex flex-col items-center gap-3 py-8 text-center"
+    >
+      <p class="text-muted-foreground text-sm">دریافت نتیجهٔ پرداخت ممکن نشد</p>
+      <button
+        type="button"
+        hlmBtn
+        variant="outline"
+        size="sm"
+        (click)="refresh()"
+      >
+        تلاش دوباره
+      </button>
+    </div>
+  </section>
+  } @else { @let pi = intent()!;
+
+  <!-- ─── در جریان: بازگشت از بانک یا نهایی‌شدن خرید ───────── -->
+  @if (pi.status === 'PROCESSING' || pi.status === 'AWAITING_GATEWAY') {
+  <section hlmCard>
+    <div
+      hlmCardContent
+      class="flex flex-col items-center gap-3 py-6 text-center"
+    >
+      <span
+        data-slot="live-dot"
+        class="size-3 rounded-full"
+        style="background-color: var(--brand)"
+        aria-hidden="true"
+      ></span>
+      <h1 class="text-base font-bold">در حال تأیید پرداخت…</h1>
+      <p class="text-muted-foreground text-xs" role="status">
+        @if (stillSettling()) { نتیجهٔ پرداخت هنوز از بانک نرسیده است. چند لحظهٔ
+        دیگر دوباره بررسی کنید. } @else { لطفاً صفحه را نبندید. }
+      </p>
+      @if (stillSettling()) {
+      <button
+        type="button"
+        hlmBtn
+        variant="outline"
+        size="sm"
+        (click)="refresh()"
+      >
+        بررسی دوباره
+      </button>
+      }
+    </div>
+  </section>
+  } @else { @switch (pi.status) {
+
+  <!-- ─── موفق ─────────────────────────────────────────────── -->
+  @case ('COMPLETED') {
+  <div class="flex flex-col items-center gap-2 pt-4 text-center">
+    <div
+      data-slot="success-badge"
+      class="flex size-16 items-center justify-center rounded-full"
+      style="background-color: var(--pos-bg); color: var(--pos-fg)"
+    >
+      <svg
+        class="size-8"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2.5"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        aria-hidden="true"
+      >
+        <polyline points="20 6 9 17 4 12" pathLength="1" />
+      </svg>
+    </div>
+    <h1 class="sanpay-rise text-lg font-bold" style="--i: 3">
+      پرداخت انجام شد
+    </h1>
+    <p class="sanpay-rise text-muted-foreground text-xs" style="--i: 4">
+      {{ pi.title }} — {{ toman(pi.amount) }}
+    </p>
+  </div>
+
+  @if (receipt(); as r) {
+  <div class="sanpay-rise flex flex-col gap-2" style="--i: 5">
+    <p
+      class="flex items-center justify-center gap-2 text-xs font-medium"
+      style="color: var(--pos-fg)"
+    >
+      <span
+        data-slot="live-dot"
+        class="size-2 rounded-full"
+        style="background-color: var(--pos-fg)"
+        aria-hidden="true"
+      ></span>
+      رسید زنده — پرداخت {{ elapsedLabel() }}
+    </p>
+    <sanpay-receipt-card [receipt]="r" variant="employee" />
+    <p class="text-muted-foreground text-center text-xs">
+      این رسید را به فروشنده نشان دهید — در پنل فروشگاه هم ثبت شده است.
+    </p>
+  </div>
+  } @if (paidByCard() && pi.gateway; as g) {
+  <section hlmCard class="sanpay-rise" style="--i: 6">
+    <div hlmCardContent class="flex flex-col gap-2 text-sm">
+      <h2 class="font-bold">پرداخت با کارت بانکی</h2>
+      <div class="flex justify-between gap-3">
+        <span class="text-muted-foreground">مبلغ</span>
+        <span class="font-semibold tabular-nums">{{ toman(g.amount) }}</span>
+      </div>
+      @if (g.traceNumber) {
+      <div class="flex justify-between gap-3">
+        <span class="text-muted-foreground">کد رهگیری</span>
+        <span class="tabular-nums" dir="ltr">{{ g.traceNumber }}</span>
+      </div>
+      } @if (g.referenceNumber) {
+      <div class="flex justify-between gap-3">
+        <span class="text-muted-foreground">شمارهٔ مرجع</span>
+        <span class="tabular-nums" dir="ltr">{{ g.referenceNumber }}</span>
+      </div>
+      } @if (g.maskedCard) {
+      <div class="flex justify-between gap-3">
+        <span class="text-muted-foreground">کارت</span>
+        <span class="tabular-nums" dir="ltr">{{ g.maskedCard }}</span>
+      </div>
+      } @if (g.terminal) {
+      <div class="flex justify-between gap-3">
+        <span class="text-muted-foreground">شمارهٔ پایانه</span>
+        <span class="tabular-nums" dir="ltr">{{ g.terminal }}</span>
+      </div>
+      }
+    </div>
+  </section>
+  } @if (link(); as l) {
+  <button type="button" hlmBtn class="w-full" (click)="go(l.path)">
+    {{ l.label }}
+  </button>
+  }
+  <button
+    type="button"
+    hlmBtn
+    variant="outline"
+    class="w-full"
+    (click)="go('/home')"
+  >
+    بازگشت به خانه
+  </button>
+  }
+
+  <!-- ─── ناموفق؛ پول برگشت خورد ──────────────────────────── -->
+  @case ('FAILED') {
+  <section hlmCard>
+    <div hlmCardContent class="flex flex-col gap-3">
+      <h1 class="text-base font-bold">خرید انجام نشد</h1>
+      <div hlmAlert variant="destructive">
+        <p hlmAlertDescription>{{ pi.failureReason }}</p>
+      </div>
+      <p class="text-muted-foreground text-xs">
+        مبلغ کسرشده به اعتبار شما برگشت داده شد. اگر بخشی از آن را با کارت
+        پرداخته بودید، آن مبلغ برایتان نگه داشته شده و در پرداخت بعدی به‌عنوان
+        «مانده از پرداخت‌های کارتی قبلی» قابل استفاده است.
+      </p>
+      <button type="button" hlmBtn variant="outline" (click)="go(pi.backPath)">
+        بازگشت
+      </button>
+    </div>
+  </section>
+  }
+
+  <!-- ─── هنوز پرداخت نشده (کارت ناموفق یا کسر ناموفق) ───── -->
+  @case ('PENDING') {
+  <section hlmCard>
+    <div hlmCardContent class="flex flex-col gap-3">
+      <h1 class="text-base font-bold">پرداخت تکمیل نشد</h1>
+      @if (pi.failureReason) {
+      <div hlmAlert variant="destructive">
+        <p hlmAlertDescription>{{ pi.failureReason }}</p>
+      </div>
+      }
+      <p class="text-muted-foreground text-xs">
+        پولی از اعتبار شما کم نشده است. اگر مبلغی از کارتتان کسر شده و پرداخت
+        تأیید نشده، بانک آن را ظرف ۷۲ ساعت برمی‌گرداند.
+      </p>
+      <button type="button" hlmBtn (click)="retry()">تلاش دوباره</button>
+      <button type="button" hlmBtn variant="outline" (click)="go(pi.backPath)">
+        انصراف
+      </button>
+    </div>
+  </section>
+  }
+
+  <!-- ─── منقضی / لغو ─────────────────────────────────────── -->
+  @default {
+  <section hlmCard>
+    <div hlmCardContent class="flex flex-col gap-3">
+      <h1 class="text-base font-bold">
+        {{ pi.status === 'CANCELED' ? 'پرداخت لغو شد' : 'مهلت پرداخت تمام شد' }}
+      </h1>
+      <p class="text-muted-foreground text-xs">
+        پولی از اعتبار شما کم نشده است. برای خرید، دوباره از ابتدا اقدام کنید.
+      </p>
+      <button type="button" hlmBtn variant="outline" (click)="go(pi.backPath)">
+        بازگشت
+      </button>
+    </div>
+  </section>
+  } } } }
+</div>

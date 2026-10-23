@@ -10,12 +10,7 @@ import {
 } from '@angular/forms/signals';
 import { ActivatedRoute, Router } from '@angular/router';
 import { AuthService } from '@sanpay/applets/auth';
-import {
-  BookingGuest,
-  BookingQuote,
-  BookingReceipt,
-  PreviousTraveler,
-} from '@sanpay/models';
+import { BookingGuest, BookingQuote, PreviousTraveler } from '@sanpay/models';
 import { HlmButtonImports } from '@sanpay/ui/button';
 import { HlmCardImports } from '@sanpay/ui/card';
 import { HlmFieldImports } from '@sanpay/ui/field';
@@ -44,7 +39,6 @@ export class BookingPage {
   private readonly router = inject(Router);
 
   protected readonly quote = signal<BookingQuote | null>(null);
-  protected readonly receipt = signal<BookingReceipt | null>(null);
   protected readonly loading = signal(true);
   protected readonly busy = signal(false);
   protected readonly error = signal<string | null>(null);
@@ -88,12 +82,13 @@ export class BookingPage {
     ),
   );
 
-  /** ماندهٔ کیف پول انتخاب‌شده کفاف مبلغ رزرو را می‌دهد؟ */
-  protected readonly enoughCredit = computed(() => {
-    const wallet = this.selectedWallet();
-    const amount = this.quote()?.amount ?? 0;
-    return !!wallet && wallet.max >= amount;
-  });
+  /** آنچه کیف پول گردشگری کفافش را نمی‌دهد — در UPG با کارت پرداخت می‌شود */
+  protected readonly shortfall = computed(() =>
+    Math.max(
+      0,
+      (this.quote()?.amount ?? 0) - (this.selectedWallet()?.max ?? 0),
+    ),
+  );
 
   constructor() {
     void this.load();
@@ -166,31 +161,30 @@ export class BookingPage {
     this.selectedTraveler.set(key);
   }
 
+  /** رزرو ثبت و پرداخت به UPG سپرده می‌شود (اعتبار، کارت یا هر دو) */
   protected confirm(): void {
-    if (!this.enoughCredit() || this.busy()) return;
+    if (this.busy()) return;
 
     void submit(this.travelerForm, async () => {
       this.busy.set(true);
       this.error.set(null);
       try {
         const traveler = this.travelerModel();
-        this.receipt.set(
-          await firstValueFrom(
-            this.tourism.book({
-              hotelId: this.hotelId,
-              roomId: this.roomId,
-              checkin: this.checkin,
-              nights: this.nights,
-              allocationId: this.allocationId(),
-              guest: {
-                firstName: traveler.firstName.trim(),
-                lastName: traveler.lastName.trim(),
-                nationalCode: traveler.nationalCode.trim(),
-                mobile: traveler.mobile.trim(),
-              },
-            }),
-          ),
+        const { intentId } = await firstValueFrom(
+          this.tourism.book({
+            hotelId: this.hotelId,
+            roomId: this.roomId,
+            checkin: this.checkin,
+            nights: this.nights,
+            guest: {
+              firstName: traveler.firstName.trim(),
+              lastName: traveler.lastName.trim(),
+              nationalCode: traveler.nationalCode.trim(),
+              mobile: traveler.mobile.trim(),
+            },
+          }),
         );
+        await this.router.navigate(['/upg', intentId]);
       } catch (error) {
         this.error.set(message(error, 'ثبت رزرو ناموفق بود'));
       } finally {
@@ -203,10 +197,6 @@ export class BookingPage {
     void this.router.navigate(['/tourism/hotels', this.hotelId], {
       queryParams: { checkin: this.checkin, nights: this.nights },
     });
-  }
-
-  protected done(): void {
-    void this.router.navigate(['/tourism/bookings']);
   }
 
   protected stayLabel(quote: BookingQuote): string {

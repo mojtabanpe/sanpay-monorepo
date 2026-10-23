@@ -11,6 +11,7 @@ import {
   OrganizationalRank,
   WalletKind,
 } from '@sanpay/models';
+import { WELFARE_DEFINITION } from '../upg/personal-wallet';
 import { PrismaService } from '../prisma/prisma.service';
 import {
   BulkAllocateDto,
@@ -43,7 +44,9 @@ export class AdminWalletsService {
     const pageSize = query.pageSize ?? 50;
     const q = query.q?.trim();
 
+    // کیف پول شخصی (PERSONAL) پول خود کارمند است و در داشبورد اعتبار مدیریت نمی‌شود
     const where = {
+      ...WELFARE_DEFINITION,
       ...(query.active ? { isActive: query.active === 'true' } : {}),
       ...(query.companyId ? { companyId: query.companyId } : {}),
       ...(q ? { name: { contains: q, mode: 'insensitive' as const } } : {}),
@@ -136,7 +139,8 @@ export class AdminWalletsService {
     const existing = await this.prisma.walletDefinition.findUnique({
       where: { id },
     });
-    if (!existing) throw new NotFoundException('کیف پول پیدا نشد');
+    if (!existing || existing.kind === 'PERSONAL')
+      throw new NotFoundException('کیف پول پیدا نشد');
     if (dto.companyId) {
       await this.mustHaveActiveCompany(dto.companyId);
       const incompatibleAllocation =
@@ -225,7 +229,8 @@ export class AdminWalletsService {
     const definition = await this.prisma.walletDefinition.findUnique({
       where: { id: dto.definitionId },
     });
-    if (!definition) throw new NotFoundException('کیف پول پیدا نشد');
+    if (!definition || definition.kind === 'PERSONAL')
+      throw new NotFoundException('کیف پول پیدا نشد');
 
     const targets = dto.entries?.length
       ? await this.targetsFromEntries(dto.entries, definition.companyId)

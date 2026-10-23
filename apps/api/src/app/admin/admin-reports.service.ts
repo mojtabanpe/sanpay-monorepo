@@ -11,6 +11,7 @@ import {
   Paginated,
 } from '@sanpay/models';
 import { PROVIDER_NAMES } from '../tourism/providers/provider-id';
+import { WELFARE_DEFINITION } from '../upg/personal-wallet';
 import { PrismaService } from '../prisma/prisma.service';
 import {
   BookingQueryDto,
@@ -56,9 +57,13 @@ export class AdminReportsService {
       this.prisma.employee.count({ where: { isActive: true } }),
       this.prisma.store.count({ where: { deletedAt: null } }),
       this.prisma.store.count({ where: { isActive: true } }),
-      this.prisma.walletDefinition.count(),
+      this.prisma.walletDefinition.count({ where: WELFARE_DEFINITION }),
       this.prisma.walletAllocation.aggregate({
-        where: { isActive: true, expiresAt: { gt: now } },
+        where: {
+          isActive: true,
+          expiresAt: { gt: now },
+          definition: WELFARE_DEFINITION,
+        },
         _count: { _all: true },
         _sum: { cap: true, spent: true },
       }),

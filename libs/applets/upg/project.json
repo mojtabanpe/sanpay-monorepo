@@ -1,0 +1,7 @@
+{
+  "name": "applet-upg",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/applets/upg/src",
+  "projectType": "library",
+  "tags": ["type:applet", "scope:employee"]
+}

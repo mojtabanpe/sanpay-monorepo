@@ -15,9 +15,11 @@ import {
   FlightQuote,
   FlightSearchInput,
   FlightTicket,
+  UpgIntentCreated,
 } from '@sanpay/models';
 import { PrismaService } from '../../prisma/prisma.service';
-import { Prisma } from '../../../generated/prisma/client';
+import { PaymentIntent, Prisma } from '../../../generated/prisma/client';
+import { UpgService } from '../../upg/upg.service';
 import {
   FlightProvider,
   FlightProviderRejectedException,
@@ -116,6 +118,7 @@ export class FlightsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly provider: FlightProvider,
+    private readonly upg: UpgService,
   ) {}
   airports() {
     return this.provider.airports();
@@ -185,14 +188,21 @@ export class FlightsService {
     ]);
     return { ...offer, departure, returning };
   }
+  /**
+   * شروع رزرو پرواز: رکورد `AWAITING_PAYMENT` و درخواست پرداخت UPG. پس از
+   * کسر کامل پول، UPG `fulfillBooking` را صدا می‌زند. quoteId یکتاست، پس
+   * ارسال دوباره همان intent را برمی‌گرداند.
+   */
   async book(
     employeeId: string,
     input: FlightBookingInput,
-  ): Promise<FlightBookingReceipt> {
+  ): Promise<UpgIntentCreated> {
     const existing = await this.prisma.flightBooking.findUnique({
       where: { quoteId: input.quoteId },
     });
-    if (existing) return this.receipt(employeeId, existing.id);
+    if (existing?.intentId && existing.employeeId === employeeId)
+      return { intentId: existing.intentId };
+    if (existing) throw new ConflictException('این پیش‌فاکتور قبلاً استفاده شده است');
     this.provider.assertConfigured();
     const quote = await this.prisma.flightQuote.findFirst({
       where: { id: input.quoteId, employeeId },
@@ -205,63 +215,42 @@ export class FlightsService {
     const search = quote.search as unknown as FlightSearchInput;
     const offer = quote.offer as unknown as FlightOffer;
     validateFlightPassengers(input, search, offer);
-    // Claim the quote and debit together. Unique quoteId prevents duplicate external writes.
-    let bookingId: string;
+
+    const allowed = await this.prisma.walletAllocation.findMany({
+      where: { employeeId, definition: { kind: 'TOURISM' } },
+      select: { id: true },
+    });
     try {
-      bookingId = await this.prisma.$transaction(async (tx) => {
-        if (quote.expiresAt <= new Date())
-          throw new ConflictException(
-            'مهلت پیش‌فاکتور تمام شده؛ دوباره پرواز را انتخاب کنید',
-          );
-        const a = await tx.walletAllocation.findFirst({
-          where: {
-            id: input.allocationId,
-            employeeId,
-            isActive: true,
-            expiresAt: { gt: new Date() },
-            definition: { kind: 'TOURISM', isActive: true },
-          },
-          include: { employee: true },
-        });
-        if (!a || !a.employee.isActive || a.cap - a.spent < quote.amount)
-          throw new BadRequestException(
-            'کیف پول گردشگری معتبر با مانده کافی انتخاب کنید',
-          );
-        const changed = await tx.walletAllocation.updateMany({
-          where: {
-            id: a.id,
-            spent: a.spent,
-            cap: a.cap,
-            isActive: true,
-            expiresAt: { gt: new Date() },
-            definition: { kind: 'TOURISM', isActive: true },
-          },
-          data: { spent: { increment: quote.amount } },
-        });
-        if (changed.count !== 1)
-          throw new ConflictException(
-            'مانده کیف پول تغییر کرده؛ دوباره بررسی کنید',
-          );
+      return await this.prisma.$transaction(async (tx) => {
         const booking = await tx.flightBooking.create({
           data: {
             quoteId: quote.id,
             employeeId,
-            allocationId: a.id,
+            status: 'AWAITING_PAYMENT',
             amount: quote.amount,
             passengers: input.passengers as unknown as Prisma.InputJsonValue,
             bookerMobile: input.mobile,
+            bookerFirstName: input.bookerFirstName,
+            bookerLastName: input.bookerLastName,
           },
         });
-        await tx.transaction.create({
-          data: {
-            type: 'PURCHASE',
+        const intent = await this.upg.createIntent(
+          {
             employeeId,
-            allocationId: a.id,
-            amount: quote.amount,
-            note: `رزرو پرواز اقامت۲۴ — ${booking.id}`,
+            purpose: 'FLIGHT',
+            targetId: booking.id,
+            title: `پرواز ${offer.departure.origin} به ${offer.departure.destination}`,
+            subtitle: offer.returning ? 'رفت و برگشت' : 'یک‌طرفه',
+            amount: Number(quote.amount),
+            allowedAllocationIds: allowed.map((allocation) => allocation.id),
           },
+          tx,
+        );
+        await tx.flightBooking.update({
+          where: { id: booking.id },
+          data: { intentId: intent.id },
         });
-        return booking.id;
+        return { intentId: intent.id };
       });
     } catch (error) {
       if (
@@ -271,38 +260,75 @@ export class FlightsService {
         const duplicate = await this.prisma.flightBooking.findUnique({
           where: { quoteId: quote.id },
         });
-        if (duplicate) return this.receipt(employeeId, duplicate.id);
+        if (duplicate?.intentId && duplicate.employeeId === employeeId)
+          return { intentId: duplicate.intentId };
       }
       throw error;
     }
+  }
+
+  /**
+   * صدور بلیت بعد از کسر پول. ردِ صریح تأمین‌کننده = خطا (UPG همه‌چیز را
+   * برمی‌گرداند). timeout اثبات شکست نیست: پول و رکورد برای استعلام می‌مانند
+   * و اگر بعداً رد شد، `refund` از طریق UPG برمی‌گرداند.
+   */
+  async fulfillBooking(intent: PaymentIntent): Promise<void> {
+    const booking = await this.prisma.flightBooking.findUniqueOrThrow({
+      where: { intentId: intent.id },
+      include: { quote: true },
+    });
+    const claimed = await this.prisma.flightBooking.updateMany({
+      where: { id: booking.id, status: 'AWAITING_PAYMENT' },
+      data: { status: 'PROCESSING' },
+    });
+    if (claimed.count !== 1) return;
+
+    const offer = booking.quote.offer as unknown as FlightOffer;
+    const input: FlightBookingInput = {
+      quoteId: booking.quoteId,
+      bookerFirstName: booking.bookerFirstName ?? '',
+      bookerLastName: booking.bookerLastName ?? '',
+      mobile: booking.bookerMobile ?? '',
+      passengers: booking.passengers as unknown as FlightBookingInput['passengers'],
+    };
     try {
       const locked = await this.provider.create(offer, input);
       await this.prisma.flightBooking.update({
-        where: { id: bookingId },
+        where: { id: booking.id },
         data: { confirmationCode: locked.confirmationCode },
       });
       if (locked.status === 'approved') {
-        await this.issueApproved(bookingId, offer.amount, locked);
+        await this.issueApproved(booking.id, offer.amount, locked);
       } else {
-        await this.applyStatus(bookingId, locked);
+        await this.applyStatus(booking.id, locked);
       }
     } catch (error) {
       if (error instanceof FlightProviderRejectedException) {
-        await this.refund(
-          bookingId,
-          'درخواست رزرو پرواز از سوی تأمین‌کننده پذیرفته نشد',
+        await this.prisma.flightBooking.updateMany({
+          where: { id: booking.id, refunded: false },
+          data: { status: 'REJECTED', refunded: true },
+        });
+        throw new BadRequestException(
+          'درخواست رزرو پرواز از سوی تأمین‌کننده پذیرفته نشد؛ مبلغ برگشت داده شد',
         );
-        return this.receipt(employeeId, bookingId);
       }
       // A timeout is NOT proof of failure. Preserve funds and the durable record for inquiry.
       await this.prisma.flightBooking.updateMany({
-        where: { id: bookingId, status: 'PROCESSING' },
+        where: { id: booking.id, status: 'PROCESSING' },
         data: { status: 'REVIEW' },
       });
-      this.logger.warn(`Flight reservation requires inquiry: ${bookingId}`);
+      this.logger.warn(`Flight reservation requires inquiry: ${booking.id}`);
     }
-    return this.receipt(employeeId, bookingId);
   }
+
+  /** پرداخت انجام نشد — هنوز سراغ تأمین‌کننده نرفته بودیم */
+  async abandonBooking(intent: PaymentIntent): Promise<void> {
+    await this.prisma.flightBooking.updateMany({
+      where: { intentId: intent.id, status: 'AWAITING_PAYMENT' },
+      data: { status: 'EXPIRED' },
+    });
+  }
+
   private async issueApproved(
     id: string,
     authorizedAmount: number,
@@ -340,19 +366,7 @@ export class FlightsService {
         data: { amount },
       });
       if (claimed.count !== 1) return;
-      await tx.walletAllocation.update({
-        where: { id: booking.allocationId },
-        data: { spent: { decrement: difference } },
-      });
-      await tx.transaction.create({
-        data: {
-          type: 'REFUND',
-          employeeId: booking.employeeId,
-          allocationId: booking.allocationId,
-          amount: difference,
-          note: `بازگشت مابه‌التفاوت قیمت پرواز — ${id}`,
-        },
-      });
+      await this.giveBack(tx, booking, difference, `بازگشت مابه‌التفاوت قیمت پرواز — ${id}`);
     });
   }
   private async applyStatus(
@@ -393,19 +407,37 @@ export class FlightsService {
         data: { refunded: true, status: 'REJECTED' },
       });
       if (claimed.count !== 1) return;
-      await tx.walletAllocation.update({
-        where: { id: b.allocationId },
-        data: { spent: { decrement: b.amount } },
-      });
-      await tx.transaction.create({
-        data: {
-          type: 'REFUND',
-          employeeId: b.employeeId,
-          allocationId: b.allocationId,
-          amount: b.amount,
-          note: `${note} — ${id}`,
-        },
-      });
+      await this.giveBack(tx, b, b.amount, `${note} — ${id}`);
+    });
+  }
+
+  /**
+   * برگشت پول یک رزرو: رزروهای UPG از طریق UPG (اول سهم کارت، بعد اعتبار)،
+   * رزروهای قبل از UPG مستقیم به همان کیف پول.
+   */
+  private async giveBack(
+    tx: Prisma.TransactionClient,
+    booking: { employeeId: string; allocationId: string | null; intentId: string | null },
+    amount: bigint,
+    note: string,
+  ): Promise<void> {
+    if (booking.intentId) {
+      await this.upg.refund(booking.intentId, amount, note, tx);
+      return;
+    }
+    if (!booking.allocationId) return;
+    await tx.walletAllocation.update({
+      where: { id: booking.allocationId },
+      data: { spent: { decrement: amount } },
+    });
+    await tx.transaction.create({
+      data: {
+        type: 'REFUND',
+        employeeId: booking.employeeId,
+        allocationId: booking.allocationId,
+        amount,
+        note,
+      },
     });
   }
   async receipt(employeeId: string, id: string): Promise<FlightBookingReceipt> {
@@ -422,13 +454,21 @@ export class FlightsService {
       offer: b.quote.offer as unknown as FlightOffer,
       amount: Number(b.amount),
       refunded: b.refunded,
-      walletName: b.allocation.definition.name,
+      walletName: b.allocation
+        ? b.allocation.definition.name
+        : b.intentId
+          ? [
+              ...new Set(
+                (await this.upg.paidSources(b.intentId)).map((s) => s.name),
+              ),
+            ].join(' + ')
+          : '',
       createdAt: b.createdAt.toISOString(),
     };
   }
   async myBookings(employeeId: string): Promise<FlightBookingReceipt[]> {
     const rows = await this.prisma.flightBooking.findMany({
-      where: { employeeId },
+      where: { employeeId, status: { notIn: ['AWAITING_PAYMENT', 'EXPIRED'] } },
       orderBy: { createdAt: 'desc' },
       take: 50,
       select: { id: true },

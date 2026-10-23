@@ -4,6 +4,7 @@ import {
   ServiceUnavailableException,
 } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
+import { TomanOAuth, tomanCredentialsFromEnv } from '../toman/toman-oauth';
 
 export interface TomanTransferItemInput {
   amount: number;
@@ -29,16 +30,6 @@ export interface TomanTransferResult {
   [key: string]: unknown;
 }
 
-type TokenResponse = {
-  access_token: string;
-  expires_in?: number;
-};
-
-type CachedToken = {
-  access: string;
-  expiresAt: number;
-};
-
 const BATCH_CREATE_SCOPE = 'digital_banking.batch_transfer.create';
 const BATCH_READ_SCOPE = 'digital_banking.batch_transfer.read';
 const TRANSFER_READ_SCOPE = 'digital_banking.transfer.read';
@@ -47,8 +38,13 @@ const TRANSFER_READ_SCOPE = 'digital_banking.transfer.read';
 @Injectable()
 export class TomanClientService {
   private readonly logger = new Logger(TomanClientService.name);
-  private readonly tokens = new Map<string, CachedToken>();
-  private readonly tokenRequests = new Map<string, Promise<string>>();
+  private readonly oauth = new TomanOAuth({
+    label: 'بانکداری شرکتی تومان',
+    authUrl: () =>
+      process.env.TOMAN_AUTH_URL || 'https://auth.qbitpay.org/oauth2/token/',
+    credentials: () => tomanCredentialsFromEnv('TOMAN_'),
+    timeoutMs: () => Number(process.env.TOMAN_TIMEOUT_MS || 20_000),
+  });
 
   isLive(): boolean {
     return process.env.TOMAN_MODE?.toLowerCase() === 'live';
@@ -136,93 +132,20 @@ export class TomanClientService {
     path: string,
     scope: string,
     init: RequestInit = {},
-    retry = true,
   ): Promise<T> {
-    const token = await this.accessToken(scope);
-    const response = await this.fetchWithTimeout(`${this.apiUrl()}${path}`, {
-      ...init,
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
-        ...init.headers,
-      },
-    });
-    if ((response.status === 401 || response.status === 403) && retry) {
-      await response.body?.cancel();
-      this.tokens.delete(scope);
-      return this.request<T>(path, scope, init, false);
-    }
+    const response = await this.oauth.fetch(
+      `${this.apiUrl()}${path}`,
+      scope,
+      init,
+    );
     if (!response.ok) throw await this.httpError(response, path);
     return (await response.json()) as T;
-  }
-
-  private async accessToken(scope: string): Promise<string> {
-    const cached = this.tokens.get(scope);
-    if (cached && cached.expiresAt > Date.now() + 60_000) return cached.access;
-
-    const pending = this.tokenRequests.get(scope);
-    if (pending) return pending;
-
-    const request = this.fetchAccessToken(scope).finally(() => {
-      if (this.tokenRequests.get(scope) === request)
-        this.tokenRequests.delete(scope);
-    });
-    this.tokenRequests.set(scope, request);
-    return request;
-  }
-
-  private async fetchAccessToken(scope: string): Promise<string> {
-    const credentials = this.credentials();
-    const body = new URLSearchParams({
-      grant_type: 'password',
-      username: credentials.username,
-      password: credentials.password,
-      client_id: credentials.clientId,
-      client_secret: credentials.clientSecret,
-      scope,
-    });
-    const response = await this.fetchWithTimeout(this.authUrl(), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body,
-    });
-    if (!response.ok) throw await this.httpError(response, 'oauth2/token');
-    const data = (await response.json()) as TokenResponse;
-    this.tokens.set(scope, {
-      access: data.access_token,
-      expiresAt: Date.now() + (data.expires_in ?? 86_400) * 1_000,
-    });
-    return data.access_token;
-  }
-
-  private credentials() {
-    const username = process.env.TOMAN_USERNAME;
-    const password = process.env.TOMAN_PASSWORD;
-    const clientId = process.env.TOMAN_CLIENT_ID;
-    const clientSecret = process.env.TOMAN_CLIENT_SECRET;
-    if (!username || !password || !clientId || !clientSecret) {
-      throw new ServiceUnavailableException(
-        'تنظیمات احراز هویت تومان کامل نیست',
-      );
-    }
-    return { username, password, clientId, clientSecret };
   }
 
   private apiUrl() {
     return (
       process.env.TOMAN_API_URL || 'https://dbank-staging.qcluster.org/api/v1'
     ).replace(/\/$/, '');
-  }
-
-  private authUrl() {
-    return (
-      process.env.TOMAN_AUTH_URL || 'https://auth.qbitpay.org/oauth2/token/'
-    );
-  }
-
-  private async fetchWithTimeout(url: string, init: RequestInit) {
-    const timeout = Number(process.env.TOMAN_TIMEOUT_MS || 20_000);
-    return fetch(url, { ...init, signal: AbortSignal.timeout(timeout) });
   }
 
   private async httpError(response: Response, path: string) {

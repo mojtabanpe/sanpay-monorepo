@@ -10,8 +10,7 @@ import {
   viewChild,
 } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
-import { PayableWallet, Receipt, StoreCheckout } from '@sanpay/models';
-import { ReceiptCard } from '@sanpay/receipt';
+import { StoreCheckout } from '@sanpay/models';
 import { HlmAlertImports } from '@sanpay/ui/alert';
 import { HlmButtonImports } from '@sanpay/ui/button';
 import { SanpayAmountInput } from '@sanpay/forms';
@@ -19,14 +18,13 @@ import { HlmCardImports } from '@sanpay/ui/card';
 import { HlmFieldImports } from '@sanpay/ui/field';
 import { HlmInputImports } from '@sanpay/ui/input';
 import { HlmInputGroupImports } from '@sanpay/ui/input-group';
-import { HlmSheetImports } from '@sanpay/ui/sheet';
 import {
   CheckoutService,
   parseStoreCode,
 } from '../../core/checkout/checkout.service';
 import { QrScanner } from '../../core/checkout/qr-scanner';
 
-type Step = 'scan' | 'amount' | 'done';
+type Step = 'scan' | 'amount';
 
 @Component({
   selector: 'app-pay',
@@ -37,8 +35,6 @@ type Step = 'scan' | 'amount' | 'done';
     HlmFieldImports,
     HlmInputImports,
     HlmInputGroupImports,
-    HlmSheetImports,
-    ReceiptCard,
     SanpayAmountInput,
   ],
   templateUrl: './pay.html',
@@ -53,7 +49,6 @@ export class PayPage implements OnDestroy {
 
   protected readonly step = signal<Step>('scan');
   protected readonly checkout = signal<StoreCheckout | null>(null);
-  protected readonly receipt = signal<Receipt | null>(null);
 
   protected readonly busy = signal(false);
   protected readonly error = signal<string | null>(null);
@@ -62,73 +57,20 @@ export class PayPage implements OnDestroy {
   protected readonly manualCode = signal('');
 
   /**
-   * مبلغ تایپ‌شده برای هر کیف پول، به **ریال** — همان واحدی که در اینپوت
-   * نمایش داده می‌شود. API تومان می‌گیرد، ولی اگر state تومانی باشد هر رقم
-   * اول (`۵` ریال → `۰` تومان) پاک می‌شود و کاربر هیچ‌وقت نمی‌تواند شروع به
-   * تایپ کند؛ پس مقدار خام ریالی نگه داشته و تومان از رویش مشتق می‌شود.
+   * مبلغ کل به **ریال** (ارقام لاتین بی‌جداکننده — مدل `sanpayAmount`)، همان
+   * واحدی که در اینپوت دیده می‌شود. API تومان می‌گیرد.
    */
-  private readonly rials = signal<Record<string, number>>({});
-
-  /** مبلغ هر کیف پول به تومان، برای API */
-  private readonly amounts = computed(() =>
-    Object.fromEntries(
-      Object.entries(this.rials()).map(([id, rial]) => [id, Math.floor(rial / 10)]),
-    ),
+  protected readonly rial = signal('');
+  private readonly amount = computed(() => Math.floor(Number(this.rial() || 0) / 10));
+  /** ریال کمتر از ۱۰ قابل کسر نیست؛ به‌جای گردکردنِ بی‌صدا ادامه را می‌بندیم */
+  protected readonly hasFraction = computed(() => Number(this.rial() || 0) % 10 !== 0);
+  protected readonly canContinue = computed(
+    () => this.amount() > 0 && !this.hasFraction() && !this.busy(),
   );
-
-  protected readonly total = computed(() =>
-    Object.values(this.amounts()).reduce((sum, amount) => sum + amount, 0),
-  );
-  /** ریال کمتر از ۱۰ قابل کسر نیست؛ به‌جای گردکردنِ بی‌صدا پرداخت را می‌بندیم */
-  protected readonly hasFraction = computed(() =>
-    Object.values(this.rials()).some((rial) => rial % 10 !== 0),
-  );
-  protected readonly multiWallet = computed(
-    () => (this.checkout()?.wallets.length ?? 0) > 1,
-  );
-  /** مدال تأیید قبل از ارسال پرداخت */
-  protected readonly confirmOpen = signal(false);
-  /** تفکیک مبلغ هر کیف پول برای مدال تأیید */
-  protected readonly confirmLines = computed(() =>
-    (this.checkout()?.wallets ?? [])
-      .map((wallet) => ({
-        name: wallet.name,
-        amount: this.amounts()[wallet.allocationId] ?? 0,
-      }))
-      .filter((line) => line.amount > 0),
-  );
-  protected readonly canPay = computed(
-    () => this.total() > 0 && !this.hasFraction() && !this.busy(),
-  );
-
-  /**
-   * ساعتِ «زنده» روی صفحهٔ رسید. اسکرین‌شاتِ یک رسید قدیمی نه می‌تپد و نه
-   * ثانیه‌شمارش جلو می‌رود، پس صندوق‌دار از روی گوشی می‌بیند که رسید تازه
-   * است. زمان از ساعت خود گوشی لحظهٔ رسیدن پاسخ گرفته می‌شود، نه از
-   * `createdAt` سرور، تا اختلاف ساعت دستگاه عدد منفی یا عجیب نسازد.
-   */
-  private readonly receivedAt = signal(0);
-  private readonly now = signal(Date.now());
-  protected readonly elapsedLabel = computed(() => {
-    const seconds = Math.max(
-      0,
-      Math.floor((this.now() - this.receivedAt()) / 1000),
-    );
-    if (seconds < 5) return 'همین حالا';
-    if (seconds < 60) return `${this.count(seconds)} ثانیه پیش`;
-    return `${this.count(Math.floor(seconds / 60))} دقیقه پیش`;
-  });
 
   private readonly faNumber = new Intl.NumberFormat('fa-IR');
 
   constructor() {
-    effect((onCleanup) => {
-      if (this.step() !== 'done') return;
-      this.now.set(Date.now());
-      const timer = setInterval(() => this.now.set(Date.now()), 1000);
-      onCleanup(() => clearInterval(timer));
-    });
-
     // ورود از فهرست فروشگاه‌ها (`/qr?store=CODE`) — اسکن لازم نیست
     const preselected = parseStoreCode(
       this.route.snapshot.queryParamMap.get('store') ?? '',
@@ -207,15 +149,10 @@ export class PayPage implements OnDestroy {
     this.busy.set(true);
     this.error.set(null);
     try {
+      // اعتبار نداشتن مانع نیست: UPG باقی مبلغ را به درگاه می‌فرستد
       const checkout = await this.checkoutService.getCheckout(code);
-      if (checkout.wallets.length === 0) {
-        this.error.set(
-          `شما اعتبار قابل استفاده‌ای در ${checkout.storeName} ندارید`,
-        );
-        return;
-      }
       this.checkout.set(checkout);
-      this.rials.set({});
+      this.rial.set('');
       this.step.set('amount');
     } catch (caught) {
       this.error.set(messageOf(caught, 'دریافت اطلاعات فروشگاه ممکن نشد'));
@@ -224,93 +161,39 @@ export class PayPage implements OnDestroy {
     }
   }
 
-  // ─── گام ۲: مبلغ ──────────────────────────────────────────────────
+  // ─── گام ۲: مبلغ کل → UPG ─────────────────────────────────────────
 
-  /** ارقام ریالی اینپوت هر کیف پول — مدل `sanpayAmount` */
-  protected rialText(wallet: PayableWallet): string {
-    const rial = this.rials()[wallet.allocationId] ?? 0;
-    return rial === 0 ? '' : String(rial);
-  }
-
-  /** directive مبلغ را به سقف کیف پول رسانده — سقف در سرور هم دوباره چک می‌شود */
-  protected onAmount(wallet: PayableWallet, digits: string): void {
-    this.setRial(wallet, Number(digits || 0));
-  }
-
-  protected fillMax(wallet: PayableWallet): void {
-    this.setRial(wallet, wallet.max * 10);
-  }
-
-  protected clearAmounts(): void {
-    this.rials.set({});
-  }
-
-  private setRial(wallet: PayableWallet, rial: number): void {
-    this.rials.update((current) => ({
-      ...current,
-      [wallet.allocationId]: rial,
-    }));
-    this.error.set(null);
-  }
-
-  protected onConfirmStateChange(state: string): void {
-    // تا وقتی درخواست در جریان است شیت بسته نمی‌شود (Esc / کلیک بیرون)
-    if (state === 'closed' && !this.busy()) {
-      this.confirmOpen.set(false);
-      this.error.set(null);
-    }
-  }
-
-  protected async pay(): Promise<void> {
+  protected async continueToPayment(): Promise<void> {
     const checkout = this.checkout();
-    if (!checkout || !this.canPay()) return;
-
-    const lines = Object.entries(this.amounts())
-      .filter(([, amount]) => amount > 0)
-      .map(([allocationId, amount]) => ({ allocationId, amount }));
-
+    if (!checkout || !this.canContinue()) return;
     this.busy.set(true);
     this.error.set(null);
     try {
-      const receipt = await this.checkoutService.pay({
+      const { intentId } = await this.checkoutService.start({
         storeCode: checkout.storeCode,
-        lines,
+        amount: this.amount(),
       });
-      this.confirmOpen.set(false);
-      this.receipt.set(receipt);
-      this.receivedAt.set(Date.now());
-      this.step.set('done');
-      // لرزش کوتاهِ تأیید — فقط اندروید؛ iOS این API را ندارد
-      navigator.vibrate?.(30);
+      // پرداخت در UPG — مسیر `/upg/:intentId` (اپلت upg، lazy)
+      await this.router.navigate(['/upg', intentId]);
     } catch (caught) {
-      this.error.set(messageOf(caught, 'ثبت پرداخت ممکن نشد'));
+      this.error.set(messageOf(caught, 'شروع پرداخت ممکن نشد'));
     } finally {
       this.busy.set(false);
     }
   }
 
-  // ─── گام ۳ و ناوبری ───────────────────────────────────────────────
-
   protected restart(): void {
     this.checkout.set(null);
-    this.receipt.set(null);
-    this.rials.set({});
+    this.rial.set('');
     this.error.set(null);
     this.manualCode.set('');
     this.step.set('scan');
-  }
-
-  protected goHome(): void {
-    void this.router.navigate(['/home']);
   }
 
   protected toman(value: number): string {
     return `${this.faNumber.format(value * 10)} ریال`;
   }
 
-  protected count(value: number): string {
-    return this.faNumber.format(value);
-  }
 }
 
 function messageOf(caught: unknown, fallback: string): string {

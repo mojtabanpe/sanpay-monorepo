@@ -14,6 +14,7 @@ import {
 import {
   BookingQuote,
   BookingReceipt,
+  UpgIntentCreated,
   HotelAvailability,
   HotelDetail,
   HotelPage,
@@ -87,7 +88,7 @@ export class TourismController {
   book(
     @Req() request: Request,
     @Body() dto: CreateBookingDto,
-  ): Promise<BookingReceipt> {
+  ): Promise<UpgIntentCreated> {
     return this.tourism.book(employeeId(request), dto);
   }
 

@@ -188,7 +188,6 @@ export class FlightsPage {
     return airportShortName(iata, this.airports());
   }
   protected roundTrip = !!this.search().returnDate;
-  protected allocationId = '';
   protected readonly minDate = isoToJalali(today());
   protected readonly minJalaliBirthdate = isoToJalali('1900-01-01');
   protected readonly defaultJalaliBirthdate = isoToJalali('2000-01-01');
@@ -202,10 +201,10 @@ export class FlightsPage {
       this.search().returnDate || addDays(this.search().departureDate, 1),
     ),
   );
-  protected readonly canPay = computed(() => {
+  /** آنچه کیف پول گردشگری کفافش را نمی‌دهد — در UPG با کارت پرداخت می‌شود */
+  protected readonly shortfall = computed(() => {
     const q = this.quote();
-    const wallet = q?.wallets[0];
-    return !!wallet && wallet.max >= q.offer.amount;
+    return q ? Math.max(0, q.offer.amount - (q.wallets[0]?.max ?? 0)) : 0;
   });
   protected readonly hasBookingContact = computed(() => {
     const profile = this.auth.profile();
@@ -440,8 +439,6 @@ export class FlightsPage {
         this.api.quote(this.searchedInput, offer.id),
       );
       this.quote.set(q);
-      // هر کارمند فقط یک کیف پول گردشگری دارد
-      this.allocationId = q.wallets[0]?.allocationId ?? '';
       this.passengers.set(
         (['adult', 'child', 'infant'] as const).flatMap((type) =>
           Array.from(
@@ -570,10 +567,9 @@ export class FlightsPage {
     this.busy.set(true);
     this.error.set('');
     try {
-      const receipt = await firstValueFrom(
+      const { intentId } = await firstValueFrom(
         this.api.book({
           quoteId: q.id,
-          allocationId: this.allocationId,
           bookerFirstName: profile.firstName.trim(),
           bookerLastName: profile.lastName.trim(),
           mobile: profile.phone ?? '',
@@ -585,9 +581,8 @@ export class FlightsPage {
           ),
         }),
       );
-      this.receipt.set(receipt);
-      this.quote.set(null);
-      await this.loadBookings();
+      // پرداخت (اعتبار، کارت یا هر دو) در UPG؛ بلیت از «بلیت‌های من» دیده می‌شود
+      await this.router.navigate(['/upg', intentId]);
     } catch (error) {
       this.error.set(this.message(error));
       await this.loadBookings();

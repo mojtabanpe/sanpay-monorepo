@@ -56,6 +56,30 @@ export class SmsService {
     ]);
   }
 
+  /**
+   * لینک پرداخت باقی مبلغ خرید فروشگاهی با کارت (UPG). قالبش باید در پنل
+   * sms.ir تعریف و شناسه‌اش در `SMSIR_PAYMENT_LINK_TEMPLATE_ID` گذاشته شود
+   * (پارامترها: STORE، PRICE، LINK). بدون آن، پیامک ارسال نمی‌شود و فروشنده
+   * باید لینک را شفاهی بگوید — پرداخت از اپ کارمند هم در دسترس است.
+   */
+  sendPaymentLink(
+    phone: string,
+    payment: { store: string; amount: number; link: string },
+  ): void {
+    const templateId = Number(process.env.SMSIR_PAYMENT_LINK_TEMPLATE_ID);
+    if (!templateId && process.env.SMS_MODE !== 'console') {
+      this.logger.warn(
+        'SMSIR_PAYMENT_LINK_TEMPLATE_ID تنظیم نشده؛ لینک پرداخت پیامک نشد',
+      );
+      return;
+    }
+    this.notify(phone, templateId || 0, [
+      { name: 'STORE', value: payment.store },
+      { name: 'PRICE', value: `${toRial(payment.amount)} ریال` },
+      { name: 'LINK', value: payment.link },
+    ]);
+  }
+
   /** «ورود به حساب شما انجام شد» — هشدار ورود؛ خطایش ورود را خراب نمی‌کند */
   sendLoginNotice(phone: string, at: Date): void {
     this.notify(phone, LOGIN_NOTICE_TEMPLATE_ID, [

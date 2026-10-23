@@ -1,6 +1,8 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import {
+  CardRefundInput,
+  CardRefundSummary,
   EmployeeProfile,
   PaymentHistoryItem,
   ProfileSummary,
@@ -23,6 +25,17 @@ export class ProfileService {
     return this.http.get<PaymentHistoryItem[]>('/api/profile/payments', {
       params: new HttpParams().set('limit', limit),
     });
+  }
+
+  /** ماندهٔ پرداخت‌های کارتی قبلی و آخرین درخواست‌های بازگشت به کارت */
+  cardRefunds(): Observable<CardRefundSummary> {
+    return this.http.get<CardRefundSummary>('/api/upg/card-refunds');
+  }
+
+  /** @param amount تومان */
+  requestCardRefund(amount: number): Observable<CardRefundSummary> {
+    const body: CardRefundInput = { amount };
+    return this.http.post<CardRefundSummary>('/api/upg/card-refunds', body);
   }
 
   /** عکس پروفایل — سرور به WebP مربعی تبدیلش می‌کند و EXIF را دور می‌ریزد */

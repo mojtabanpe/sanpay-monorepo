@@ -12,6 +12,7 @@ import { StoresModule } from './stores/stores.module';
 import { TourismModule } from './tourism/tourism.module';
 import { WalletsModule } from './wallets/wallets.module';
 import { SettlementsModule } from './settlements/settlements.module';
+import { UpgModule } from './upg/upg.module';
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { SettlementsModule } from './settlements/settlements.module';
     AdminModule,
     SettlementsModule,
     AvatarsModule,
+    UpgModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -10,6 +10,8 @@ import { TourismService } from '../data-access/tourism.service';
 import { faNumber, jalali, toman } from '../format';
 
 const STATUS_LABELS: Record<BookingStatus, string> = {
+  // در فهرست نمی‌آید (API رزروهای پرداخت‌نشده را برنمی‌گرداند)؛ برای کامل‌بودن نوع
+  AWAITING_PAYMENT: 'در انتظار پرداخت',
   CONFIRMED: 'قطعی',
   // HOLD در عمل به کارمند نمی‌رسد — رزرو در همان درخواست نهایی می‌شود — ولی
   // اگر رکوردی نیمه‌کاره مانده باشد باید برچسب صادقانه‌ای داشته باشد

@@ -1,5 +1,5 @@
 import { SanpayAmountInput } from '@sanpay/forms';
-import { Component, inject, signal } from '@angular/core';
+import { Component, OnDestroy, inject, signal } from '@angular/core';
 import { Receipt } from '@sanpay/models';
 import { ReceiptCard } from '@sanpay/receipt';
 import { HlmAlertImports } from '@sanpay/ui/alert';
@@ -24,10 +24,17 @@ import { StorePaymentsService } from '../../core/payments.service';
   ],
   templateUrl: './merchant-payment.html',
 })
-export class MerchantPayment {
+export class MerchantPayment implements OnDestroy {
   private readonly payments = inject(StorePaymentsService);
 
-  protected readonly step = signal<'details' | 'otp' | 'done'>('details');
+  protected readonly step = signal<'details' | 'otp' | 'awaiting' | 'done'>(
+    'details',
+  );
+  /** وقتی اعتبار کافی نبود: سهم اعتبار و سهمی که کارمند با کارت می‌دهد */
+  protected readonly split = signal<{ credit: number; card: number } | null>(
+    null,
+  );
+  private stopStream: (() => void) | null = null;
   protected readonly nationalCode = signal('');
   protected readonly phone = signal('');
   protected readonly amount = signal('');
@@ -82,17 +89,46 @@ export class MerchantPayment {
       return;
     }
     await this.run(async () => {
-      this.receipt.set(
-        await this.payments.verifyMerchantPayment({
-          intentId,
-          code: this.code(),
-        }),
-      );
-      this.step.set('done');
+      const result = await this.payments.verifyMerchantPayment({
+        intentId,
+        code: this.code(),
+      });
+      if (result.status === 'COMPLETED') {
+        this.receipt.set(result.receipt);
+        this.step.set('done');
+        return;
+      }
+      // اعتبار کافی نبود: لینک پرداخت کارتی برای کارمند پیامک شد. رسید بعد از
+      // پرداخت او از جریان زندهٔ فروش‌ها می‌رسد و همین‌جا نشان داده می‌شود.
+      this.split.set({ credit: result.creditAmount, card: result.cardAmount });
+      this.step.set('awaiting');
+      this.waitForReceipt(intentId);
     });
   }
 
+  private waitForReceipt(intentId: string): void {
+    this.stopStream?.();
+    this.stopStream = this.payments.stream((receipt) => {
+      if (receipt.merchantIntentId !== intentId) return;
+      this.receipt.set(receipt);
+      this.step.set('done');
+      this.stopStream?.();
+      this.stopStream = null;
+    });
+  }
+
+  ngOnDestroy(): void {
+    this.stopStream?.();
+  }
+
+  protected rial(toman: number): string {
+    return `${new Intl.NumberFormat('fa-IR').format(toman * 10)} ریال`;
+  }
+
   protected reset(): void {
+    this.stopStream?.();
+    this.stopStream = null;
+    this.split.set(null);
     this.step.set('details');
     this.nationalCode.set('');
     this.phone.set('');

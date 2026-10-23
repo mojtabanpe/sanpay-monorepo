@@ -63,14 +63,20 @@ export interface FlightQuote {
 }
 export interface FlightBookingInput {
   quoteId: string;
-  allocationId: string;
+  /** منسوخ — تقسیم پرداخت در UPG انجام می‌شود */
+  allocationId?: string;
   bookerFirstName: string;
   bookerLastName: string;
   mobile: string;
   passengers: FlightPassenger[];
 }
 export type FlightBookingStatus =
-  'PROCESSING' | 'CONFIRMED' | 'REJECTED' | 'REVIEW';
+  | 'AWAITING_PAYMENT'
+  | 'EXPIRED'
+  | 'PROCESSING'
+  | 'CONFIRMED'
+  | 'REJECTED'
+  | 'REVIEW';
 export interface FlightTicket {
   id: number;
   number: string;

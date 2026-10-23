@@ -2,7 +2,8 @@ import { Body, Controller, Get, Param, Post, Req, UseGuards } from '@nestjs/comm
 import { Request } from 'express';
 import { JwtPayload } from '../auth/auth.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { CreatePaymentDto } from './dto/create-payment.dto';
+import { UpgIntentCreated } from '@sanpay/models';
+import { StartPaymentDto } from './dto/create-payment.dto';
 import { PaymentsService } from './payments.service';
 
 @Controller()
@@ -19,11 +20,13 @@ export class PaymentsController {
     return this.payments.checkout(request.user.sub, storeCode);
   }
 
+  /** پرداخت از طریق UPG: اپ کارمند به `/upg/:intentId` می‌رود */
   @Post('payments')
-  create(
+  async start(
     @Req() request: Request & { user: JwtPayload },
-    @Body() dto: CreatePaymentDto,
-  ) {
-    return this.payments.create(request.user.sub, dto);
+    @Body() dto: StartPaymentDto,
+  ): Promise<UpgIntentCreated> {
+    const intent = await this.payments.startPayment(request.user.sub, dto);
+    return { intentId: intent.id };
   }
 }

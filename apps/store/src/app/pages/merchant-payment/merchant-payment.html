@@ -87,6 +87,32 @@
       </button>
     </div>
   </section>
+  } @else if (step() === 'awaiting' && split(); as s) {
+  <section hlmCard>
+    <div hlmCardContent class="flex flex-col gap-3">
+      <h2 class="font-bold">منتظر پرداخت مشتری</h2>
+      <p class="text-muted-foreground text-sm">
+        اعتبار مشتری برای کل مبلغ کافی نیست. لینک پرداخت باقی مبلغ با کارت بانکی
+        برایش پیامک شد؛ پرداخت را می‌تواند از اپ هم انجام دهد.
+      </p>
+      <div class="flex justify-between text-sm">
+        <span class="text-muted-foreground">از اعتبار</span>
+        <span class="font-semibold tabular-nums">{{ rial(s.credit) }}</span>
+      </div>
+      <div class="flex justify-between text-sm">
+        <span class="text-muted-foreground">با کارت بانکی</span>
+        <span class="font-semibold tabular-nums">{{ rial(s.card) }}</span>
+      </div>
+      <p
+        class="text-muted-foreground flex items-center gap-2 text-xs"
+        role="status"
+      >
+        <hlm-spinner /> رسید بعد از پرداخت همین‌جا و در صفحهٔ فروش‌ها ظاهر
+        می‌شود.
+      </p>
+      <button hlmBtn variant="outline" (click)="reset()">پرداخت جدید</button>
+    </div>
+  </section>
   } @else if (receipt(); as paymentReceipt) {
   <sanpay-receipt-card [receipt]="paymentReceipt" variant="store" />
   <button hlmBtn variant="outline" (click)="reset()">پرداخت جدید</button>

@@ -2,100 +2,6 @@
   @if (loading()) {
   <hlm-skeleton class="h-32 w-full" />
   <hlm-skeleton class="h-64 w-full" />
-  } @else if (receipt(); as r) {
-
-  <!-- ─── رسید رزرو ─── -->
-  <section hlmCard class="overflow-hidden">
-    <div
-      class="flex flex-col items-center gap-2 px-6 py-8 text-white"
-      style="
-        background-image: linear-gradient(
-          135deg,
-          var(--ink-900),
-          var(--ink-700) 55%,
-          var(--ink-600)
-        );
-      "
-    >
-      @if (r.status === 'CONFIRMED') {
-      <svg
-        class="size-12"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        stroke-width="1.75"
-        stroke-linecap="round"
-        stroke-linejoin="round"
-        aria-hidden="true"
-      >
-        <circle cx="12" cy="12" r="10" />
-        <path d="m9 12 2 2 4-4" />
-      </svg>
-      <p class="font-bold">رزرو شما قطعی شد</p>
-      } @else {
-      <svg
-        class="size-12"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        stroke-width="1.75"
-        stroke-linecap="round"
-        stroke-linejoin="round"
-        aria-hidden="true"
-      >
-        <circle cx="12" cy="12" r="10" />
-        <path d="M12 6v6l4 2" />
-      </svg>
-      <p class="font-bold">رزرو ثبت شد — در انتظار تأیید هتل</p>
-      }
-      <p class="text-xs opacity-85">شمارهٔ پیگیری</p>
-      <p class="text-lg font-bold" dir="ltr">{{ r.referenceNo }}</p>
-    </div>
-
-    <div hlmCardContent class="flex flex-col gap-3 pt-6 text-sm">
-      <div class="flex justify-between gap-3">
-        <span class="text-muted-foreground">هتل</span>
-        <span class="font-medium">{{ r.hotelName }}</span>
-      </div>
-      <div class="flex justify-between gap-3">
-        <span class="text-muted-foreground">اتاق</span>
-        <span class="font-medium">{{ r.roomType }}</span>
-      </div>
-      <div class="flex justify-between gap-3">
-        <span class="text-muted-foreground">مسافر</span>
-        <span class="font-medium">{{ r.guestName }}</span>
-      </div>
-      <div class="flex justify-between gap-3">
-        <span class="text-muted-foreground">ورود</span>
-        <span class="font-medium">{{ jalali(r.checkin) }}</span>
-      </div>
-      <div class="flex justify-between gap-3">
-        <span class="text-muted-foreground">خروج</span>
-        <span class="font-medium">{{ jalali(r.checkout) }}</span>
-      </div>
-
-      <hr class="border-border my-1" />
-
-      <div class="flex justify-between gap-3">
-        <span class="text-muted-foreground">کسر از {{ r.walletName }}</span>
-        <span class="font-bold">{{ toman(r.amount) }}</span>
-      </div>
-      <div class="flex justify-between gap-3">
-        <span class="text-muted-foreground">ماندهٔ کیف پول</span>
-        <span class="font-medium">{{ toman(r.remainingAfter) }}</span>
-      </div>
-    </div>
-  </section>
-
-  @if (r.status !== 'CONFIRMED') {
-  <p class="text-muted-foreground px-2 text-xs leading-relaxed">
-    ظرفیت این هتل آفلاین است؛ تأیید نهایی توسط هتل انجام می‌شود و نتیجه در بخش
-    «رزروهای من» به‌روزرسانی خواهد شد.
-  </p>
-  }
-
-  <button hlmBtn class="w-full" (click)="done()">رزروهای من</button>
-
   } @else if (quote(); as q) {
 
   <!-- ─── خلاصهٔ اقامت ─── -->
@@ -127,21 +33,22 @@
     <!-- ─── کیف پول ─── -->
     <section hlmCard>
       <div hlmCardContent class="flex flex-col gap-3 pt-6">
-        <h2 class="text-sm font-bold">پرداخت از کیف پول گردشگری</h2>
+        <h2 class="text-sm font-bold">پرداخت</h2>
 
         @if (selectedWallet(); as wallet) {
         <div class="flex items-center justify-between gap-3 text-sm">
           <span class="font-medium">{{ wallet.name }}</span>
           <span class="text-muted-foreground">مانده: {{ toman(wallet.max) }}</span>
         </div>
-        @if (!enoughCredit()) {
-        <p role="status" class="text-destructive text-sm">
-          ماندهٔ کیف پول گردشگری برای این رزرو کافی نیست.
+        @if (shortfall() > 0) {
+        <p role="status" class="text-muted-foreground text-xs">
+          ماندهٔ کیف پول گردشگری کافی نیست؛ {{ toman(shortfall()) }} باقی‌مانده
+          را با کارت بانکی می‌پردازید.
         </p>
         }
         } @else {
-        <p class="text-muted-foreground py-4 text-center text-sm">
-          کیف پول گردشگری فعالی ندارید.
+        <p class="text-muted-foreground text-xs">
+          کیف پول گردشگری فعالی ندارید؛ مبلغ رزرو با کارت بانکی پرداخت می‌شود.
         </p>
         }
       </div>
@@ -307,16 +214,16 @@
       hlmBtn
       type="submit"
       class="w-full"
-      [disabled]="!enoughCredit() || busy()"
+      [disabled]="busy()"
     >
-      @if (busy()) { در حال ثبت رزرو… } @else { پرداخت و ثبت رزرو — {{
+      @if (busy()) { در حال آماده‌سازی… } @else { ادامه به پرداخت — {{
       toman(q.amount) }} }
     </button>
 
     <p
       class="text-muted-foreground px-2 text-center text-[0.65rem] leading-relaxed"
     >
-      مبلغ فقط در صورت موفقیت رزرو در سامانهٔ هتل از اعتبار شما کسر می‌شود.
+      اگر رزرو در سامانهٔ هتل ثبت نشود، مبلغ بلافاصله به اعتبار شما برمی‌گردد.
     </p>
   </form>
 

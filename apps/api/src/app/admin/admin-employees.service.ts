@@ -15,6 +15,7 @@ import {
   WalletKind,
 } from '@sanpay/models';
 import * as bcrypt from 'bcrypt';
+import { WELFARE_DEFINITION } from '../upg/personal-wallet';
 import { PrismaService } from '../prisma/prisma.service';
 import {
   CreateAllocationDto,
@@ -82,6 +83,7 @@ export class AdminEmployeesService {
       include: {
         company: true,
         allocations: {
+          where: { definition: WELFARE_DEFINITION },
           include: { definition: true },
           orderBy: { createdAt: 'desc' },
         },
@@ -379,7 +381,8 @@ export class AdminEmployeesService {
         where: { id: dto.definitionId },
       }),
     ]);
-    if (!definition) throw new NotFoundException('کیف پول پیدا نشد');
+    if (!definition || definition.kind === 'PERSONAL')
+      throw new NotFoundException('کیف پول پیدا نشد');
     if (definition.companyId !== employee.companyId) {
       throw new BadRequestException(
         'کیف پول و کارمند باید مربوط به یک شرکت باشند',
@@ -417,8 +420,10 @@ export class AdminEmployeesService {
   async updateAllocation(id: string, dto: UpdateAllocationDto) {
     const existing = await this.prisma.walletAllocation.findUnique({
       where: { id },
+      include: { definition: true },
     });
-    if (!existing) throw new NotFoundException('تخصیص پیدا نشد');
+    if (!existing || existing.definition.kind === 'PERSONAL')
+      throw new NotFoundException('تخصیص پیدا نشد');
     // سقف نباید زیر مبلغ خرج‌شده برود، وگرنه مانده منفی می‌شود
     if (dto.cap !== undefined && BigInt(dto.cap) < existing.spent) {
       throw new BadRequestException('سقف نمی‌تواند کمتر از مبلغ مصرف‌شده باشد');
@@ -446,8 +451,11 @@ export class AdminEmployeesService {
     return this.prisma.$transaction(async (tx) => {
       const allocation = await tx.walletAllocation.findUnique({
         where: { id },
+        include: { definition: true },
       });
-      if (!allocation) throw new NotFoundException('تخصیص پیدا نشد');
+      // کیف پول شخصی فقط از UPG تغییر می‌کند
+      if (!allocation || allocation.definition.kind === 'PERSONAL')
+        throw new NotFoundException('تخصیص پیدا نشد');
 
       const delta = BigInt(-amount); // افزایش مانده = کاهش spent
       const spent = allocation.spent + delta;
@@ -495,7 +503,11 @@ export class AdminEmployeesService {
 }
 
 function activeAllocation() {
-  return { isActive: true, expiresAt: { gt: new Date() } };
+  return {
+    isActive: true,
+    expiresAt: { gt: new Date() },
+    definition: WELFARE_DEFINITION,
+  };
 }
 
 function toRow(employee: {

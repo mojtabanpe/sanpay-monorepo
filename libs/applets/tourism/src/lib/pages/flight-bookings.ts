@@ -85,6 +85,8 @@ export class FlightBookingsPage {
 
   protected statusLabel(status: FlightBookingStatus): string {
     return {
+      AWAITING_PAYMENT: 'در انتظار پرداخت',
+      EXPIRED: 'پرداخت نشد',
       CONFIRMED: 'رزرو قطعی',
       PROCESSING: 'در حال صدور',
       REVIEW: 'در انتظار بررسی',

@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { HotelBooking } from '../../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { UpgService } from '../upg/upg.service';
 import {
   GdsReserveReport,
   GdsWebhookEventPayload,
@@ -32,7 +33,10 @@ export interface WebhookResult {
 export class TourismWebhookService {
   private readonly logger = new Logger(TourismWebhookService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly upg: UpgService,
+  ) {}
 
   async handle(payload: GdsWebhookEventPayload): Promise<WebhookResult> {
     const action = payload?.action;
@@ -180,12 +184,21 @@ export class TourismWebhookService {
     note: string,
   ): Promise<void> {
     const alreadyRefunded = booking.refundedAmount !== null;
-    // اگر رزرو هرگز به کسر اعتبار نرسیده (transactionId=null) چیزی برای برگشت نیست
-    const refundable = booking.transactionId !== null && !alreadyRefunded;
+    // رزروی که هرگز پولش کسر نشده چیزی برای برگشت ندارد: رزروهای قبل از UPG
+    // با transactionId، و رزروهای UPG از وقتی از AWAITING_PAYMENT بیرون آمده‌اند
+    const paid =
+      booking.transactionId !== null ||
+      (booking.intentId !== null && booking.status !== 'AWAITING_PAYMENT');
+    const refundable = paid && !alreadyRefunded;
     const refund = clamp(BigInt(Math.trunc(Number(refundRaw))), booking.amount);
+    const description = `${note} — رزرو هتل ${booking.hotelName}، پیگیری ${booking.referenceNo}`;
 
     await this.prisma.$transaction(async (tx) => {
-      if (refundable && refund > 0n) {
+      if (refundable && refund > 0n && booking.intentId) {
+        // UPG: اول سهم کارت (به کیف پول شخصی، قابل بازگشت به کارت)، بعد اعتبار
+        await this.upg.refund(booking.intentId, refund, description, tx);
+      } else if (refundable && refund > 0n && booking.allocationId) {
+        // رزروهای قبل از UPG
         const allocation = await tx.walletAllocation.findUniqueOrThrow({
           where: { id: booking.allocationId },
         });
@@ -201,7 +214,7 @@ export class TourismWebhookService {
             amount: back,
             employeeId: booking.employeeId,
             allocationId: allocation.id,
-            note: `${note} — رزرو هتل ${booking.hotelName}، پیگیری ${booking.referenceNo}`,
+            note: description,
           },
         });
       }

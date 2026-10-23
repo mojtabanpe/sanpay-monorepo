@@ -25,7 +25,9 @@
       "continuous": true,
       "executor": "@nx/js:node",
       "defaultConfiguration": "development",
-      "dependsOn": ["build"],
+      "dependsOn": [
+        "build"
+      ],
       "options": {
         "buildTarget": "api:build",
         "runBuildTargetDependencies": false
@@ -75,6 +77,24 @@
         }
       }
     },
+    "test-toman-ipg": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "node -r @swc-node/register --test apps/api/tests/toman-ipg.test.ts",
+        "env": {
+          "SWC_NODE_PROJECT": "apps/api/tsconfig.app.json"
+        }
+      }
+    },
+    "check-toman-ipg": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "node -r @swc-node/register apps/api/scripts/toman-ipg-check.ts",
+        "env": {
+          "SWC_NODE_PROJECT": "apps/api/tsconfig.app.json"
+        }
+      }
+    },
     "eghamat24-scenarios": {
       "executor": "nx:run-commands",
       "options": {
@@ -103,5 +123,8 @@
       }
     }
   },
-  "tags": ["type:app", "scope:api"]
+  "tags": [
+    "type:app",
+    "scope:api"
+  ]
 }

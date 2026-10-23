@@ -59,6 +59,11 @@ export interface Receipt {
   /** زمان پرداخت (ISO) */
   createdAt: string;
   lines: ReceiptLine[];
+  /**
+   * پرداختی که فروشنده با OTP آغاز کرده — پنل فروشگاه با آن رسیدِ رسیده از
+   * جریان زنده را به درخواست خودش وصل می‌کند (وقتی کارمند باقی را با کارت داد)
+   */
+  merchantIntentId?: string | null;
   settlement?: {
     status: 'PENDING' | 'PROCESSING' | 'SUCCEEDED' | 'FAILED';
     settledAt: string | null;

@@ -7,3 +7,4 @@ export * from './lib/hotel-filters';
 export * from './lib/admin.model';
 export * from './lib/flight.model';
 export * from './lib/airline';
+export * from './lib/upg.model';

@@ -65,6 +65,9 @@ model Employee {
   hotelBookings          HotelBooking[]
   flightBookings         FlightBooking[]
   merchantPaymentIntents MerchantPaymentIntent[]
+  paymentIntents         PaymentIntent[]
+  gatewayPayments        GatewayPayment[]
+  gatewayRefunds         GatewayRefund[]
   otp                    EmployeeOtp?
 
   @@unique([companyId, nationalCode])
@@ -97,6 +100,10 @@ enum WalletKind {
   RATION
   /// اعتبار گردشگری — برای رزرو هتل و پرواز، نه فروشگاه‌ها
   TOURISM
+  /// کیف پول شخصی (پنهان): مبلغی که کارمند در UPG با کارت پرداخت کرده، همان
+  /// لحظه به این کیف پول واریز و در خرید برداشت می‌شود. به کاربر نمایش داده
+  /// نمی‌شود و از همهٔ فهرست‌ها و گزارش‌های اعتبار رفاهی کنار گذاشته می‌شود.
+  PERSONAL
 }
 
 /// تعریف مشترک یک کیف پول (مثلاً «ارزاق ماهانه») که به فروشگاه‌های مشخصی وصل است.
@@ -180,6 +187,7 @@ model Store {
   payments               Payment[]
   settlementItems        SettlementItem[]
   merchantPaymentIntents MerchantPaymentIntent[]
+  paymentIntents         PaymentIntent[]
 }
 
 /// رابطهٔ چند-به-چند: هر کیف پول در کدام فروشگاه‌ها قابل استفاده است
@@ -234,9 +242,12 @@ model Payment {
   settlementItemId String?
   settledAt        DateTime?
   merchantIntentId String?   @unique
+  /// درخواست پرداخت UPG که این خرید را پرداخت کرده
+  intentId         String?   @unique
   createdAt        DateTime  @default(now())
 
   employee       Employee               @relation(fields: [employeeId], references: [id])
+  intent         PaymentIntent?         @relation(fields: [intentId], references: [id], onDelete: Restrict)
   store          Store                  @relation(fields: [storeId], references: [id])
   transactions   Transaction[]
   settlementItem SettlementItem?        @relation(fields: [settlementItemId], references: [id], onDelete: Restrict)
@@ -269,9 +280,11 @@ model MerchantPaymentIntent {
   createdAt      DateTime                    @default(now())
   updatedAt      DateTime                    @updatedAt
 
-  store    Store    @relation(fields: [storeId], references: [id], onDelete: Restrict)
-  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Restrict)
-  payment  Payment?
+  store     Store          @relation(fields: [storeId], references: [id], onDelete: Restrict)
+  employee  Employee       @relation(fields: [employeeId], references: [id], onDelete: Restrict)
+  payment   Payment?
+  /// اگر اعتبار کافی نبود، باقی مبلغ را کارمند از این درخواست UPG با کارت می‌پردازد
+  upgIntent PaymentIntent?
 
   @@index([storeId, createdAt])
   @@index([employeeId, status, expiresAt])
@@ -280,6 +293,8 @@ model MerchantPaymentIntent {
 // ─── رزرو هتل (گردشگری) ───────────────────────────────────────────────────────
 
 enum BookingStatus {
+  /// منتظر پرداخت در UPG — هنوز سراغ تأمین‌کننده نرفته‌ایم
+  AWAITING_PAYMENT
   /// رزرو قطعی است
   CONFIRMED
   /// اتاق نگه داشته شده و منتظر نهایی‌سازی ماست (اقامت۲۴؛ holdExpiresAt دارد)
@@ -318,9 +333,12 @@ model HotelBooking {
   holdExpiresAt     DateTime?
 
   employeeId    String
-  allocationId  String
-  /// تراکنش کسر اعتبار — تا وقتی رزرو در هتل‌یار موفق نشده null است
+  /// کیف پول رزروهای قبل از UPG — رزروهای جدید از `intentId` پرداخت می‌شوند
+  allocationId  String?
+  /// تراکنش کسر اعتبار رزروهای قبل از UPG
   transactionId String? @unique
+  /// درخواست پرداخت UPG — پول این رزرو (از هر منبعی) زیر این intent است
+  intentId      String? @unique
 
   /// شناسهٔ مبهم هتل («eg:740») — provider داخلش کدگذاری شده
   hotelId        String
@@ -360,8 +378,9 @@ model HotelBooking {
   updatedAt DateTime @updatedAt
 
   employee       Employee          @relation(fields: [employeeId], references: [id])
-  allocation     WalletAllocation  @relation(fields: [allocationId], references: [id])
+  allocation     WalletAllocation? @relation(fields: [allocationId], references: [id], onDelete: Restrict)
   transaction    Transaction?      @relation(fields: [transactionId], references: [id])
+  intent         PaymentIntent?    @relation(fields: [intentId], references: [id], onDelete: Restrict)
   webhookEvents  GdsWebhookEvent[]
   settlementItem SettlementItem?   @relation(fields: [settlementItemId], references: [id], onDelete: Restrict)
 
@@ -485,33 +504,49 @@ enum TransactionType {
   PURCHASE
   REFUND
   ADJUSTMENT
+  /// واریز پرداخت درگاه به کیف پول شخصی
+  TOPUP
+  /// برداشت از کیف پول شخصی برای بازگشت پول به کارت
+  WITHDRAWAL
 }
 
 model Transaction {
-  id             String          @id @default(uuid())
-  type           TransactionType @default(PURCHASE)
+  id               String          @id @default(uuid())
+  type             TransactionType @default(PURCHASE)
   /// مبلغ (تومان) — برای REFUND هم مثبت ذخیره می‌شود؛ جهت از type مشخص است
-  amount         BigInt
-  employeeId     String
-  allocationId   String
-  storeId        String?
-  purchaseCodeId String?         @unique
+  amount           BigInt
+  employeeId       String
+  allocationId     String
+  storeId          String?
+  purchaseCodeId   String?         @unique
   /// پرداختی که این سطر بخشی از آن است (پرداخت شکسته‌شده بین چند کیف پول)
-  paymentId      String?
-  note           String?
-  createdAt      DateTime        @default(now())
+  paymentId        String?
+  /// درخواست پرداخت UPG — کسرها و برگشت‌های یک خرید زیر یک intent جمع می‌شوند
+  intentId         String?
+  /// پرداخت درگاهی که این TOPUP را ساخته
+  gatewayPaymentId String?
+  /// بازگشت پول به کارت: WITHDRAWAL هنگام درخواست، و TOPUP اگر بازگشت شکست خورد
+  gatewayRefundId  String?
+  note             String?
+  createdAt        DateTime        @default(now())
 
-  employee     Employee         @relation(fields: [employeeId], references: [id])
-  allocation   WalletAllocation @relation(fields: [allocationId], references: [id])
-  store        Store?           @relation(fields: [storeId], references: [id])
-  purchaseCode PurchaseCode?    @relation(fields: [purchaseCodeId], references: [id])
-  payment      Payment?         @relation(fields: [paymentId], references: [id])
-  hotelBooking HotelBooking?
+  employee       Employee         @relation(fields: [employeeId], references: [id])
+  allocation     WalletAllocation @relation(fields: [allocationId], references: [id])
+  store          Store?           @relation(fields: [storeId], references: [id])
+  purchaseCode   PurchaseCode?    @relation(fields: [purchaseCodeId], references: [id])
+  payment        Payment?         @relation(fields: [paymentId], references: [id])
+  intent         PaymentIntent?   @relation(fields: [intentId], references: [id], onDelete: Restrict)
+  gatewayPayment GatewayPayment?  @relation(fields: [gatewayPaymentId], references: [id], onDelete: Restrict)
+  gatewayRefund  GatewayRefund?   @relation(fields: [gatewayRefundId], references: [id], onDelete: Restrict)
+  hotelBooking   HotelBooking?
 
   @@index([employeeId, createdAt])
   @@index([storeId, createdAt])
   @@index([allocationId])
   @@index([paymentId])
+  @@index([intentId])
+  @@index([gatewayPaymentId])
+  @@index([gatewayRefundId])
 }
 
 // ─── مدیر سامانه (داشبورد) ────────────────────────────────────────────────────
@@ -555,24 +590,199 @@ model FlightQuote {
 
 /// One reservation attempt per quote, persisted before external side effects.
 model FlightBooking {
-  id               String           @id @default(uuid())
-  quoteId          String           @unique
+  id               String            @id @default(uuid())
+  quoteId          String            @unique
   employeeId       String
-  allocationId     String
-  confirmationCode String?          @unique
-  status           String           @default("PROCESSING")
+  /// کیف پول رزروهای قبل از UPG — رزروهای جدید از `intentId` پرداخت می‌شوند
+  allocationId     String?
+  /// درخواست پرداخت UPG
+  intentId         String?           @unique
+  confirmationCode String?           @unique
+  status           String            @default("PROCESSING")
   amount           BigInt
-  refunded         Boolean          @default(false)
-  tickets          Json             @default("[]")
+  refunded         Boolean           @default(false)
+  tickets          Json              @default("[]")
   /// Snapshot of the submitted passengers, used for selecting a previous traveler.
-  passengers       Json             @default("[]")
+  passengers       Json              @default("[]")
   bookerMobile     String?
-  createdAt        DateTime         @default(now())
-  updatedAt        DateTime         @updatedAt
-  quote            FlightQuote      @relation(fields: [quoteId], references: [id])
-  employee         Employee         @relation(fields: [employeeId], references: [id])
-  allocation       WalletAllocation @relation(fields: [allocationId], references: [id])
+  /// نام رزروکننده — بعد از پرداخت در UPG برای صدور بلیت لازم است
+  bookerFirstName  String?
+  bookerLastName   String?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  quote            FlightQuote       @relation(fields: [quoteId], references: [id])
+  employee         Employee          @relation(fields: [employeeId], references: [id])
+  allocation       WalletAllocation? @relation(fields: [allocationId], references: [id], onDelete: Restrict)
+  intent           PaymentIntent?    @relation(fields: [intentId], references: [id], onDelete: Restrict)
 
   @@index([employeeId, createdAt])
   @@index([status, updatedAt])
+}
+
+// ─── UPG: درگاه پرداخت یکپارچه (docs/upg.md) ─────────────────────────────────
+
+enum PaymentIntentPurpose {
+  STORE
+  HOTEL
+  FLIGHT
+}
+
+enum PaymentIntentStatus {
+  /// منتظر انتخاب تقسیم و پرداخت از سوی کارمند
+  PENDING
+  /// یک پرداخت درگاه در جریان است
+  AWAITING_GATEWAY
+  /// پول کامل کسر شده و خرید در حال نهایی‌شدن است
+  PROCESSING
+  COMPLETED
+  /// نهایی‌سازی خرید شکست خورد و پول کسرشده برگشت داده شد
+  FAILED
+  EXPIRED
+  CANCELED
+}
+
+/// یک درخواست پرداخت. بخش خرید (فروشگاه، هتل، پرواز) آن را می‌سازد و UPG
+/// تصمیم می‌گیرد مبلغ از اعتبار، درگاه یا هر دو تأمین شود. همهٔ کسرها و
+/// برگشت‌های این خرید تراکنش‌هایی با همین `intentId` هستند.
+model PaymentIntent {
+  id                   String               @id @default(uuid())
+  employeeId           String
+  purpose              PaymentIntentPurpose
+  /// شناسهٔ رکورد بخش خرید (HotelBooking / FlightBooking / Store)
+  targetId             String
+  title                String
+  subtitle             String?
+  /// مبلغ کل (تومان)
+  amount               BigInt
+  /// کیف‌پول‌های رفاهی که بخش خرید برای این پرداخت مجاز دانسته
+  allowedAllocationIds String[]
+  /// فروشگاه — روی تراکنش‌های خرید فروشگاهی نوشته می‌شود
+  storeId              String?
+  /// تقسیم انتخاب‌شده: [{ allocationId, amount }] — بدون سهم درگاه
+  plan                 Json?
+  /// سهم کارت در آخرین تقسیم (تومان)
+  gatewayAmount        BigInt               @default(0)
+  status               PaymentIntentStatus  @default(PENDING)
+  failureReason        String?
+  /// جمع مبالغ برگشت‌داده‌شده تا حالا (تومان)
+  refundedAmount       BigInt               @default(0)
+  /// پرداخت فروشگاهی که فروشنده با OTP آغاز کرده و کارمند باقی را با کارت می‌دهد
+  merchantIntentId     String?              @unique
+  expiresAt            DateTime
+  completedAt          DateTime?
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime             @updatedAt
+
+  employee        Employee               @relation(fields: [employeeId], references: [id], onDelete: Restrict)
+  store           Store?                 @relation(fields: [storeId], references: [id], onDelete: Restrict)
+  merchantIntent  MerchantPaymentIntent? @relation(fields: [merchantIntentId], references: [id], onDelete: Restrict)
+  transactions    Transaction[]
+  gatewayPayments GatewayPayment[]
+  payment         Payment?
+  hotelBooking    HotelBooking?
+  flightBooking   FlightBooking?
+
+  @@index([employeeId, createdAt])
+  @@index([status, expiresAt])
+  @@index([purpose, targetId])
+}
+
+enum GatewayPaymentStatus {
+  CREATED
+  /// کاربر به درگاه فرستاده شد
+  REDIRECTED
+  /// verify موفق — مبلغ به کیف پول شخصی واریز شده
+  VERIFIED
+  FAILED
+  EXPIRED
+  /// وضعیت از درگاه قابل تعیین نیست — دستی بررسی می‌شود، خودکار تکرار نمی‌شود
+  UNKNOWN
+}
+
+/// یک تلاش پرداخت در یک درگاه (تومان، جیبیت، mock). verify / استعلام / refund
+/// همیشه از همان `gateway` انجام می‌شود، حتی اگر بعداً برای پرداخت تازه غیرفعال شده باشد.
+model GatewayPayment {
+  id              String               @id @default(uuid())
+  intentId        String
+  employeeId      String
+  /// کلید درگاه در GatewayRegistry
+  gateway         String
+  /// شناسهٔ یکتای ما که به درگاه می‌رود و در callback برمی‌گردد
+  trackerId       String               @unique
+  /// شناسهٔ پرداخت نزد درگاه (uuid تومان)
+  ref             String?
+  /// مبلغ (تومان) — در مرز درگاه به ریال تبدیل می‌شود
+  amount          BigInt
+  status          GatewayPaymentStatus @default(CREATED)
+  psp             String?
+  terminal        String?
+  traceNumber     String?
+  referenceNumber String?
+  maskedCard      String?
+  /// آخرین پاسخ خام درگاه، برای بررسی دستی
+  raw             Json?
+  error           String?
+  verifiedAt      DateTime?
+  /// جمع مبالغ بازگشت به کارت (تومان) — شامل بازگشت‌های در جریان، تا دو
+  /// درخواست هم‌زمان نتوانند بیش از مبلغ پرداخت برگردانند؛ بازگشت ناموفق کم می‌شود
+  refundedAmount  BigInt               @default(0)
+  /// آخرین استعلام cron از درگاه (پرداخت‌هایی که callback آن‌ها نرسید)
+  checkedAt       DateTime?
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+
+  intent       PaymentIntent   @relation(fields: [intentId], references: [id], onDelete: Restrict)
+  employee     Employee        @relation(fields: [employeeId], references: [id], onDelete: Restrict)
+  transactions Transaction[]
+  refunds      GatewayRefund[]
+
+  @@unique([gateway, ref])
+  @@index([intentId])
+  @@index([status, createdAt])
+  @@index([employeeId, createdAt])
+}
+
+enum GatewayRefundStatus {
+  /// ثبت شد ولی پاسخ درگاه هنوز نرسیده (یا گم شد) — با trackerId پیگیری می‌شود
+  SUBMITTING
+  /// درگاه پذیرفت و در جریان است
+  PENDING
+  /// درگاه خودش وضعیت را نمی‌داند (Unknown تومان) — مثل PENDING پیگیری می‌شود
+  UNKNOWN
+  SUCCEEDED
+  /// پولی به کارت نرفت — مبلغ به ماندهٔ کیف پول شخصی برگشت
+  FAILED
+  /// درگاه رد کرد (مثلاً کیف پول refund ما خالی است) — مبلغ به مانده برگشت
+  DENIED
+}
+
+/// بازگشت پول از کیف پول شخصی به کارت، روی یکی از پرداخت‌های درگاهی قبلی.
+/// یک درخواست «بازگشت پول» کارمند ممکن است بین چند پرداخت پخش شود.
+model GatewayRefund {
+  id               String              @id @default(uuid())
+  gatewayPaymentId String
+  employeeId       String
+  /// همان درگاه پرداخت — refund همیشه از درگاهی است که پول را گرفته
+  gateway          String
+  /// مبلغ (تومان)
+  amount           BigInt
+  /// شناسهٔ یکتای ما نزد درگاه — برای پیگیری وقتی پاسخ ثبت گم شده
+  trackerId        String              @unique
+  /// شناسهٔ بازگشت نزد درگاه (uuid تومان)
+  ref              String?
+  status           GatewayRefundStatus @default(SUBMITTING)
+  error            String?
+  raw              Json?
+  checkedAt        DateTime?
+  completedAt      DateTime?
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+
+  gatewayPayment GatewayPayment @relation(fields: [gatewayPaymentId], references: [id], onDelete: Restrict)
+  employee       Employee       @relation(fields: [employeeId], references: [id], onDelete: Restrict)
+  transactions   Transaction[]
+
+  @@index([gatewayPaymentId])
+  @@index([employeeId, createdAt])
+  @@index([status, checkedAt])
 }

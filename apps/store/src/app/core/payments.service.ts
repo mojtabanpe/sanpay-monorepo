@@ -3,6 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import {
   CreateMerchantPaymentIntentInput,
   MerchantPaymentIntentResult,
+  MerchantPaymentVerifyResult,
   Receipt,
   StorePaymentReport,
   StoreStats,
@@ -62,9 +63,12 @@ export class StorePaymentsService {
 
   verifyMerchantPayment(
     input: VerifyMerchantPaymentIntentInput,
-  ): Promise<Receipt> {
+  ): Promise<MerchantPaymentVerifyResult> {
     return firstValueFrom(
-      this.http.post<Receipt>('/api/store/merchant-payments/verify', input),
+      this.http.post<MerchantPaymentVerifyResult>(
+        '/api/store/merchant-payments/verify',
+        input,
+      ),
     );
   }
 

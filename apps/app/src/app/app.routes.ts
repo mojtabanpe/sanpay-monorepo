@@ -25,6 +25,12 @@ export const appRoutes: Route[] = [
         loadChildren: () =>
           import('@sanpay/applets/tourism').then((m) => m.tourismRoutes),
       },
+      // UPG — درگاه پرداخت یکپارچه؛ هر پرداختی از اینجا رد می‌شود
+      {
+        path: 'upg',
+        loadChildren: () =>
+          import('@sanpay/applets/upg').then((m) => m.upgRoutes),
+      },
       // اپلت پروفایل — هویت، وضعیت اعتبار، تاریخچهٔ خرید، رمز عبور و پشتیبانی
       {
         path: 'profile',
