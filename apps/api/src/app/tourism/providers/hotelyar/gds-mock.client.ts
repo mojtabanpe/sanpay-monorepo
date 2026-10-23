@@ -216,8 +216,9 @@ function placeholder(label: string, from: string, to: string): string {
 }
 
 /** قیمت شبانهٔ پایدار (تومان) — بین فراخوانی‌ها تغییر نمی‌کند تا UI پرش نکند */
+/** نرخ یک شب به **ریال**، مثل API واقعی — مپر به تومان تبدیلش می‌کند */
 function nightlyRate(hotelId: number, roomId: number): number {
-  return 1_500_000 + ((hotelId * 31 + roomId * 17) % 20) * 250_000;
+  return 15_000_000 + ((hotelId * 31 + roomId * 17) % 20) * 2_500_000;
 }
 
 function addDays(isoDate: string, days: number): string {

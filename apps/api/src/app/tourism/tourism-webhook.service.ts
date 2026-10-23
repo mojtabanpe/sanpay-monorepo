@@ -2,6 +2,7 @@ import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { HotelBooking } from '../../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { UpgService } from '../upg/upg.service';
+import { rialToToman } from './providers/money';
 import {
   GdsReserveReport,
   GdsWebhookEventPayload,
@@ -262,9 +263,10 @@ function isCancellation(report: GdsReserveReport | undefined): boolean {
   return changes.some((change) => Number(change.operation) === 1);
 }
 
+/** مبالغ webhook هتل‌یار ریال‌اند؛ خروجی این دو تابع تومان است */
 function returnToCustomer(report: GdsReserveReport | undefined): number | null {
   const value = lastChange(report)?.detail?.price?.totalReturnToCustomer;
-  return typeof value === 'number' ? value : null;
+  return typeof value === 'number' ? rialToToman(value) : null;
 }
 
 function lastChange(report: GdsReserveReport | undefined) {
@@ -274,7 +276,7 @@ function lastChange(report: GdsReserveReport | undefined) {
 
 function hotelPrice(report: GdsReserveReport | undefined): bigint | null {
   const value = report?.currentReserve?.detail?.price?.totalHotelPrice;
-  return typeof value === 'number' ? BigInt(Math.trunc(value)) : null;
+  return typeof value === 'number' ? BigInt(rialToToman(value)) : null;
 }
 
 function clamp(value: bigint, max: bigint): bigint {

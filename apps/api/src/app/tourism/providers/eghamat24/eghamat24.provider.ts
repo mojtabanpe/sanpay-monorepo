@@ -29,9 +29,9 @@ import {
   ProviderReserveStatus,
   ProviderSearchParams,
 } from '../hotel-provider';
+import { rialToToman } from '../money';
 import { ProviderKey, decodeId, decodeNumericId } from '../provider-id';
 import {
-  rialToToman,
   suggestionToAvailability,
   toAvailability,
   toCity,
