@@ -185,18 +185,23 @@ test('password login selects independent accounts by phone even with identical n
         [first, second].find((row) => row.phone === where.phone) ?? null,
     },
   };
+  const notices: string[] = [];
   const service = new AuthService(
     prisma as unknown as PrismaService,
     {
       signAsync: async (payload: JwtPayload) => JSON.stringify(payload),
     } as unknown as JwtService,
-    {} as SmsService,
+    {
+      sendLoginNotice: (phone: string) => notices.push(phone),
+    } as unknown as SmsService,
   );
   const firstResponse = await service.login(first.phone, 'SharedPassword123!');
   assert.equal(firstResponse.employee.id, first.id);
   const response = await service.login(second.phone, 'SharedPassword123!');
   assert.equal(response.employee.id, second.id);
   assert.equal(JSON.parse(response.accessToken).sub, second.id);
+  // اعلان ورود به شمارهٔ همان حسابی می‌رود که وارد شد
+  assert.deepEqual(notices, [first.phone, second.phone]);
   await assert.rejects(
     service.login('09120000000', 'SharedPassword123!'),
     UnauthorizedException,
