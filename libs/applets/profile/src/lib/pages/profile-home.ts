@@ -165,9 +165,16 @@ export class ProfileHomePage {
     }
   }
 
-  protected logout(): void {
-    this.auth.logout();
-    void this.router.navigate(['/login']);
+  protected readonly logoutBusy = signal(false);
+  protected readonly logoutError = signal(false);
+
+  protected async logout(): Promise<void> {
+    if (this.logoutBusy()) return;
+    this.logoutBusy.set(true);
+    this.logoutError.set(false);
+    if (await this.auth.logout()) await this.router.navigate(['/login']);
+    else this.logoutError.set(true);
+    this.logoutBusy.set(false);
   }
 
   protected readonly toman = toman;

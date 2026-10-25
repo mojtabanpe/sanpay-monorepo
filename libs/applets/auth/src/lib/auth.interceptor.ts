@@ -23,7 +23,7 @@ export const authInterceptor: HttpInterceptorFn = (request, next) => {
         !request.url.includes('/auth/login') &&
         !request.url.includes('/auth/otp/')
       ) {
-        auth.logout();
+        auth.clearSession();
         router.navigate(['/login']);
       }
       return throwError(() => error);

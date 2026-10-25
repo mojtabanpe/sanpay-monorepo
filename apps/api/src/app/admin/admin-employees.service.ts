@@ -26,6 +26,7 @@ import {
   UpdateEmployeeDto,
 } from './dto/admin.dto';
 import { toPaymentRow } from './payment-row';
+import { creditAllocation } from './credit-allocation';
 
 @Injectable()
 export class AdminEmployeesService {
@@ -389,56 +390,87 @@ export class AdminEmployeesService {
       );
     }
 
-    // همان قاعدهٔ تخصیص گروهی: تخصیص فعالِ موجود به‌روز می‌شود، نه اینکه
-    // کیف دومی از همان نوع کنارش ساخته شود
-    const cap = BigInt(dto.cap);
-    const expiresAt = new Date(dto.expiresAt);
-    const existing = await this.prisma.walletAllocation.findFirst({
-      where: { employeeId, definitionId: dto.definitionId, isActive: true },
+    return this.prisma.$transaction(async (tx) => {
+      const { allocation } = await creditAllocation(
+        tx,
+        employeeId,
+        dto.definitionId,
+        BigInt(dto.cap),
+        new Date(dto.expiresAt),
+      );
+      return toAllocationRow(allocation);
     });
-    if (existing) {
-      if (cap < existing.spent) {
-        throw new BadRequestException(
-          'سقف نمی‌تواند کمتر از مبلغ مصرف‌شده باشد',
-        );
-      }
-      const allocation = await this.prisma.walletAllocation.update({
-        where: { id: existing.id },
-        data: { cap, expiresAt },
+  }
+
+  async topUpAllocation(id: string, amount: number) {
+    if (!Number.isSafeInteger(amount) || amount <= 0)
+      throw new BadRequestException('مبلغ شارژ باید عدد صحیح مثبت باشد');
+    return this.prisma.$transaction(async (tx) => {
+      const existing = await tx.walletAllocation.findUnique({
+        where: { id },
         include: { definition: true },
       });
+      if (!existing || existing.definition.kind === 'PERSONAL')
+        throw new NotFoundException('کیف پول پیدا نشد');
+      if (!existing.isActive || !existing.definition.isActive)
+        throw new BadRequestException('کیف پول غیرفعال قابل شارژ نیست');
+      if (existing.expiresAt <= new Date())
+        throw new BadRequestException(
+          'ابتدا تاریخ انقضای کیف پول را تمدید کنید',
+        );
+      const allocation = await tx.walletAllocation.update({
+        where: { id, isActive: true },
+        data: { cap: { increment: BigInt(amount) } },
+        include: { definition: true },
+      });
+      await tx.transaction.create({
+        data: {
+          type: 'TOPUP',
+          amount: BigInt(amount),
+          employeeId: existing.employeeId,
+          allocationId: id,
+          note: 'شارژ کیف پول از داشبورد',
+        },
+      });
       return toAllocationRow(allocation);
-    }
-
-    const allocation = await this.prisma.walletAllocation.create({
-      data: { employeeId, definitionId: dto.definitionId, cap, expiresAt },
-      include: { definition: true },
     });
-    return toAllocationRow(allocation);
   }
 
   async updateAllocation(id: string, dto: UpdateAllocationDto) {
-    const existing = await this.prisma.walletAllocation.findUnique({
-      where: { id },
-      include: { definition: true },
+    return this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM "WalletAllocation" WHERE id = ${id} FOR UPDATE`;
+      const existing = await tx.walletAllocation.findUnique({
+        where: { id },
+        include: { definition: true },
+      });
+      if (!existing || existing.definition.kind === 'PERSONAL')
+        throw new NotFoundException('تخصیص پیدا نشد');
+      if (dto.cap !== undefined && BigInt(dto.cap) < existing.spent)
+        throw new BadRequestException(
+          'اعتبار نمی‌تواند کمتر از مبلغ مصرف‌شده باشد',
+        );
+      const allocation = await tx.walletAllocation.update({
+        where: { id },
+        data: {
+          ...(dto.cap !== undefined ? { cap: BigInt(dto.cap) } : {}),
+          ...(dto.expiresAt ? { expiresAt: new Date(dto.expiresAt) } : {}),
+          ...(dto.isActive !== undefined ? { isActive: dto.isActive } : {}),
+        },
+        include: { definition: true },
+      });
+      const delta = allocation.cap - existing.cap;
+      if (delta !== 0n)
+        await tx.transaction.create({
+          data: {
+            type: delta > 0n ? 'TOPUP' : 'ADJUSTMENT',
+            amount: delta > 0n ? delta : -delta,
+            employeeId: existing.employeeId,
+            allocationId: id,
+            note: 'اصلاح اعتبار از داشبورد',
+          },
+        });
+      return toAllocationRow(allocation);
     });
-    if (!existing || existing.definition.kind === 'PERSONAL')
-      throw new NotFoundException('تخصیص پیدا نشد');
-    // سقف نباید زیر مبلغ خرج‌شده برود، وگرنه مانده منفی می‌شود
-    if (dto.cap !== undefined && BigInt(dto.cap) < existing.spent) {
-      throw new BadRequestException('سقف نمی‌تواند کمتر از مبلغ مصرف‌شده باشد');
-    }
-
-    const allocation = await this.prisma.walletAllocation.update({
-      where: { id },
-      data: {
-        ...(dto.cap !== undefined ? { cap: BigInt(dto.cap) } : {}),
-        ...(dto.expiresAt ? { expiresAt: new Date(dto.expiresAt) } : {}),
-        ...(dto.isActive !== undefined ? { isActive: dto.isActive } : {}),
-      },
-      include: { definition: true },
-    });
-    return toAllocationRow(allocation);
   }
 
   /**
@@ -449,6 +481,7 @@ export class AdminEmployeesService {
     if (amount === 0) throw new BadRequestException('مبلغ نمی‌تواند صفر باشد');
 
     return this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM "WalletAllocation" WHERE id = ${id} FOR UPDATE`;
       const allocation = await tx.walletAllocation.findUnique({
         where: { id },
         include: { definition: true },

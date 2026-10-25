@@ -1,0 +1,79 @@
+<div class="flex flex-col gap-4 px-4 py-6">
+  <header class="flex items-center justify-between gap-3">
+    <div>
+      <h1 class="text-lg font-bold">دستگاه‌های متصل</h1>
+      <p class="text-muted-foreground mt-1 text-xs">نشست‌های فعال حساب شما</p>
+    </div>
+    <a hlmBtn variant="ghost" size="sm" routerLink="/profile">پروفایل</a>
+  </header>
+  <p class="text-muted-foreground text-xs">اگر دستگاهی را نمی‌شناسید، آن را از حساب خارج کنید. هر ورود جداگانه در این فهرست یک نشست است.</p>
+
+  @if (notice()) {
+    <p class="text-primary text-sm" role="status">{{ notice() }}</p>
+  }
+  @if (error() && !selected()) {
+    <p class="text-destructive text-sm" role="alert">{{ error() }}</p>
+    <button type="button" hlmBtn variant="outline" [disabled]="busy()" (click)="load()">تلاش دوباره</button>
+  }
+  @if (loading()) {
+    @for (placeholder of [1, 2]; track placeholder) {
+      <div hlmSkeleton class="h-36 w-full" aria-label="در حال دریافت نشست‌ها"></div>
+    }
+  } @else {
+    @for (session of sessions(); track session.id) {
+      <section hlmCard>
+        <div hlmCardContent class="flex flex-col gap-3 pt-6">
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <h2 class="text-sm font-bold" dir="auto">{{ session.device }}</h2>
+            @if (session.isCurrent) { <span hlmBadge variant="secondary">این دستگاه</span> }
+          </div>
+          <dl class="flex flex-col gap-2 text-xs">
+            <div class="flex flex-wrap justify-between gap-2">
+              <dt class="text-muted-foreground">زمان ورود</dt>
+              <dd><time [attr.datetime]="session.createdAt">{{ when(session.createdAt) }}</time></dd>
+            </div>
+            <div class="flex flex-wrap justify-between gap-2">
+              <dt class="text-muted-foreground">آخرین فعالیت</dt>
+              <dd><time [attr.datetime]="session.lastSeenAt">{{ when(session.lastSeenAt) }}</time></dd>
+            </div>
+            @if (session.ipAddress) {
+              <div class="flex flex-wrap justify-between gap-2">
+                <dt class="text-muted-foreground">آدرس IP هنگام ورود</dt>
+                <dd dir="ltr">{{ session.ipAddress }}</dd>
+              </div>
+            }
+          </dl>
+          @if (!session.isCurrent) {
+            <button type="button" hlmBtn variant="outline" size="sm"
+              [disabled]="busy()" [attr.aria-label]="'خروج از ' + session.device"
+              (click)="error.set(null); selected.set(session)">خروج از دستگاه</button>
+          }
+        </div>
+      </section>
+    }
+    @if (hasOthers()) {
+      <button type="button" hlmBtn variant="destructive" [disabled]="busy()"
+        (click)="error.set(null); selected.set('others')">خروج از همهٔ دستگاه‌های دیگر</button>
+    }
+    <button type="button" hlmBtn variant="ghost" [disabled]="busy()" (click)="load()">به‌روزرسانی فهرست</button>
+  }
+
+  <hlm-sheet side="bottom" role="alertdialog" closeOnOutsidePointerEvents
+    [disableClose]="busy()" [state]="selected() ? 'open' : 'closed'"
+    (stateChanged)="onConfirmState($event)">
+    <hlm-sheet-content *hlmSheetPortal [showCloseButton]="false"
+      class="rounded-t-2xl pb-[max(1rem,env(safe-area-inset-bottom))]">
+      <div hlmSheetHeader>
+        <h2 hlmSheetTitle>{{ confirmTitle() }}</h2>
+        <p hlmSheetDescription>دسترسی نشست انتخاب‌شده قطع می‌شود و برای استفاده دوباره باید وارد حساب شوید. این دستگاه متصل می‌ماند.</p>
+      </div>
+      @if (error()) { <p class="text-destructive px-4 text-sm" role="alert">{{ error() }}</p> }
+      <div hlmSheetFooter>
+        <button type="button" hlmBtn variant="destructive" [disabled]="busy()" (click)="revoke()">
+          {{ busy() ? 'در حال خروج…' : 'تأیید خروج' }}
+        </button>
+        <button type="button" hlmBtn variant="outline" hlmSheetClose [disabled]="busy()">انصراف</button>
+      </div>
+    </hlm-sheet-content>
+  </hlm-sheet>
+</div>

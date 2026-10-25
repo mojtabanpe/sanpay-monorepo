@@ -34,7 +34,9 @@ export class ProfileController {
   @Post('avatar')
   @HttpCode(HttpStatus.OK)
   @UseInterceptors(
-    FileInterceptor('file', { limits: { fileSize: AVATAR_MAX_BYTES, files: 1 } }),
+    FileInterceptor('file', {
+      limits: { fileSize: AVATAR_MAX_BYTES, files: 1 },
+    }),
   )
   setAvatar(
     @Req() request: Request & { user: JwtPayload },
@@ -53,7 +55,14 @@ export class ProfileController {
     return this.profile.summary(request.user.sub);
   }
 
-  /** تاریخچهٔ خرید — `limit` اختیاری (پیش‌فرض ۳۰، حداکثر ۱۰۰) */
+  @Get('wallet-transactions')
+  walletTransactions(
+    @Req() request: Request & { user: JwtPayload },
+    @Query('cursor') cursor?: string,
+  ) {
+    return this.profile.walletTransactions(request.user.sub, cursor);
+  }
+
   @Get('payments')
   payments(
     @Req() request: Request & { user: JwtPayload },

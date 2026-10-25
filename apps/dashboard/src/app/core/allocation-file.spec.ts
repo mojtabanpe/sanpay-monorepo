@@ -23,6 +23,18 @@ describe('parseAllocationFile', () => {
     ]);
   });
 
+  it('accepts a charge amount header and rejects zero or fractional toman charges', async () => {
+    const result = await parseCsv(
+      'کد ملی,رده سازمانی,مبلغ شارژ (ریال),تاریخ انقضا\n' +
+        '0012345678,مدیر,500,۱۴۰۵/۰۶/۳۱\n' +
+        '0098765432,معاون,0,۱۴۰۵/۰۶/۳۱\n' +
+        '0011223344,کارمند,15,۱۴۰۵/۰۶/۳۱',
+    );
+    expect(result.entries).toHaveLength(1);
+    expect(result.entries[0].cap).toBe(50);
+    expect(result.errors).toHaveLength(2);
+  });
+
   it('accepts English rank codes and the default four-column order', async () => {
     const result = await parseCsv(
       '0012345678,HEAD,6000000,1405-06-31\n' +

@@ -50,6 +50,7 @@
         hlmBtn
         variant="ghost"
         size="sm"
+        [disabled]="logoutBusy()"
         (click)="logout()"
         aria-label="خروج"
       >
@@ -58,6 +59,9 @@
     </div>
   </header>
 
+  @if (logoutError()) {
+    <p class="text-destructive px-4 text-sm" role="status">خروج انجام نشد؛ دوباره تلاش کنید.</p>
+  }
   <!-- محتوای صفحه -->
   <main class="flex-1 pb-28">
     <router-outlet />

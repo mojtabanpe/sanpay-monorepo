@@ -288,11 +288,20 @@ export class EmployeeDetailPage implements OnInit {
     }, 'تخصیص کیف پول ممکن نشد');
   }
 
-  protected async setCap(allocationId: string, raw: string): Promise<void> {
+  protected async topUp(
+    allocationId: string,
+    input: HTMLInputElement,
+  ): Promise<void> {
+    const amount = parseAmount(input.value);
+    if (!Number.isSafeInteger(amount) || amount <= 0) {
+      this.error.set('مبلغ شارژ باید مثبت و مضربی از ۱۰ ریال باشد');
+      return;
+    }
     await this.run(async () => {
-      await this.api.updateAllocation(allocationId, { cap: parseAmount(raw) });
-      this.notice.set('سقف اعتبار به‌روزرسانی شد.');
-    }, 'تغییر سقف ممکن نشد');
+      await this.api.topUpAllocation(allocationId, amount);
+      input.value = '';
+      this.notice.set('کیف پول شارژ شد.');
+    }, 'شارژ کیف پول ممکن نشد');
   }
 
   protected async setExpiry(

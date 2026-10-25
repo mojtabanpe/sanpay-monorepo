@@ -152,6 +152,10 @@ export class AdminApiService {
     return this.patch(`/api/admin/allocations/${id}`, input);
   }
 
+  topUpAllocation(id: string, amount: number) {
+    return this.post(`/api/admin/allocations/${id}/top-up`, { amount });
+  }
+
   adjustAllocation(id: string, amount: number, note: string) {
     return this.post(`/api/admin/allocations/${id}/adjust`, { amount, note });
   }

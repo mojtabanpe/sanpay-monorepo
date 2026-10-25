@@ -163,6 +163,13 @@ export class PayPage implements OnDestroy {
 
   // ─── گام ۲: مبلغ کل → UPG ─────────────────────────────────────────
 
+  protected fillMax(): void {
+    const available = this.checkout()?.totalAvailable ?? 0;
+    if (this.busy() || available <= 0) return;
+    this.rial.set(String(available * 10));
+    this.error.set(null);
+  }
+
   protected async continueToPayment(): Promise<void> {
     const checkout = this.checkout();
     if (!checkout || !this.canContinue()) return;

@@ -2,6 +2,9 @@ import {
   Body,
   Controller,
   Get,
+  Header,
+  Delete,
+  Param,
   Patch,
   HttpCode,
   HttpStatus,
@@ -19,6 +22,7 @@ import {
 } from './dto/login.dto';
 import { ChangePasswordDto, UpdateProfileDto } from './dto/update-profile.dto';
 import { JwtAuthGuard } from './jwt-auth.guard';
+import { sessionInfo } from './session-info';
 
 @Controller('auth')
 export class AuthController {
@@ -26,8 +30,8 @@ export class AuthController {
 
   @Post('login')
   @HttpCode(HttpStatus.OK)
-  login(@Body() dto: LoginDto) {
-    return this.auth.login(dto.phone, dto.password);
+  login(@Body() dto: LoginDto, @Req() request: Request) {
+    return this.auth.login(dto.phone, dto.password, sessionInfo(request));
   }
 
   @Post('otp/request')
@@ -38,8 +42,13 @@ export class AuthController {
 
   @Post('otp/verify')
   @HttpCode(HttpStatus.OK)
-  verifyOtp(@Body() dto: VerifyOtpDto) {
-    return this.auth.verifyOtp(dto.nationalCode, dto.phone, dto.code);
+  verifyOtp(@Body() dto: VerifyOtpDto, @Req() request: Request) {
+    return this.auth.verifyOtp(
+      dto.nationalCode,
+      dto.phone,
+      dto.code,
+      sessionInfo(request),
+    );
   }
 
   @Post('set-initial-password')
@@ -50,6 +59,35 @@ export class AuthController {
     @Body() dto: SetInitialPasswordDto,
   ) {
     return this.auth.setInitialPassword(request.user, dto.password);
+  }
+
+  @Get('sessions')
+  @Header('Cache-Control', 'no-store')
+  @UseGuards(JwtAuthGuard)
+  sessions(@Req() request: Request & { user: JwtPayload }) {
+    return this.auth.sessions(request.user);
+  }
+
+  @Delete('sessions/others')
+  @UseGuards(JwtAuthGuard)
+  revokeOthers(@Req() request: Request & { user: JwtPayload }) {
+    return this.auth.revokeOtherSessions(request.user);
+  }
+
+  @Delete('sessions/:id')
+  @UseGuards(JwtAuthGuard)
+  revokeSession(
+    @Req() request: Request & { user: JwtPayload },
+    @Param('id') id: string,
+  ) {
+    return this.auth.revokeSession(request.user, id);
+  }
+
+  @Post('logout')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(JwtAuthGuard)
+  logout(@Req() request: Request & { user: JwtPayload }) {
+    return this.auth.revokeSession(request.user, request.user.sid);
   }
 
   @Get('me')

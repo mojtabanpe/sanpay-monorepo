@@ -1,4 +1,4 @@
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Injectable, computed, inject, signal } from '@angular/core';
 import {
   EmployeeAuthResponse,
@@ -72,10 +72,14 @@ export class AuthService {
 
   async setInitialPassword(password: string): Promise<{ ok: boolean }> {
     const result = await firstValueFrom(
-      this.http.post<{ ok: boolean }>('/api/auth/set-initial-password', {
-        password,
-      }),
+      this.http.post<{ ok: boolean; accessToken: string }>(
+        '/api/auth/set-initial-password',
+        {
+          password,
+        },
+      ),
     );
+    localStorage.setItem(TOKEN_KEY, result.accessToken);
     if (this.pendingProfile) this.setProfile(this.pendingProfile);
     this.pendingProfile = null;
     return result;
@@ -96,7 +100,18 @@ export class AuthService {
     this._profile.set(profile);
   }
 
-  logout(): void {
+  async logout(): Promise<boolean> {
+    try {
+      await firstValueFrom(this.http.post('/api/auth/logout', {}));
+    } catch (error) {
+      if (!(error instanceof HttpErrorResponse) || error.status !== 401)
+        return false;
+    }
+    this.clearSession();
+    return true;
+  }
+
+  clearSession(): void {
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(PROFILE_KEY);
     this._profile.set(null);

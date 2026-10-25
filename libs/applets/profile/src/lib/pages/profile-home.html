@@ -23,9 +23,7 @@
             class="size-full object-cover"
             [class.opacity-50]="savingAvatar()"
           />
-          } @else {
-          {{ initials() }}
-          }
+          } @else { {{ initials() }} }
         </div>
         <div class="min-w-0 flex-1 leading-tight">
           <h1 class="text-lg font-bold">{{ fullName() }}</h1>
@@ -46,7 +44,8 @@
               [disabled]="savingAvatar()"
               (click)="avatarInput.click()"
             >
-              {{ savingAvatar() ? 'در حال ذخیره…' : profile()?.avatarUrl ? 'تغییر عکس' : 'افزودن عکس' }}
+              {{ savingAvatar() ? 'در حال ذخیره…' : profile()?.avatarUrl ?
+              'تغییر عکس' : 'افزودن عکس' }}
             </button>
             @if (profile()?.avatarUrl && !savingAvatar()) {
             <button
@@ -194,6 +193,18 @@
   <!-- میان‌برها -->
   <section hlmCard>
     <div hlmCardContent class="flex flex-col pt-2">
+      <a routerLink="/profile/sessions"
+        class="hover:bg-secondary/50 -mx-2 flex items-center gap-3 rounded-lg px-2 py-3 transition-colors">
+        <span class="flex-1 text-sm font-medium">دستگاه‌های متصل</span>
+        <span class="text-muted-foreground text-xs">مدیریت نشست‌ها</span>
+      </a>
+      <a
+        routerLink="/profile/wallet-transactions"
+        class="hover:bg-secondary/50 -mx-2 flex items-center gap-3 rounded-lg px-2 py-3 transition-colors"
+      >
+        <span class="flex-1 text-sm font-medium">تراکنش‌های کیف پول</span>
+        <span class="text-muted-foreground text-xs">شارژ و برداشت</span>
+      </a>
       <a
         routerLink="/profile/payments"
         class="hover:bg-secondary/50 -mx-2 flex items-center gap-3 rounded-lg px-2 py-3 transition-colors"
@@ -380,11 +391,15 @@
     </div>
   </section>
 
+  @if (logoutError()) {
+    <p class="text-destructive text-sm" role="status">خروج انجام نشد؛ دوباره تلاش کنید.</p>
+  }
   <button
     type="button"
     hlmBtn
     variant="outline"
     class="w-full"
+    [disabled]="logoutBusy()"
     (click)="logout()"
   >
     <svg
@@ -401,6 +416,6 @@
       <polyline points="16 17 21 12 16 7" />
       <line x1="21" x2="9" y1="12" y2="12" />
     </svg>
-    خروج از حساب
+    {{ logoutBusy() ? 'در حال خروج…' : 'خروج از حساب' }}
   </button>
 </div>

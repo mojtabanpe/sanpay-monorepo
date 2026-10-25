@@ -68,12 +68,29 @@ model Employee {
   paymentIntents         PaymentIntent[]
   gatewayPayments        GatewayPayment[]
   gatewayRefunds         GatewayRefund[]
+  sessions               EmployeeSession[]
   otp                    EmployeeOtp?
 
   @@unique([companyId, nationalCode])
   @@unique([companyId, personnelCode])
   @@index([companyId])
   @@index([nationalCode])
+}
+
+/// هر ورود یک نشست مستقل و قابل ابطال دارد؛ توکن خام ذخیره نمی‌شود.
+model EmployeeSession {
+  id         String   @id @default(uuid())
+  employeeId String
+  userAgent  String?
+  ipAddress  String?
+  createdAt  DateTime @default(now())
+  lastSeenAt DateTime @default(now())
+  expiresAt  DateTime
+  revokedAt  DateTime?
+
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@index([employeeId, revokedAt, expiresAt])
 }
 
 /// آخرین کد ورود کارمند؛ کد خام هرگز ذخیره نمی‌شود.

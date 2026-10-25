@@ -4,8 +4,10 @@ import {
   CardRefundInput,
   CardRefundSummary,
   EmployeeProfile,
+  EmployeeSessionView,
   PaymentHistoryItem,
   ProfileSummary,
+  WalletTransactionPage,
 } from '@sanpay/models';
 import { Observable } from 'rxjs';
 
@@ -17,6 +19,20 @@ export class ProfileService {
     return this.http.get<EmployeeProfile>('/api/auth/me');
   }
 
+  sessions(): Observable<EmployeeSessionView[]> {
+    return this.http.get<EmployeeSessionView[]>('/api/auth/sessions');
+  }
+
+  revokeSession(id: string): Observable<{ ok: boolean }> {
+    return this.http.delete<{ ok: boolean }>(
+      `/api/auth/sessions/${encodeURIComponent(id)}`,
+    );
+  }
+
+  revokeOtherSessions(): Observable<{ ok: boolean }> {
+    return this.http.delete<{ ok: boolean }>('/api/auth/sessions/others');
+  }
+
   summary(): Observable<ProfileSummary> {
     return this.http.get<ProfileSummary>('/api/profile/summary');
   }
@@ -25,6 +41,17 @@ export class ProfileService {
     return this.http.get<PaymentHistoryItem[]>('/api/profile/payments', {
       params: new HttpParams().set('limit', limit),
     });
+  }
+
+  walletTransactions(cursor?: string): Observable<WalletTransactionPage> {
+    return this.http.get<WalletTransactionPage>(
+      '/api/profile/wallet-transactions',
+      {
+        params: cursor
+          ? new HttpParams().set('cursor', cursor)
+          : new HttpParams(),
+      },
+    );
   }
 
   /** ماندهٔ پرداخت‌های کارتی قبلی و آخرین درخواست‌های بازگشت به کارت */
@@ -42,7 +69,10 @@ export class ProfileService {
   uploadAvatar(file: File): Observable<{ avatarUrl: string | null }> {
     const body = new FormData();
     body.append('file', file);
-    return this.http.post<{ avatarUrl: string | null }>('/api/profile/avatar', body);
+    return this.http.post<{ avatarUrl: string | null }>(
+      '/api/profile/avatar',
+      body,
+    );
   }
 
   removeAvatar(): Observable<{ avatarUrl: null }> {

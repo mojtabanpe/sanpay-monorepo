@@ -27,7 +27,7 @@
       </h2>
       <p hlmCardDescription>
         کیف پول گردشگری برای رزرو هتل و پرواز است و به فروشگاه وصل نمی‌شود.
-        اعتبار کارمندان از دکمهٔ «تخصیص گروهی» روی کارت هر کیف پول داده می‌شود.
+        اعتبار کارمندان از دکمهٔ «شارژ گروهی» روی کارت هر کیف پول داده می‌شود.
       </p>
     </div>
     <div hlmCardContent class="flex flex-col gap-5">
@@ -108,26 +108,26 @@
             [class]="form().kind === 'TOURISM' ? 'text-destructive' : 'text-muted-foreground'"
             [attr.role]="form().kind === 'TOURISM' ? 'alert' : null"
           >
-            این شرکت کیف پول گردشگری «{{ taken.name }}» را دارد؛ هر شرکت فقط
-            یک کیف پول گردشگری می‌تواند داشته باشد.
+            این شرکت کیف پول گردشگری «{{ taken.name }}» را دارد؛ هر شرکت فقط یک
+            کیف پول گردشگری می‌تواند داشته باشد.
           </p>
           }
         </hlm-field>
 
         <hlm-field>
-          <label hlmFieldLabel for="fld-3">سقف پیش‌فرض (ریال)</label>
+          <label hlmFieldLabel for="fld-3">مبلغ شارژ پیش‌فرض (ریال)</label>
           <input
             id="fld-3"
             hlmInput
             class="w-full"
             dir="ltr"
-            placeholder="خالی = نامحدود"
+            placeholder="مبلغ پیشنهادی شارژ"
             [sanpayAmount]="form().defaultCap"
             (sanpayAmountChange)="update('defaultCap', $event)"
           />
           <p hlmFieldDescription>
-            خالی بگذارید تا نامحدود باشد؛ سقف هر کارمند هنگام تخصیص تعیین
-            می‌شود.
+            مبلغ پیشنهادی فرم شارژ؛ خالی بگذارید تا مبلغ را هنگام شارژ وارد
+            کنید.
           </p>
         </hlm-field>
 
@@ -235,7 +235,7 @@
           <dd>{{ fa(definition.allocationCount) }} کارمند</dd>
         </div>
         <div>
-          <dt class="text-muted-foreground text-xs">سقف پیش‌فرض</dt>
+          <dt class="text-muted-foreground text-xs">مبلغ شارژ پیش‌فرض</dt>
           <dd>
             {{ definition.defaultCap === null ? 'نامحدود' :
             toman(definition.defaultCap) }}
@@ -285,7 +285,7 @@
           variant="secondary"
           (click)="openBulk(definition)"
         >
-          تخصیص اعتبار
+          شارژ کیف پول
         </button>
       </div>
       }
@@ -303,19 +303,18 @@
   <hlm-dialog-content *hlmDialogPortal class="sm:max-w-2xl">
     @if (bulkFor(); as definition) {
     <div hlmDialogHeader>
-      <h3 hlmDialogTitle>تخصیص «{{ definition.name }}»</h3>
+      <h3 hlmDialogTitle>شارژ «{{ definition.name }}»</h3>
       @if (allocMode() === 'single') {
       <p hlmDialogDescription>
-        فقط به یک کارمند شرکت «{{ definition.company.name }}». اگر این کارمند
-        از قبل تخصیص فعالِ همین کیف پول را دارد، همان به‌روزرسانی می‌شود، نه
-        اضافه؛ سقف کمتر از مبلغ مصرف‌شده پذیرفته نمی‌شود.
+        فقط به یک کارمند شرکت «{{ definition.company.name }}». اگر این کارمند از
+        قبل این کیف پول را دارد، مبلغ واردشده به ماندهٔ فعلی او اضافه می‌شود.
       </p>
       } @else {
       <p hlmDialogDescription>
         بدون فایل، به همهٔ کارمندان فعال شرکت «{{ definition.company.name }}» با
-        سقف و انقضای یکسان تخصیص داده می‌شود. با فایل، فقط به همان کد ملی‌ها، پس
-        از تطبیق ردهٔ سازمانی، و با مقادیر خودشان تخصیص داده می‌شود. تخصیص فعالِ
-        موجود به‌روزرسانی می‌شود، نه اضافه.
+        مبلغ شارژ و انقضای یکسان اعمال می‌شود. با فایل، فقط به همان کد ملی‌ها،
+        پس از تطبیق ردهٔ سازمانی، و با مبالغ خودشان شارژ می‌شود. مبلغ شارژ به
+        ماندهٔ فعلی هر کارمند اضافه می‌شود.
       </p>
       }
     </div>
@@ -346,15 +345,9 @@
           />
           <hlm-autocomplete-content *hlmAutocompletePortal>
             <hlm-autocomplete-status class="justify-start">
-              @if (employeeOptions.error()) {
-              جست‌وجوی کارمند ناموفق بود
-              } @else if (employeeOptions.isLoading()) {
-              در حال جست‌وجو…
-              } @else if (employeeSearch().trim().length < 2) {
-              دست‌کم دو حرف یا رقم بنویسید
-              } @else if (employeeOptions.value().length === 0) {
-              کارمند فعالی با این مشخصات پیدا نشد
-              }
+              @if (employeeOptions.error()) { جست‌وجوی کارمند ناموفق بود } @else if (employeeOptions.isLoading()) { در حال جست‌وجو… } @else if (employeeSearch().trim().length < 2) { دست‌کم دو حرف یا رقم
+              بنویسید } @else if (employeeOptions.value().length === 0) { کارمند
+              فعالی با این مشخصات پیدا نشد }
             </hlm-autocomplete-status>
             <div hlmAutocompleteList>
               @for (employee of employeeOptions.value(); track employee.id) {
@@ -363,7 +356,8 @@
                   <span>{{ employee.firstName }} {{ employee.lastName }}</span>
                   <span class="text-muted-foreground text-xs">
                     کد ملی <span dir="ltr">{{ employee.nationalCode }}</span> —
-                    کد پرسنلی <span dir="ltr">{{ employee.personnelCode }}</span>
+                    کد پرسنلی
+                    <span dir="ltr">{{ employee.personnelCode }}</span>
                   </span>
                 </div>
               </hlm-autocomplete-item>
@@ -379,9 +373,9 @@
       >
         <span class="text-sm font-medium">بارگذاری فایل (اختیاری)</span>
         <p class="text-muted-foreground text-xs">
-          اکسل یا CSV با چهار ستون: کد ملی، رده سازمانی، سقف اعتبار (ریال)،
-          تاریخ انقضای جلالی — مثل ۱۴۰۵/۰۶/۳۱. رده یکی از مدیر، معاون، رییس یا
-          کارمند است.
+          اکسل یا CSV با چهار ستون: کد ملی، رده سازمانی، مبلغ شارژ (ریال)، تاریخ
+          انقضای جلالی — مثل ۱۴۰۵/۰۶/۳۱. رده یکی از مدیر، معاون، رییس یا کارمند
+          است.
         </p>
 
         <input
@@ -445,7 +439,7 @@
       <!-- سقف و انقضا — حالت فردی، یا گروهی بدون فایل -->
       @if (allocMode() === 'single' || !fileEntries().length) {
       <hlm-field>
-        <label hlmFieldLabel for="fld-6">سقف اعتبار (ریال)</label>
+        <label hlmFieldLabel for="fld-6">مبلغ شارژ (ریال)</label>
         <input
           id="fld-6"
           hlmInput

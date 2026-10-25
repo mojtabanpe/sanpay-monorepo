@@ -29,6 +29,7 @@ const current = {
   organizationalRank: 'EMPLOYEE',
 };
 const payload: JwtPayload = {
+  sid: 'session-1',
   sub: current.id,
   nationalCode: current.nationalCode,
   authMethod: 'PASSWORD',
@@ -184,6 +185,7 @@ test('password login selects independent accounts by phone even with identical n
       findFirst: async ({ where }: { where: { phone: string } }) =>
         [first, second].find((row) => row.phone === where.phone) ?? null,
     },
+    employeeSession: { create: async () => ({}) },
   };
   const notices: string[] = [];
   const service = new AuthService(
@@ -249,4 +251,162 @@ test('authenticated profile returns the logo of the employee company', async () 
     name: company.name,
     logoUrl: company.logoUrl,
   });
+});
+
+// شارژ باید افزایشی باشد، حتی وقتی مبلغ جدید از مصرف قبلی کمتر است.
+test('wallet top-up adds credit without resetting spent, records exact amount', async () => {
+  const allocation = {
+    id: 'allocation-1',
+    employeeId: current.id,
+    definitionId: 'definition-1',
+    cap: 1000n,
+    spent: 800n,
+    isActive: true,
+    expiresAt: new Date('2100-01-01'),
+    createdAt: new Date(),
+    definition: { name: 'ارزاق', kind: 'RATION', icon: null, isActive: true },
+  };
+  const events: Array<{
+    data: { amount: bigint; type: string; allocationId: string };
+  }> = [];
+  const tx = {
+    walletAllocation: {
+      findUnique: async () => allocation,
+      update: async ({ data }: { data: { cap: { increment: bigint } } }) => {
+        assert.deepEqual(data, { cap: { increment: 50n } });
+        return { ...allocation, cap: allocation.cap + data.cap.increment };
+      },
+    },
+    transaction: {
+      create: async (event: (typeof events)[number]) => events.push(event),
+    },
+  };
+  const prisma = {
+    $transaction: async (run: (client: typeof tx) => Promise<unknown>) =>
+      run(tx),
+  };
+  const service = new AdminEmployeesService(prisma as unknown as PrismaService);
+  const result = await service.topUpAllocation(allocation.id, 50);
+  assert.equal(result.remaining, 250);
+  assert.equal(result.spent, 800);
+  assert.equal(events.length, 1);
+  assert.equal(events[0].data.type, 'TOPUP');
+  assert.equal(events[0].data.amount, 50n);
+  assert.equal(events[0].data.allocationId, allocation.id);
+  for (const invalid of [0, -1, 0.5, Number.MAX_SAFE_INTEGER + 1]) {
+    await assert.rejects(service.topUpAllocation(allocation.id, invalid));
+  }
+});
+
+test('wallet top-up rejects personal, inactive and expired wallets without writing', async () => {
+  for (const overrides of [
+    { definition: { kind: 'PERSONAL', isActive: true } },
+    { isActive: false },
+    { expiresAt: new Date('2000-01-01') },
+    { definition: { kind: 'CREDIT', isActive: false } },
+  ]) {
+    const tx = {
+      walletAllocation: {
+        findUnique: async () => ({
+          isActive: true,
+          definition: { kind: 'CREDIT', isActive: true },
+          expiresAt: new Date('2100-01-01'),
+          ...overrides,
+        }),
+      },
+    };
+    const prisma = {
+      $transaction: async (run: (client: typeof tx) => Promise<unknown>) =>
+        run(tx),
+    };
+    await assert.rejects(
+      new AdminEmployeesService(
+        prisma as unknown as PrismaService,
+      ).topUpAllocation('id', 10),
+    );
+  }
+});
+
+test('individual and bulk allocation helper adds to existing credit or records initial charge', async () => {
+  const { creditAllocation } =
+    await import('../src/app/admin/credit-allocation');
+  for (const exists of [true, false]) {
+    let credit = exists ? 1000n : 0n;
+    const events: Array<{ data: { type: string; amount: bigint } }> = [];
+    const tx = {
+      $queryRaw: async () => [],
+      walletAllocation: {
+        findFirst: async () =>
+          exists ? { id: 'allocation-1', spent: 800n } : null,
+        update: async ({ data }: { data: { cap: { increment: bigint } } }) => {
+          credit += data.cap.increment;
+          return { id: 'allocation-1', cap: credit };
+        },
+        create: async ({ data }: { data: { cap: bigint } }) => {
+          credit = data.cap;
+          return { id: 'allocation-1', cap: credit };
+        },
+      },
+      transaction: {
+        create: async (event: (typeof events)[number]) => events.push(event),
+      },
+    };
+    const result = await creditAllocation(
+      tx as never,
+      current.id,
+      'wallet-1',
+      50n,
+      new Date('2100-01-01'),
+    );
+    assert.equal(result.created, !exists);
+    assert.equal(credit, exists ? 1050n : 50n);
+    assert.equal(events[0].data.amount, 50n);
+    assert.equal(events[0].data.type, 'TOPUP');
+  }
+});
+
+test('wallet history is employee-scoped, hides personal funds and paginates credits and debits', async () => {
+  const { ProfileService } = await import('../src/app/profile/profile.service');
+  const types = [
+    'TOPUP',
+    'PURCHASE',
+    'REFUND',
+    'ADJUSTMENT',
+    'WITHDRAWAL',
+  ] as const;
+  const rows = Array.from({ length: 31 }, (_, index) => ({
+    id: String(index),
+    allocationId: 'wallet-1',
+    type: types[index % types.length],
+    amount: 100n,
+    createdAt: new Date('2026-10-25T08:00:00Z'),
+    note: null,
+    store: null,
+    allocation: { definition: { name: 'ارزاق' } },
+  }));
+  const prisma = {
+    transaction: {
+      findMany: async (query: Record<string, unknown>) => {
+        assert.deepEqual(query.where, {
+          employeeId: current.id,
+          allocation: { definition: { kind: { not: 'PERSONAL' } } },
+        });
+        assert.deepEqual(query.cursor, { id: 'previous-page' });
+        assert.equal(query.skip, 1);
+        assert.equal(query.take, 31);
+        return rows;
+      },
+    },
+  };
+  const page = await new ProfileService(
+    prisma as unknown as PrismaService,
+  ).walletTransactions(current.id, 'previous-page');
+  assert.equal(page.items.length, 30);
+  assert.equal(page.nextCursor, '29');
+  assert.deepEqual(
+    page.items.slice(0, 5).map((item) => item.direction),
+    ['credit', 'debit', 'credit', 'debit', 'debit'],
+  );
+  assert.equal(page.items[0].amount, 100);
+  assert.equal(page.items[0].walletName, 'ارزاق');
 });

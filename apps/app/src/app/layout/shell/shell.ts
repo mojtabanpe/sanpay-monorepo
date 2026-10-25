@@ -1,4 +1,4 @@
-import { Component, computed, inject } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import {
   Router,
   RouterLink,
@@ -28,9 +28,16 @@ export class ShellComponent {
     return profile ? `${profile.firstName} ${profile.lastName}` : '';
   });
 
-  protected logout(): void {
-    this.auth.logout();
-    this.router.navigate(['/login']);
+  protected readonly logoutBusy = signal(false);
+  protected readonly logoutError = signal(false);
+
+  protected async logout(): Promise<void> {
+    if (this.logoutBusy()) return;
+    this.logoutBusy.set(true);
+    this.logoutError.set(false);
+    if (await this.auth.logout()) await this.router.navigate(['/login']);
+    else this.logoutError.set(true);
+    this.logoutBusy.set(false);
   }
 
   protected back(): void {

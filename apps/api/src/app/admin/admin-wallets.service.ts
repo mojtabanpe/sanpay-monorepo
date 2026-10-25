@@ -11,6 +11,7 @@ import {
   OrganizationalRank,
   WalletKind,
 } from '@sanpay/models';
+import { creditAllocation } from './credit-allocation';
 import { WELFARE_DEFINITION } from '../upg/personal-wallet';
 import { PrismaService } from '../prisma/prisma.service';
 import {
@@ -217,7 +218,7 @@ export class AdminWalletsService {
 
   /**
    * تخصیص گروهی: برای هر کارمند اگر تخصیص فعالی از این کیف پول داشته باشد
-   * سقف/انقضای آن به‌روز می‌شود، وگرنه تخصیص تازه ساخته می‌شود.
+   * مبلغ شارژ به اعتبار آن اضافه می‌شود، وگرنه تخصیص تازه ساخته می‌شود.
    *
    * دو حالت دارد:
    * - `entries` (از فایل اکسل/CSV): فقط به همان کد ملی‌ها، هرکدام با سقف و
@@ -245,37 +246,17 @@ export class AdminWalletsService {
     };
 
     for (const target of targets.rows) {
-      const existing = await this.prisma.walletAllocation.findFirst({
-        where: {
-          employeeId: target.employeeId,
-          definitionId: definition.id,
-          isActive: true,
-        },
-      });
-
-      if (!existing) {
-        await this.prisma.walletAllocation.create({
-          data: {
-            employeeId: target.employeeId,
-            definitionId: definition.id,
-            cap: target.cap,
-            expiresAt: target.expiresAt,
-          },
-        });
-        result.created++;
-        continue;
-      }
-
-      // سقف تازه نباید زیر خرج‌شده بیفتد — چنین کارمندی دست‌نخورده می‌ماند
-      if (target.cap < existing.spent) {
-        result.skipped++;
-        continue;
-      }
-      await this.prisma.walletAllocation.update({
-        where: { id: existing.id },
-        data: { cap: target.cap, expiresAt: target.expiresAt },
-      });
-      result.updated++;
+      const { created } = await this.prisma.$transaction((tx) =>
+        creditAllocation(
+          tx,
+          target.employeeId,
+          definition.id,
+          target.cap,
+          target.expiresAt,
+        ),
+      );
+      if (created) result.created++;
+      else result.updated++;
     }
 
     return result;

@@ -3,16 +3,20 @@ import {
   BadRequestException,
   Injectable,
   Logger,
+  NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { EmployeeProfile } from '@sanpay/models';
+import { EmployeeProfile, EmployeeSessionView } from '@sanpay/models';
 import * as bcrypt from 'bcrypt';
-import { createHmac, randomInt } from 'node:crypto';
+import { createHmac, randomInt, randomUUID } from 'node:crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { SmsService } from './sms.service';
+import { deviceLabel, SessionInfo, SESSION_TTL_SECONDS } from './session-info';
 
 export interface JwtPayload {
+  sid: string;
+  exp?: number;
   sub: string;
   nationalCode: string;
   authMethod: 'OTP' | 'PASSWORD';
@@ -33,7 +37,7 @@ export class AuthService {
     private readonly sms: SmsService,
   ) {}
 
-  async login(phone: string, password: string) {
+  async login(phone: string, password: string, info?: SessionInfo) {
     const employee = await this.prisma.employee.findFirst({
       where: {
         phone,
@@ -51,15 +55,17 @@ export class AuthService {
     }
 
     const payload: JwtPayload = {
+      sid: randomUUID(),
       sub: employee.id,
       nationalCode: employee.nationalCode,
       authMethod: 'PASSWORD',
       requiresPasswordSetup: false,
     };
 
+    const accessToken = await this.startSession(payload, info);
     this.sms.sendLoginNotice(phone, new Date());
     return {
-      accessToken: await this.jwt.signAsync(payload),
+      accessToken,
       employee: this.toProfile(employee),
       requiresPasswordSetup: false,
     };
@@ -124,7 +130,12 @@ export class AuthService {
     return result;
   }
 
-  async verifyOtp(nationalCode: string, phone: string, code: string) {
+  async verifyOtp(
+    nationalCode: string,
+    phone: string,
+    code: string,
+    info?: SessionInfo,
+  ) {
     const employee = await this.prisma.employee.findFirst({
       where: {
         deletedAt: null,
@@ -158,14 +169,16 @@ export class AuthService {
       where: { employeeId: employee.id },
     });
     const payload: JwtPayload = {
+      sid: randomUUID(),
       sub: employee.id,
       nationalCode: employee.nationalCode,
       authMethod: 'OTP',
       requiresPasswordSetup: !employee.passwordHash,
     };
+    const accessToken = await this.startSession(payload, info);
     this.sms.sendLoginNotice(phone, new Date());
     return {
-      accessToken: await this.jwt.signAsync(payload),
+      accessToken,
       employee: this.toProfile(employee),
       requiresPasswordSetup: !employee.passwordHash,
     };
@@ -185,11 +198,26 @@ export class AuthService {
     if (employee.passwordHash) {
       throw new BadRequestException('رمز عبور قبلاً تعیین شده است');
     }
+    const accessToken = await this.jwt.signAsync(
+      {
+        sid: payload.sid,
+        sub: payload.sub,
+        nationalCode: payload.nationalCode,
+        authMethod: payload.authMethod,
+        requiresPasswordSetup: false,
+      },
+      {
+        expiresIn: Math.max(
+          1,
+          (payload.exp ?? 0) - Math.floor(Date.now() / 1000),
+        ),
+      },
+    );
     await this.prisma.employee.update({
       where: { id: payload.sub },
       data: { passwordHash: await bcrypt.hash(password, 10) },
     });
-    return { ok: true };
+    return { ok: true, accessToken };
   }
 
   async profile(employeeId: string) {
@@ -262,6 +290,71 @@ export class AuthService {
       data: { passwordHash: await bcrypt.hash(newPassword, 10) },
     });
     return { ok: true };
+  }
+
+  async sessions(payload: JwtPayload): Promise<EmployeeSessionView[]> {
+    const sessions = await this.prisma.employeeSession.findMany({
+      where: {
+        employeeId: payload.sub,
+        revokedAt: null,
+        expiresAt: { gt: new Date() },
+      },
+      orderBy: [{ lastSeenAt: 'desc' }, { id: 'desc' }],
+    });
+    return sessions.map((session) => ({
+      id: session.id,
+      device: deviceLabel(session.userAgent),
+      ipAddress: session.ipAddress,
+      createdAt: session.createdAt.toISOString(),
+      lastSeenAt: session.lastSeenAt.toISOString(),
+      expiresAt: session.expiresAt.toISOString(),
+      isCurrent: session.id === payload.sid,
+    }));
+  }
+
+  async revokeSession(payload: JwtPayload, id: string) {
+    const result = await this.prisma.employeeSession.updateMany({
+      where: {
+        id,
+        employeeId: payload.sub,
+        revokedAt: null,
+        expiresAt: { gt: new Date() },
+      },
+      data: { revokedAt: new Date() },
+    });
+    if (!result.count) throw new NotFoundException('نشست فعال پیدا نشد');
+    return { ok: true };
+  }
+
+  async revokeOtherSessions(payload: JwtPayload) {
+    await this.prisma.employeeSession.updateMany({
+      where: {
+        employeeId: payload.sub,
+        id: { not: payload.sid },
+        revokedAt: null,
+      },
+      data: { revokedAt: new Date() },
+    });
+    return { ok: true };
+  }
+
+  private async startSession(
+    payload: JwtPayload,
+    info?: SessionInfo,
+  ): Promise<string> {
+    const accessToken = await this.jwt.signAsync(payload, {
+      expiresIn: SESSION_TTL_SECONDS,
+    });
+    await this.prisma.employeeSession.create({
+      data: {
+        id: payload.sid,
+        employeeId: payload.sub,
+        userAgent: info?.userAgent ?? null,
+        ipAddress: info?.ipAddress ?? null,
+        expiresAt: new Date(Date.now() + SESSION_TTL_SECONDS * 1000),
+      },
+    });
+    return accessToken;
   }
 
   private hashOtp(employeeId: string, code: string): string {

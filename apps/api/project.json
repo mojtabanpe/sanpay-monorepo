@@ -113,6 +113,13 @@
         }
       }
     },
+    "test-sessions": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "node -r @swc-node/register --test apps/api/tests/sessions.test.ts",
+        "env": { "SWC_NODE_PROJECT": "apps/api/tsconfig.app.json" }
+      }
+    },
     "test-admin": {
       "executor": "nx:run-commands",
       "options": {

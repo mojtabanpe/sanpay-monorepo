@@ -31,6 +31,7 @@ import { AdminStoresService } from './admin-stores.service';
 import { AdminWalletsService } from './admin-wallets.service';
 import {
   AdjustAllocationDto,
+  TopUpAllocationDto,
   AdminLoginDto,
   BookingQueryDto,
   BulkAllocateDto,
@@ -152,7 +153,9 @@ export class AdminEmployeesController {
   @HttpCode(HttpStatus.OK)
   @Roles(...WRITE_ROLES)
   @UseInterceptors(
-    FileInterceptor('file', { limits: { fileSize: AVATAR_MAX_BYTES, files: 1 } }),
+    FileInterceptor('file', {
+      limits: { fileSize: AVATAR_MAX_BYTES, files: 1 },
+    }),
   )
   setAvatar(@Param('id') id: string, @UploadedFile() file: UploadedImage) {
     return this.avatars.set(id, file);
@@ -222,6 +225,12 @@ export class AdminAllocationsController {
   @Patch(':id')
   update(@Param('id') id: string, @Body() dto: UpdateAllocationDto) {
     return this.employees.updateAllocation(id, dto);
+  }
+
+  @Post(':id/top-up')
+  @HttpCode(HttpStatus.OK)
+  topUp(@Param('id') id: string, @Body() dto: TopUpAllocationDto) {
+    return this.employees.topUpAllocation(id, dto.amount);
   }
 
   @Post(':id/adjust')

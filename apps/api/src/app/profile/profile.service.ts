@@ -1,5 +1,9 @@
 import { Injectable } from '@nestjs/common';
-import { PaymentHistoryItem, ProfileSummary } from '@sanpay/models';
+import {
+  PaymentHistoryItem,
+  ProfileSummary,
+  WalletTransactionPage,
+} from '@sanpay/models';
 import { WELFARE_DEFINITION } from '../upg/personal-wallet';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -39,6 +43,40 @@ export class ProfileService {
       nextExpiry: live[0]?.expiresAt.toISOString() ?? null,
       spentThisMonth: Number(monthAggregate._sum.amount ?? 0n),
       paymentCount,
+    };
+  }
+
+  async walletTransactions(
+    employeeId: string,
+    cursor?: string,
+  ): Promise<WalletTransactionPage> {
+    const rows = await this.prisma.transaction.findMany({
+      where: { employeeId, allocation: { definition: WELFARE_DEFINITION } },
+      include: {
+        allocation: { select: { definition: { select: { name: true } } } },
+        store: { select: { name: true } },
+      },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      take: 31,
+      ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+    });
+    const items = rows.slice(0, 30).map((row) => ({
+      id: row.id,
+      allocationId: row.allocationId,
+      walletName: row.allocation.definition.name,
+      type: row.type,
+      direction:
+        row.type === 'TOPUP' || row.type === 'REFUND'
+          ? ('credit' as const)
+          : ('debit' as const),
+      amount: Number(row.amount),
+      createdAt: row.createdAt.toISOString(),
+      note: row.note,
+      storeName: row.store?.name ?? null,
+    }));
+    return {
+      items,
+      nextCursor: rows.length > 30 ? items[items.length - 1].id : null,
     };
   }
 

@@ -50,7 +50,7 @@ type Kind = 'CREDIT' | 'TOURISM';
  *   که برای هر کد ملی سقف و انقضای خودش را می‌آورد.
  * - فردی: یک کارمند با جست‌وجو (نام / کد ملی / کد پرسنلی).
  * هر دو از `bulk-allocate` می‌گذرند، پس قاعدهٔ سرور یکی است: تخصیص فعالِ موجود
- * به‌روز می‌شود نه تکرار، و سقفِ کمتر از مصرف‌شده رد می‌شود.
+ * با مبلغ واردشده شارژ می‌شود و تراکنش شارژ ثبت می‌شود.
  */
 @Component({
   selector: 'app-wallets',
@@ -171,7 +171,11 @@ export class WalletsPage {
       mode: this.allocMode(),
     }),
     loader: async ({ params, abortSignal }) => {
-      if (params.mode !== 'single' || params.q.length < 2 || !params.companyId) {
+      if (
+        params.mode !== 'single' ||
+        params.q.length < 2 ||
+        !params.companyId
+      ) {
         return [];
       }
       await new Promise((resolve) => setTimeout(resolve, 250));
@@ -368,7 +372,9 @@ export class WalletsPage {
   }
 
   /** تخصیص فردی — همان endpoint گروهی با یک شناسه */
-  private async allocateSingle(definition: AdminWalletDefinitionRow): Promise<void> {
+  private async allocateSingle(
+    definition: AdminWalletDefinitionRow,
+  ): Promise<void> {
     const employee = this.singleEmployee();
     if (!employee) {
       this.error.set('کارمند را انتخاب کنید');
@@ -376,11 +382,10 @@ export class WalletsPage {
     }
     const cap = parseAmount(this.bulkCap());
     if (cap <= 0) {
-      this.error.set('سقف اعتبار را وارد کنید');
+      this.error.set('مبلغ شارژ را وارد کنید');
       return;
     }
     const name = `${employee.firstName} ${employee.lastName}`;
-    let skipped = false;
     await this.run(async () => {
       const result = await this.api.bulkAllocate({
         definitionId: definition.id,
@@ -388,23 +393,13 @@ export class WalletsPage {
         cap,
         expiresAt: this.bulkExpiry(),
       });
-      if (result.skipped) {
-        skipped = true;
-        return;
-      }
       this.closeBulk();
       this.notice.set(
         result.updated
-          ? `تخصیص فعالِ «${definition.name}» برای ${name} به‌روزرسانی شد.`
+          ? `کیف پول «${definition.name}» برای ${name} شارژ شد.`
           : `«${definition.name}» به ${name} تخصیص داده شد.`,
       );
     }, 'تخصیص ممکن نشد');
-    // run() پیام‌ها را پاک می‌کند؛ خطای «سقف کمتر از مصرف» بعد از آن می‌نشیند
-    if (skipped) {
-      this.error.set(
-        `سقف تازه کمتر از مبلغی است که ${name} از این کیف پول خرج کرده؛ تغییری اعمال نشد.`,
-      );
-    }
   }
 
   protected closeBulk(): void {
@@ -466,7 +461,7 @@ export class WalletsPage {
     if (!entries.length) {
       const cap = parseAmount(this.bulkCap());
       if (cap <= 0) {
-        this.error.set('سقف اعتبار را وارد کنید');
+        this.error.set('مبلغ شارژ را وارد کنید');
         return;
       }
     }
@@ -482,8 +477,8 @@ export class WalletsPage {
 
       const parts = [
         `${fa(result.created)} تخصیص تازه`,
-        `${fa(result.updated)} به‌روزرسانی`,
-        `${fa(result.skipped)} رد شده (سقف کمتر از مصرف)`,
+        `${fa(result.updated)} شارژ مجدد`,
+        `${fa(result.skipped)} رد شده`,
       ];
       if (result.notFound.length) {
         parts.push(

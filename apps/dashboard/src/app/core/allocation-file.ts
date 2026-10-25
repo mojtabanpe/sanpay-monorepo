@@ -27,6 +27,9 @@ const HEADERS = {
     'position',
   ],
   cap: [
+    'مبلغ شارژ (ریال)',
+    'مبلغ شارژ',
+    'amount',
     'سقف اعتبار (ریال)',
     'سقف اعتبار',
     'سقف',
@@ -118,10 +121,8 @@ export async function parseAllocationFile(
 
     const capRaw = toLatinDigits(row[columns.cap] ?? '').replace(/[^\d]/g, '');
     const cap = Number(capRaw) / 10;
-    if (!capRaw || !Number.isSafeInteger(cap)) {
-      errors.push(
-        `سطر ${lineNo}: سقف اعتبار باید مبلغ ریالی و مضربی از ۱۰ باشد`,
-      );
+    if (!capRaw || !Number.isSafeInteger(cap) || cap <= 0) {
+      errors.push(`سطر ${lineNo}: مبلغ شارژ باید مثبت و مضربی از ۱۰ ریال باشد`);
       return;
     }
 
@@ -208,7 +209,7 @@ function missingRequiredColumns(
   return [
     [columns.nationalCode, 'کد ملی'],
     [columns.organizationalRank, 'رده سازمانی'],
-    [columns.cap, 'سقف اعتبار'],
+    [columns.cap, 'مبلغ شارژ'],
     [columns.expiresAt, 'تاریخ انقضا'],
   ]
     .filter(([index]) => Number(index) < 0)

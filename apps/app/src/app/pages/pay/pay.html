@@ -119,18 +119,31 @@
     <div hlmCardContent class="flex flex-col gap-4">
       <hlm-field>
         <label hlmFieldLabel for="amount">مبلغ خرید</label>
-        <hlm-input-group>
-          <input
-            hlmInputGroupInput
-            id="amount"
-            placeholder="۰"
-            class="text-left text-base font-semibold tabular-nums"
-            [(sanpayAmount)]="rial"
-          />
-          <hlm-input-group-addon align="inline-end">
-            <span hlmInputGroupText>ریال</span>
-          </hlm-input-group-addon>
-        </hlm-input-group>
+        <div class="flex items-center gap-2">
+          <hlm-input-group class="min-w-0 flex-1">
+            <input
+              hlmInputGroupInput
+              id="amount"
+              placeholder="۰"
+              class="text-left text-base font-semibold tabular-nums"
+              [(sanpayAmount)]="rial"
+            />
+            <hlm-input-group-addon align="inline-end">
+              <span hlmInputGroupText>ریال</span>
+            </hlm-input-group-addon>
+          </hlm-input-group>
+          <button
+            type="button"
+            hlmBtn
+            variant="outline"
+            size="sm"
+            class="shrink-0"
+            [disabled]="busy() || store.totalAvailable <= 0"
+            (click)="fillMax()"
+          >
+            حداکثر مبلغ
+          </button>
+        </div>
       </hlm-field>
       <p class="text-muted-foreground text-xs">
         مبلغ را از فروشنده بپرسید.

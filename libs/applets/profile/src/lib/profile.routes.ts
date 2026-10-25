@@ -8,6 +8,17 @@ export const profileRoutes: Route[] = [
       import('./pages/profile-home').then((m) => m.ProfileHomePage),
   },
   {
+    path: 'sessions',
+    loadComponent: () => import('./pages/sessions').then((m) => m.SessionsPage),
+  },
+  {
+    path: 'wallet-transactions',
+    loadComponent: () =>
+      import('./pages/wallet-transactions').then(
+        (m) => m.WalletTransactionsPage,
+      ),
+  },
+  {
     path: 'payments',
     loadComponent: () =>
       import('./pages/payment-history').then((m) => m.PaymentHistoryPage),

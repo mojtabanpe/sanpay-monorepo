@@ -525,7 +525,8 @@ export class CreateAllocationDto {
 
   @Type(() => Number)
   @IsInt()
-  @Min(0)
+  @Min(1)
+  @Max(Number.MAX_SAFE_INTEGER)
   cap!: number;
 
   @IsDateString()
@@ -537,6 +538,7 @@ export class UpdateAllocationDto {
   @Type(() => Number)
   @IsInt()
   @Min(0)
+  @Max(Number.MAX_SAFE_INTEGER)
   cap?: number;
 
   @IsOptional()
@@ -559,7 +561,8 @@ export class BulkAllocateEntryDto {
 
   @Type(() => Number)
   @IsInt()
-  @Min(0)
+  @Min(1)
+  @Max(Number.MAX_SAFE_INTEGER)
   cap!: number;
 
   @IsDateString()
@@ -590,7 +593,8 @@ export class BulkAllocateDto {
   @IsOptional()
   @Type(() => Number)
   @IsInt()
-  @Min(0)
+  @Min(1)
+  @Max(Number.MAX_SAFE_INTEGER)
   cap?: number;
 
   /** انقضای یکسان برای همه — وقتی `entries` نیامده باشد اجباری است */
@@ -608,4 +612,12 @@ export class AdjustAllocationDto {
   @IsString()
   @IsNotEmpty()
   note!: string;
+}
+
+export class TopUpAllocationDto {
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(Number.MAX_SAFE_INTEGER)
+  amount!: number;
 }
