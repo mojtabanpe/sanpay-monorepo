@@ -52,7 +52,10 @@
       "defaultConfiguration": "development",
       "options": {
         "port": 6400,
-        "proxyConfig": "apps/store/proxy.conf.json"
+        "proxyConfig": "apps/store/proxy.conf.json",
+        "prebundle": {
+          "exclude": ["@spartan-ng/brain"]
+        }
       },
       "configurations": {
         "production": {

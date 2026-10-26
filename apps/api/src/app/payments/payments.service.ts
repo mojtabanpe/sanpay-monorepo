@@ -88,6 +88,14 @@ export class PaymentsService {
     if (!store || !store.isActive) {
       throw new NotFoundException('فروشگاهی با این کد پیدا نشد');
     }
+    const { totalAvailable } = await this.checkout(employeeId, input.storeCode);
+    if (input.amount > totalAvailable) {
+      throw new BadRequestException(
+        totalAvailable > 0
+          ? 'مبلغ از اعتبار شما در این فروشگاه بیشتر است؛ مازاد را مستقیم با کارت در فروشگاه بپردازید'
+          : 'در این فروشگاه اعتباری ندارید',
+      );
+    }
     const allocations = await this.prisma.walletAllocation.findMany({
       where: {
         employeeId,
@@ -161,6 +169,21 @@ export class PaymentsService {
         ),
       );
     }
+  }
+
+  /** نمایش دوبارهٔ رسید از تاریخچهٔ خرید — فقط برای صاحب پرداخت */
+  async receiptForEmployee(
+    employeeId: string,
+    paymentId: string,
+  ): Promise<Receipt> {
+    const payment = await this.prisma.payment.findFirst({
+      where: { id: paymentId, employeeId },
+      select: { id: true },
+    });
+    if (!payment) {
+      throw new NotFoundException('رسید پیدا نشد');
+    }
+    return this.employeeReceipt(payment.id);
   }
 
   /** رسید پرداخت یک intent — برای صفحهٔ نتیجهٔ UPG */

@@ -132,9 +132,11 @@ export class UpgService {
     const planned = plan.reduce((sum, line) => sum + line.amount, 0);
     const gatewayAmount = Number(intent.amount) - planned;
 
-    if (gatewayAmount > 0 && !this.gateways.available) {
+    if (gatewayAmount > 0 && !this.cardAllowed(intent)) {
       throw new BadRequestException(
-        'پرداخت با کارت فعلاً در دسترس نیست؛ کل مبلغ باید از اعتبار پرداخت شود',
+        intent.purpose === 'STORE'
+          ? 'خرید فروشگاهی فقط از اعتبار انجام می‌شود؛ مازاد را در فروشگاه با کارت بپردازید'
+          : 'پرداخت با کارت فعلاً در دسترس نیست؛ کل مبلغ باید از اعتبار پرداخت شود',
       );
     }
 
@@ -1124,6 +1126,11 @@ export class UpgService {
     return plan;
   }
 
+  /** ترکیب اعتبار و کارت فقط برای گردشگری است؛ خرید فروشگاهی فقط از اعتبار */
+  private cardAllowed(intent: PaymentIntent): boolean {
+    return intent.purpose !== 'STORE' && this.gateways.available;
+  }
+
   private async toView(intent: PaymentIntent): Promise<UpgIntentView> {
     const open = OPEN.includes(intent.status);
     const sources = open ? await this.sourcesFor(intent) : [];
@@ -1154,7 +1161,7 @@ export class UpgService {
       expiresAt: intent.expiresAt.toISOString(),
       sources,
       suggested: open ? this.suggest(intent, sources) : [],
-      cardAvailable: this.gateways.available,
+      cardAvailable: this.cardAllowed(intent),
       gateway: lastGateway
         ? {
             amount: Number(lastGateway.amount),

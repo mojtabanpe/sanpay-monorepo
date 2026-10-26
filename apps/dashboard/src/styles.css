@@ -46,3 +46,45 @@ body {
   width: 100%;
   white-space: nowrap;
 }
+
+/* ─── چاپ گزارش — `core/print-sheet.ts` ────────────────────────────────── */
+.print-sheet {
+  display: none;
+}
+
+@media print {
+  body > :not(.print-sheet) {
+    display: none !important;
+  }
+
+  body {
+    background: white !important;
+  }
+
+  .print-sheet {
+    display: block;
+    color: black;
+    font-size: 10px;
+  }
+
+  .print-sheet table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .print-sheet th,
+  .print-sheet td {
+    border: 1px solid #999;
+    padding: 4px 6px;
+    text-align: start;
+  }
+
+  /* سرستون در هر صفحهٔ کاغذ تکرار شود و سطر وسط دو صفحه نشکند */
+  .print-sheet thead {
+    display: table-header-group;
+  }
+
+  .print-sheet tr {
+    break-inside: avoid;
+  }
+}

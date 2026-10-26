@@ -4,6 +4,7 @@ import {
   Get,
   HttpCode,
   HttpStatus,
+  Param,
   Post,
   Query,
   Req,
@@ -15,6 +16,7 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { Request } from 'express';
 import { JwtPayload } from '../auth/auth.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { PaymentsService } from '../payments/payments.service';
 import { ProfileService } from './profile.service';
 import {
   AVATAR_MAX_BYTES,
@@ -28,6 +30,7 @@ export class ProfileController {
   constructor(
     private readonly profile: ProfileService,
     private readonly avatars: AvatarService,
+    private readonly paymentsService: PaymentsService,
   ) {}
 
   /** عکس پروفایل خود کارمند — فیلد multipart `file`، حداکثر ۲MB */
@@ -69,5 +72,13 @@ export class ProfileController {
     @Query('limit') limit?: string,
   ) {
     return this.profile.payments(request.user.sub, Number(limit) || 30);
+  }
+
+  @Get('payments/:id/receipt')
+  paymentReceipt(
+    @Req() request: Request & { user: JwtPayload },
+    @Param('id') id: string,
+  ) {
+    return this.paymentsService.receiptForEmployee(request.user.sub, id);
   }
 }

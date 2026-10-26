@@ -1,7 +1,9 @@
 import { Component, computed, inject, signal } from '@angular/core';
-import { PaymentHistoryItem } from '@sanpay/models';
+import { ReceiptCard } from '@sanpay/receipt';
+import { PaymentHistoryItem, Receipt } from '@sanpay/models';
 import { HlmButtonImports } from '@sanpay/ui/button';
 import { HlmCardImports } from '@sanpay/ui/card';
+import { HlmSheetImports } from '@sanpay/ui/sheet';
 import { HlmSkeletonImports } from '@sanpay/ui/skeleton';
 import { firstValueFrom } from 'rxjs';
 import { ProfileService } from '../data-access/profile.service';
@@ -9,7 +11,13 @@ import { faNumber, jalaliTime, toman } from '../format';
 
 @Component({
   selector: 'profile-payment-history',
-  imports: [HlmButtonImports, HlmCardImports, HlmSkeletonImports],
+  imports: [
+    HlmButtonImports,
+    HlmCardImports,
+    HlmSheetImports,
+    HlmSkeletonImports,
+    ReceiptCard,
+  ],
   templateUrl: './payment-history.html',
 })
 export class PaymentHistoryPage {
@@ -23,8 +31,34 @@ export class PaymentHistoryPage {
     this.payments().reduce((sum, payment) => sum + payment.amount, 0),
   );
 
+  protected readonly receipt = signal<Receipt | null>(null);
+  protected readonly receiptOpen = signal(false);
+  /** رسیدی که در حال دریافت است — برای غیرفعال‌کردن دکمهٔ همان سطر */
+  protected readonly receiptLoading = signal<string | null>(null);
+  protected readonly receiptError = signal<string | null>(null);
+
   constructor() {
     void this.load();
+  }
+
+  protected async showReceipt(payment: PaymentHistoryItem): Promise<void> {
+    if (this.receiptLoading()) return;
+    this.receiptLoading.set(payment.id);
+    this.receiptError.set(null);
+    try {
+      this.receipt.set(
+        await firstValueFrom(this.profileService.paymentReceipt(payment.id)),
+      );
+      this.receiptOpen.set(true);
+    } catch {
+      this.receiptError.set('دریافت رسید ناموفق بود؛ دوباره تلاش کنید');
+    } finally {
+      this.receiptLoading.set(null);
+    }
+  }
+
+  protected onReceiptState(state: string): void {
+    this.receiptOpen.set(state === 'open');
   }
 
   protected async load(): Promise<void> {

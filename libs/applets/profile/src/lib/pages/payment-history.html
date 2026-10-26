@@ -39,6 +39,10 @@
       جمع این فهرست: {{ toman(total()) }}
     </p>
 
+    @if (receiptError()) {
+      <p class="text-destructive px-1 text-xs" role="alert">{{ receiptError() }}</p>
+    }
+
     @for (payment of payments(); track payment.id; let i = $index) {
       <section hlmCard animate.enter="sanpay-rise" [style.--i]="i">
         <div hlmCardContent class="flex flex-col gap-2 pt-6">
@@ -64,11 +68,44 @@
             <p class="text-muted-foreground text-[0.7rem]">{{ payment.lines[0].walletName }}</p>
           }
 
-          <p class="text-muted-foreground border-t pt-2 text-[0.65rem]">
-            شمارهٔ رسید: <span dir="ltr" class="font-mono">{{ payment.receiptNo }}</span>
-          </p>
+          <div class="flex items-center justify-between gap-2 border-t pt-2">
+            <p class="text-muted-foreground text-[0.65rem]">
+              شمارهٔ رسید: <span dir="ltr" class="font-mono">{{ payment.receiptNo }}</span>
+            </p>
+            <button
+              type="button"
+              hlmBtn
+              variant="outline"
+              size="sm"
+              [disabled]="receiptLoading() !== null"
+              (click)="showReceipt(payment)"
+            >
+              {{ receiptLoading() === payment.id ? 'در حال دریافت…' : 'نمایش رسید' }}
+            </button>
+          </div>
         </div>
       </section>
     }
   }
+
+  <hlm-sheet
+    side="bottom"
+    closeOnOutsidePointerEvents
+    [state]="receiptOpen() ? 'open' : 'closed'"
+    (stateChanged)="onReceiptState($event)"
+  >
+    <hlm-sheet-content
+      *hlmSheetPortal
+      class="rounded-t-2xl pb-[max(1rem,env(safe-area-inset-bottom))]"
+    >
+      <div hlmSheetHeader>
+        <h2 hlmSheetTitle>رسید پرداخت</h2>
+      </div>
+      @if (receipt(); as r) {
+        <div class="px-4">
+          <sanpay-receipt-card [receipt]="r" variant="employee" />
+        </div>
+      }
+    </hlm-sheet-content>
+  </hlm-sheet>
 </div>

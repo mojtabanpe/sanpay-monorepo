@@ -59,9 +59,15 @@ export class MerchantPaymentsService {
     });
     if (!store) throw new BadRequestException('فروشگاه فعال نیست');
 
-    // اعتبار ناکافی دیگر مانع نیست: باقی مبلغ بعد از OTP با لینک پرداخت
-    // کارتی برای کارمند پیامک می‌شود (UPG)
+    // خرید فروشگاهی فقط تا سقف اعتبار؛ مازاد را مشتری مستقیم با کارت می‌دهد
     const checkout = await this.payments.checkout(employee.id, store.code);
+    if (dto.amount > checkout.totalAvailable) {
+      throw new BadRequestException(
+        checkout.totalAvailable > 0
+          ? `اعتبار کارمند در این فروشگاه ${checkout.totalAvailable} تومان است؛ مازاد را جدا با کارت دریافت کنید`
+          : 'کارمند در این فروشگاه اعتباری ندارد',
+      );
+    }
     let remaining = dto.amount;
     const wallets = checkout.wallets.flatMap((wallet) => {
       if (remaining <= 0) return [];
@@ -69,7 +75,6 @@ export class MerchantPaymentsService {
       remaining -= used;
       return [wallet.name];
     });
-    if (remaining > 0) wallets.push('کارت بانکی');
 
     const cooldown = await this.prisma.merchantPaymentIntent.findFirst({
       where: {
@@ -167,30 +172,17 @@ export class MerchantPaymentsService {
         receipt: await this.payments.receipt(payment.id),
       };
     }
-    if (settled.cardAmount === 0) {
-      // اعتبار کافی بود ولی کسر یا ثبت شکست خورد
+    if (settled.cardAmount > 0) {
+      // اعتبار بین درخواست و تأیید کم شده؛ خرید فروشگاهی سهم کارتی ندارد
+      await this.upg.cancel(intent.employeeId, upgIntent.id);
       throw new BadRequestException(
-        settled.intent.failureReason ?? 'ثبت پرداخت ممکن نشد',
+        'اعتبار کارمند برای این مبلغ کافی نیست؛ مازاد را جدا با کارت دریافت کنید',
       );
     }
-
-    const employee = await this.prisma.employee.findUniqueOrThrow({
-      where: { id: intent.employeeId },
-      select: { phone: true },
-    });
-    if (employee.phone) {
-      this.sms.sendPaymentLink(employee.phone, {
-        store: intent.store.name,
-        amount: settled.cardAmount,
-        link: `${this.upg.publicUrl}/upg/${upgIntent.id}`,
-      });
-    }
-    return {
-      status: 'AWAITING_EMPLOYEE',
-      upgIntentId: upgIntent.id,
-      creditAmount: settled.creditAmount,
-      cardAmount: settled.cardAmount,
-    };
+    // اعتبار کافی بود ولی کسر یا ثبت شکست خورد
+    throw new BadRequestException(
+      settled.intent.failureReason ?? 'ثبت پرداخت ممکن نشد',
+    );
   }
 
   private async awaiting(

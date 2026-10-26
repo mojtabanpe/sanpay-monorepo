@@ -1,20 +1,8 @@
-<style>
-  @media print {
-    .report-controls,
-    .report-pagination {
-      display: none !important;
-    }
-    section {
-      box-shadow: none !important;
-      border: 0 !important;
-    }
-  }
-</style>
 <div class="flex w-full flex-col gap-5">
   <header>
     <h1 class="text-2xl font-bold">پرداخت‌ها</h1>
     <p class="text-muted-foreground text-sm">
-      {{ fa(total()) }} پرداخت — جمع این صفحه {{ toman(pageSum()) }}
+      {{ fa(total()) }} پرداخت — جمع کل {{ toman(sumAmount()) }}
     </p>
   </header>
 
@@ -105,7 +93,14 @@
         <button hlmBtn variant="outline" (click)="exportExcel()">
           خروجی Excel
         </button>
-        <button hlmBtn variant="outline" (click)="print()">چاپ</button>
+        <button
+          hlmBtn
+          variant="outline"
+          [disabled]="printing()"
+          (click)="print()"
+        >
+          {{ printing() ? 'در حال آماده‌سازی…' : 'چاپ' }}
+        </button>
       </div>
     </div>
   </section>
@@ -180,6 +175,15 @@
             </tr>
             }
           </tbody>
+          @if (rows().length > 0) {
+          <tfoot>
+            <tr hlmTr class="font-semibold">
+              <td hlmTd colspan="5">جمع کل {{ fa(total()) }} پرداخت (همهٔ صفحه‌ها)</td>
+              <td hlmTd>{{ toman(sumAmount()) }}</td>
+              <td hlmTd colspan="2"></td>
+            </tr>
+          </tfoot>
+          }
         </table>
       </div>
 
@@ -198,4 +202,43 @@
       </div>
     </div>
   </section>
+
+  <!-- فقط هنگام چاپ دیده می‌شود: همهٔ صفحه‌های فیلترشده + جمع کل -->
+  <div #printArea class="print-sheet" dir="rtl">
+    <h1 style="font-size: 14px; font-weight: bold">گزارش پرداخت‌ها</h1>
+    <p style="margin: 4px 0 8px">{{ filterSummary() }}</p>
+    <table>
+      <thead>
+        <tr>
+          <th>شمارهٔ رسید</th>
+          <th>کارمند</th>
+          <th>کد پرسنلی</th>
+          <th>فروشگاه</th>
+          <th>مبلغ</th>
+          <th>تسویه</th>
+          <th>زمان</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (row of printRows(); track row.id) {
+        <tr>
+          <td dir="ltr">{{ row.receiptNo }}</td>
+          <td>{{ row.employee.name }}</td>
+          <td dir="ltr">{{ row.employee.personnelCode }}</td>
+          <td>{{ row.store.name }}</td>
+          <td>{{ toman(row.amount) }}</td>
+          <td>{{ settlementText(row.settlement.status) }}</td>
+          <td>{{ jalaliTime(row.createdAt) }}</td>
+        </tr>
+        }
+      </tbody>
+      <tfoot>
+        <tr style="font-weight: bold">
+          <td colspan="4">جمع کل {{ fa(printRows().length) }} پرداخت</td>
+          <td>{{ toman(printSum()) }}</td>
+          <td colspan="2"></td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
 </div>

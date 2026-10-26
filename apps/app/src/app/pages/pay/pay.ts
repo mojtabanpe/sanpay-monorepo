@@ -64,8 +64,17 @@ export class PayPage implements OnDestroy {
   private readonly amount = computed(() => Math.floor(Number(this.rial() || 0) / 10));
   /** ریال کمتر از ۱۰ قابل کسر نیست؛ به‌جای گردکردنِ بی‌صدا ادامه را می‌بندیم */
   protected readonly hasFraction = computed(() => Number(this.rial() || 0) % 10 !== 0);
+  /** خرید فروشگاهی فقط تا سقف اعتبار؛ مازاد را مستقیم با کارت در فروشگاه بدهید */
+  protected readonly overLimit = computed(
+    () =>
+      this.amount() > 0 && this.amount() > (this.checkout()?.totalAvailable ?? 0),
+  );
   protected readonly canContinue = computed(
-    () => this.amount() > 0 && !this.hasFraction() && !this.busy(),
+    () =>
+      this.amount() > 0 &&
+      !this.hasFraction() &&
+      !this.overLimit() &&
+      !this.busy(),
   );
 
   private readonly faNumber = new Intl.NumberFormat('fa-IR');
@@ -149,7 +158,6 @@ export class PayPage implements OnDestroy {
     this.busy.set(true);
     this.error.set(null);
     try {
-      // اعتبار نداشتن مانع نیست: UPG باقی مبلغ را به درگاه می‌فرستد
       const checkout = await this.checkoutService.getCheckout(code);
       this.checkout.set(checkout);
       this.rial.set('');

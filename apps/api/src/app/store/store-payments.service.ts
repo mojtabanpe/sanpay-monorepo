@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import {
   Receipt,
   StorePaymentReport,
@@ -15,10 +15,13 @@ import { StorePaymentReportQueryDto } from './dto/store-report.dto';
 export class StorePaymentsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  /** رسیدهای اخیر یک فروشگاه — تازه‌ترین اول */
+  /**
+   * «آخرین پرداخت‌ها» — رسیدهایی که فروشنده هنوز تأیید نکرده، تازه‌ترین اول.
+   * گزارش و آمار از این فیلتر جدا هستند و همهٔ پرداخت‌ها را می‌شمارند.
+   */
   async recent(storeId: string, take = 50): Promise<Receipt[]> {
     const payments = await this.prisma.payment.findMany({
-      where: { storeId },
+      where: { storeId, storeConfirmedAt: null },
       include: {
         employee: true,
         store: true,
@@ -52,6 +55,31 @@ export class StorePaymentsService {
         receiptLink: payment.settlementItem?.receiptLink ?? null,
       },
     }));
+  }
+
+  /**
+   * فروشنده رسید را دید و تأیید کرد. idempotent: تأیید دوباره همان زمان اول
+   * را نگه می‌دارد. رسید فروشگاه دیگر «پیدا نشد» است، نه «ممنوع».
+   */
+  async confirm(
+    storeId: string,
+    paymentId: string,
+  ): Promise<{ id: string; storeConfirmedAt: string }> {
+    await this.prisma.payment.updateMany({
+      where: { id: paymentId, storeId, storeConfirmedAt: null },
+      data: { storeConfirmedAt: new Date() },
+    });
+    const payment = await this.prisma.payment.findFirst({
+      where: { id: paymentId, storeId },
+      select: { id: true, storeConfirmedAt: true },
+    });
+    if (!payment?.storeConfirmedAt) {
+      throw new NotFoundException('پرداخت پیدا نشد');
+    }
+    return {
+      id: payment.id,
+      storeConfirmedAt: payment.storeConfirmedAt.toISOString(),
+    };
   }
 
   async report(
@@ -106,6 +134,9 @@ export class StorePaymentsService {
         amount: Number(summary._sum.amount ?? 0n),
         settledCount: settled._count._all,
         settledAmount: Number(settled._sum.amount ?? 0n),
+        pendingAmount: Number(
+          (summary._sum.amount ?? 0n) - (settled._sum.amount ?? 0n),
+        ),
       },
     };
   }

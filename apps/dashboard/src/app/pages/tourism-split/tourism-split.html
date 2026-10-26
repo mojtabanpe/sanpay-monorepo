@@ -1,0 +1,152 @@
+<div class="flex w-full flex-col gap-5">
+  <header>
+    <h1 class="text-2xl font-bold">تفکیک پرداخت گردشگری</h1>
+    <p class="text-muted-foreground text-sm">
+      سهم اعتبار (بن) و کارت درگاه در رزرو هتل و پرواز، به تفکیک شخص. «مبنای
+      فاکتور» مبلغی است که باید در سامانهٔ مودیان به نام همان شخص فاکتور شود.
+    </p>
+  </header>
+
+  <div class="grid gap-3 md:grid-cols-4">
+    <hlm-field>
+      <label hlmFieldLabel for="split-q">جست‌وجو</label>
+      <input
+        hlmInput
+        id="split-q"
+        placeholder="نام، کد ملی یا کد پرسنلی…"
+        [value]="query()"
+        (input)="query.set($any($event.target).value)"
+        (keyup.enter)="load()"
+      />
+    </hlm-field>
+    <hlm-field>
+      <label hlmFieldLabel for="split-from">از تاریخ</label>
+      <hlm-date-picker
+        sanpayDatePickerWidth
+        id="split-from"
+        [date]="fromDate()"
+        (dateChange)="onFromChange($event)"
+      >
+        <hlm-date-picker-trigger class="w-full">همه</hlm-date-picker-trigger>
+      </hlm-date-picker>
+    </hlm-field>
+    <hlm-field>
+      <label hlmFieldLabel for="split-to">تا تاریخ</label>
+      <hlm-date-picker
+        sanpayDatePickerWidth
+        id="split-to"
+        [date]="toDate()"
+        (dateChange)="onToChange($event)"
+      >
+        <hlm-date-picker-trigger class="w-full">همه</hlm-date-picker-trigger>
+      </hlm-date-picker>
+    </hlm-field>
+    <div class="flex flex-wrap items-end gap-2">
+      <hlm-toggle-group
+        [spacing]="2"
+        [value]="kind()"
+        (valueChange)="setKind($any($event))"
+      >
+        <button hlmToggleGroupItem value="">همه</button>
+        <button hlmToggleGroupItem value="HOTEL">هتل</button>
+        <button hlmToggleGroupItem value="FLIGHT">پرواز</button>
+      </hlm-toggle-group>
+      <button hlmBtn variant="secondary" (click)="load()">اعمال</button>
+      <button hlmBtn variant="outline" (click)="exportExcel()">
+        خروجی Excel
+      </button>
+    </div>
+  </div>
+
+  @if (error()) {
+  <p class="text-destructive text-sm">{{ error() }}</p>
+  } @if (report(); as data) {
+  <section hlmCard class="w-full">
+    <div hlmCardContent class="pt-6">
+      <div hlmTableContainer>
+        <table hlmTable class="w-full">
+          <thead hlmTHead>
+            <tr hlmTr>
+              <th hlmTh>کارمند</th>
+              <th hlmTh>کد ملی</th>
+              <th hlmTh>خرید</th>
+              <th hlmTh>جمع</th>
+              <th hlmTh>اعتبار (بن)</th>
+              <th hlmTh>کارت درگاه</th>
+              <th hlmTh>بازگشتی به کارت</th>
+              <th hlmTh>مبنای فاکتور مودیان</th>
+            </tr>
+          </thead>
+          <tbody hlmTBody>
+            @for (person of data.persons; track person.employee.id) {
+            <tr hlmTr>
+              <td hlmTd>
+                <button
+                  type="button"
+                  class="text-primary text-start"
+                  (click)="toggle(person.employee.id)"
+                >
+                  {{ person.employee.name }}
+                </button>
+                <div class="text-muted-foreground text-xs">
+                  {{ person.employee.personnelCode }}
+                </div>
+              </td>
+              <td hlmTd dir="ltr">{{ person.employee.nationalCode }}</td>
+              <td hlmTd>{{ fa(person.count) }}</td>
+              <td hlmTd>{{ toman(person.total) }}</td>
+              <td hlmTd>{{ toman(person.credit) }}</td>
+              <td hlmTd>{{ toman(person.card) }}</td>
+              <td hlmTd>{{ toman(person.cardRefunded) }}</td>
+              <td hlmTd class="font-semibold">{{ toman(person.invoiceBase) }}</td>
+            </tr>
+            @if (openEmployeeId() === person.employee.id) {
+            <tr hlmTr>
+              <td hlmTd colspan="8" class="bg-muted/40">
+                @for (item of openItems(); track item.intentId) {
+                <div
+                  class="flex flex-wrap items-center justify-between gap-2 py-1 text-xs"
+                >
+                  <span>
+                    {{ item.kind === 'HOTEL' ? 'هتل' : 'پرواز' }} —
+                    {{ item.title }}
+                    <span class="text-muted-foreground">
+                      ({{ jalaliTime(item.completedAt) }})
+                    </span>
+                  </span>
+                  <span>
+                    جمع {{ toman(item.total) }} — اعتبار
+                    {{ toman(item.credit) }} — کارت {{ toman(item.card) }} —
+                    فاکتور {{ toman(item.invoiceBase) }}
+                  </span>
+                </div>
+                }
+              </td>
+            </tr>
+            } } @empty {
+            <tr hlmTr>
+              <td hlmTd colspan="8" class="text-muted-foreground text-center">
+                {{ loading() ? 'در حال بارگذاری…' : 'خریدی پیدا نشد.' }}
+              </td>
+            </tr>
+            }
+          </tbody>
+          @if (data.persons.length > 0) {
+          <tfoot>
+            <tr hlmTr class="font-semibold">
+              <td hlmTd colspan="2">جمع کل</td>
+              <td hlmTd>{{ fa(data.totals.count) }}</td>
+              <td hlmTd>{{ toman(data.totals.total) }}</td>
+              <td hlmTd>{{ toman(data.totals.credit) }}</td>
+              <td hlmTd>{{ toman(data.totals.card) }}</td>
+              <td hlmTd>{{ toman(data.totals.cardRefunded) }}</td>
+              <td hlmTd>{{ toman(data.totals.invoiceBase) }}</td>
+            </tr>
+          </tfoot>
+          }
+        </table>
+      </div>
+    </div>
+  </section>
+  }
+</div>

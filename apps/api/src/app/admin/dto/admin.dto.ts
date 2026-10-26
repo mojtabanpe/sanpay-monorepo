@@ -621,3 +621,21 @@ export class TopUpAllocationDto {
   @Max(Number.MAX_SAFE_INTEGER)
   amount!: number;
 }
+
+export class TourismSplitQueryDto {
+  @IsOptional()
+  @IsString()
+  q?: string;
+
+  @IsOptional()
+  @IsIn(['HOTEL', 'FLIGHT'])
+  kind?: 'HOTEL' | 'FLIGHT';
+
+  @IsOptional()
+  @IsDateString()
+  from?: string;
+
+  @IsOptional()
+  @IsDateString()
+  to?: string;
+}

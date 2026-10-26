@@ -5,6 +5,7 @@ import {
   HttpCode,
   HttpStatus,
   MessageEvent,
+  Param,
   Post,
   Query,
   Req,
@@ -52,6 +53,13 @@ export class StoreController {
   @UseGuards(StoreJwtGuard)
   recent(@Req() request: StoreRequest) {
     return this.payments.recent(request.store.sub);
+  }
+
+  @Post('payments/:id/confirm')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(StoreJwtGuard)
+  confirm(@Req() request: StoreRequest, @Param('id') id: string) {
+    return this.payments.confirm(request.store.sub, id);
   }
 
   @Get('reports/payments')

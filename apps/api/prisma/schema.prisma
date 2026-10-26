@@ -261,6 +261,9 @@ model Payment {
   merchantIntentId String?   @unique
   /// درخواست پرداخت UPG که این خرید را پرداخت کرده
   intentId         String?   @unique
+  /// فروشنده رسید را در پنل «تأیید» کرد — از «آخرین پرداخت‌ها» حذف می‌شود.
+  /// گزارش و آمار فروش همچنان همهٔ پرداخت‌ها را می‌شمارند.
+  storeConfirmedAt DateTime?
   createdAt        DateTime  @default(now())
 
   employee       Employee               @relation(fields: [employeeId], references: [id])
@@ -271,6 +274,7 @@ model Payment {
   merchantIntent MerchantPaymentIntent? @relation(fields: [merchantIntentId], references: [id], onDelete: Restrict)
 
   @@index([storeId, createdAt])
+  @@index([storeId, storeConfirmedAt, createdAt])
   @@index([employeeId, createdAt])
   @@index([settlementItemId])
 }

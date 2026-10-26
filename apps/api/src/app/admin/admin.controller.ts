@@ -10,7 +10,7 @@ import {
   Post,
   Query,
   Req,
-  Res,
+  StreamableFile,
   UploadedFile,
   UseGuards,
   UseInterceptors,
@@ -21,12 +21,12 @@ import {
   AvatarService,
   type UploadedImage,
 } from '../avatars/avatar.service';
-import { Response } from 'express';
 import { AdminAuthService } from './admin-auth.service';
 import { AdminCompaniesService } from './admin-companies.service';
 import { AdminEmployeesService } from './admin-employees.service';
 import { AdminJwtGuard, AdminRequest } from './admin-jwt.guard';
 import { AdminReportsService } from './admin-reports.service';
+import { AdminTourismSplitService } from './admin-tourism-split.service';
 import { AdminStoresService } from './admin-stores.service';
 import { AdminWalletsService } from './admin-wallets.service';
 import {
@@ -44,6 +44,7 @@ import {
   CreateStoreDto,
   CreateWalletDefinitionDto,
   FlightBookingQueryDto,
+  TourismSplitQueryDto,
   ListQueryDto,
   PaymentQueryDto,
   SetPasswordDto,
@@ -314,7 +315,10 @@ export class AdminWalletsController {
 @Controller('admin')
 @UseGuards(AdminJwtGuard)
 export class AdminReportsController {
-  constructor(private readonly reports: AdminReportsService) {}
+  constructor(
+    private readonly reports: AdminReportsService,
+    private readonly tourismSplit: AdminTourismSplitService,
+  ) {}
 
   @Get('overview')
   overview() {
@@ -327,20 +331,13 @@ export class AdminReportsController {
   }
 
   @Get('payments.xlsx')
-  async paymentsExcel(
-    @Query() query: PaymentQueryDto,
-    @Res({ passthrough: true }) response: Response,
-  ) {
-    const content = await this.reports.paymentsExcel(query);
-    response.setHeader(
-      'Content-Type',
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  async paymentsExcel(@Query() query: PaymentQueryDto) {
+    // StreamableFile، نه Buffer خام: Nest یک Buffer برگشتی را JSON می‌کند و
+    // فایل دانلودی باز نمی‌شود
+    return xlsxFile(
+      await this.reports.paymentsExcel(query),
+      `sanpay-payments-${new Date().toISOString().slice(0, 10)}.xlsx`,
     );
-    response.setHeader(
-      'Content-Disposition',
-      `attachment; filename="sanpay-payments-${new Date().toISOString().slice(0, 10)}.xlsx"`,
-    );
-    return content;
   }
 
   @Get('bookings')
@@ -348,8 +345,30 @@ export class AdminReportsController {
     return this.reports.bookings(query);
   }
 
+  @Get('tourism-split')
+  tourismSplitReport(@Query() query: TourismSplitQueryDto) {
+    return this.tourismSplit.report(query);
+  }
+
+  @Get('tourism-split.xlsx')
+  async tourismSplitExcel(@Query() query: TourismSplitQueryDto) {
+    // StreamableFile، نه Buffer خام: Nest یک Buffer برگشتی را JSON می‌کند و
+    // فایل دانلودی باز نمی‌شود
+    return xlsxFile(
+      await this.tourismSplit.excel(query),
+      `sanpay-tourism-split-${new Date().toISOString().slice(0, 10)}.xlsx`,
+    );
+  }
+
   @Get('flight-bookings')
   flightBookings(@Query() query: FlightBookingQueryDto) {
     return this.reports.flightBookings(query);
   }
+}
+
+function xlsxFile(content: Buffer, filename: string): StreamableFile {
+  return new StreamableFile(content, {
+    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    disposition: `attachment; filename="${filename}"`,
+  });
 }

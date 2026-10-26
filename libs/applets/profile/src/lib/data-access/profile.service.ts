@@ -6,6 +6,7 @@ import {
   EmployeeProfile,
   EmployeeSessionView,
   PaymentHistoryItem,
+  Receipt,
   ProfileSummary,
   WalletTransactionPage,
 } from '@sanpay/models';
@@ -41,6 +42,11 @@ export class ProfileService {
     return this.http.get<PaymentHistoryItem[]>('/api/profile/payments', {
       params: new HttpParams().set('limit', limit),
     });
+  }
+
+  /** نمایش دوبارهٔ رسید یک خرید فروشگاهی */
+  paymentReceipt(paymentId: string): Observable<Receipt> {
+    return this.http.get<Receipt>(`/api/profile/payments/${paymentId}/receipt`);
   }
 
   walletTransactions(cursor?: string): Observable<WalletTransactionPage> {

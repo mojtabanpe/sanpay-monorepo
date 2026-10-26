@@ -95,6 +95,13 @@ export const appRoutes: Route[] = [
           ),
       },
       {
+        path: 'tourism-split',
+        loadComponent: () =>
+          import('./pages/tourism-split/tourism-split').then(
+            (m) => m.TourismSplit,
+          ),
+      },
+      {
         path: 'admins',
         canActivate: [superAdminGuard],
         loadComponent: () =>

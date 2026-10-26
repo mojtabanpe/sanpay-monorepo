@@ -3,6 +3,8 @@ import { Injectable, inject } from '@angular/core';
 import {
   AdminBookingRow,
   AdminFlightBookingRow,
+  AdminTourismSplitReport,
+  AdminPaymentPage,
   AdminCompanyRow,
   AdminGatewayPaymentDetail,
   AdminGatewayPaymentRow,
@@ -219,7 +221,7 @@ export class AdminApiService {
 
   // ─── گزارش‌ها ─────────────────────────────────────────────────────────
   payments(query: Query = {}) {
-    return this.get<Paginated<AdminPaymentRow>>('/api/admin/payments', query);
+    return this.get<AdminPaymentPage>('/api/admin/payments', query);
   }
 
   async downloadPaymentsExcel(query: Query = {}): Promise<void> {
@@ -247,6 +249,28 @@ export class AdminApiService {
       '/api/admin/flight-bookings',
       query,
     );
+  }
+
+  tourismSplit(query: Query = {}) {
+    return this.get<AdminTourismSplitReport>(
+      '/api/admin/tourism-split',
+      query,
+    );
+  }
+
+  async downloadTourismSplitExcel(query: Query = {}): Promise<void> {
+    const blob = await firstValueFrom(
+      this.http.get('/api/admin/tourism-split.xlsx', {
+        params: this.params(query),
+        responseType: 'blob',
+      }),
+    );
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = `sanpay-tourism-split-${new Date().toISOString().slice(0, 10)}.xlsx`;
+    anchor.click();
+    URL.revokeObjectURL(url);
   }
 
   settlements() {

@@ -5,14 +5,21 @@ import {
   inject,
   signal,
 } from '@angular/core';
+import {
+  SanpayDatePickerWidth,
+  isoToJalali,
+  jalaliToIso,
+} from '@sanpay/dates';
 import { StorePaymentReport, StoreSettlementStatus } from '@sanpay/models';
 import { HlmBadgeImports } from '@sanpay/ui/badge';
 import { HlmButtonImports } from '@sanpay/ui/button';
 import { HlmCardImports } from '@sanpay/ui/card';
+import { HlmDatePickerImports } from '@sanpay/ui/date-picker';
 import { HlmInputImports } from '@sanpay/ui/input';
 import { HlmLabelImports } from '@sanpay/ui/label';
 import { HlmNativeSelectImports } from '@sanpay/ui/native-select';
 import { HlmTableImports } from '@sanpay/ui/table';
+import { JalaliDate } from '@spartan-ng/brain/date-time';
 import { StorePaymentsService } from '../../core/payments.service';
 import { StoreAuthService } from '../../core/store-auth.service';
 
@@ -23,7 +30,9 @@ import { StoreAuthService } from '../../core/store-auth.service';
     HlmBadgeImports,
     HlmButtonImports,
     HlmCardImports,
+    HlmDatePickerImports,
     HlmInputImports,
+    SanpayDatePickerWidth,
     HlmLabelImports,
     HlmNativeSelectImports,
     HlmTableImports,
@@ -57,8 +66,15 @@ export class Reports {
   protected readonly loading = signal(true);
   protected readonly error = signal(false);
   protected readonly query = signal('');
+  /** تاریخ‌ها `YYYY-MM-DD` میلادی (زبان API)؛ کاربر جلالی انتخاب می‌کند */
   protected readonly from = signal('');
   protected readonly to = signal('');
+  protected readonly fromDate = computed(() =>
+    this.from() ? isoToJalali(this.from()) : undefined,
+  );
+  protected readonly toDate = computed(() =>
+    this.to() ? isoToJalali(this.to()) : undefined,
+  );
   protected readonly settlementStatus = signal<StoreSettlementStatus | ''>('');
   protected readonly page = signal(1);
   protected readonly pageSize = 50;
@@ -121,6 +137,14 @@ export class Reports {
     this.to.set('');
     this.settlementStatus.set('');
     this.search();
+  }
+
+  protected onFromChange(date: JalaliDate | undefined): void {
+    this.from.set(date ? jalaliToIso(date) : '');
+  }
+
+  protected onToChange(date: JalaliDate | undefined): void {
+    this.to.set(date ? jalaliToIso(date) : '');
   }
 
   protected changePage(delta: number): void {

@@ -21,6 +21,16 @@ export class StorePaymentsService {
     return firstValueFrom(this.http.get<Receipt[]>('/api/store/payments'));
   }
 
+  /** تأیید رسید — از «آخرین پرداخت‌ها» حذف می‌شود (سمت سرور ذخیره می‌شود) */
+  confirm(paymentId: string): Promise<{ id: string; storeConfirmedAt: string }> {
+    return firstValueFrom(
+      this.http.post<{ id: string; storeConfirmedAt: string }>(
+        `/api/store/payments/${paymentId}/confirm`,
+        {},
+      ),
+    );
+  }
+
   report(query: {
     q?: string;
     from?: string;

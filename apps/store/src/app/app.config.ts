@@ -4,6 +4,7 @@ import {
   provideBrowserGlobalErrorListeners,
 } from '@angular/core';
 import { provideRouter, withInMemoryScrolling } from '@angular/router';
+import { providePersianDates } from '@sanpay/dates';
 import { appRoutes } from './app.routes';
 import { authInterceptor } from './core/auth.interceptor';
 
@@ -19,5 +20,7 @@ export const appConfig: ApplicationConfig = {
       }),
     ),
     provideHttpClient(withInterceptors([authInterceptor])),
+    // تقویم جلالی برای hlm-date-picker (فیلتر تاریخ گزارش)
+    providePersianDates(),
   ],
 };

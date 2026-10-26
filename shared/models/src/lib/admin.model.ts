@@ -26,6 +26,11 @@ export interface Paginated<T> {
   pageSize: number;
 }
 
+/** فهرست پرداخت‌ها + جمع مبلغِ همهٔ صفحه‌های فیلترشده (نه فقط صفحهٔ جاری) */
+export interface AdminPaymentPage extends Paginated<AdminPaymentRow> {
+  sumAmount: number;
+}
+
 export type WalletKind = 'CREDIT' | 'RATION' | 'TOURISM';
 export type OrganizationalRank = 'MANAGER' | 'DEPUTY' | 'HEAD' | 'EMPLOYEE';
 
@@ -346,4 +351,51 @@ export interface AdminFlightBookingRow {
   refunded: boolean;
   createdAt: string;
   employee: { id: string; name: string; personnelCode: string };
+}
+
+/**
+ * گزارش تفکیک پرداخت گردشگری (هتل/پرواز): چه مقدار از اعتبار (بن) و چه مقدار
+ * با کارت از درگاه بوده. مبلغ خالص کارت (بعد از بازگشت وجه) مبنای صدور فاکتور
+ * به نام شخص در سامانهٔ مودیان است. همهٔ مبالغ تومان.
+ */
+export interface AdminTourismSplitPerson {
+  employee: {
+    id: string;
+    name: string;
+    nationalCode: string;
+    personnelCode: string;
+  };
+  /** تعداد خریدهای نهایی‌شده */
+  count: number;
+  /** جمع مبلغ خریدها */
+  total: number;
+  /** سهم اعتبار (بن)، خالص از بازگشت وجه */
+  credit: number;
+  /** سهم کارت درگاه، قبل از بازگشت وجه */
+  card: number;
+  /** سهم کارت که به کارت/کیف پول شخصی برگشته */
+  cardRefunded: number;
+  /** کارت − بازگشتی = مبنای فاکتور مودیان */
+  invoiceBase: number;
+}
+
+export interface AdminTourismSplitItem {
+  intentId: string;
+  kind: 'HOTEL' | 'FLIGHT';
+  title: string;
+  employeeId: string;
+  employeeName: string;
+  nationalCode: string;
+  total: number;
+  credit: number;
+  card: number;
+  cardRefunded: number;
+  invoiceBase: number;
+  completedAt: string;
+}
+
+export interface AdminTourismSplitReport {
+  persons: AdminTourismSplitPerson[];
+  items: AdminTourismSplitItem[];
+  totals: Omit<AdminTourismSplitPerson, 'employee'>;
 }

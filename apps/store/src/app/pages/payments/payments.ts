@@ -1,14 +1,19 @@
 import { Component, OnDestroy, computed, inject, signal } from '@angular/core';
 import { Receipt, StoreStats } from '@sanpay/models';
-import { ReceiptCard } from '@sanpay/receipt';
 import { HlmButtonImports } from '@sanpay/ui/button';
 import { HlmCardImports } from '@sanpay/ui/card';
 import { HlmSkeletonImports } from '@sanpay/ui/skeleton';
+import { HlmTableImports } from '@sanpay/ui/table';
 import { StorePaymentsService } from '../../core/payments.service';
 
 @Component({
   selector: 'store-payments',
-  imports: [HlmButtonImports, HlmCardImports, HlmSkeletonImports, ReceiptCard],
+  imports: [
+    HlmButtonImports,
+    HlmCardImports,
+    HlmSkeletonImports,
+    HlmTableImports,
+  ],
   templateUrl: './payments.html',
 })
 export class PaymentsPage implements OnDestroy {
@@ -21,6 +26,9 @@ export class PaymentsPage implements OnDestroy {
   protected readonly loading = signal(true);
   protected readonly error = signal(false);
   protected readonly live = signal(false);
+  /** سطرهایی که درخواست تأییدشان در راه است — دکمه‌شان غیرفعال می‌شود */
+  protected readonly confirming = signal<ReadonlySet<string>>(new Set());
+  protected readonly confirmError = signal<string | null>(null);
   /** رسیدی که همین الان رسیده — برای برجسته‌کردن در لیست */
   protected readonly justArrived = signal<string | null>(null);
 
@@ -37,6 +45,14 @@ export class PaymentsPage implements OnDestroy {
     weekday: 'narrow',
   });
   /** برای جدولِ فقط-صفحه‌خوان: تاریخ جلالی خوانا، نه ISO میلادی */
+  private readonly faTime = new Intl.DateTimeFormat('fa-IR', {
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+  private readonly faDay = new Intl.DateTimeFormat('fa-IR-u-ca-persian', {
+    month: '2-digit',
+    day: '2-digit',
+  });
   private readonly faFullDate = new Intl.DateTimeFormat('fa-IR', {
     weekday: 'long',
     day: 'numeric',
@@ -71,6 +87,50 @@ export class PaymentsPage implements OnDestroy {
     } finally {
       this.loading.set(false);
     }
+  }
+
+  /**
+   * فروشنده رسید را دید و تأیید کرد: سطر بلافاصله از لیست می‌رود (خوش‌بینانه)
+   * و تأیید در سرور ذخیره می‌شود، پس با رفرش یا ورود از دستگاه دیگر برنمی‌گردد.
+   * اگر ذخیره شکست بخورد، سطر سر جایش برمی‌گردد.
+   */
+  protected async confirmReceipt(receipt: Receipt): Promise<void> {
+    if (this.confirming().has(receipt.id)) return;
+    this.confirmError.set(null);
+    this.confirming.update((ids) => new Set(ids).add(receipt.id));
+    const index = this.receipts().findIndex((row) => row.id === receipt.id);
+    this.receipts.update((rows) => rows.filter((row) => row.id !== receipt.id));
+    try {
+      await this.payments.confirm(receipt.id);
+    } catch {
+      this.receipts.update((rows) => {
+        if (rows.some((row) => row.id === receipt.id)) return rows;
+        const next = [...rows];
+        next.splice(Math.max(0, Math.min(index, next.length)), 0, receipt);
+        return next;
+      });
+      this.confirmError.set(
+        `تأیید رسید ${receipt.receiptNo} ذخیره نشد؛ دوباره تلاش کنید.`,
+      );
+    } finally {
+      this.confirming.update((ids) => {
+        const next = new Set(ids);
+        next.delete(receipt.id);
+        return next;
+      });
+    }
+  }
+
+  protected time(iso: string): string {
+    return this.faTime.format(new Date(iso));
+  }
+
+  /** «امروز» برای پرداخت امروز، وگرنه تاریخ جلالی کوتاه */
+  protected day(iso: string): string {
+    const date = new Date(iso);
+    return tehranDayKey(date) === tehranDayKey(new Date())
+      ? 'امروز'
+      : this.faDay.format(date);
   }
 
   /**

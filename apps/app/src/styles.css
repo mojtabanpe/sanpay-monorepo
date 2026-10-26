@@ -155,6 +155,64 @@ html {
   opacity: 0.7;
 }
 
+/*
+ * کارت کیف پول با تصویر (`imageUrl` از داشبورد).
+ *
+ * عکس هنر کارت است و باید زنده دیده شود؛ متن فقط به یک پایهٔ تیرهٔ قابل‌اتکا
+ * نیاز دارد، نه کل کارت. پس به جای پردهٔ یکنواخت، دو گرادیانِ جوهری
+ * (درون همان طیف ink، نه مشکی و نه رنگ دیگر):
+ * - افقی، تیره از سمت راست — متن RTL از راست شروع می‌شود (نام، مبلغ)،
+ *   و سمت چپ عکس تقریباً دست‌نخورده می‌ماند؛
+ * - عمودی از پایین — یک نوار تقریباً یکدست (۸۶–۹۴٪) زیر نوار پیشرفت و
+ *   پاورقی، چون پاورقی تمام‌عرض است و سمت چپش هم روی عکس می‌افتد.
+ * گوشهٔ بالا-چپ عکس آزاد می‌ماند. با عکس سفیدِ خالص (بدترین حالت) آزموده شد:
+ * متن سفید در ناحیهٔ متن بالای ۴٫۵:۱ است. پیش‌نمایش با دو لایهٔ کم‌جان‌تر،
+ * انقضای سمت چپ را روی بخش سفید عکس ناخوانا گذاشته بود.
+ */
+[data-slot='wallet-scrim'] {
+  background:
+    linear-gradient(
+      to top,
+      color-mix(in oklab, var(--ink-900) 94%, transparent) 0%,
+      color-mix(in oklab, var(--ink-900) 86%, transparent) 30%,
+      color-mix(in oklab, var(--ink-900) 40%, transparent) 48%,
+      transparent 66%
+    ),
+    linear-gradient(
+      to left,
+      color-mix(in oklab, var(--ink-900) 88%, transparent) 0%,
+      color-mix(in oklab, var(--ink-900) 62%, transparent) 45%,
+      transparent 82%
+    );
+  /* هاله‌ای ۱px تا لبهٔ عکس روی کارت‌های روشن محو نشود */
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.08);
+  border-radius: inherit;
+}
+
+/* سایهٔ نرم زیر متن — فقط روی عکس؛ روی جوهرِ ساده لازم نیست */
+[data-slot='wallet-card'][data-art] {
+  text-shadow: 0 1px 2px rgb(0 0 0 / 0.35);
+}
+
+/* متن‌های کم‌رنگ روی جوهر ساده درست‌اند، روی عکس کم می‌آورند */
+[data-slot='wallet-card'][data-art] .text-white\/55 {
+  color: rgb(255 255 255 / 0.8);
+}
+
+[data-slot='wallet-card'][data-art] .text-white\/65,
+[data-slot='wallet-card'][data-art] .text-white\/75 {
+  color: rgb(255 255 255 / 0.9);
+}
+
+/* درصد و ریل نوار پیشرفت: سفید ۱۰–۱۵٪ روی عکس روشن ناپدید می‌شد */
+[data-slot='wallet-card'][data-art] .bg-white\/10 {
+  background-color: color-mix(in oklab, var(--ink-900) 80%, transparent);
+}
+
+[data-slot='wallet-card'][data-art] .bg-white\/15 {
+  background-color: rgb(255 255 255 / 0.28);
+}
+
 /* خط اسکن در کادر هدف دوربین — نشان می‌دهد اسکنر زنده است. */
 [data-slot='scan-line'] {
   position: absolute;

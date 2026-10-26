@@ -20,10 +20,12 @@ import { HlmFieldImports } from '@sanpay/ui/field';
 import { HlmInputImports } from '@sanpay/ui/input';
 import { HlmLabelImports } from '@sanpay/ui/label';
 import { HlmSelectImports } from '@sanpay/ui/select';
+import { HlmTableImports } from '@sanpay/ui/table';
 import { HlmToggleGroupImports } from '@sanpay/ui/toggle-group';
 import { JalaliDate } from '@spartan-ng/brain/date-time';
 import { AdminApiService, apiError } from '../../core/admin-api.service';
 import { AdminAuthService } from '../../core/admin-auth.service';
+import { ConfirmService } from '../../core/confirm';
 import { parseAllocationFile } from '../../core/allocation-file';
 import {
   WALLET_KIND_LABELS,
@@ -69,6 +71,7 @@ type Kind = 'CREDIT' | 'TOURISM';
     HlmInputImports,
     HlmLabelImports,
     HlmSelectImports,
+    HlmTableImports,
     HlmToggleGroupImports,
   ],
   templateUrl: './wallets.html',
@@ -76,6 +79,7 @@ type Kind = 'CREDIT' | 'TOURISM';
 export class WalletsPage {
   private readonly api = inject(AdminApiService);
   private readonly auth = inject(AdminAuthService);
+  private readonly confirm = inject(ConfirmService);
 
   protected readonly canWrite = this.auth.canWrite;
   protected readonly toman = toman;
@@ -93,9 +97,58 @@ export class WalletsPage {
   protected readonly error = signal<string | null>(null);
   protected readonly notice = signal<string | null>(null);
 
-  /** فرم ساخت/ویرایش — `editingId` خالی یعنی ساخت تازه */
+  // ─── فیلتر جدول — کل تعریف‌ها یک‌جا خوانده می‌شوند، فیلتر سمت کلاینت است ──
+  protected readonly filterQuery = signal('');
+  protected readonly filterCompanyId = signal('');
+  protected readonly filterKind = signal<'' | Kind | 'RATION'>('');
+  protected readonly filterStatus = signal<'' | 'active' | 'inactive'>('');
+  protected readonly filterCompanyLabel = (value: unknown): string =>
+    value
+      ? (this.companies().find((company) => company.id === value)?.name ??
+        'شرکت')
+      : 'همهٔ شرکت‌ها';
+  protected readonly filtered = computed(() => {
+    const q = this.filterQuery().trim().toLowerCase();
+    const companyId = this.filterCompanyId();
+    const kind = this.filterKind();
+    const status = this.filterStatus();
+    return this.definitions().filter(
+      (definition) =>
+        (!q ||
+          definition.name.toLowerCase().includes(q) ||
+          (definition.description ?? '').toLowerCase().includes(q) ||
+          definition.stores.some((store) =>
+            store.name.toLowerCase().includes(q),
+          )) &&
+        (!companyId || definition.company.id === companyId) &&
+        (!kind || definition.kind === kind) &&
+        (!status || definition.isActive === (status === 'active')),
+    );
+  });
+
+  protected clearFilters(): void {
+    this.filterQuery.set('');
+    this.filterCompanyId.set('');
+    this.filterKind.set('');
+    this.filterStatus.set('');
+  }
+
+  /** فرم ساخت/ویرایش در مدال — `editingId` خالی یعنی ساخت تازه */
   protected readonly editingId = signal<string | null>(null);
   protected readonly showForm = signal(false);
+  protected readonly formOpen = computed(() =>
+    this.showForm() ? ('open' as const) : ('closed' as const),
+  );
+
+  /** مدال با Esc یا کلیک بیرون هم بسته می‌شود — سیگنال باید همگام بماند */
+  protected onFormStateChange(state: string): void {
+    if (state === 'closed' && this.showForm()) this.closeForm();
+  }
+
+  protected closeForm(): void {
+    this.showForm.set(false);
+    this.editingId.set(null);
+  }
   protected readonly form = signal({
     name: '',
     kind: 'CREDIT' as Kind,
@@ -265,6 +318,7 @@ export class WalletsPage {
       storeIds: [],
       companyId: '',
     });
+    this.error.set(null);
     this.showForm.set(true);
   }
 
@@ -283,6 +337,7 @@ export class WalletsPage {
       storeIds: definition.stores.map((store) => store.id),
       companyId: definition.company.id,
     });
+    this.error.set(null);
     this.showForm.set(true);
   }
 
@@ -330,14 +385,22 @@ export class WalletsPage {
         await this.api.createWalletDefinition(payload);
         this.notice.set('کیف پول ساخته شد.');
       }
-      this.showForm.set(false);
-      this.editingId.set(null);
+      this.closeForm();
     }, 'ذخیرهٔ کیف پول ممکن نشد');
   }
 
   protected async toggleActive(
     definition: AdminWalletDefinitionRow,
   ): Promise<void> {
+    const confirmed = await this.confirm.ask({
+      title: definition.isActive ? 'غیرفعال کردن کیف پول' : 'فعال کردن کیف پول',
+      description: definition.isActive
+        ? `«${definition.name}» غیرفعال شود؟ کارمندان دیگر نمی‌توانند از آن خرج کنند.`
+        : `«${definition.name}» دوباره فعال شود؟`,
+      action: definition.isActive ? 'غیرفعال کردن' : 'فعال کردن',
+      destructive: definition.isActive,
+    });
+    if (!confirmed) return;
     await this.run(async () => {
       await this.api.updateWalletDefinition(definition.id, {
         isActive: !definition.isActive,

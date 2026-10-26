@@ -4,7 +4,7 @@ import {
   AdminBookingRow,
   AdminFlightBookingRow,
   AdminOverview,
-  AdminPaymentRow,
+  AdminPaymentPage,
   FlightBookingStatus,
   FlightOffer,
   FlightPassenger,
@@ -174,13 +174,17 @@ export class AdminReportsService {
     };
   }
 
-  async payments(query: PaymentQueryDto): Promise<Paginated<AdminPaymentRow>> {
+  async payments(query: PaymentQueryDto): Promise<AdminPaymentPage> {
     const page = query.page ?? 1;
     const pageSize = query.pageSize ?? 25;
     const where = this.paymentWhere(query);
 
-    const [total, payments] = await Promise.all([
-      this.prisma.payment.count({ where }),
+    const [summary, payments] = await Promise.all([
+      this.prisma.payment.aggregate({
+        where,
+        _count: { _all: true },
+        _sum: { amount: true },
+      }),
       this.prisma.payment.findMany({
         where,
         orderBy: { createdAt: 'desc' },
@@ -190,7 +194,13 @@ export class AdminReportsService {
       }),
     ]);
 
-    return { items: payments.map(toPaymentRow), total, page, pageSize };
+    return {
+      items: payments.map(toPaymentRow),
+      total: summary._count._all,
+      page,
+      pageSize,
+      sumAmount: Number(summary._sum.amount ?? 0n),
+    };
   }
 
   async paymentsExcel(query: PaymentQueryDto): Promise<Buffer> {
@@ -225,6 +235,13 @@ export class AdminReportsService {
         createdAt: new Date(payment.createdAt),
       });
     }
+    const totalRow = sheet.addRow({
+      receiptNo: 'جمع کل',
+      employee: `${payments.length} پرداخت`,
+      amount:
+        Number(payments.reduce((sum, payment) => sum + payment.amount, 0n)) * 10,
+    });
+    totalRow.font = { bold: true };
     sheet.getRow(1).font = { bold: true };
     sheet.getColumn('amount').numFmt = '#,##0';
     sheet.getColumn('createdAt').numFmt = 'yyyy-mm-dd hh:mm';

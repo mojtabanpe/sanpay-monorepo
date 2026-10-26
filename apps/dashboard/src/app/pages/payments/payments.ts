@@ -1,4 +1,11 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import {
+  Component,
+  ElementRef,
+  computed,
+  inject,
+  signal,
+  viewChild,
+} from '@angular/core';
 import { RouterModule } from '@angular/router';
 import { SanpayDatePickerWidth, isoToJalali, jalaliToIso } from '@sanpay/dates';
 import { AdminPaymentRow, AdminStoreRow } from '@sanpay/models';
@@ -12,7 +19,8 @@ import { HlmSelectImports } from '@sanpay/ui/select';
 import { HlmTableImports } from '@sanpay/ui/table';
 import { JalaliDate } from '@spartan-ng/brain/date-time';
 import { AdminApiService, apiError } from '../../core/admin-api.service';
-import { fa, jalaliTime, toman } from '../../core/format';
+import { fa, jalali, jalaliTime, toman } from '../../core/format';
+import { printSheet } from '../../core/print-sheet';
 
 /** گزارش پرداخت‌ها با فیلتر فروشگاه و بازهٔ تاریخ */
 @Component({
@@ -64,9 +72,15 @@ export class PaymentsPage {
     return value ? isoToJalali(value) : undefined;
   });
 
-  /** جمع مبلغ صفحهٔ جاری — جمع کل سرور فعلاً برنمی‌گرداند */
-  protected readonly pageSum = computed(() =>
-    this.rows().reduce((sum, row) => sum + row.amount, 0),
+  /** جمع مبلغ همهٔ صفحه‌های فیلترشده — از سرور، نه جمع صفحهٔ جاری */
+  protected readonly sumAmount = signal(0);
+
+  /** همهٔ سطرهای فیلترشده برای چاپ — فقط هنگام چاپ پر می‌شود */
+  protected readonly printRows = signal<AdminPaymentRow[]>([]);
+  protected readonly printing = signal(false);
+  private readonly printRef = viewChild<ElementRef<HTMLElement>>('printArea');
+  protected readonly printSum = computed(() =>
+    this.printRows().reduce((sum, row) => sum + row.amount, 0),
   );
 
   constructor() {
@@ -103,6 +117,7 @@ export class PaymentsPage {
       });
       this.rows.set(result.items);
       this.total.set(result.total);
+      this.sumAmount.set(result.sumAmount);
     } catch (caught) {
       this.error.set(apiError(caught, 'خواندن پرداخت‌ها ممکن نشد'));
     } finally {
@@ -155,9 +170,47 @@ export class PaymentsPage {
     }
   }
 
-  protected print(): void {
-    window.print();
+  /** همهٔ صفحه‌های فیلترشده را می‌گیرد و فقط همان جدول را چاپ می‌کند */
+  protected async print(): Promise<void> {
+    if (this.printing()) return;
+    this.printing.set(true);
+    this.error.set(null);
+    try {
+      const pageSize = 200;
+      const all: AdminPaymentRow[] = [];
+      for (let page = 1; ; page++) {
+        const result = await this.api.payments({
+          ...this.reportQuery(),
+          page,
+          pageSize,
+        });
+        all.push(...result.items);
+        if (all.length >= result.total || result.items.length === 0) break;
+      }
+      this.printRows.set(all);
+      // یک فریم صبر تا جدول چاپی رندر شود
+      await new Promise((resolve) => requestAnimationFrame(resolve));
+      const element = this.printRef()?.nativeElement;
+      if (element) printSheet(element);
+    } catch (caught) {
+      this.error.set(apiError(caught, 'آماده‌سازی چاپ ممکن نشد'));
+    } finally {
+      this.printing.set(false);
+    }
   }
+
+  /** شرح فیلترها در سربرگ چاپ */
+  protected readonly filterSummary = computed(() => {
+    const parts: string[] = [];
+    const store = this.stores().find((item) => item.id === this.storeId());
+    if (store) parts.push(`فروشگاه: ${store.name}`);
+    if (this.from()) parts.push(`از ${jalali(`${this.from()}T12:00:00`)}`);
+    if (this.to()) parts.push(`تا ${jalali(`${this.to()}T12:00:00`)}`);
+    const status = this.settlementStatus();
+    if (status) parts.push(`تسویه: ${settlementLabels[status]}`);
+    if (this.query().trim()) parts.push(`جست‌وجو: ${this.query().trim()}`);
+    return parts.join(' — ') || 'همهٔ پرداخت‌ها';
+  });
 
   protected onSettlementChange(value: unknown): void {
     this.settlementStatus.set((value as string) ?? '');

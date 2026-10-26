@@ -5,6 +5,7 @@ import { AdminCompaniesService } from './admin-companies.service';
 import { AdminEmployeesService } from './admin-employees.service';
 import { AdminJwtGuard } from './admin-jwt.guard';
 import { AdminReportsService } from './admin-reports.service';
+import { AdminTourismSplitService } from './admin-tourism-split.service';
 import { AdminStoresService } from './admin-stores.service';
 import { AdminWalletsService } from './admin-wallets.service';
 import {
@@ -41,6 +42,7 @@ import {
     AdminStoresService,
     AdminWalletsService,
     AdminReportsService,
+    AdminTourismSplitService,
     AdminJwtGuard,
   ],
 })

@@ -234,13 +234,20 @@ export class StoresPage {
     }, 'تغییر وضعیت ممکن نشد');
   }
 
-  protected async resetPassword(id: string, password: string): Promise<void> {
-    if (password.trim().length < 8) {
+  protected async resetPassword(
+    id: string,
+    input: HTMLInputElement,
+  ): Promise<void> {
+    // بدون trim: ورود پنل فروشگاه رمز را trim نمی‌کند، پس رمز ذخیره‌شده باید
+    // دقیقاً همان چیزی باشد که فروشنده تایپ می‌کند
+    const password = input.value;
+    if (password.length < 8) {
       this.error.set('رمز جدید باید حداقل ۸ نویسه باشد');
       return;
     }
     await this.run(async () => {
-      await this.api.resetStorePassword(id, password.trim());
+      await this.api.resetStorePassword(id, password);
+      input.value = '';
       this.notice.set('رمز پنل فروشگاه بازنشانی شد.');
     }, 'بازنشانی رمز ممکن نشد');
   }

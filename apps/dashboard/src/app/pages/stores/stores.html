@@ -218,14 +218,30 @@
               </td>
               @if (canWrite()) {
               <td hlmTd>
-                <input
-                  hlmInput
-                  #passwordInput
-                  class="w-36"
-                  dir="ltr"
-                  placeholder="رمز تازه"
-                  (keyup.enter)="resetPassword(row.id, passwordInput.value)"
-                />
+                <!-- قبلاً فقط با Enter ثبت می‌شد و دکمه‌ای نبود؛ رمز تایپ‌شده
+                     بی‌صدا اعمال نمی‌شد -->
+                <div class="flex items-center gap-2">
+                  <input
+                    hlmInput
+                    #passwordInput
+                    class="w-36"
+                    dir="ltr"
+                    type="password"
+                    autocomplete="new-password"
+                    placeholder="رمز تازه"
+                    [attr.aria-label]="'رمز تازهٔ ' + row.name"
+                    (keyup.enter)="resetPassword(row.id, passwordInput)"
+                  />
+                  <button
+                    hlmBtn
+                    variant="outline"
+                    size="sm"
+                    [disabled]="saving()"
+                    (click)="resetPassword(row.id, passwordInput)"
+                  >
+                    ثبت رمز
+                  </button>
+                </div>
               </td>
               <td hlmTd class="text-left whitespace-nowrap">
                 <button

@@ -162,36 +162,78 @@
       <path d="M3 6h18" />
       <path d="M16 10a4 4 0 0 1-8 0" />
     </svg>
-    <p class="text-sm font-medium">هنوز پرداختی ثبت نشده</p>
+    <p class="text-sm font-medium">پرداخت تأییدنشده‌ای نیست</p>
     <p class="text-muted-foreground text-xs">
-      به‌محض پرداخت مشتری، رسید همین‌جا ظاهر می‌شود.
+      به‌محض پرداخت مشتری، رسید همین‌جا ظاهر می‌شود. پرداخت‌های تأییدشده در
+      «گزارش پرداخت‌ها» هستند.
     </p>
   </div>
   } @else {
-  <!-- لیست رسیدها — تازه‌ترین بالا -->
-  <ul class="grid gap-3 lg:grid-cols-2 2xl:grid-cols-3" aria-live="polite">
-    @for (receipt of receipts(); track receipt.id) {
-    <li class="rounded-[1.25rem] transition-shadow">
-      @if (justArrived() === receipt.id) {
-      <p
-        class="mb-1.5 flex items-center gap-1.5 px-1 text-xs font-bold"
-        style="color: var(--pos-fg)"
-      >
-        <span
-          class="size-1.5 rounded-full"
-          style="background-color: var(--pos)"
-          aria-hidden="true"
-        ></span>
-        پرداخت جدید
-      </p>
-      }
-      <sanpay-receipt-card
-        [receipt]="receipt"
-        variant="store"
-        [compact]="true"
-      />
-    </li>
-    }
-  </ul>
+  <!-- جدول رسیدهای تأییدنشده — تازه‌ترین بالا. نام فروشگاه نمی‌آید: پنل خود
+       همین فروشگاه است. «تأیید» سطر را برای همیشه از این لیست برمی‌دارد
+       (سمت سرور)؛ گزارش پرداخت‌ها همچنان همه را دارد. -->
+  @if (confirmError()) {
+  <p class="text-destructive px-1 text-xs" role="alert">{{ confirmError() }}</p>
+  }
+  <section hlmCard>
+    <div hlmCardContent class="pt-6" aria-live="polite">
+      <div hlmTableContainer>
+        <table hlmTable class="w-full">
+          <thead hlmTHead>
+            <tr hlmTr>
+              <th hlmTh>شماره رسید</th>
+              <th hlmTh>خریدار</th>
+              <th hlmTh>مبلغ</th>
+              <th hlmTh>کیف پول</th>
+              <th hlmTh>زمان</th>
+              <th hlmTh><span class="sr-only">تأیید</span></th>
+            </tr>
+          </thead>
+          <tbody hlmTBody>
+            @for (receipt of receipts(); track receipt.id) {
+            <tr
+              hlmTr
+              [style.background-color]="
+                justArrived() === receipt.id ? 'var(--pos-bg)' : null
+              "
+            >
+              <td hlmTd dir="ltr" class="font-mono">{{ receipt.receiptNo }}</td>
+              <td hlmTd>
+                <div class="font-medium">{{ receipt.employeeName }}</div>
+                @if (justArrived() === receipt.id) {
+                <div class="text-xs font-bold" style="color: var(--pos-fg)">
+                  پرداخت جدید
+                </div>
+                }
+              </td>
+              <td hlmTd class="font-semibold tabular-nums">
+                {{ rial(receipt.amount) }}
+              </td>
+              <td hlmTd class="text-muted-foreground text-xs whitespace-normal">
+                @for (line of receipt.lines; track line.walletName; let last = $last) {
+                <span>{{ line.walletName }}@if (receipt.lines.length > 1) { ({{ rial(line.amount) }})}</span>@if (!last) {<span>، </span>}
+                }
+              </td>
+              <td hlmTd class="text-xs whitespace-nowrap">
+                {{ day(receipt.createdAt) }}، {{ time(receipt.createdAt) }}
+              </td>
+              <td hlmTd class="text-left">
+                <button
+                  hlmBtn
+                  size="sm"
+                  [disabled]="confirming().has(receipt.id)"
+                  [attr.aria-label]="'تأیید رسید ' + receipt.receiptNo"
+                  (click)="confirmReceipt(receipt)"
+                >
+                  تأیید
+                </button>
+              </td>
+            </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
   }
 </div>

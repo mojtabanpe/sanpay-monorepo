@@ -92,6 +92,8 @@ export interface StorePaymentReport {
     amount: number;
     settledCount: number;
     settledAmount: number;
+    /** مبلغی که هنوز به حساب فروشگاه تسویه نشده (جمع − تسویه‌شده) */
+    pendingAmount: number;
   };
 }
 
