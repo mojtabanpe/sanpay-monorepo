@@ -2,63 +2,204 @@
   <header class="flex flex-wrap items-end justify-between gap-3">
     <div>
       <h1 class="text-2xl font-bold">تسویه‌ها</h1>
-      <p class="text-muted-foreground text-sm">وضعیت انتقال‌های تومان و تلاش مجدد دستی</p>
+      <p class="text-muted-foreground text-sm">
+        وضعیت انتقال‌های تومان و تلاش مجدد دستی
+      </p>
     </div>
-    @if (canWrite()) {
-      <button hlmBtn [disabled]="loading()" (click)="run()">اجرای دستی اقلام جدید</button>
-    }
+    <button hlmBtn variant="outline" [disabled]="loading()" (click)="load()">
+      تازه‌سازی فهرست
+    </button>
   </header>
 
   @if (error()) {
-    <div hlmAlert variant="destructive"><p hlmAlertDescription>{{ error() }}</p></div>
-  }
-
-  @for (batch of rows(); track batch.id) {
-    <section hlmCard>
-      <div hlmCardHeader>
-        <div class="flex flex-wrap items-center justify-between gap-2">
-          <div>
-            <h2 hlmCardTitle dir="ltr">{{ batch.runKey }}</h2>
-            <p hlmCardDescription>{{ jalaliTime(batch.createdAt) }} — {{ toman(batch.totalAmount) }}</p>
-          </div>
-          <span hlmBadge [variant]="batch.status === 'FAILED' || batch.status === 'PARTIAL_FAILED' ? 'destructive' : 'secondary'">
-            {{ label(batch.status) }}
-          </span>
-        </div>
+  <div hlmAlert variant="destructive">
+    <p hlmAlertDescription>{{ error() }}</p>
+  </div>
+  } @if (canWrite()) {
+  <section hlmCard>
+    <div hlmCardHeader>
+      <h2 hlmCardTitle>تسویهٔ دستی فروشگاه</h2>
+      <p hlmCardDescription>
+        خریدهای تسویه‌نشدهٔ فروشگاه انتخاب‌شده را بررسی و سپس تأیید کنید.
+      </p>
+    </div>
+    <div hlmCardContent class="flex flex-wrap items-end gap-3">
+      <div class="flex min-w-60 flex-1 flex-col gap-2">
+        <label for="settlement-store">فروشگاه</label>
+        <hlm-select
+          [value]="storeId()"
+          [itemToString]="storeLabel"
+          [disabled]="loading()"
+          (valueChange)="storeId.set($any($event) ?? '')"
+        >
+          <hlm-select-trigger id="settlement-store" class="w-full"
+            ><hlm-select-value placeholder="انتخاب فروشگاه"
+          /></hlm-select-trigger>
+          <hlm-select-content *hlmSelectPortal>
+            @for (store of stores(); track store.id) {
+            <hlm-select-item [value]="store.id"
+              >{{ store.name }}</hlm-select-item
+            >
+            }
+          </hlm-select-content>
+        </hlm-select>
       </div>
-      <div hlmCardContent>
-        <div hlmTableContainer>
-          <table hlmTable class="w-full">
-            <thead hlmTHead><tr hlmTr>
-              <th hlmTh>ذی‌نفع</th><th hlmTh>نوع</th><th hlmTh>مبلغ</th>
-              <th hlmTh>وضعیت</th><th hlmTh>کد پیگیری</th><th hlmTh></th>
-            </tr></thead>
-            <tbody hlmTBody>
-              @for (item of batch.items; track item.id) {
-                <tr hlmTr>
-                  <td hlmTd class="font-medium">{{ item.beneficiaryName }}</td>
-                  <td hlmTd>{{ item.beneficiaryType }}</td>
-                  <td hlmTd>{{ toman(item.amount) }}</td>
-                  <td hlmTd><span hlmBadge [variant]="item.status === 'FAILED' ? 'destructive' : 'secondary'">{{ label(item.status) }}</span></td>
-                  <td hlmTd dir="ltr">{{ item.followUpCode ?? '—' }}</td>
-                  <td hlmTd>
-                    @if (canWrite() && item.status === 'FAILED') {
-                      <button hlmBtn variant="outline" size="sm" [disabled]="loading()" (click)="retry(item.id)">تلاش مجدد</button>
-                    }
-                  </td>
-                </tr>
-                @if (item.error) {
-                  <tr hlmTr><td hlmTd colspan="6" class="text-destructive text-xs">{{ item.error }}</td></tr>
+      <button
+        hlmBtn
+        [disabled]="loading() || !storeId()"
+        (click)="showPreview()"
+      >
+        پیش‌نمایش تسویه
+      </button>
+    </div>
+  </section>
+  } @for (batch of rows(); track batch.id) {
+  <section hlmCard>
+    <div hlmCardHeader>
+      <div class="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <h2 hlmCardTitle dir="ltr">{{ batch.runKey }}</h2>
+          <p hlmCardDescription>
+            {{ jalaliTime(batch.createdAt) }} — {{ toman(batch.totalAmount) }}
+          </p>
+        </div>
+        @if (canWrite()) {
+        <button
+          hlmBtn
+          variant="outline"
+          size="sm"
+          [disabled]="loading()"
+          (click)="reconcile(batch.id)"
+        >
+          استعلام وضعیت
+        </button>
+        }
+        <span
+          hlmBadge
+          [variant]="batch.status === 'FAILED' || batch.status === 'PARTIAL_FAILED' ? 'destructive' : 'secondary'"
+        >
+          {{ label(batch.status) }}
+        </span>
+      </div>
+    </div>
+    <div hlmCardContent>
+      @if (batch.error) {
+      <div hlmAlert variant="destructive" class="mb-3">
+        <p hlmAlertDescription>{{ batch.error }}</p>
+      </div>
+      }
+      <div hlmTableContainer>
+        <table hlmTable class="w-full">
+          <thead hlmTHead>
+            <tr hlmTr>
+              <th hlmTh>ذی‌نفع</th>
+              <th hlmTh>نوع</th>
+              <th hlmTh>مبلغ</th>
+              <th hlmTh>وضعیت</th>
+              <th hlmTh>کد پیگیری</th>
+              <th hlmTh></th>
+            </tr>
+          </thead>
+          <tbody hlmTBody>
+            @for (item of batch.items; track item.id) {
+            <tr hlmTr>
+              <td hlmTd class="font-medium">{{ item.beneficiaryName }}</td>
+              <td hlmTd>{{ item.beneficiaryType }}</td>
+              <td hlmTd>{{ toman(item.amount) }}</td>
+              <td hlmTd>
+                <span
+                  hlmBadge
+                  [variant]="item.status === 'FAILED' ? 'destructive' : 'secondary'"
+                  >{{ label(item.status) }}</span
+                >
+              </td>
+              <td hlmTd dir="ltr">{{ item.followUpCode ?? '—' }}</td>
+              <td hlmTd>
+                @if (canWrite() && item.status === 'FAILED') {
+                <button
+                  hlmBtn
+                  variant="outline"
+                  size="sm"
+                  [disabled]="loading()"
+                  (click)="retry(item.id)"
+                >
+                  تلاش مجدد
+                </button>
                 }
-              }
-            </tbody>
-          </table>
-        </div>
+              </td>
+            </tr>
+            @if (item.error) {
+            <tr hlmTr>
+              <td hlmTd colspan="6" class="text-destructive text-xs">
+                {{ item.error }}
+              </td>
+            </tr>
+            } }
+          </tbody>
+        </table>
       </div>
-    </section>
+    </div>
+  </section>
   } @empty {
-    <section hlmCard><div hlmCardContent class="text-muted-foreground py-10 text-center">
+  <section hlmCard>
+    <div hlmCardContent class="text-muted-foreground py-10 text-center">
       {{ loading() ? 'در حال بارگذاری…' : 'هنوز تسویه‌ای ثبت نشده است.' }}
-    </div></section>
+    </div>
+  </section>
   }
 </div>
+
+<hlm-dialog
+  [state]="confirmationOpen()"
+  (stateChanged)="closeConfirmation($event)"
+>
+  <hlm-dialog-content *hlmDialogPortal class="sm:max-w-lg" dir="rtl">
+    <div hlmDialogHeader>
+      <h3 hlmDialogTitle>تأیید تسویهٔ فروشگاه</h3>
+      <p hlmDialogDescription>
+        با تأیید، درخواست انتقال مبلغ زیر برای این فروشگاه ارسال می‌شود. این
+        پیش‌نمایش ۵ دقیقه اعتبار دارد.
+      </p>
+    </div>
+    @if (preview(); as item) {
+    <dl class="grid grid-cols-[auto_1fr] gap-3 text-sm">
+      <dt>فروشگاه</dt>
+      <dd>{{ item.storeName }}</dd>
+      <dt>صاحب حساب</dt>
+      <dd>{{ item.beneficiaryName }}</dd>
+      <dt>شبای مقصد</dt>
+      <dd dir="ltr" class="break-all text-right">{{ item.destinationIban }}</dd>
+      <dt>تعداد خرید</dt>
+      <dd>{{ item.paymentCount }}</dd>
+      <dt>مبلغ انتقال</dt>
+      <dd class="font-bold">{{ toman(item.totalAmount) }}</dd>
+      <dt>اتصال تومان</dt>
+      <dd>
+        {{ item.mode === 'mock' ? 'شبیه‌سازی؛ بدون انتقال بانکی' : 'ارسال به
+        سرویس تومان' }}
+      </dd>
+      @if (item.mode === 'live') {
+      <dt>نشانی سرویس</dt>
+      <dd dir="ltr" class="break-all text-right">{{ item.apiUrl }}</dd>
+      }
+    </dl>
+    } @if (error()) {
+    <div hlmAlert variant="destructive">
+      <p hlmAlertDescription>{{ error() }}</p>
+    </div>
+    }
+    <div hlmDialogFooter>
+      <button
+        hlmBtn
+        variant="outline"
+        [disabled]="loading()"
+        (click)="closeConfirmation('closed')"
+      >
+        انصراف
+      </button>
+      <button hlmBtn [disabled]="loading()" (click)="run()">
+        {{ loading() ? 'در حال ارسال…' : 'تأیید و ارسال تسویه' }}
+      </button>
+    </div>
+  </hlm-dialog-content>
+</hlm-dialog>

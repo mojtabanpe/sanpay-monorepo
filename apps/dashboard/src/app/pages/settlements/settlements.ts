@@ -3,10 +3,14 @@ import { HlmAlertImports } from '@sanpay/ui/alert';
 import { HlmBadgeImports } from '@sanpay/ui/badge';
 import { HlmButtonImports } from '@sanpay/ui/button';
 import { HlmCardImports } from '@sanpay/ui/card';
+import { HlmDialogImports } from '@sanpay/ui/dialog';
+import { HlmSelectImports } from '@sanpay/ui/select';
 import { HlmTableImports } from '@sanpay/ui/table';
 import {
   AdminApiService,
   SettlementBatchView,
+  SettlementStoreOption,
+  StoreSettlementPreview,
   apiError,
 } from '../../core/admin-api.service';
 import { AdminAuthService } from '../../core/admin-auth.service';
@@ -20,6 +24,8 @@ import { jalaliTime, toman } from '../../core/format';
     HlmButtonImports,
     HlmCardImports,
     HlmTableImports,
+    HlmDialogImports,
+    HlmSelectImports,
   ],
   templateUrl: './settlements.html',
 })
@@ -28,9 +34,17 @@ export class Settlements {
   private readonly auth = inject(AdminAuthService);
 
   protected readonly rows = signal<SettlementBatchView[]>([]);
+  protected readonly stores = signal<SettlementStoreOption[]>([]);
+  protected readonly storeId = signal('');
+  protected readonly preview = signal<StoreSettlementPreview | null>(null);
+  protected readonly confirmationOpen = signal<'open' | 'closed'>('closed');
+  protected readonly storeLabel = (value: unknown) =>
+    this.stores().find((store) => store.id === value)?.name ?? '';
   protected readonly loading = signal(false);
   protected readonly error = signal<string | null>(null);
-  protected readonly canWrite = computed(() => this.auth.hasPermission('settlements:write'));
+  protected readonly canWrite = computed(() =>
+    this.auth.hasPermission('settlements:write'),
+  );
   protected readonly toman = toman;
   protected readonly jalaliTime = jalaliTime;
 
@@ -42,7 +56,12 @@ export class Settlements {
     this.loading.set(true);
     this.error.set(null);
     try {
-      this.rows.set(await this.api.settlements());
+      const [rows, stores] = await Promise.all([
+        this.api.settlements(),
+        this.canWrite() ? this.api.settlementStores() : Promise.resolve([]),
+      ]);
+      this.rows.set(rows);
+      this.stores.set(stores);
     } catch (caught) {
       this.error.set(apiError(caught, 'خواندن تسویه‌ها ممکن نشد'));
     } finally {
@@ -50,8 +69,30 @@ export class Settlements {
     }
   }
 
+  protected async showPreview(): Promise<void> {
+    if (!this.canWrite() || !this.storeId() || this.loading()) return;
+    await this.action(async () => {
+      this.preview.set(await this.api.previewSettlement(this.storeId()));
+      this.confirmationOpen.set('open');
+    }, false);
+  }
+
   protected async run(): Promise<void> {
-    await this.action(() => this.api.runSettlements());
+    const preview = this.preview();
+    if (!this.canWrite() || !preview) return;
+    await this.action(async () => {
+      await this.api.runSettlements(preview.storeId, preview.previewToken);
+      this.confirmationOpen.set('closed');
+      this.preview.set(null);
+    });
+  }
+
+  protected closeConfirmation(state: 'open' | 'closed'): void {
+    if (!this.loading()) this.confirmationOpen.set(state);
+  }
+
+  protected async reconcile(batchId: string): Promise<void> {
+    await this.action(() => this.api.reconcileSettlement(batchId));
   }
 
   protected async retry(itemId: string): Promise<void> {
@@ -62,13 +103,16 @@ export class Settlements {
     return STATUS_LABELS[status] ?? status;
   }
 
-  private async action(action: () => Promise<unknown>): Promise<void> {
+  private async action(
+    action: () => Promise<unknown>,
+    reload = true,
+  ): Promise<void> {
     if (this.loading()) return;
     this.loading.set(true);
     this.error.set(null);
     try {
       await action();
-      await this.load();
+      if (reload) await this.load();
     } catch (caught) {
       this.error.set(apiError(caught, 'انجام عملیات تسویه ممکن نشد'));
     } finally {

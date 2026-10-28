@@ -117,14 +117,33 @@
       "executor": "nx:run-commands",
       "options": {
         "command": "node -r @swc-node/register --test apps/api/tests/sessions.test.ts",
-        "env": { "SWC_NODE_PROJECT": "apps/api/tsconfig.test.json" }
+        "env": {
+          "SWC_NODE_PROJECT": "apps/api/tsconfig.test.json"
+        }
       }
     },
     "test-phone-change": {
       "executor": "nx:run-commands",
       "options": {
         "command": "node -r @swc-node/register --test apps/api/tests/phone-change.test.ts",
-        "env": { "SWC_NODE_PROJECT": "apps/api/tsconfig.test.json" }
+        "env": {
+          "SWC_NODE_PROJECT": "apps/api/tsconfig.test.json"
+        }
+      }
+    },
+    "test-deploy": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "node --test deploy/tests/*.test.mjs"
+      }
+    },
+    "test-deploy-integration": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "node --test deploy/tests/*.test.mjs",
+        "env": {
+          "SANPAY_TEST_DOCKER": "1"
+        }
       }
     },
     "test-admin": {
@@ -140,6 +159,15 @@
       "executor": "nx:run-commands",
       "options": {
         "command": "node -r @swc-node/register --test apps/api/tests/upg-admin.test.ts",
+        "env": {
+          "SWC_NODE_PROJECT": "apps/api/tsconfig.test.json"
+        }
+      }
+    },
+    "test-settlements": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "node -r @swc-node/register --test apps/api/tests/settlements.test.ts",
         "env": {
           "SWC_NODE_PROJECT": "apps/api/tsconfig.test.json"
         }

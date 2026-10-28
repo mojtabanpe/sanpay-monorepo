@@ -44,6 +44,45 @@ docker compose --env-file .env.production -f compose.production.yml ps
 
 The current successful revision is stored in `.deploy/deployed-revision`.
 
+## Database backup before deployment
+
+Every deployment builds the images, then takes a PostgreSQL custom-format backup
+before replacing any application container or running migrations. A failed,
+empty, or unreadable backup stops deployment. The archive is checked in full
+with `pg_restore` without connecting to a destination database or executing SQL.
+
+Backups are stored on the deployment host in `.deploy/backups/`, with UTC time,
+the target Git revision, and a unique suffix in each filename. The directory is
+private (mode `700`), files are private (mode `600`), and deployment state and
+backups are excluded from Git. Failed temporary files are removed; successful
+backups are kept without automatic deletion. Monitor disk usage. Set the host
+environment variable `SANPAY_BACKUP_DIR` to use a different backup directory.
+
+The script uses the existing PostgreSQL container without recreating it. If it
+is stopped, it is started first. If it does not exist, the PostgreSQL service
+alone is started using its persistent volume. On a first installation, the
+backup therefore contains the initial database before application migrations.
+
+A standalone backup can also be created from the deployment checkout:
+
+```bash
+./deploy/backup-database.sh
+```
+
+These backups cover the application database only. They do not include database
+roles, uploaded files, or an off-server copy, and they do not implement automatic
+rollback. A failed deployment leaves the verified backup available for recovery.
+
+Deployment checks (also run in CI) and the opt-in PostgreSQL restore test:
+
+```bash
+pnpm nx run api:test-deploy
+pnpm nx run api:test-deploy-integration
+```
+
+The integration test creates its own temporary PostgreSQL container, restores
+the archive into a separate test database, and removes only that container.
+
 To create a dashboard super admin after deployment, run this command in an
 interactive terminal from the deployment checkout:
 
@@ -88,3 +127,38 @@ and the dashboard container's Nginx logs. An upstream timeout means the server
 also cannot reach OpenStreetMap. The map displays a retry control when image
 requests fail. Local dashboard development uses the equivalent route in
 `apps/dashboard/proxy.conf.json`.
+
+## Testing one store settlement with Toman staging
+
+Corporate settlement uses `TOMAN_*`, independently of the `TOMAN_IPG_*`
+settings. To call the staging service, use `TOMAN_MODE=live`,
+`TOMAN_API_URL=https://dbank-staging.qcluster.org/api/v1` and
+`TOMAN_AUTH_URL=https://auth.qbitpay.org/oauth2/token/`, with the corporate
+credentials issued by Toman. Keep `TOMAN_SETTLEMENTS_ENABLED=false` while
+manually testing; this stops the scheduled run and scheduled polling.
+
+In the dashboard's settlements page, select one active test store with an IBAN
+and unsettled purchases. Open the preview, check the beneficiary, IBAN, purchase
+count, total in toman and service URL, then confirm. The preview expires after
+five minutes and must be refreshed if purchases, the account or configuration
+change. The manual run includes only this store, with no hotel supplier
+settlements. Repeated submission of the same approval reuses its batch.
+
+Use **استعلام وضعیت** on that batch until the transfer reaches its final status.
+Inquiry remains available when the scheduler is disabled and does not submit
+another transfer. Only Toman's successful final transfer status marks purchases
+settled. Inspect errors and the follow-up code; a pending transfer is not success.
+
+Finish reconciling staging batches before replacing the configuration with
+production credentials and URLs. Existing batches do not store their Toman
+environment, so they must not be queried or retried against a different endpoint.
+Use dedicated test purchases: a successful staging response also marks their
+local settlement records successful. `TOMAN_MODE=mock` simulates transfers
+without contacting Toman and does not validate staging connectivity.
+
+Local regression tests use a local PostgreSQL database and a fake Toman client:
+
+```bash
+pnpm nx run api:test-settlements
+pnpm nx run dashboard:test
+```

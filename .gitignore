@@ -57,6 +57,7 @@ vitest.config.*.timestamp*
 __screenshots__/
 .env
 .env.production
+/.deploy/
 apps/api/src/generated
 
 graphify-out/

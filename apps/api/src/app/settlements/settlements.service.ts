@@ -1,6 +1,12 @@
-import { BadRequestException, Injectable, Logger } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  Logger,
+} from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
+import { JwtService } from '@nestjs/jwt';
 import { HotelBooking, Payment, Store } from '../../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import {
@@ -31,6 +37,7 @@ export class SettlementsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly toman: TomanClientService,
+    private readonly jwt: JwtService,
   ) {}
 
   /** هر روز ساعت ۰۲:۰۰ به وقت تهران؛ runKey جلوی اجرای دوباره در چند replica را می‌گیرد. */
@@ -59,13 +66,183 @@ export class SettlementsService {
     ]);
   }
 
-  /** اجرای دستی batch مستقل می‌سازد، اما فقط خریدهای هنوز متصل‌نشده را برمی‌دارد. */
-  async runManual() {
-    return this.runWithKey(`${this.tehranDateKey()}-manual-${Date.now()}`, [
-      'STORE',
-      'HOTELYAR',
-      'EGHAMAT24',
-    ]);
+  async stores() {
+    return this.prisma.store.findMany({
+      where: { isActive: true, deletedAt: null },
+      select: { id: true, name: true },
+      orderBy: { name: 'asc' },
+    });
+  }
+
+  async previewStore(storeId: string) {
+    const snapshot = await this.storeSnapshot(this.prisma, storeId);
+    const requestId = randomUUID();
+    const previewToken = await this.jwt.signAsync(
+      {
+        purpose: 'store-settlement-preview',
+        storeId,
+        requestId,
+        snapshot: snapshot.hash,
+        environment: this.environmentHash(),
+      },
+      { expiresIn: '5m' },
+    );
+    return {
+      storeId,
+      storeName: snapshot.store.name,
+      beneficiaryName: snapshot.group.name,
+      destinationIban: snapshot.group.iban,
+      paymentCount: snapshot.payments.length,
+      totalAmount: Number(snapshot.group.amount),
+      previewToken,
+      expiresAt: new Date(Date.now() + 300_000).toISOString(),
+      mode: this.toman.isLive() ? 'live' : 'mock',
+      apiUrl:
+        process.env.TOMAN_API_URL ||
+        'https://dbank-staging.qcluster.org/api/v1',
+    };
+  }
+
+  /** A signed snapshot and serializable claim bind approval to exactly one store. */
+  async runManual(storeId: string, previewToken: string) {
+    let approval: {
+      purpose: string;
+      storeId: string;
+      requestId: string;
+      snapshot: string;
+      environment: string;
+    };
+    try {
+      approval = await this.jwt.verifyAsync(previewToken);
+    } catch {
+      throw new BadRequestException(
+        'پیش‌نمایش معتبر نیست یا منقضی شده؛ دوباره پیش‌نمایش بگیرید.',
+      );
+    }
+    if (
+      approval.purpose !== 'store-settlement-preview' ||
+      approval.storeId !== storeId ||
+      !approval.requestId ||
+      approval.environment !== this.environmentHash()
+    ) {
+      throw new BadRequestException(
+        'پیش‌نمایش با فروشگاه یا تنظیمات فعلی مطابقت ندارد.',
+      );
+    }
+    const runKey = `store-manual-${approval.requestId}`;
+    let result: { id: string; created: boolean };
+    try {
+      result = await this.prisma.$transaction(
+        async (tx) => {
+          const existing = await tx.settlementBatch.findUnique({
+            where: { runKey },
+          });
+          if (existing) return { id: existing.id, created: false };
+          const snapshot = await this.storeSnapshot(tx, storeId);
+          if (snapshot.hash !== approval.snapshot) {
+            throw new ConflictException(
+              'مبلغ یا حساب مقصد تغییر کرده است؛ دوباره پیش‌نمایش بگیرید.',
+            );
+          }
+          const batch = await tx.settlementBatch.create({
+            data: { runKey, totalAmount: snapshot.group.amount, itemCount: 1 },
+          });
+          const item = await tx.settlementItem.create({
+            data: {
+              batchId: batch.id,
+              beneficiaryType: 'STORE',
+              beneficiaryKey: storeId,
+              storeId,
+              beneficiaryName: snapshot.group.name,
+              destinationIban: snapshot.group.iban,
+              amount: snapshot.group.amount,
+              trackerId: `sp-${randomUUID().replace(/-/g, '')}`,
+            },
+          });
+          const claimed = await tx.payment.updateMany({
+            where: {
+              id: { in: snapshot.payments.map((payment) => payment.id) },
+              storeId,
+              settlementItemId: null,
+              settledAt: null,
+            },
+            data: { settlementItemId: item.id },
+          });
+          if (claimed.count !== snapshot.payments.length) {
+            throw new ConflictException(
+              'این خریدها در حال تسویه هستند؛ فهرست را تازه کنید.',
+            );
+          }
+          return { id: batch.id, created: true };
+        },
+        { isolationLevel: 'Serializable' },
+      );
+    } catch (error) {
+      const existing = await this.prisma.settlementBatch.findUnique({
+        where: { runKey },
+      });
+      if (existing) return this.one(existing.id);
+      if (
+        ['P2034', 'P2002'].includes((error as { code?: string }).code ?? '')
+      ) {
+        throw new ConflictException(
+          'تسویهٔ هم‌زمان ثبت شد؛ فهرست را تازه کنید.',
+        );
+      }
+      throw error;
+    }
+    // Replaying the same approval only reads its batch; it never sends again.
+    if (result.created) {
+      await this.submitBatch(result.id);
+      await this.reconcileBatch(result.id);
+    }
+    return this.one(result.id);
+  }
+
+  private environmentHash() {
+    return createHash('sha256')
+      .update(
+        JSON.stringify([
+          process.env.TOMAN_MODE,
+          process.env.TOMAN_API_URL,
+          process.env.TOMAN_AUTH_URL,
+          process.env.TOMAN_USERNAME,
+          process.env.TOMAN_CLIENT_ID,
+        ]),
+      )
+      .digest('hex');
+  }
+
+  private async storeSnapshot(
+    db: Pick<PrismaService, 'store' | 'payment'>,
+    storeId: string,
+  ) {
+    const store = await db.store.findFirst({
+      where: { id: storeId, isActive: true, deletedAt: null },
+    });
+    if (!store) throw new BadRequestException('فروشگاه فعال پیدا نشد.');
+    if (!this.validIban(store.settlementIban))
+      throw new BadRequestException('شبای تسویهٔ فروشگاه معتبر نیست.');
+    const payments = await db.payment.findMany({
+      where: { storeId, settlementItemId: null, settledAt: null },
+      orderBy: { id: 'asc' },
+      include: { store: true },
+    });
+    if (!payments.length)
+      throw new BadRequestException('این فروشگاه خرید تسویه‌نشده ندارد.');
+    const group = this.groups(payments, [])[0];
+    this.toSafeRial(group.amount);
+    const hash = createHash('sha256')
+      .update(
+        JSON.stringify([
+          storeId,
+          group.name,
+          group.iban,
+          payments.map((payment) => [payment.id, payment.amount.toString()]),
+        ]),
+      )
+      .digest('hex');
+    return { store, payments, group, hash };
   }
 
   private async runWithKey(runKey: string, types: BeneficiaryType[]) {
@@ -163,6 +340,10 @@ export class SettlementsService {
       return this.one(batchId);
     }
 
+    // An uncommitted batch must stay failed/building during a read-only inquiry.
+    if (!batch.submittedAt && remoteBatch.status === 1)
+      return this.one(batchId);
+
     for (const item of batch.items.filter(
       (row) => !['SUCCEEDED', 'FAILED'].includes(row.status),
     )) {
@@ -207,6 +388,7 @@ export class SettlementsService {
             where: { id: item.id },
             data: {
               status: transfer.status === 12 ? 'UNKNOWN' : 'PROCESSING',
+              error: null,
               tomanStatus: transfer.status,
               tomanTransferUuid: transfer.uuid,
             },
@@ -216,6 +398,12 @@ export class SettlementsService {
         this.logger.warn(
           `Transfer ${item.trackerId} is not queryable yet: ${this.message(error)}`,
         );
+        await this.prisma.settlementItem.updateMany({
+          where: { id: item.id, status: { notIn: ['SUCCEEDED', 'FAILED'] } },
+          data: {
+            error: 'استعلام وضعیت انتقال ناموفق بود؛ دوباره استعلام کنید.',
+          },
+        });
       }
     }
     await this.refreshBatchStatus(batchId);
@@ -236,40 +424,53 @@ export class SettlementsService {
       );
     }
 
-    const runKey = `${this.tehranDateKey()}-retry-${Date.now()}`;
-    const batch = await this.prisma.$transaction(async (tx) => {
-      const created = await tx.settlementBatch.create({
-        data: { runKey, totalAmount: previous.amount, itemCount: 1 },
-      });
-      const id = randomUUID();
-      const item = await tx.settlementItem.create({
-        data: {
-          id,
-          batchId: created.id,
-          beneficiaryType: previous.beneficiaryType,
-          beneficiaryKey: previous.beneficiaryKey,
-          storeId: previous.storeId,
-          beneficiaryName: previous.beneficiaryName,
-          destinationIban: previous.destinationIban,
-          amount: previous.amount,
-          trackerId: `sp-${id.replace(/-/g, '')}`,
-          retryOfId: previous.id,
-        },
-      });
-      if (previous.payments.length) {
-        await tx.payment.updateMany({
-          where: { id: { in: previous.payments.map((row) => row.id) } },
-          data: { settlementItemId: item.id },
-        });
-      }
-      if (previous.hotelBookings.length) {
-        await tx.hotelBooking.updateMany({
-          where: { id: { in: previous.hotelBookings.map((row) => row.id) } },
-          data: { settlementItemId: item.id, settlementBatchId: created.id },
-        });
-      }
-      return created;
+    const runKey = `retry-${previous.id}`;
+    const existing = await this.prisma.settlementBatch.findUnique({
+      where: { runKey },
     });
+    if (existing) return this.one(existing.id);
+    const batch = await this.prisma
+      .$transaction(async (tx) => {
+        const created = await tx.settlementBatch.create({
+          data: { runKey, totalAmount: previous.amount, itemCount: 1 },
+        });
+        const id = randomUUID();
+        const item = await tx.settlementItem.create({
+          data: {
+            id,
+            batchId: created.id,
+            beneficiaryType: previous.beneficiaryType,
+            beneficiaryKey: previous.beneficiaryKey,
+            storeId: previous.storeId,
+            beneficiaryName: previous.beneficiaryName,
+            destinationIban: previous.destinationIban,
+            amount: previous.amount,
+            trackerId: `sp-${id.replace(/-/g, '')}`,
+            retryOfId: previous.id,
+          },
+        });
+        if (previous.payments.length) {
+          await tx.payment.updateMany({
+            where: { id: { in: previous.payments.map((row) => row.id) } },
+            data: { settlementItemId: item.id },
+          });
+        }
+        if (previous.hotelBookings.length) {
+          await tx.hotelBooking.updateMany({
+            where: { id: { in: previous.hotelBookings.map((row) => row.id) } },
+            data: { settlementItemId: item.id, settlementBatchId: created.id },
+          });
+        }
+        return created;
+      })
+      .catch(async (error: unknown) => {
+        if ((error as { code?: string }).code === 'P2002') {
+          throw new ConflictException(
+            'تلاش مجدد قبلاً ثبت شده است؛ فهرست را تازه کنید.',
+          );
+        }
+        throw error;
+      });
     await this.submitBatch(batch.id);
     await this.reconcileBatch(batch.id);
     return this.one(batch.id);

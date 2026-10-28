@@ -14,6 +14,8 @@ cd "${project_root}"
 
 docker compose --env-file "${env_file}" -f "${compose_file}" config --quiet
 docker compose --env-file "${env_file}" -f "${compose_file}" build
+# No application container or migration is started until this backup succeeds.
+"${project_root}/deploy/backup-database.sh"
 docker compose --env-file "${env_file}" -f "${compose_file}" up -d --remove-orphans
 # Bind-mounted configuration changes do not recreate the gateway container.
 docker compose --env-file "${env_file}" -f "${compose_file}" exec -T gateway nginx -t

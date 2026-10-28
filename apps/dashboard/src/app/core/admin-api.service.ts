@@ -41,6 +41,23 @@ import { firstValueFrom } from 'rxjs';
 /** پارامترهای فهرست — کلیدهای خالی حذف می‌شوند */
 export type Query = Record<string, string | number | undefined | null>;
 
+export interface SettlementStoreOption {
+  id: string;
+  name: string;
+}
+export interface StoreSettlementPreview {
+  storeId: string;
+  storeName: string;
+  beneficiaryName: string;
+  destinationIban: string;
+  paymentCount: number;
+  totalAmount: number;
+  previewToken: string;
+  expiresAt: string;
+  mode: 'mock' | 'live';
+  apiUrl: string;
+}
+
 export interface SettlementItemView {
   id: string;
   beneficiaryName: string;
@@ -61,6 +78,7 @@ export interface SettlementBatchView {
   itemCount: number;
   createdAt: string;
   items: SettlementItemView[];
+  error: string | null;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -278,8 +296,20 @@ export class AdminApiService {
     return this.get<SettlementBatchView[]>('/api/admin/settlements');
   }
 
-  runSettlements() {
-    return this.post<SettlementBatchView>('/api/admin/settlements/run', {});
+  settlementStores() {
+    return this.get<SettlementStoreOption[]>('/api/admin/settlements/stores');
+  }
+
+  previewSettlement(storeId: string) {
+    return this.post<StoreSettlementPreview>('/api/admin/settlements/preview', { storeId });
+  }
+
+  runSettlements(storeId: string, previewToken: string) {
+    return this.post<SettlementBatchView>('/api/admin/settlements/run', { storeId, previewToken });
+  }
+
+  reconcileSettlement(id: string) {
+    return this.post<SettlementBatchView>(`/api/admin/settlements/${id}/reconcile`, {});
   }
 
   retrySettlementItem(id: string) {
