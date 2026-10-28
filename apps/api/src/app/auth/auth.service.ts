@@ -236,25 +236,6 @@ export class AuthService {
     return this.toProfile(employee);
   }
 
-  /** به‌روزرسانی اطلاعات تماس — کارمند فقط شمارهٔ موبایل خودش را می‌تواند عوض کند */
-  async updatePhone(employeeId: string, phone: string | undefined) {
-    if (phone) {
-      const duplicate = await this.prisma.employee.findFirst({
-        where: { phone, id: { not: employeeId } },
-        select: { id: true },
-      });
-      if (duplicate) {
-        throw new BadRequestException('این شماره موبایل قبلاً ثبت شده است');
-      }
-    }
-    const employee = await this.prisma.employee.update({
-      where: { id: employeeId },
-      data: { phone: phone ? phone : null },
-      include: { company: true },
-    });
-    return this.toProfile(employee);
-  }
-
   /** تغییر رمز عبور — رمز فعلی باید درست باشد و رمز جدید متفاوت */
   async changePassword(
     employeeId: string,
@@ -373,7 +354,7 @@ export class AuthService {
     firstName: string;
     lastName: string;
     phone: string | null;
-    organizationalRank: 'MANAGER' | 'DEPUTY' | 'HEAD' | 'EMPLOYEE';
+    organizationalRank: 'CEO' | 'MANAGER' | 'DEPUTY' | 'HEAD' | 'EMPLOYEE';
     avatarFile?: string | null;
     company: { id: string; name: string; logoUrl?: string | null };
   }): EmployeeProfile {

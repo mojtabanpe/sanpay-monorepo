@@ -2,19 +2,19 @@
   <header>
     <h1 class="text-2xl font-bold">کاربران داشبورد</h1>
     <p class="text-muted-foreground text-sm">
-      «فقط مشاهده» می‌تواند گزارش‌ها را ببیند ولی چیزی را تغییر نمی‌دهد.
+      دسترسی‌های مدیر را برای هر بخش تنظیم کنید. «فقط مشاهده» امکان تغییر
+      اطلاعات ندارد.
     </p>
   </header>
 
   @if (error()) {
-    <div hlmAlert variant="destructive">
-      <p hlmAlertDescription>{{ error() }}</p>
-    </div>
-  }
-  @if (notice()) {
-    <div hlmAlert>
-      <p hlmAlertDescription>{{ notice() }}</p>
-    </div>
+  <div hlmAlert variant="destructive" role="alert">
+    <p hlmAlertDescription>{{ error() }}</p>
+  </div>
+  } @if (notice()) {
+  <div hlmAlert role="status">
+    <p hlmAlertDescription>{{ notice() }}</p>
+  </div>
   }
 
   <section hlmCard>
@@ -24,18 +24,37 @@
     <div hlmCardContent class="grid gap-4 md:grid-cols-4">
       <hlm-field>
         <label hlmFieldLabel for="fld-1">نام و نام خانوادگی</label>
-        <input id="fld-1" hlmInput class="w-full" [value]="form().name"
-          (input)="update('name', $any($event.target).value)" />
+        <input
+          id="fld-1"
+          hlmInput
+          class="w-full"
+          [value]="form().name"
+          (input)="update('name', $any($event.target).value)"
+        />
       </hlm-field>
       <hlm-field>
         <label hlmFieldLabel for="fld-2">نام کاربری</label>
-        <input id="fld-2" hlmInput class="w-full" dir="ltr" [value]="form().username"
-          (input)="update('username', $any($event.target).value)" />
+        <input
+          id="fld-2"
+          hlmInput
+          class="w-full"
+          dir="ltr"
+          [value]="form().username"
+          (input)="update('username', $any($event.target).value)"
+        />
       </hlm-field>
       <hlm-field>
         <label hlmFieldLabel for="fld-3">رمز عبور</label>
-        <input id="fld-3" hlmInput class="w-full" dir="ltr" [value]="form().password"
-          (input)="update('password', $any($event.target).value)" />
+        <input
+          id="fld-3"
+          type="password"
+          autocomplete="new-password"
+          hlmInput
+          class="w-full"
+          dir="ltr"
+          [value]="form().password"
+          (input)="update('password', $any($event.target).value)"
+        />
       </hlm-field>
       <hlm-field>
         <label hlmFieldLabel for="fld-4">نقش</label>
@@ -45,12 +64,26 @@
           (valueChange)="update('role', $any($event))"
         >
           @for (role of roles; track role) {
-            <button hlmToggleGroupItem [value]="role">{{ roleLabels[role] }}</button>
+          <button hlmToggleGroupItem [value]="role">
+            {{ roleLabels[role] }}
+          </button>
           }
         </hlm-toggle-group>
       </hlm-field>
-      <div class="md:col-span-4">
-        <button hlmBtn [disabled]="saving()" (click)="create()">ساخت کاربر</button>
+      <div class="flex flex-wrap gap-2 md:col-span-4">
+        @if (form().role === 'ADMIN') {
+        <button
+          hlmBtn
+          variant="outline"
+          [disabled]="saving()"
+          (click)="openPermissions(null)"
+        >
+          تنظیم دسترسی‌ها
+        </button>
+        }
+        <button hlmBtn [disabled]="saving()" (click)="create()">
+          ساخت کاربر
+        </button>
       </div>
     </div>
   </section>
@@ -64,6 +97,7 @@
               <th hlmTh>نام</th>
               <th hlmTh>نام کاربری</th>
               <th hlmTh>نقش</th>
+              <th hlmTh>دسترسی‌ها</th>
               <th hlmTh>آخرین ورود</th>
               <th hlmTh>وضعیت</th>
               <th hlmTh>رمز جدید</th>
@@ -72,46 +106,87 @@
           </thead>
           <tbody hlmTBody>
             @for (row of rows(); track row.id) {
-              <tr hlmTr>
-                <td hlmTd class="font-medium">{{ row.name }}</td>
-                <td hlmTd dir="ltr">{{ row.username }}</td>
-                <td hlmTd>
-                  <hlm-toggle-group
-                    [spacing]="2"
-                    [value]="row.role"
-                    (valueChange)="setRole(row.id, $any($event))"
-                  >
-                    @for (role of roles; track role) {
-                      <button hlmToggleGroupItem [value]="role">
-                        {{ roleLabels[role] }}
-                      </button>
-                    }
-                  </hlm-toggle-group>
-                </td>
-                <td hlmTd class="text-muted-foreground text-xs">
-                  {{ row.lastLoginAt ? jalaliTime(row.lastLoginAt) : 'هرگز' }}
-                </td>
-                <td hlmTd>
-                  <span hlmBadge [variant]="row.isActive ? 'default' : 'secondary'">
-                    {{ row.isActive ? 'فعال' : 'غیرفعال' }}
-                  </span>
-                </td>
-                <td hlmTd>
+            <tr hlmTr>
+              <td hlmTd class="font-medium">{{ row.name }}</td>
+              <td hlmTd dir="ltr">{{ row.username }}</td>
+              <td hlmTd>
+                <hlm-toggle-group
+                  [spacing]="2"
+                  [value]="row.role"
+                  (valueChange)="setRole(row.id, $any($event))"
+                >
+                  @for (role of roles; track role) {
+                  <button hlmToggleGroupItem [value]="role">
+                    {{ roleLabels[role] }}
+                  </button>
+                  }
+                </hlm-toggle-group>
+              </td>
+              <td hlmTd>
+                @if (row.role === 'ADMIN') {
+                <button
+                  hlmBtn
+                  variant="outline"
+                  size="sm"
+                  [disabled]="saving()"
+                  (click)="openPermissions(row)"
+                >
+                  تنظیم دسترسی‌ها
+                </button>
+                } @else {
+                <span class="text-muted-foreground text-xs"
+                  >{{ row.role === 'SUPER_ADMIN' ? 'دسترسی کامل' : 'فقط مشاهده'
+                  }}</span
+                >
+                }
+              </td>
+              <td hlmTd class="text-muted-foreground text-xs">
+                {{ row.lastLoginAt ? jalaliTime(row.lastLoginAt) : 'هرگز' }}
+              </td>
+              <td hlmTd>
+                <span
+                  hlmBadge
+                  [variant]="row.isActive ? 'default' : 'secondary'"
+                >
+                  {{ row.isActive ? 'فعال' : 'غیرفعال' }}
+                </span>
+              </td>
+              <td hlmTd>
+                <div class="flex items-center gap-2">
                   <input
                     hlmInput
+                    type="password"
+                    autocomplete="new-password"
+                    [attr.aria-label]="'رمز جدید ' + row.name"
                     #passwordInput
                     class="w-36"
                     dir="ltr"
                     placeholder="رمز تازه"
-                    (keyup.enter)="resetPassword(row.id, passwordInput.value)"
+                    (keyup.enter)="resetPassword(row.id, passwordInput)"
                   />
-                </td>
-                <td hlmTd class="text-left">
-                  <button hlmBtn variant="ghost" size="sm" (click)="toggleActive(row)">
-                    {{ row.isActive ? 'غیرفعال' : 'فعال' }}
+                  <button
+                    type="button"
+                    hlmBtn
+                    variant="outline"
+                    size="sm"
+                    [disabled]="saving()"
+                    (click)="resetPassword(row.id, passwordInput)"
+                  >
+                    ذخیره رمز
                   </button>
-                </td>
-              </tr>
+                </div>
+              </td>
+              <td hlmTd class="text-left">
+                <button
+                  hlmBtn
+                  variant="ghost"
+                  size="sm"
+                  (click)="toggleActive(row)"
+                >
+                  {{ row.isActive ? 'غیرفعال' : 'فعال' }}
+                </button>
+              </td>
+            </tr>
             }
           </tbody>
         </table>
@@ -119,3 +194,104 @@
     </div>
   </section>
 </div>
+
+<hlm-dialog
+  [state]="permissionsOpen()"
+  (stateChanged)="permissionsOpen.set($event)"
+>
+  <hlm-dialog-content
+    *hlmDialogPortal
+    class="max-h-[90dvh] overflow-y-auto sm:max-w-xl"
+  >
+    <div hlmDialogHeader>
+      <h2 hlmDialogTitle>
+        دسترسی‌های {{ permissionTarget()?.name ?? 'کاربر جدید' }}
+      </h2>
+      <p hlmDialogDescription>
+        بخش‌های مجاز را انتخاب کنید. دسترسی تغییر، مشاهدهٔ همان بخش را هم فعال
+        می‌کند. فهرست‌های کمکی موردنیاز فرم‌ها نیز قابل خواندن هستند.
+      </p>
+    </div>
+    <div class="flex gap-2">
+      <button
+        hlmBtn
+        variant="outline"
+        size="sm"
+        [disabled]="saving()"
+        (click)="permissionDraft.set(allPermissions.slice())"
+      >
+        انتخاب همه
+      </button>
+      <button
+        hlmBtn
+        variant="outline"
+        size="sm"
+        [disabled]="saving()"
+        (click)="permissionDraft.set([])"
+      >
+        پاک کردن انتخاب‌ها
+      </button>
+    </div>
+    <div class="divide-y">
+      @for (group of permissionGroups; track group.resource) {
+      <div class="flex flex-wrap items-center justify-between gap-3 py-3">
+        <span class="text-sm font-medium">{{ group.label }}</span>
+        <div class="flex gap-4">
+          <div class="flex min-h-10 items-center gap-2 text-sm">
+            <hlm-checkbox
+              [inputId]="'permission-' + group.resource + '-read'"
+              [checked]="permissionChecked(group.resource, 'read')"
+              [disabled]="saving()"
+              (checkedChange)="togglePermission(group.resource, 'read', $event === true)"
+            />
+            <label
+              [id]="'permission-' + group.resource + '-read-label'"
+              [attr.for]="'permission-' + group.resource + '-read'"
+              class="flex min-h-10 cursor-pointer items-center"
+            >
+              <span aria-hidden="true">مشاهده</span
+              ><span class="sr-only">مشاهدهٔ {{ group.label }}</span>
+            </label>
+          </div>
+          @if (group.writable) {
+          <div class="flex min-h-10 items-center gap-2 text-sm">
+            <hlm-checkbox
+              [inputId]="'permission-' + group.resource + '-write'"
+              [checked]="permissionChecked(group.resource, 'write')"
+              [disabled]="saving()"
+              (checkedChange)="togglePermission(group.resource, 'write', $event === true)"
+            />
+            <label
+              [id]="'permission-' + group.resource + '-write-label'"
+              [attr.for]="'permission-' + group.resource + '-write'"
+              class="flex min-h-10 cursor-pointer items-center"
+            >
+              <span aria-hidden="true">تغییر</span
+              ><span class="sr-only">تغییر {{ group.label }}</span>
+            </label>
+          </div>
+          }
+        </div>
+      </div>
+      }
+    </div>
+    @if (permissionError()) {
+    <div hlmAlert variant="destructive" role="alert">
+      <p hlmAlertDescription>{{ permissionError() }}</p>
+    </div>
+    }
+    <div hlmDialogFooter>
+      <button
+        hlmBtn
+        variant="outline"
+        [disabled]="saving()"
+        (click)="permissionsOpen.set('closed')"
+      >
+        انصراف
+      </button>
+      <button hlmBtn [disabled]="saving()" (click)="savePermissions()">
+        {{ saving() ? 'در حال ذخیره…' : 'ذخیره دسترسی‌ها' }}
+      </button>
+    </div>
+  </hlm-dialog-content>
+</hlm-dialog>

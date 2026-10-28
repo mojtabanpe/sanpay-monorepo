@@ -1,4 +1,16 @@
 import 'reflect-metadata';
+// Authorization checks use real Nest metadata and the database state, not JWT grants.
+import { Reflector } from '@nestjs/core';
+import { ForbiddenException } from '@nestjs/common';
+import { validate } from 'class-validator';
+import * as bcrypt from 'bcrypt';
+import { AdminJwtGuard } from '../src/app/admin/admin-jwt.guard';
+import { AdminAuthService } from '../src/app/admin/admin-auth.service';
+import { AdminAccess } from '../src/app/admin/permissions.decorator';
+import { Roles } from '../src/app/admin/roles.decorator';
+import { CreateAdminDto, UpdateAdminDto } from '../src/app/admin/dto/admin.dto';
+import { AdminPermission, normalizeAdminPermissions } from '@sanpay/models';
+
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { JwtService } from '@nestjs/jwt';
@@ -145,28 +157,6 @@ test('same national code in another company cannot reuse an existing phone', asy
       (clause) => clause.phone === current.phone,
     ),
   );
-});
-
-test('profile phone updates reject another employment even with the same national code', async () => {
-  let checked: unknown;
-  const prisma = {
-    employee: {
-      findFirst: async ({ where }: { where: unknown }) => {
-        checked = where;
-        return { id: 'employee-2' };
-      },
-    },
-  };
-  const service = new AuthService(
-    prisma as unknown as PrismaService,
-    {} as JwtService,
-    {} as SmsService,
-  );
-  await assert.rejects(
-    service.updatePhone(current.id, current.phone),
-    /شماره موبایل/,
-  );
-  assert.deepEqual(checked, { phone: current.phone, id: { not: current.id } });
 });
 
 test('password login selects independent accounts by phone even with identical national codes and passwords', async () => {
@@ -409,4 +399,207 @@ test('wallet history is employee-scoped, hides personal funds and paginates cred
   );
   assert.equal(page.items[0].amount, 100);
   assert.equal(page.items[0].walletName, 'ارزاق');
+});
+
+@AdminAccess('employees')
+class RestrictedEmployees {
+  read() {
+    return true;
+  }
+  write() {
+    return true;
+  }
+  @Roles('SUPER_ADMIN')
+  superOnly() {
+    return true;
+  }
+}
+
+function permissionGuard(
+  options: {
+    permissions?: string[];
+    role?: 'SUPER_ADMIN' | 'ADMIN' | 'VIEWER';
+    active?: boolean;
+    method?: string;
+    handler?: 'read' | 'write' | 'superOnly';
+  } = {},
+) {
+  const row = {
+    id: 'test-admin',
+    role: options.role ?? 'ADMIN',
+    permissions: options.permissions ?? [],
+    isActive: options.active ?? true,
+  };
+  const prisma = { admin: { findUnique: async () => row } };
+  const jwt = {
+    verifyAsync: async () => ({
+      sub: row.id,
+      role: 'admin',
+      scope: 'SUPER_ADMIN',
+    }),
+  };
+  const request = {
+    method: options.method ?? 'GET',
+    headers: { authorization: 'Bearer test' },
+  };
+  const context = {
+    getHandler: () => RestrictedEmployees.prototype[options.handler ?? 'read'],
+    getClass: () => RestrictedEmployees,
+    switchToHttp: () => ({ getRequest: () => request }),
+  } as unknown as ExecutionContext;
+  return {
+    row,
+    run: () =>
+      new AdminJwtGuard(
+        jwt as unknown as JwtService,
+        new Reflector(),
+        prisma as unknown as PrismaService,
+      ).canActivate(context),
+  };
+}
+
+test('restricted admin can read only granted resources; missing and write grants are denied', async () => {
+  assert.equal(
+    await permissionGuard({ permissions: ['employees:read'] }).run(),
+    true,
+  );
+  await assert.rejects(permissionGuard().run(), ForbiddenException);
+  await assert.rejects(
+    permissionGuard({ permissions: ['stores:read'] }).run(),
+    ForbiddenException,
+  );
+  await assert.rejects(
+    permissionGuard({ permissions: ['employees:read'], method: 'POST' }).run(),
+    ForbiddenException,
+  );
+  assert.equal(
+    await permissionGuard({
+      permissions: ['employees:read', 'employees:write'],
+      method: 'PATCH',
+    }).run(),
+    true,
+  );
+});
+
+test('revoked grants, roles and disabled accounts apply to an already-issued JWT', async () => {
+  const guard = permissionGuard({ permissions: ['employees:read'] });
+  assert.equal(await guard.run(), true);
+  guard.row.permissions = [];
+  await assert.rejects(guard.run(), ForbiddenException);
+  await assert.rejects(
+    permissionGuard({ handler: 'superOnly' }).run(),
+    ForbiddenException,
+  );
+  await assert.rejects(
+    permissionGuard({ active: false }).run(),
+    UnauthorizedException,
+  );
+});
+
+test('viewer cannot write; super admin retains full access', async () => {
+  assert.equal(await permissionGuard({ role: 'VIEWER' }).run(), true);
+  await assert.rejects(
+    permissionGuard({ role: 'VIEWER', method: 'DELETE' }).run(),
+    ForbiddenException,
+  );
+  assert.equal(
+    await permissionGuard({ role: 'SUPER_ADMIN', method: 'DELETE' }).run(),
+    true,
+  );
+});
+
+test('permission DTOs reject invented grants and accept explicit empty grants', async () => {
+  const dto = Object.assign(new UpdateAdminDto(), {
+    permissions: ['admins:write'],
+  });
+  assert.ok(
+    (await validate(dto)).some((error) => error.property === 'permissions'),
+  );
+  Object.assign(dto, { permissions: null });
+  assert.ok(
+    (await validate(dto)).some((error) => error.property === 'permissions'),
+  );
+  dto.permissions = [];
+  assert.deepEqual(await validate(dto), []);
+  assert.deepEqual(normalizeAdminPermissions(['employees:write']), [
+    'employees:read',
+    'employees:write',
+  ]);
+  const create = Object.assign(new CreateAdminDto(), {
+    username: 'test-user',
+    name: 'Test',
+    password: 'test-password',
+    role: 'ADMIN',
+    permissions: [],
+  });
+  assert.deepEqual(await validate(create), []);
+});
+
+test('resetting a dashboard password replaces the hash and preserves exact password whitespace', async () => {
+  const row = {
+    id: 'test-admin',
+    username: 'test-user',
+    name: 'Test',
+    role: 'ADMIN',
+    permissions: [] as AdminPermission[],
+    isActive: true,
+    lastLoginAt: null,
+    createdAt: new Date(),
+    passwordHash: await bcrypt.hash('old-password', 4),
+  };
+  const prisma = {
+    admin: {
+      findUnique: async () => row,
+      update: async ({ data }: { data: Record<string, unknown> }) =>
+        Object.assign(row, data),
+    },
+  };
+  const auth = new AdminAuthService(
+    prisma as unknown as PrismaService,
+    { signAsync: async () => 'signed-test-token' } as unknown as JwtService,
+  );
+  const exactPassword = ' new-password ';
+  await auth.resetPassword(row.id, exactPassword);
+  await assert.rejects(
+    auth.login(row.username, 'old-password'),
+    UnauthorizedException,
+  );
+  await assert.rejects(
+    auth.login(row.username, exactPassword.trim()),
+    UnauthorizedException,
+  );
+  assert.equal(
+    (await auth.login(row.username, exactPassword)).accessToken,
+    'signed-test-token',
+  );
+});
+
+import { PATH_METADATA } from '@nestjs/common/constants';
+import * as dashboardControllers from '../src/app/admin/admin.controller';
+import { SettlementsController } from '../src/app/settlements/settlements.controller';
+import { UpgAdminController } from '../src/app/upg/admin/upg-admin.controller';
+import { ADMIN_RESOURCE, ADMIN_REQUIRED_PERMISSIONS } from '../src/app/admin/permissions.decorator';
+
+test('every protected dashboard feature endpoint declares a resource or explicit permission', () => {
+  const controllers = [
+    dashboardControllers.AdminCompaniesController,
+    dashboardControllers.AdminEmployeesController,
+    dashboardControllers.AdminAllocationsController,
+    dashboardControllers.AdminStoresController,
+    dashboardControllers.AdminWalletsController,
+    dashboardControllers.AdminReportsController,
+    SettlementsController,
+    UpgAdminController,
+  ];
+  const reflector = new Reflector();
+  for (const controller of controllers) {
+    for (const name of Object.getOwnPropertyNames(controller.prototype)) {
+      if (name === 'constructor') continue;
+      const handler = controller.prototype[name as keyof typeof controller.prototype];
+      if (Reflect.getMetadata(PATH_METADATA, handler) === undefined) continue;
+      const targets = [handler, controller];
+      assert.ok(reflector.getAllAndOverride(ADMIN_RESOURCE, targets) ||
+        reflector.getAllAndOverride(ADMIN_REQUIRED_PERMISSIONS, targets), `${controller.name}.${name}`);
+    }
+  }
 });

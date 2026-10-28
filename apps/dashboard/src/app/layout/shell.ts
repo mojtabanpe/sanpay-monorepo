@@ -7,6 +7,7 @@ import { HlmSeparatorImports } from '@sanpay/ui/separator';
 import { AdminAuthService } from '../core/admin-auth.service';
 import { ADMIN_ROLE_LABELS, fa } from '../core/format';
 import { UpgQueueCount } from '../core/upg-queue-count';
+import { AdminPermission } from '@sanpay/models';
 import { filter } from 'rxjs';
 
 interface NavItem {
@@ -51,7 +52,10 @@ export class Shell {
   protected readonly menuOpen = signal(false);
 
   protected readonly items = computed(() =>
-    NAV.filter((item) => !item.superAdminOnly || this.auth.isSuperAdmin()),
+    NAV.filter((item) =>
+      item.superAdminOnly ? this.auth.isSuperAdmin() :
+      item.path === '/settings' || this.auth.hasPermission(`${item.path.slice(1)}:read` as AdminPermission),
+    ),
   );
 
   constructor() {

@@ -120,6 +120,8 @@ function parseRank(raw: string): OrganizationalRank | null {
   return (
     (
       {
+        مدیرعامل: 'CEO',
+        ceo: 'CEO',
         مدیر: 'MANAGER',
         manager: 'MANAGER',
         معاون: 'DEPUTY',

@@ -42,6 +42,39 @@ export class SmsService {
     ]);
   }
 
+  async sendPhoneChangeOtp(
+    phone: string,
+    code: string,
+    newPhone: string,
+  ): Promise<void> {
+    await this.sendVerify(
+      phone,
+      Number(process.env.SMSIR_PHONE_CHANGE_OTP_TEMPLATE_ID),
+      [
+        { name: 'CODE', value: code },
+        { name: 'NEWPHONE', value: newPhone },
+      ],
+    );
+  }
+
+  /** Await provider acceptance; the phone-change outbox retries failures. */
+  async sendPhoneChangeNotice(
+    phone: string,
+    oldPhone: string,
+    newPhone: string,
+    at: Date,
+  ): Promise<void> {
+    await this.sendVerify(
+      phone,
+      Number(process.env.SMSIR_PHONE_CHANGE_NOTICE_TEMPLATE_ID),
+      [
+        { name: 'OLDPHONE', value: oldPhone },
+        { name: 'NEWPHONE', value: newPhone },
+        { name: 'TIME', value: formatTehranTime(at) },
+      ],
+    );
+  }
+
   async sendPurchaseOtp(
     phone: string,
     code: string,

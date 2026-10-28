@@ -33,7 +33,7 @@ export class StoresPage {
   private readonly confirm = inject(ConfirmService);
   private readonly auth = inject(AdminAuthService);
 
-  protected readonly canWrite = this.auth.canWrite;
+  protected readonly canWrite = computed(() => this.auth.hasPermission('stores:write'));
   protected readonly toman = toman;
   protected readonly fa = fa;
 

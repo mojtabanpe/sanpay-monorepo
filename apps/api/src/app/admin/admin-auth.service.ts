@@ -4,7 +4,13 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { AdminProfile, AdminRole } from '@sanpay/models';
+import {
+  ADMIN_PERMISSIONS,
+  AdminPermission,
+  AdminProfile,
+  AdminRole,
+  normalizeAdminPermissions,
+} from '@sanpay/models';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -58,7 +64,9 @@ export class AdminAuthService {
   }
 
   async profile(adminId: string): Promise<AdminProfile> {
-    const admin = await this.prisma.admin.findUnique({ where: { id: adminId } });
+    const admin = await this.prisma.admin.findUnique({
+      where: { id: adminId },
+    });
     if (!admin || !admin.isActive) {
       throw new UnauthorizedException();
     }
@@ -70,7 +78,9 @@ export class AdminAuthService {
     currentPassword: string,
     newPassword: string,
   ) {
-    const admin = await this.prisma.admin.findUnique({ where: { id: adminId } });
+    const admin = await this.prisma.admin.findUnique({
+      where: { id: adminId },
+    });
     if (!admin || !admin.isActive) {
       throw new UnauthorizedException();
     }
@@ -102,6 +112,7 @@ export class AdminAuthService {
     name: string;
     password: string;
     role?: AdminRole;
+    permissions?: AdminPermission[];
   }): Promise<AdminProfile> {
     const taken = await this.prisma.admin.findUnique({
       where: { username: input.username },
@@ -114,6 +125,9 @@ export class AdminAuthService {
         username: input.username,
         name: input.name,
         role: input.role ?? 'ADMIN',
+        permissions: normalizeAdminPermissions(
+          input.permissions ?? ADMIN_PERMISSIONS,
+        ),
         passwordHash: await bcrypt.hash(input.password, 10),
       },
     });
@@ -122,9 +136,22 @@ export class AdminAuthService {
 
   async update(
     id: string,
-    input: { name?: string; role?: AdminRole; isActive?: boolean },
+    input: {
+      name?: string;
+      role?: AdminRole;
+      isActive?: boolean;
+      permissions?: AdminPermission[];
+    },
   ): Promise<AdminProfile> {
-    const admin = await this.prisma.admin.update({ where: { id }, data: input });
+    const admin = await this.prisma.admin.update({
+      where: { id },
+      data: {
+        ...input,
+        ...(input.permissions !== undefined
+          ? { permissions: normalizeAdminPermissions(input.permissions) }
+          : {}),
+      },
+    });
     return toProfile(admin);
   }
 
@@ -142,6 +169,7 @@ function toProfile(admin: {
   username: string;
   name: string;
   role: string;
+  permissions: string[];
   isActive: boolean;
   lastLoginAt: Date | null;
   createdAt: Date;
@@ -151,6 +179,9 @@ function toProfile(admin: {
     username: admin.username,
     name: admin.name,
     role: admin.role as AdminRole,
+    permissions: admin.permissions.filter((p): p is AdminPermission =>
+      ADMIN_PERMISSIONS.includes(p as AdminPermission),
+    ),
     isActive: admin.isActive,
     lastLoginAt: admin.lastLoginAt?.toISOString() ?? null,
     createdAt: admin.createdAt.toISOString(),

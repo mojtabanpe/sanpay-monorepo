@@ -114,7 +114,7 @@ export async function parseAllocationFile(
     );
     if (!organizationalRank) {
       errors.push(
-        `سطر ${lineNo}: رده سازمانی نامعتبر است (مدیر، معاون، رییس یا کارمند)`,
+        `سطر ${lineNo}: رده سازمانی نامعتبر است (مدیرعامل، مدیر، معاون، رییس یا کارمند)`,
       );
       return;
     }
@@ -226,6 +226,8 @@ function parseOrganizationalRank(raw: string): OrganizationalRank | null {
     .toLowerCase();
 
   const ranks: Record<string, OrganizationalRank> = {
+    مدیرعامل: 'CEO',
+    ceo: 'CEO',
     مدیر: 'MANAGER',
     manager: 'MANAGER',
     معاون: 'DEPUTY',

@@ -1,15 +1,20 @@
 import { Component, computed, inject, signal } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '@sanpay/applets/auth';
-import { EmployeeProfile, ProfileSummary } from '@sanpay/models';
+import {
+  EmployeeProfile,
+  PhoneChangeChallenge,
+  ProfileSummary,
+} from '@sanpay/models';
 import { HlmAlertImports } from '@sanpay/ui/alert';
 import { HlmBadgeImports } from '@sanpay/ui/badge';
 import { HlmButtonImports } from '@sanpay/ui/button';
 import { HlmCardImports } from '@sanpay/ui/card';
 import { HlmInputImports } from '@sanpay/ui/input';
 import { HlmSkeletonImports } from '@sanpay/ui/skeleton';
-import { Observable, firstValueFrom } from 'rxjs';
+import { Observable, firstValueFrom, timer } from 'rxjs';
 import { ProfileService } from '../data-access/profile.service';
 import { CardRefundCard } from '../ui/card-refund';
 import { daysUntil, faNumber, jalali, toman } from '../format';
@@ -50,6 +55,20 @@ export class ProfileHomePage {
   protected readonly phoneDraft = signal('');
   protected readonly phoneError = signal<string | null>(null);
   protected readonly savingPhone = signal(false);
+  protected readonly phoneRequest = signal<PhoneChangeChallenge | null>(null);
+  protected readonly phoneCode = signal('');
+  protected readonly phoneNotice = signal<string | null>(null);
+  private readonly phoneRetryAt = signal(0);
+  private readonly phoneExpiresAt = signal(0);
+  private readonly phoneTick = toSignal(timer(0, 1000), { initialValue: 0 });
+  protected readonly phoneRetrySeconds = computed(() => {
+    this.phoneTick();
+    return Math.max(0, Math.ceil((this.phoneRetryAt() - Date.now()) / 1000));
+  });
+  protected readonly phoneExpiresSeconds = computed(() => {
+    this.phoneTick();
+    return Math.max(0, Math.ceil((this.phoneExpiresAt() - Date.now()) / 1000));
+  });
 
   protected readonly fullName = computed(() => {
     const profile = this.profile();
@@ -97,32 +116,87 @@ export class ProfileHomePage {
   protected startEditPhone(): void {
     this.phoneDraft.set(this.profile()?.phone ?? '');
     this.phoneError.set(null);
+    this.phoneNotice.set(null);
+    this.phoneRequest.set(null);
+    this.phoneCode.set('');
     this.editingPhone.set(true);
   }
 
   protected cancelEditPhone(): void {
     this.editingPhone.set(false);
     this.phoneError.set(null);
+    this.phoneRequest.set(null);
+    this.phoneCode.set('');
   }
 
-  protected async savePhone(): Promise<void> {
+  protected changePhoneDraft(): void {
+    this.phoneRequest.set(null);
+    this.phoneCode.set('');
+    this.phoneError.set(null);
+  }
+
+  protected async requestPhoneChange(): Promise<void> {
+    if (this.savingPhone() || this.phoneRetrySeconds() > 0) return;
     const phone = toEnglishDigits(this.phoneDraft().trim());
-    if (phone && !/^09\d{9}$/.test(phone)) {
-      this.phoneError.set('شمارهٔ موبایل باید ۱۱ رقم و با ۰۹ شروع شود');
+    if (!/^09\d{9}$/.test(phone)) {
+      this.phoneError.set('شمارهٔ موبایل جدید باید ۱۱ رقم و با ۰۹ شروع شود');
       return;
     }
+    if (phone === this.profile()?.phone) {
+      this.phoneError.set('شمارهٔ جدید با شمارهٔ فعلی یکسان است');
+      return;
+    }
+    this.phoneDraft.set(phone);
+    this.savingPhone.set(true);
+    this.phoneError.set(null);
+    this.phoneRequest.set(null);
+    this.phoneCode.set('');
+    try {
+      const result = await firstValueFrom(
+        this.profileService.requestPhoneChange(phone),
+      );
+      this.phoneRequest.set(result);
+      this.phoneRetryAt.set(Date.now() + result.retryAfterSeconds * 1000);
+      this.phoneExpiresAt.set(Date.now() + result.expiresInSeconds * 1000);
+    } catch (caught) {
+      this.phoneError.set(
+        phoneServerError(caught, 'ارسال کد تأیید انجام نشد؛ دوباره تلاش کنید'),
+      );
+    } finally {
+      this.savingPhone.set(false);
+    }
+  }
 
+  protected async confirmPhoneChange(): Promise<void> {
+    const request = this.phoneRequest();
+    if (!request || this.savingPhone()) return;
+    const code = toEnglishDigits(this.phoneCode().trim());
+    if (!/^\d{6}$/.test(code)) {
+      this.phoneError.set('کد تأیید باید ۶ رقم باشد');
+      return;
+    }
     this.savingPhone.set(true);
     this.phoneError.set(null);
     try {
       const updated = await firstValueFrom(
-        this.profileService.updatePhone(phone),
+        this.profileService.updatePhone(
+          this.phoneDraft(),
+          request.requestId,
+          code,
+        ),
       );
       this.profile.set(updated);
       this.auth.setProfile(updated);
       this.editingPhone.set(false);
-    } catch {
-      this.phoneError.set('ثبت شماره ناموفق بود');
+      this.phoneRequest.set(null);
+      this.phoneCode.set('');
+      this.phoneNotice.set(
+        'شمارهٔ موبایل تغییر کرد. پیامک اطلاع‌رسانی برای شمارهٔ قبلی و جدید ارسال می‌شود؛ برای ورود بعدی از شمارهٔ جدید استفاده کنید.',
+      );
+    } catch (caught) {
+      this.phoneError.set(
+        phoneServerError(caught, 'تغییر شماره انجام نشد؛ دوباره تلاش کنید'),
+      );
     } finally {
       this.savingPhone.set(false);
     }
@@ -201,6 +275,7 @@ function avatarServerError(caught: unknown): string {
 }
 
 const ORGANIZATIONAL_RANK_LABELS: Record<string, string> = {
+  CEO: 'مدیرعامل',
   MANAGER: 'مدیر',
   DEPUTY: 'معاون',
   HEAD: 'رییس',
@@ -216,4 +291,10 @@ function toEnglishDigits(value: string): string {
         : '٠١٢٣٤٥٦٧٨٩'.indexOf(digit),
     ),
   );
+}
+
+function phoneServerError(caught: unknown, fallback: string): string {
+  const error = caught as { error?: { message?: unknown } };
+  const message = error?.error?.message;
+  return typeof message === 'string' ? message : fallback;
 }

@@ -45,7 +45,7 @@ export class LoginPage {
     this.error.set(null);
     try {
       await this.auth.login(username, password);
-      void this.router.navigate(['/overview']);
+      void this.router.navigateByUrl(this.auth.landingPath());
     } catch (caught) {
       this.error.set(apiError(caught, 'ورود به داشبورد ممکن نشد'));
     } finally {

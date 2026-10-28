@@ -1,6 +1,15 @@
 import { parseAllocationFile } from './allocation-file';
 
 describe('parseAllocationFile', () => {
+  it.each(['مدیرعامل', 'مدیر عامل', 'مدیر‌عامل', 'CEO'])(
+    'accepts the CEO rank: %s',
+    async (rank) => {
+      const result = await parseCsv(`0012345678,${rank},1000000,1405/06/31`);
+      expect(result.errors).toEqual([]);
+      expect(result.entries[0].organizationalRank).toBe('CEO');
+    },
+  );
+
   it('parses Persian organizational ranks from a CSV with headers', async () => {
     const result = await parseCsv(
       'کد ملی,رده سازمانی,سقف اعتبار,تاریخ انقضا\n' +

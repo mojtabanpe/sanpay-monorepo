@@ -28,7 +28,7 @@ export class CompaniesPage {
   private readonly api = inject(AdminApiService);
   private readonly auth = inject(AdminAuthService);
 
-  protected readonly canWrite = this.auth.canWrite;
+  protected readonly canWrite = computed(() => this.auth.hasPermission('companies:write'));
   protected readonly fa = fa;
   protected readonly rows = signal<AdminCompanyRow[]>([]);
   protected readonly total = signal(0);

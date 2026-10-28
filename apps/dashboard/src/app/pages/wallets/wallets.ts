@@ -81,7 +81,7 @@ export class WalletsPage {
   private readonly auth = inject(AdminAuthService);
   private readonly confirm = inject(ConfirmService);
 
-  protected readonly canWrite = this.auth.canWrite;
+  protected readonly canWrite = computed(() => this.auth.hasPermission('wallets:write'));
   protected readonly toman = toman;
   protected readonly fa = fa;
   protected readonly jalali = jalali;

@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { HlmAlertImports } from '@sanpay/ui/alert';
 import { HlmBadgeImports } from '@sanpay/ui/badge';
 import { HlmButtonImports } from '@sanpay/ui/button';
@@ -30,7 +30,7 @@ export class Settlements {
   protected readonly rows = signal<SettlementBatchView[]>([]);
   protected readonly loading = signal(false);
   protected readonly error = signal<string | null>(null);
-  protected readonly canWrite = this.auth.canWrite;
+  protected readonly canWrite = computed(() => this.auth.hasPermission('settlements:write'));
   protected readonly toman = toman;
   protected readonly jalaliTime = jalaliTime;
 

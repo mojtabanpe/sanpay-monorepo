@@ -1,5 +1,5 @@
 import { Route } from '@angular/router';
-import { adminGuard, superAdminGuard } from './core/auth.guard';
+import { adminGuard, adminPermissionGuard, superAdminGuard } from './core/auth.guard';
 
 /**
  * ورود بیرون از پوسته است؛ بقیهٔ صفحات داخل `Shell` (نوار کناری + محتوای تمام‌عرض)
@@ -14,25 +14,30 @@ export const appRoutes: Route[] = [
     path: '',
     loadComponent: () => import('./layout/shell').then((m) => m.Shell),
     canActivate: [adminGuard],
+    canActivateChild: [adminPermissionGuard],
     children: [
       { path: '', pathMatch: 'full', redirectTo: 'overview' },
       {
         path: 'overview',
+        data: { adminResource: 'overview' },
         loadComponent: () =>
           import('./pages/overview/overview').then((m) => m.OverviewPage),
       },
       {
         path: 'companies',
+        data: { adminResource: 'companies' },
         loadComponent: () =>
           import('./pages/companies/companies').then((m) => m.CompaniesPage),
       },
       {
         path: 'employees',
+        data: { adminResource: 'employees' },
         loadComponent: () =>
           import('./pages/employees/employees').then((m) => m.EmployeesPage),
       },
       {
         path: 'employees/:id',
+        data: { adminResource: 'employees' },
         loadComponent: () =>
           import('./pages/employee-detail/employee-detail').then(
             (m) => m.EmployeeDetailPage,
@@ -40,21 +45,25 @@ export const appRoutes: Route[] = [
       },
       {
         path: 'wallets',
+        data: { adminResource: 'wallets' },
         loadComponent: () =>
           import('./pages/wallets/wallets').then((m) => m.WalletsPage),
       },
       {
         path: 'stores',
+        data: { adminResource: 'stores' },
         loadComponent: () =>
           import('./pages/stores/stores').then((m) => m.StoresPage),
       },
       {
         path: 'payments',
+        data: { adminResource: 'payments' },
         loadComponent: () =>
           import('./pages/payments/payments').then((m) => m.PaymentsPage),
       },
       {
         path: 'gateway-payments',
+        data: { adminResource: 'gateway-payments' },
         loadComponent: () =>
           import('./pages/gateway-payments/gateway-payments').then(
             (m) => m.GatewayPaymentsPage,
@@ -62,6 +71,7 @@ export const appRoutes: Route[] = [
       },
       {
         path: 'gateway-payments/:id',
+        data: { adminResource: 'gateway-payments' },
         loadComponent: () =>
           import('./pages/gateway-payment/gateway-payment').then(
             (m) => m.GatewayPaymentPage,
@@ -69,26 +79,31 @@ export const appRoutes: Route[] = [
       },
       {
         path: 'upg-review',
+        data: { adminResource: 'upg-review' },
         loadComponent: () =>
           import('./pages/upg-review/upg-review').then((m) => m.UpgReviewPage),
       },
       {
         path: 'gateways',
+        data: { adminResource: 'gateways' },
         loadComponent: () =>
           import('./pages/gateways/gateways').then((m) => m.GatewaysPage),
       },
       {
         path: 'settlements',
+        data: { adminResource: 'settlements' },
         loadComponent: () =>
           import('./pages/settlements/settlements').then((m) => m.Settlements),
       },
       {
         path: 'bookings',
+        data: { adminResource: 'bookings' },
         loadComponent: () =>
           import('./pages/bookings/bookings').then((m) => m.BookingsPage),
       },
       {
         path: 'flight-bookings',
+        data: { adminResource: 'flight-bookings' },
         loadComponent: () =>
           import('./pages/flight-bookings/flight-bookings').then(
             (m) => m.FlightBookings,
@@ -96,6 +111,7 @@ export const appRoutes: Route[] = [
       },
       {
         path: 'tourism-split',
+        data: { adminResource: 'tourism-split' },
         loadComponent: () =>
           import('./pages/tourism-split/tourism-split').then(
             (m) => m.TourismSplit,

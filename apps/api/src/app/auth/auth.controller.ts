@@ -20,13 +20,21 @@ import {
   SetInitialPasswordDto,
   VerifyOtpDto,
 } from './dto/login.dto';
-import { ChangePasswordDto, UpdateProfileDto } from './dto/update-profile.dto';
+import {
+  ChangePasswordDto,
+  RequestPhoneChangeDto,
+  UpdateProfileDto,
+} from './dto/update-profile.dto';
 import { JwtAuthGuard } from './jwt-auth.guard';
+import { PhoneChangeService } from './phone-change.service';
 import { sessionInfo } from './session-info';
 
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly auth: AuthService) {}
+  constructor(
+    private readonly auth: AuthService,
+    private readonly phoneChange: PhoneChangeService,
+  ) {}
 
   @Post('login')
   @HttpCode(HttpStatus.OK)
@@ -96,13 +104,24 @@ export class AuthController {
     return this.auth.profile(request.user.sub);
   }
 
+  @Post('phone-change/request')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(JwtAuthGuard)
+  requestPhoneChange(
+    @Req() request: Request & { user: JwtPayload },
+    @Body() dto: RequestPhoneChangeDto,
+  ) {
+    return this.phoneChange.request(request.user.sub, dto.phone);
+  }
+
   @Patch('me')
   @UseGuards(JwtAuthGuard)
-  updateMe(
+  async updateMe(
     @Req() request: Request & { user: JwtPayload },
     @Body() dto: UpdateProfileDto,
   ) {
-    return this.auth.updatePhone(request.user.sub, dto.phone);
+    await this.phoneChange.confirm(request.user.sub, dto);
+    return this.auth.profile(request.user.sub);
   }
 
   @Post('change-password')

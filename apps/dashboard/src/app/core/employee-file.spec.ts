@@ -5,6 +5,16 @@ import {
 } from './employee-file';
 
 describe('parseEmployeeFile', () => {
+  it.each(['مدیرعامل', 'مدیر عامل', 'مدیر‌عامل', 'CEO'])(
+    'accepts the CEO rank: %s',
+    async (rank) => {
+      const result = await parse('کد ملی,نام,نام خانوادگی,موبایل,رده سازمانی\n' +
+        `0012345678,علی,رضایی,09123456789,${rank}`);
+      expect(result.errors).toEqual([]);
+      expect(result.entries[0].organizationalRank).toBe('CEO');
+    },
+  );
+
   it('imports the downloadable template without a personnel code', async () => {
     const result = await parse(employeeTemplateCsv());
     expect(result.errors).toEqual([]);

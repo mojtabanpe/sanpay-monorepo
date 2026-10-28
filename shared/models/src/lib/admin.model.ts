@@ -13,6 +13,7 @@ export interface AdminProfile {
   username: string;
   name: string;
   role: AdminRole;
+  permissions: import('./admin-permissions').AdminPermission[];
   isActive: boolean;
   lastLoginAt: string | null;
   createdAt: string;
@@ -32,7 +33,7 @@ export interface AdminPaymentPage extends Paginated<AdminPaymentRow> {
 }
 
 export type WalletKind = 'CREDIT' | 'RATION' | 'TOURISM';
-export type OrganizationalRank = 'MANAGER' | 'DEPUTY' | 'HEAD' | 'EMPLOYEE';
+export type OrganizationalRank = 'CEO' | 'MANAGER' | 'DEPUTY' | 'HEAD' | 'EMPLOYEE';
 
 export interface AdminCompanyRow {
   logoUrl: string | null;

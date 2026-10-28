@@ -3,6 +3,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './jwt-auth.guard';
+import { PhoneChangeService } from './phone-change.service';
 import { SmsService } from './sms.service';
 
 @Module({
@@ -14,7 +15,7 @@ import { SmsService } from './sms.service';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtAuthGuard, SmsService],
+  providers: [AuthService, JwtAuthGuard, SmsService, PhoneChangeService],
   exports: [AuthService, SmsService],
 })
 export class AuthModule {}

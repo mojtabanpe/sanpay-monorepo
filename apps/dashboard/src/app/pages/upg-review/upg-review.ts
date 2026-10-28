@@ -53,7 +53,7 @@ export class UpgReviewPage {
   protected readonly variant = gatewayStatusVariant;
   protected readonly refundLabels = GATEWAY_REFUND_STATUS_LABELS;
   protected readonly purposeLabels = INTENT_PURPOSE_LABELS;
-  protected readonly canWrite = this.auth.canWrite;
+  protected readonly canWrite = computed(() => this.auth.hasPermission('upg-review:write'));
 
   protected readonly queue = signal<AdminUpgReviewQueue | null>(null);
   protected readonly wallets = signal<AdminRefundWallet[]>([]);

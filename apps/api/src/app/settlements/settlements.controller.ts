@@ -1,8 +1,10 @@
 import { Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
+import { AdminAccess } from '../admin/permissions.decorator';
 import { AdminJwtGuard } from '../admin/admin-jwt.guard';
 import { Roles, WRITE_ROLES } from '../admin/roles.decorator';
 import { SettlementsService } from './settlements.service';
 
+@AdminAccess('settlements')
 @Controller('admin/settlements')
 @UseGuards(AdminJwtGuard)
 export class SettlementsController {

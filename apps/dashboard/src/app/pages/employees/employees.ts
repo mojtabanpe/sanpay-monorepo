@@ -44,11 +44,12 @@ export class EmployeesPage {
   private readonly confirm = inject(ConfirmService);
   private readonly auth = inject(AdminAuthService);
 
-  protected readonly canWrite = this.auth.canWrite;
+  protected readonly canWrite = computed(() => this.auth.hasPermission('employees:write'));
   protected readonly toman = toman;
   protected readonly fa = fa;
   protected readonly rankLabels = ORGANIZATIONAL_RANK_LABELS;
   protected readonly ranks: OrganizationalRank[] = [
+    'CEO',
     'MANAGER',
     'DEPUTY',
     'HEAD',

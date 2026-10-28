@@ -71,7 +71,7 @@ export class GatewayPaymentPage {
   protected readonly intentLabels = INTENT_STATUS_LABELS;
   protected readonly purposeLabels = INTENT_PURPOSE_LABELS;
   protected readonly transactionLabels = TRANSACTION_TYPE_LABELS;
-  protected readonly canWrite = this.auth.canWrite;
+  protected readonly canWrite = computed(() => this.auth.hasPermission('upg-review:write'));
 
   protected readonly payment = signal<AdminGatewayPaymentDetail | null>(null);
   protected readonly loading = signal(false);

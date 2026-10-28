@@ -244,7 +244,7 @@
       </p>
     </div>
     <div hlmCardContent class="flex flex-col gap-5">
-      @if (canWrite()) {
+      @if (canManageWallets()) {
       <div class="bg-muted/40 grid gap-4 rounded-md p-4 md:grid-cols-4">
         <hlm-field>
           <label hlmFieldLabel for="fld-4">کیف پول</label>
@@ -310,7 +310,7 @@
               <th hlmTh>مانده</th>
               <th hlmTh>انقضا</th>
               <th hlmTh>وضعیت</th>
-              @if (canWrite()) {
+              @if (canManageWallets()) {
               <th hlmTh>شارژ کیف پول</th>
               <th hlmTh>برگشت مبلغ</th>
               <th hlmTh></th>
@@ -328,7 +328,7 @@
                 {{ toman(allocation.remaining) }}
               </td>
               <td hlmTd>
-                @if (canWrite()) {
+                @if (canManageWallets()) {
                 <hlm-date-picker
                   sanpayDatePickerWidth
                   [date]="jalaliOf(allocation.expiresAt)"
@@ -347,7 +347,7 @@
                   >{{ allocation.isActive ? 'فعال' : 'غیرفعال' }}</span
                 >
               </td>
-              @if (canWrite()) {
+              @if (canManageWallets()) {
               <td hlmTd>
                 <input
                   hlmInput

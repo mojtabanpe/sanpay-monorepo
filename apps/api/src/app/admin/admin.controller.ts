@@ -55,6 +55,7 @@ import {
   UpdateStoreDto,
   UpdateWalletDefinitionDto,
 } from './dto/admin.dto';
+import { AdminAccess, AnyAdminPermission } from './permissions.decorator';
 import { Roles, WRITE_ROLES } from './roles.decorator';
 
 /** ورود داشبورد — تنها مسیر بدون توکن مدیر */
@@ -120,9 +121,11 @@ export class AdminUsersController {
 
 @Controller('admin/companies')
 @UseGuards(AdminJwtGuard)
+@AdminAccess('companies')
 export class AdminCompaniesController {
   constructor(private readonly companies: AdminCompaniesService) {}
 
+  @AnyAdminPermission('companies:read', 'employees:read', 'wallets:read')
   @Get()
   list(@Query() query: ListQueryDto) {
     return this.companies.list(query);
@@ -143,6 +146,7 @@ export class AdminCompaniesController {
 
 @Controller('admin/employees')
 @UseGuards(AdminJwtGuard)
+@AdminAccess('employees')
 export class AdminEmployeesController {
   constructor(
     private readonly employees: AdminEmployeesService,
@@ -169,6 +173,7 @@ export class AdminEmployeesController {
   }
 
   @Get()
+  @AnyAdminPermission('employees:read', 'wallets:read')
   list(@Query() query: ListQueryDto) {
     return this.employees.list(query);
   }
@@ -210,6 +215,7 @@ export class AdminEmployeesController {
     return this.employees.resetPassword(id, dto.password);
   }
 
+  @AdminAccess('wallets')
   @Post(':id/allocations')
   @Roles(...WRITE_ROLES)
   addAllocation(@Param('id') id: string, @Body() dto: CreateAllocationDto) {
@@ -220,6 +226,7 @@ export class AdminEmployeesController {
 @Controller('admin/allocations')
 @UseGuards(AdminJwtGuard)
 @Roles(...WRITE_ROLES)
+@AdminAccess('wallets')
 export class AdminAllocationsController {
   constructor(private readonly employees: AdminEmployeesService) {}
 
@@ -243,10 +250,12 @@ export class AdminAllocationsController {
 
 @Controller('admin/stores')
 @UseGuards(AdminJwtGuard)
+@AdminAccess('stores')
 export class AdminStoresController {
   constructor(private readonly stores: AdminStoresService) {}
 
   @Get()
+  @AnyAdminPermission('stores:read', 'wallets:read', 'payments:read')
   list(@Query() query: ListQueryDto) {
     return this.stores.list(query);
   }
@@ -284,10 +293,12 @@ export class AdminStoresController {
 
 @Controller('admin/wallet-definitions')
 @UseGuards(AdminJwtGuard)
+@AdminAccess('wallets')
 export class AdminWalletsController {
   constructor(private readonly wallets: AdminWalletsService) {}
 
   @Get()
+  @AnyAdminPermission('wallets:read', 'employees:read')
   list(@Query() query: ListQueryDto) {
     return this.wallets.list(query);
   }
@@ -320,16 +331,19 @@ export class AdminReportsController {
     private readonly tourismSplit: AdminTourismSplitService,
   ) {}
 
+  @AdminAccess('overview')
   @Get('overview')
   overview() {
     return this.reports.overview();
   }
 
+  @AdminAccess('payments')
   @Get('payments')
   payments(@Query() query: PaymentQueryDto) {
     return this.reports.payments(query);
   }
 
+  @AdminAccess('payments')
   @Get('payments.xlsx')
   async paymentsExcel(@Query() query: PaymentQueryDto) {
     // StreamableFile، نه Buffer خام: Nest یک Buffer برگشتی را JSON می‌کند و
@@ -340,16 +354,19 @@ export class AdminReportsController {
     );
   }
 
+  @AdminAccess('bookings')
   @Get('bookings')
   bookings(@Query() query: BookingQueryDto) {
     return this.reports.bookings(query);
   }
 
+  @AdminAccess('tourism-split')
   @Get('tourism-split')
   tourismSplitReport(@Query() query: TourismSplitQueryDto) {
     return this.tourismSplit.report(query);
   }
 
+  @AdminAccess('tourism-split')
   @Get('tourism-split.xlsx')
   async tourismSplitExcel(@Query() query: TourismSplitQueryDto) {
     // StreamableFile، نه Buffer خام: Nest یک Buffer برگشتی را JSON می‌کند و
@@ -360,6 +377,7 @@ export class AdminReportsController {
     );
   }
 
+  @AdminAccess('flight-bookings')
   @Get('flight-bookings')
   flightBookings(@Query() query: FlightBookingQueryDto) {
     return this.reports.flightBookings(query);

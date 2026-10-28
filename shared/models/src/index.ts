@@ -9,3 +9,4 @@ export * from './lib/flight.model';
 export * from './lib/airline';
 export * from './lib/upg.model';
 export * from './lib/upg-admin.model';
+export * from './lib/admin-permissions';

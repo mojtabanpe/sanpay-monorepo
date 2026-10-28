@@ -27,8 +27,21 @@ export class PaymentHistoryPage {
   protected readonly loading = signal(true);
   protected readonly error = signal(false);
 
+  protected readonly selectedStore = signal('');
+  protected readonly stores = computed(() =>
+    [...new Set(this.payments().map((payment) => payment.storeName))].sort(
+      (a, b) => a.localeCompare(b, 'fa'),
+    ),
+  );
+  protected readonly filteredPayments = computed(() => {
+    const store = this.selectedStore();
+    return store
+      ? this.payments().filter((payment) => payment.storeName === store)
+      : this.payments();
+  });
+
   protected readonly total = computed(() =>
-    this.payments().reduce((sum, payment) => sum + payment.amount, 0),
+    this.filteredPayments().reduce((sum, payment) => sum + payment.amount, 0),
   );
 
   protected readonly receipt = signal<Receipt | null>(null);

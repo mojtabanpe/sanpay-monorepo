@@ -1,3 +1,4 @@
+import { ADMIN_PERMISSIONS, AdminPermission } from '@sanpay/models';
 import { Type } from 'class-transformer';
 import {
   IsArray,
@@ -16,11 +17,18 @@ import {
   MinLength,
   MaxLength,
   ValidateNested,
+  ValidateIf,
 } from 'class-validator';
 
 const WALLET_KINDS = ['CREDIT', 'RATION', 'TOURISM'] as const;
 const ADMIN_ROLES = ['SUPER_ADMIN', 'ADMIN', 'VIEWER'] as const;
-const ORGANIZATIONAL_RANKS = ['MANAGER', 'DEPUTY', 'HEAD', 'EMPLOYEE'] as const;
+const ORGANIZATIONAL_RANKS = [
+  'CEO',
+  'MANAGER',
+  'DEPUTY',
+  'HEAD',
+  'EMPLOYEE',
+] as const;
 
 export class AdminLoginDto {
   @IsString()
@@ -60,6 +68,12 @@ export class CreateAdminDto {
   @IsOptional()
   @IsIn(ADMIN_ROLES)
   role?: (typeof ADMIN_ROLES)[number];
+
+  @ValidateIf((_object, value) => value !== undefined)
+  @IsArray()
+  @ArrayMaxSize(ADMIN_PERMISSIONS.length)
+  @IsIn(ADMIN_PERMISSIONS, { each: true })
+  permissions?: AdminPermission[];
 }
 
 export class UpdateAdminDto {
@@ -71,6 +85,12 @@ export class UpdateAdminDto {
   @IsOptional()
   @IsIn(ADMIN_ROLES)
   role?: (typeof ADMIN_ROLES)[number];
+
+  @ValidateIf((_object, value) => value !== undefined)
+  @IsArray()
+  @ArrayMaxSize(ADMIN_PERMISSIONS.length)
+  @IsIn(ADMIN_PERMISSIONS, { each: true })
+  permissions?: AdminPermission[];
 
   @IsOptional()
   @IsBoolean()

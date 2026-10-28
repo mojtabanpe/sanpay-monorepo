@@ -1,11 +1,20 @@
-import { IsOptional, IsString, Matches, MinLength } from 'class-validator';
+import { IsUUID, IsString, Matches, MinLength } from 'class-validator';
 
-export class UpdateProfileDto {
-  /** شمارهٔ موبایل ایران — رشتهٔ خالی یعنی حذف شماره */
-  @IsOptional()
+export class RequestPhoneChangeDto {
   @IsString()
-  @Matches(/^(09\d{9})?$/, { message: 'شمارهٔ موبایل نامعتبر است' })
-  phone?: string;
+  @Matches(/^09\d{9}$/, {
+    message: 'شمارهٔ موبایل جدید باید ۱۱ رقم و با ۰۹ شروع شود',
+  })
+  phone!: string;
+}
+
+export class UpdateProfileDto extends RequestPhoneChangeDto {
+  @IsUUID()
+  requestId!: string;
+
+  @IsString()
+  @Matches(/^\d{6}$/, { message: 'کد تأیید باید ۶ رقم باشد' })
+  code!: string;
 }
 
 export class ChangePasswordDto {

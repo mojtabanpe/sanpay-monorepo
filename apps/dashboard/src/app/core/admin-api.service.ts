@@ -19,6 +19,7 @@ import {
   AdminOverview,
   AdminPaymentRow,
   AdminProfile,
+  AdminPermission,
   AdminStoreRow,
   AdminWalletDefinitionRow,
   BulkAllocateInput,
@@ -354,13 +355,14 @@ export class AdminApiService {
     name: string;
     password: string;
     role?: string;
+    permissions?: AdminPermission[];
   }) {
     return this.post<AdminProfile>('/api/admin/admins', input);
   }
 
   updateAdmin(
     id: string,
-    input: { name?: string; role?: string; isActive?: boolean },
+    input: { name?: string; role?: string; isActive?: boolean; permissions?: AdminPermission[] },
   ) {
     return this.patch<AdminProfile>(`/api/admin/admins/${id}`, input);
   }

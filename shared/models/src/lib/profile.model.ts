@@ -87,3 +87,10 @@ export interface EmployeeSessionView {
   expiresAt: string;
   isCurrent: boolean;
 }
+
+/** کد فقط به شمارهٔ فعلی فرستاده می‌شود؛ شماره هنوز تغییر نکرده است. */
+export interface PhoneChangeChallenge {
+  requestId: string;
+  expiresInSeconds: number;
+  retryAfterSeconds: number;
+}

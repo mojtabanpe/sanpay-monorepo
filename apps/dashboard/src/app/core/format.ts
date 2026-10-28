@@ -66,6 +66,7 @@ export const WALLET_KIND_LABELS: Record<string, string> = {
 };
 
 export const ORGANIZATIONAL_RANK_LABELS: Record<string, string> = {
+  CEO: 'مدیرعامل',
   MANAGER: 'مدیر',
   DEPUTY: 'معاون',
   HEAD: 'رییس',

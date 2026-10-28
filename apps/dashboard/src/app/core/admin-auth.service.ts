@@ -1,6 +1,11 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, computed, inject, signal } from '@angular/core';
-import { AdminProfile } from '@sanpay/models';
+import {
+  ADMIN_PERMISSION_GROUPS,
+  AdminPermission,
+  AdminProfile,
+  hasAdminPermission,
+} from '@sanpay/models';
 import { firstValueFrom } from 'rxjs';
 
 const TOKEN_KEY = 'sanpay_admin_token';
@@ -18,10 +23,23 @@ export class AdminAuthService {
   private readonly _profile = signal<AdminProfile | null>(readStoredProfile());
 
   readonly profile = this._profile.asReadonly();
-  readonly isLoggedIn = computed(() => this._profile() !== null && !!this.token);
+  readonly isLoggedIn = computed(
+    () => this._profile() !== null && !!this.token,
+  );
   /** VIEWER فقط می‌خواند — دکمه‌های تغییر برایش نمایش داده نمی‌شود */
-  readonly canWrite = computed(() => this._profile()?.role !== 'VIEWER');
-  readonly isSuperAdmin = computed(() => this._profile()?.role === 'SUPER_ADMIN');
+  hasPermission(permission: AdminPermission): boolean {
+    return hasAdminPermission(this._profile(), permission);
+  }
+
+  landingPath(): string {
+    const group = ADMIN_PERMISSION_GROUPS.find(({ resource }) =>
+      this.hasPermission(`${resource}:read`),
+    );
+    return group ? `/${group.resource}` : '/settings';
+  }
+  readonly isSuperAdmin = computed(
+    () => this._profile()?.role === 'SUPER_ADMIN',
+  );
 
   get token(): string | null {
     return localStorage.getItem(TOKEN_KEY);

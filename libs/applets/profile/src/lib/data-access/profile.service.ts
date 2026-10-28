@@ -8,6 +8,7 @@ import {
   PaymentHistoryItem,
   Receipt,
   ProfileSummary,
+  PhoneChangeChallenge,
   WalletTransactionPage,
 } from '@sanpay/models';
 import { Observable } from 'rxjs';
@@ -85,9 +86,23 @@ export class ProfileService {
     return this.http.delete<{ avatarUrl: null }>('/api/profile/avatar');
   }
 
-  /** رشتهٔ خالی یعنی حذف شماره */
-  updatePhone(phone: string): Observable<EmployeeProfile> {
-    return this.http.patch<EmployeeProfile>('/api/auth/me', { phone });
+  requestPhoneChange(phone: string): Observable<PhoneChangeChallenge> {
+    return this.http.post<PhoneChangeChallenge>(
+      '/api/auth/phone-change/request',
+      { phone },
+    );
+  }
+
+  updatePhone(
+    phone: string,
+    requestId: string,
+    code: string,
+  ): Observable<EmployeeProfile> {
+    return this.http.patch<EmployeeProfile>('/api/auth/me', {
+      phone,
+      requestId,
+      code,
+    });
   }
 
   changePassword(
