@@ -21,7 +21,11 @@ import {
 } from 'class-validator';
 
 const WALLET_KINDS = ['CREDIT', 'RATION', 'TOURISM'] as const;
-const ADMIN_ROLES = ['SUPER_ADMIN', 'ADMIN', 'VIEWER'] as const;
+/**
+ * نقش‌هایی که از داشبورد قابل انتخاب‌اند. مدیر ارشد فقط با
+ * `pnpm admin:create-super` روی سرور ساخته می‌شود و از داشبورد تغییر نمی‌کند.
+ */
+const MANAGEABLE_ADMIN_ROLES = ['ADMIN', 'VIEWER'] as const;
 const ORGANIZATIONAL_RANKS = [
   'CEO',
   'MANAGER',
@@ -66,8 +70,8 @@ export class CreateAdminDto {
   password!: string;
 
   @IsOptional()
-  @IsIn(ADMIN_ROLES)
-  role?: (typeof ADMIN_ROLES)[number];
+  @IsIn(MANAGEABLE_ADMIN_ROLES)
+  role?: (typeof MANAGEABLE_ADMIN_ROLES)[number];
 
   @ValidateIf((_object, value) => value !== undefined)
   @IsArray()
@@ -83,8 +87,8 @@ export class UpdateAdminDto {
   name?: string;
 
   @IsOptional()
-  @IsIn(ADMIN_ROLES)
-  role?: (typeof ADMIN_ROLES)[number];
+  @IsIn(MANAGEABLE_ADMIN_ROLES)
+  role?: (typeof MANAGEABLE_ADMIN_ROLES)[number];
 
   @ValidateIf((_object, value) => value !== undefined)
   @IsArray()

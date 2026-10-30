@@ -1,7 +1,11 @@
 import 'reflect-metadata';
 // Authorization checks use real Nest metadata and the database state, not JWT grants.
 import { Reflector } from '@nestjs/core';
-import { ForbiddenException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
 import { validate } from 'class-validator';
 import * as bcrypt from 'bcrypt';
 import { AdminJwtGuard } from '../src/app/admin/admin-jwt.guard';
@@ -601,5 +605,87 @@ test('every protected dashboard feature endpoint declares a resource or explicit
       assert.ok(reflector.getAllAndOverride(ADMIN_RESOURCE, targets) ||
         reflector.getAllAndOverride(ADMIN_REQUIRED_PERMISSIONS, targets), `${controller.name}.${name}`);
     }
+  }
+});
+
+test('super admin is hidden from dashboard user management and cannot be changed from it', async () => {
+  const hash = await bcrypt.hash('old-password', 4);
+  const rows = [
+    { id: 'super', username: 'root', role: 'SUPER_ADMIN' },
+    { id: 'admin', username: 'staff', role: 'ADMIN' },
+  ].map((row) => ({
+    ...row,
+    name: row.username,
+    permissions: [] as AdminPermission[],
+    isActive: true,
+    lastLoginAt: null,
+    createdAt: new Date(),
+    passwordHash: hash,
+  }));
+  const writes: string[] = [];
+  const prisma = {
+    admin: {
+      findMany: async ({ where }: { where: { role: { not: string } } }) =>
+        rows.filter((row) => row.role !== where.role.not),
+      findUnique: async ({ where }: { where: { id: string } }) =>
+        rows.find((row) => row.id === where.id) ?? null,
+      update: async ({
+        where,
+        data,
+      }: {
+        where: { id: string };
+        data: object;
+      }) => {
+        writes.push(where.id);
+        const row = rows.find((candidate) => candidate.id === where.id);
+        assert.ok(row);
+        return Object.assign(row, data);
+      },
+      create: async () => assert.fail('must not create a super admin'),
+    },
+  };
+  const auth = new AdminAuthService(
+    prisma as unknown as PrismaService,
+    {} as unknown as JwtService,
+  );
+
+  assert.deepEqual(
+    (await auth.list()).map((row) => row.username),
+    ['staff'],
+  );
+  await assert.rejects(
+    auth.update('super', { isActive: false }),
+    NotFoundException,
+  );
+  await assert.rejects(
+    auth.update('super', { role: 'VIEWER' }),
+    NotFoundException,
+  );
+  await assert.rejects(
+    auth.resetPassword('super', 'new-password'),
+    NotFoundException,
+  );
+  await assert.rejects(
+    auth.update('admin', { role: 'SUPER_ADMIN' }),
+    BadRequestException,
+  );
+  await assert.rejects(
+    auth.create({
+      username: 'x',
+      name: 'x',
+      password: 'password1',
+      role: 'SUPER_ADMIN',
+    }),
+    BadRequestException,
+  );
+  assert.deepEqual(writes, []);
+  assert.equal(rows[0].isActive, true);
+
+  await auth.update('admin', { isActive: false });
+  assert.deepEqual(writes, ['admin']);
+
+  for (const Dto of [CreateAdminDto, UpdateAdminDto]) {
+    const dto = Object.assign(new Dto(), { role: 'SUPER_ADMIN' });
+    assert.ok((await validate(dto)).some((error) => error.property === 'role'));
   }
 });
