@@ -9,9 +9,13 @@ import { NestFactory } from '@nestjs/core';
 import { AdminJwtGuard } from '../src/app/admin/admin-jwt.guard';
 import { validate } from 'class-validator';
 import { PrismaService } from '../src/app/prisma/prisma.service';
-import { SettlementsService } from '../src/app/settlements/settlements.service';
+import {
+  SettlementsService,
+  settlementItemWhere,
+} from '../src/app/settlements/settlements.service';
 import {
   RunStoreSettlementDto,
+  SettlementItemQueryDto,
   SettlementsController,
 } from '../src/app/settlements/settlements.controller';
 import {
@@ -487,3 +491,89 @@ test('an inquiry failure is visible, does not settle purchases and clears after 
     assert.equal(final.items[0].error, null);
     assert.equal(f.state.commits, 1);
   }));
+
+test('settlement table filters by status, beneficiary, text and whole Tehran days', async () => {
+  assert.deepEqual(settlementItemWhere({}), {});
+  const where = settlementItemWhere({
+    q: '  IR12  ',
+    status: 'FAILED',
+    beneficiaryType: 'HOTELYAR',
+    from: '2026-10-28',
+    to: '2026-10-29',
+  });
+  assert.equal(where.status, 'FAILED');
+  assert.equal(where.beneficiaryType, 'HOTELYAR');
+  // 00:00 Tehran on the 28th up to (not including) 00:00 Tehran on the 30th
+  assert.deepEqual(where.createdAt, {
+    gte: new Date('2026-10-27T20:30:00.000Z'),
+    lt: new Date('2026-10-29T20:30:00.000Z'),
+  });
+  assert.deepEqual(where.OR, [
+    { beneficiaryName: { contains: 'IR12', mode: 'insensitive' } },
+    { followUpCode: { contains: 'IR12' } },
+    { trackerId: { contains: 'IR12' } },
+    { batch: { runKey: { contains: 'IR12' } } },
+  ]);
+  assert.equal(settlementItemWhere({ q: '   ' }).OR, undefined);
+
+  for (const bad of [
+    { status: 'DONE' },
+    { beneficiaryType: 'EMPLOYEE' },
+    { from: '2026-10-28T00:00:00Z' },
+    { pageSize: 500 },
+  ]) {
+    const dto = Object.assign(new SettlementItemQueryDto(), bad);
+    assert.ok((await validate(dto)).length > 0, JSON.stringify(bad));
+  }
+});
+
+test('settlement table pages on the server, sums every filtered row and flags retried transfers', async () => {
+  const calls: Record<string, unknown> = {};
+  const prisma = {
+    settlementItem: {
+      findMany: async (args: unknown) => {
+        calls.findMany = args;
+        return [
+          {
+            id: 'item-1',
+            beneficiaryName: 'فروشگاه',
+            beneficiaryType: 'STORE',
+            amount: 120_000n,
+            status: 'FAILED',
+            followUpCode: null,
+            error: 'رد شد',
+            createdAt: new Date('2026-10-28T08:00:00Z'),
+            settledAt: null,
+            retryOfId: null,
+            destinationIban: 'IR000000000000000000000000',
+            trackerId: 'sp-secret',
+            _count: { retries: 1 },
+            batch: { id: 'b', runKey: '2026-10-28', status: 'FAILED', error: null },
+          },
+        ];
+      },
+      count: async () => 41,
+      aggregate: async () => ({ _sum: { amount: 9_000_000n } }),
+    },
+  };
+  const service = new SettlementsService(
+    prisma as unknown as PrismaService,
+    {} as TomanClientService,
+    {} as JwtService,
+  );
+  const result = await service.listItems({ status: 'FAILED', page: 3, pageSize: 20 });
+  assert.equal(result.total, 41);
+  assert.equal(result.sumAmount, 9_000_000);
+  assert.equal(result.items[0].amount, 120_000);
+  assert.equal(result.items[0].retried, true);
+  assert.equal('destinationIban' in result.items[0], false);
+  assert.deepEqual(
+    { skip: (calls.findMany as { skip: number }).skip, take: (calls.findMany as { take: number }).take },
+    { skip: 40, take: 20 },
+  );
+});
+
+test('the items route is registered before the batch id route', () => {
+  const names = Object.getOwnPropertyNames(SettlementsController.prototype);
+  assert.ok(names.indexOf('items') < names.indexOf('one'));
+});

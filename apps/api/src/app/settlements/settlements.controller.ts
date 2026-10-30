@@ -1,8 +1,25 @@
-import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { AdminAccess } from '../admin/permissions.decorator';
 import { AdminJwtGuard } from '../admin/admin-jwt.guard';
 import { Roles, WRITE_ROLES } from '../admin/roles.decorator';
-import { IsString, IsUUID, MaxLength, MinLength } from 'class-validator';
+import {
+  IsIn,
+  IsOptional,
+  IsString,
+  IsUUID,
+  Matches,
+  MaxLength,
+  MinLength,
+} from 'class-validator';
+import { ListQueryDto } from '../admin/dto/admin.dto';
 import { SettlementsService } from './settlements.service';
 
 export class PreviewStoreSettlementDto {
@@ -15,6 +32,34 @@ export class RunStoreSettlementDto extends PreviewStoreSettlementDto {
   @MinLength(1)
   @MaxLength(4096)
   previewToken!: string;
+}
+
+const DAY = /^\d{4}-\d{2}-\d{2}$/;
+
+export class SettlementItemQueryDto extends ListQueryDto {
+  @IsOptional()
+  @IsIn([
+    'CREATED',
+    'SUBMITTED',
+    'PROCESSING',
+    'SUCCEEDED',
+    'FAILED',
+    'UNKNOWN',
+  ])
+  status?: string;
+
+  @IsOptional()
+  @IsIn(['STORE', 'HOTELYAR', 'EGHAMAT24'])
+  beneficiaryType?: string;
+
+  /** روز تقویمی به وقت تهران */
+  @IsOptional()
+  @Matches(DAY)
+  from?: string;
+
+  @IsOptional()
+  @Matches(DAY)
+  to?: string;
 }
 
 @AdminAccess('settlements')
@@ -31,6 +76,12 @@ export class SettlementsController {
   @Get('stores')
   stores() {
     return this.settlements.stores();
+  }
+
+  /** پیش از `:id` تا «items» شناسهٔ دسته حساب نشود */
+  @Get('items')
+  items(@Query() query: SettlementItemQueryDto) {
+    return this.settlements.listItems(query);
   }
 
   @Post('preview')

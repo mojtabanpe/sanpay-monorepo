@@ -70,6 +70,30 @@ export interface SettlementItemView {
   retryOfId: string | null;
 }
 
+/** یک سطر جدول تسویه‌ها — یک انتقال تومان */
+export interface SettlementItemRow {
+  id: string;
+  beneficiaryName: string;
+  beneficiaryType: 'STORE' | 'HOTELYAR' | 'EGHAMAT24';
+  amount: number;
+  status: string;
+  followUpCode: string | null;
+  error: string | null;
+  createdAt: string;
+  settledAt: string | null;
+  retryOfId: string | null;
+  /** برای این انتقال ناموفق قبلاً تلاش مجدد ساخته شده */
+  retried: boolean;
+  batch: { id: string; runKey: string; status: string; error: string | null };
+}
+
+export interface SettlementItemPage {
+  items: SettlementItemRow[];
+  total: number;
+  /** جمع مبلغ همهٔ صفحه‌های فیلترشده */
+  sumAmount: number;
+}
+
 export interface SettlementBatchView {
   id: string;
   runKey: string;
@@ -292,8 +316,8 @@ export class AdminApiService {
     URL.revokeObjectURL(url);
   }
 
-  settlements() {
-    return this.get<SettlementBatchView[]>('/api/admin/settlements');
+  settlementItems(query: Query = {}) {
+    return this.get<SettlementItemPage>('/api/admin/settlements/items', query);
   }
 
   settlementStores() {

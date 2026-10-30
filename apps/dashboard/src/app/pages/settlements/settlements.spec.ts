@@ -1,6 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import {
   AdminApiService,
+  SettlementItemRow,
   StoreSettlementPreview,
 } from '../../core/admin-api.service';
 import { AdminAuthService } from '../../core/admin-auth.service';
@@ -19,21 +20,61 @@ const preview: StoreSettlementPreview = {
   apiUrl: '',
 };
 
+function row(overrides: Partial<SettlementItemRow>): SettlementItemRow {
+  return {
+    id: 'item',
+    beneficiaryName: 'فروشگاه آزمایشی',
+    beneficiaryType: 'STORE',
+    amount: 12345,
+    status: 'PROCESSING',
+    followUpCode: null,
+    error: null,
+    createdAt: '2026-10-28T08:00:00Z',
+    settledAt: null,
+    retryOfId: null,
+    retried: false,
+    batch: {
+      id: 'batch-a',
+      runKey: 'test-batch',
+      status: 'PROCESSING',
+      error: null,
+    },
+    ...overrides,
+  };
+}
+
+function buttons(fixture: { nativeElement: unknown }, text: string) {
+  return [
+    ...(fixture.nativeElement as HTMLElement).querySelectorAll('button'),
+  ].filter((b) => b.textContent?.trim() === text);
+}
+
 describe('manual store settlement approval', () => {
+  // jsdom has no ResizeObserver; the date-picker width directive needs one.
+  beforeEach(() => {
+    vi.stubGlobal(
+      'ResizeObserver',
+      class {
+        observe = vi.fn();
+        unobserve = vi.fn();
+        disconnect = vi.fn();
+      },
+    );
+  });
+  afterEach(() => vi.unstubAllGlobals());
+
   async function setup(write = true) {
     const api = {
-      settlements: vi.fn().mockResolvedValue([
-        {
-          id: 'batch-a',
-          runKey: 'test-batch',
-          status: 'PROCESSING',
-          totalAmount: 12345,
-          itemCount: 1,
-          createdAt: '2026-10-28',
-          items: [],
-          error: null,
-        },
-      ]),
+      settlementItems: vi.fn().mockResolvedValue({
+        items: [
+          row({ id: 'item-a', status: 'PROCESSING' }),
+          row({ id: 'item-failed', status: 'FAILED' }),
+          row({ id: 'item-retried', status: 'FAILED', retried: true }),
+        ],
+        total: 3,
+        sumAmount: 37035,
+      }),
+      retrySettlementItem: vi.fn().mockResolvedValue({}),
       settlementStores: vi
         .fn()
         .mockResolvedValue([{ id: preview.storeId, name: preview.storeName }]),
@@ -103,14 +144,76 @@ describe('manual store settlement approval', () => {
 
   it('inquires about the selected batch without calling submission', async () => {
     const { api, fixture } = await setup();
-    const inquiry = [
-      ...(fixture.nativeElement as HTMLElement).querySelectorAll('button'),
-    ].find((b) => b.textContent?.includes('استعلام وضعیت'));
-    if (!inquiry) throw new Error('Inquiry button missing');
-    inquiry.click();
+    // فقط سطر در حال پردازش استعلام دارد؛ سطرهای ناموفق نهایی ندارند
+    const inquiry = buttons(fixture, 'استعلام وضعیت');
+    expect(inquiry).toHaveLength(1);
+    inquiry[0].click();
     await fixture.whenStable();
     expect(api.reconcileSettlement).toHaveBeenCalledExactlyOnceWith('batch-a');
     expect(api.runSettlements).not.toHaveBeenCalled();
+  });
+
+  it('lists transfers as one table with the server-side total', async () => {
+    const { api, fixture } = await setup();
+    const text = (fixture.nativeElement as HTMLElement).textContent ?? '';
+    expect(
+      (fixture.nativeElement as HTMLElement).querySelectorAll('tbody tr'),
+    ).toHaveLength(3);
+    expect(text).toContain('test-batch');
+    expect(text).toContain('تلاش مجدد ثبت شده');
+    expect(api.settlementItems).toHaveBeenCalledWith({
+      q: undefined,
+      status: undefined,
+      beneficiaryType: undefined,
+      from: undefined,
+      to: undefined,
+      page: 1,
+      pageSize: 30,
+    });
+  });
+
+  it('offers retry only for a failed transfer that has not been retried', async () => {
+    const { api, fixture } = await setup();
+    const retry = buttons(fixture, 'تلاش مجدد');
+    expect(retry).toHaveLength(1);
+    retry[0].click();
+    await fixture.whenStable();
+    expect(api.retrySettlementItem).toHaveBeenCalledExactlyOnceWith(
+      'item-failed',
+    );
+  });
+
+  it('filters go to the server and reset to the first page', async () => {
+    const { api, fixture } = await setup();
+    const component = fixture.componentInstance as unknown as {
+      page: { set(value: number): void };
+      query: { set(value: string): void };
+      onStatusChange(value: unknown): void;
+      onTypeChange(value: unknown): void;
+      clearFilters(): void;
+    };
+    component.page.set(3);
+    component.query.set('  IR123  ');
+    component.onTypeChange('HOTELYAR');
+    component.onStatusChange('FAILED');
+    await fixture.whenStable();
+    expect(api.settlementItems).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        q: 'IR123',
+        status: 'FAILED',
+        beneficiaryType: 'HOTELYAR',
+        page: 1,
+      }),
+    );
+    component.clearFilters();
+    await fixture.whenStable();
+    expect(api.settlementItems).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        q: undefined,
+        status: undefined,
+        beneficiaryType: undefined,
+      }),
+    );
   });
 
   it('retains the approval and shows errors after a failed request', async () => {
@@ -137,6 +240,8 @@ describe('manual store settlement approval', () => {
     expect((fixture.nativeElement as HTMLElement).textContent).not.toContain(
       'پیش‌نمایش تسویه',
     );
+    expect(buttons(fixture, 'تلاش مجدد')).toHaveLength(0);
+    expect(buttons(fixture, 'استعلام وضعیت')).toHaveLength(0);
     expect(api.settlementStores).not.toHaveBeenCalled();
   });
 });
