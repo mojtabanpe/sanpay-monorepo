@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   Injectable,
+  NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
@@ -99,9 +100,16 @@ export class AdminAuthService {
   }
 
   // ─── مدیریت کاربران داشبورد (فقط SUPER_ADMIN) ───────────────────────────
+  //
+  // حساب مدیر ارشد در این فهرست نیست و از داشبورد قابل تغییر نیست — نه نقش،
+  // نه غیرفعال‌سازی، نه رمز. یک بار مدیر ارشد با یک کلیک هم خودش و هم تنها
+  // مدیر دیگر را غیرفعال کرد و کسی نماند که وارد شود. مدیر ارشد فقط با
+  // `pnpm admin:create-super` روی سرور ساخته می‌شود و رمز خودش را از
+  // `change-password` عوض می‌کند.
 
   async list(): Promise<AdminProfile[]> {
     const admins = await this.prisma.admin.findMany({
+      where: { role: { not: 'SUPER_ADMIN' } },
       orderBy: { createdAt: 'asc' },
     });
     return admins.map(toProfile);
@@ -114,6 +122,7 @@ export class AdminAuthService {
     role?: AdminRole;
     permissions?: AdminPermission[];
   }): Promise<AdminProfile> {
+    assertNotSuperAdminRole(input.role);
     const taken = await this.prisma.admin.findUnique({
       where: { username: input.username },
     });
@@ -143,6 +152,8 @@ export class AdminAuthService {
       permissions?: AdminPermission[];
     },
   ): Promise<AdminProfile> {
+    assertNotSuperAdminRole(input.role);
+    await this.findManageable(id);
     const admin = await this.prisma.admin.update({
       where: { id },
       data: {
@@ -156,11 +167,27 @@ export class AdminAuthService {
   }
 
   async resetPassword(id: string, password: string) {
+    await this.findManageable(id);
     await this.prisma.admin.update({
       where: { id },
       data: { passwordHash: await bcrypt.hash(password, 10) },
     });
     return { ok: true };
+  }
+
+  /** مدیر ارشد برای داشبورد وجود ندارد — همان 404 کاربر ناموجود */
+  private async findManageable(id: string) {
+    const admin = await this.prisma.admin.findUnique({ where: { id } });
+    if (!admin || admin.role === 'SUPER_ADMIN') {
+      throw new NotFoundException('کاربر پیدا نشد');
+    }
+    return admin;
+  }
+}
+
+function assertNotSuperAdminRole(role: AdminRole | undefined): void {
+  if (role === 'SUPER_ADMIN') {
+    throw new BadRequestException('مدیر ارشد از داشبورد ساخته نمی‌شود');
   }
 }
 

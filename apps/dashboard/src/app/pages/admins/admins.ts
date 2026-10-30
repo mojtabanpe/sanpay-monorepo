@@ -41,7 +41,8 @@ export class AdminsPage {
   private readonly api = inject(AdminApiService);
 
   protected readonly roleLabels = ADMIN_ROLE_LABELS;
-  protected readonly roles = ['SUPER_ADMIN', 'ADMIN', 'VIEWER'];
+  /** مدیر ارشد اینجا نیست: نه در فهرست، نه قابل انتخاب (API هم نمی‌پذیرد) */
+  protected readonly roles = ['ADMIN', 'VIEWER'];
   protected readonly jalaliTime = jalaliTime;
 
   protected readonly allPermissions = ADMIN_PERMISSIONS;
