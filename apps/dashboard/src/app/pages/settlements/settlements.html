@@ -53,100 +53,229 @@
       </button>
     </div>
   </section>
-  } @for (batch of rows(); track batch.id) {
+  }
+
   <section hlmCard>
-    <div hlmCardHeader>
-      <div class="flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <h2 hlmCardTitle dir="ltr">{{ batch.runKey }}</h2>
-          <p hlmCardDescription>
-            {{ jalaliTime(batch.createdAt) }} — {{ toman(batch.totalAmount) }}
-          </p>
-        </div>
-        @if (canWrite()) {
-        <button
-          hlmBtn
-          variant="outline"
-          size="sm"
-          [disabled]="loading()"
-          (click)="reconcile(batch.id)"
+    <div hlmCardContent class="grid gap-4 pt-6 md:grid-cols-6">
+      <hlm-field class="md:col-span-2">
+        <label hlmFieldLabel for="settlement-q">جست‌وجو</label>
+        <input
+          id="settlement-q"
+          hlmInput
+          class="w-full"
+          placeholder="ذی‌نفع، کد پیگیری، شناسهٔ دسته…"
+          [value]="query()"
+          (input)="query.set($any($event.target).value)"
+          (keyup.enter)="search()"
+        />
+      </hlm-field>
+
+      <hlm-field>
+        <label hlmFieldLabel for="settlement-status">وضعیت</label>
+        <hlm-select
+          [value]="status()"
+          [itemToString]="statusFilterLabel"
+          (valueChange)="onStatusChange($event)"
         >
-          استعلام وضعیت
+          <hlm-select-trigger id="settlement-status" class="w-full"
+            ><hlm-select-value placeholder="همهٔ وضعیت‌ها"
+          /></hlm-select-trigger>
+          <hlm-select-content *hlmSelectPortal>
+            <hlm-select-item value="">همهٔ وضعیت‌ها</hlm-select-item>
+            @for (option of statusOptions; track option) {
+            <hlm-select-item [value]="option"
+              >{{ label(option) }}</hlm-select-item
+            >
+            }
+          </hlm-select-content>
+        </hlm-select>
+      </hlm-field>
+
+      <hlm-field>
+        <label hlmFieldLabel for="settlement-type">ذی‌نفع</label>
+        <hlm-select
+          [value]="beneficiaryType()"
+          [itemToString]="typeFilterLabel"
+          (valueChange)="onTypeChange($event)"
+        >
+          <hlm-select-trigger id="settlement-type" class="w-full"
+            ><hlm-select-value placeholder="همهٔ ذی‌نفع‌ها"
+          /></hlm-select-trigger>
+          <hlm-select-content *hlmSelectPortal>
+            <hlm-select-item value="">همهٔ ذی‌نفع‌ها</hlm-select-item>
+            @for (option of typeOptions; track option) {
+            <hlm-select-item [value]="option"
+              >{{ typeLabel(option) }}</hlm-select-item
+            >
+            }
+          </hlm-select-content>
+        </hlm-select>
+      </hlm-field>
+
+      <hlm-field>
+        <label hlmFieldLabel for="settlement-from">از تاریخ</label>
+        <hlm-date-picker
+          sanpayDatePickerWidth
+          id="settlement-from"
+          [date]="fromDate()"
+          (dateChange)="onFromChange($event)"
+        >
+          <hlm-date-picker-trigger class="w-full">همه</hlm-date-picker-trigger>
+        </hlm-date-picker>
+      </hlm-field>
+
+      <hlm-field>
+        <label hlmFieldLabel for="settlement-to">تا تاریخ</label>
+        <hlm-date-picker
+          sanpayDatePickerWidth
+          id="settlement-to"
+          [date]="toDate()"
+          (dateChange)="onToChange($event)"
+        >
+          <hlm-date-picker-trigger class="w-full">همه</hlm-date-picker-trigger>
+        </hlm-date-picker>
+      </hlm-field>
+
+      <div class="flex flex-wrap items-end gap-2 md:col-span-6">
+        <button hlmBtn (click)="search()">اعمال فیلتر</button>
+        <button hlmBtn variant="ghost" (click)="clearFilters()">
+          پاک‌کردن
         </button>
-        }
-        <span
-          hlmBadge
-          [variant]="batch.status === 'FAILED' || batch.status === 'PARTIAL_FAILED' ? 'destructive' : 'secondary'"
-        >
-          {{ label(batch.status) }}
-        </span>
       </div>
     </div>
+  </section>
+
+  <section hlmCard class="w-full">
+    <div hlmCardHeader>
+      <h2 hlmCardTitle>انتقال‌ها</h2>
+      <p hlmCardDescription>
+        {{ fa(total()) }} انتقال — جمع کل {{ toman(sumAmount()) }}
+      </p>
+    </div>
     <div hlmCardContent>
-      @if (batch.error) {
-      <div hlmAlert variant="destructive" class="mb-3">
-        <p hlmAlertDescription>{{ batch.error }}</p>
-      </div>
-      }
       <div hlmTableContainer>
         <table hlmTable class="w-full">
           <thead hlmTHead>
             <tr hlmTr>
+              <th hlmTh>زمان</th>
               <th hlmTh>ذی‌نفع</th>
               <th hlmTh>نوع</th>
               <th hlmTh>مبلغ</th>
               <th hlmTh>وضعیت</th>
               <th hlmTh>کد پیگیری</th>
+              <th hlmTh>دسته</th>
               <th hlmTh></th>
             </tr>
           </thead>
           <tbody hlmTBody>
-            @for (item of batch.items; track item.id) {
+            @for (row of rows(); track row.id) {
             <tr hlmTr>
-              <td hlmTd class="font-medium">{{ item.beneficiaryName }}</td>
-              <td hlmTd>{{ item.beneficiaryType }}</td>
-              <td hlmTd>{{ toman(item.amount) }}</td>
+              <td hlmTd class="text-muted-foreground text-xs">
+                {{ jalaliTime(row.createdAt) }}
+              </td>
+              <td hlmTd class="font-medium">{{ row.beneficiaryName }}</td>
+              <td hlmTd>{{ typeLabel(row.beneficiaryType) }}</td>
+              <td hlmTd class="font-semibold">{{ toman(row.amount) }}</td>
               <td hlmTd>
                 <span
                   hlmBadge
-                  [variant]="item.status === 'FAILED' ? 'destructive' : 'secondary'"
-                  >{{ label(item.status) }}</span
+                  [variant]="row.status === 'FAILED' ? 'destructive' : row.status === 'SUCCEEDED' ? 'default' : 'secondary'"
+                  >{{ label(row.status) }}</span
                 >
+                @if (row.retryOfId) {
+                <p class="text-muted-foreground mt-1 text-xs">تلاش مجدد</p>
+                }
               </td>
-              <td hlmTd dir="ltr">{{ item.followUpCode ?? '—' }}</td>
+              <td hlmTd dir="ltr">{{ row.followUpCode ?? '—' }}</td>
+              <td hlmTd class="text-muted-foreground text-xs" dir="ltr">
+                {{ row.batch.runKey }}
+              </td>
               <td hlmTd>
-                @if (canWrite() && item.status === 'FAILED') {
+                @if (canWrite() && row.status === 'FAILED') { @if (row.retried)
+                {
+                <span class="text-muted-foreground text-xs"
+                  >تلاش مجدد ثبت شده</span
+                >
+                } @else {
                 <button
                   hlmBtn
                   variant="outline"
                   size="sm"
                   [disabled]="loading()"
-                  (click)="retry(item.id)"
+                  (click)="retry(row.id)"
                 >
                   تلاش مجدد
+                </button>
+                } } @else if (canWrite() && inquirable(row)) {
+                <button
+                  hlmBtn
+                  variant="outline"
+                  size="sm"
+                  [disabled]="loading()"
+                  (click)="reconcile(row.batch.id)"
+                >
+                  استعلام وضعیت
                 </button>
                 }
               </td>
             </tr>
-            @if (item.error) {
+            @if (row.error ?? (row.status !== 'SUCCEEDED' ? row.batch.error :
+            null); as message) {
             <tr hlmTr>
-              <td hlmTd colspan="6" class="text-destructive text-xs">
-                {{ item.error }}
+              <td hlmTd colspan="8" class="text-destructive text-xs">
+                {{ message }}
               </td>
             </tr>
-            } }
+            } } @empty {
+            <tr hlmTr>
+              <td hlmTd colspan="8" class="text-muted-foreground text-center">
+                {{ loading() ? 'در حال بارگذاری…' : 'تسویه‌ای با این فیلتر پیدا
+                نشد.' }}
+              </td>
+            </tr>
+            }
           </tbody>
+          @if (rows().length > 0) {
+          <tfoot>
+            <tr hlmTr class="font-semibold">
+              <td hlmTd colspan="3">
+                جمع کل {{ fa(total()) }} انتقال (همهٔ صفحه‌ها)
+              </td>
+              <td hlmTd>{{ toman(sumAmount()) }}</td>
+              <td hlmTd colspan="4"></td>
+            </tr>
+          </tfoot>
+          }
         </table>
+      </div>
+
+      <div class="flex items-center justify-between pt-4">
+        <span class="text-muted-foreground text-sm">
+          صفحهٔ {{ fa(page()) }} از {{ fa(pageCount()) }}
+        </span>
+        <div class="flex gap-2">
+          <button
+            hlmBtn
+            variant="outline"
+            size="sm"
+            [disabled]="loading() || page() <= 1"
+            (click)="changePage(-1)"
+          >
+            قبلی
+          </button>
+          <button
+            hlmBtn
+            variant="outline"
+            size="sm"
+            [disabled]="loading() || page() >= pageCount()"
+            (click)="changePage(1)"
+          >
+            بعدی
+          </button>
+        </div>
       </div>
     </div>
   </section>
-  } @empty {
-  <section hlmCard>
-    <div hlmCardContent class="text-muted-foreground py-10 text-center">
-      {{ loading() ? 'در حال بارگذاری…' : 'هنوز تسویه‌ای ثبت نشده است.' }}
-    </div>
-  </section>
-  }
 </div>
 
 <hlm-dialog

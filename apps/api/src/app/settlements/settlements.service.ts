@@ -7,7 +7,12 @@ import {
 import { Cron } from '@nestjs/schedule';
 import { createHash, randomUUID } from 'node:crypto';
 import { JwtService } from '@nestjs/jwt';
-import { HotelBooking, Payment, Store } from '../../generated/prisma/client';
+import {
+  HotelBooking,
+  Payment,
+  Prisma,
+  Store,
+} from '../../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import {
   TomanClientService,
@@ -261,6 +266,47 @@ export class SettlementsService {
       include: { items: { orderBy: { createdAt: 'asc' } } },
     });
     return batches.map((batch) => this.serialize(batch));
+  }
+
+  /** جدول تسویه‌های داشبورد: هر سطر یک انتقال، با فیلتر و صفحه‌بندی سمت سرور */
+  async listItems(query: SettlementItemQuery) {
+    const page = query.page ?? 1;
+    const pageSize = query.pageSize ?? 30;
+    const where = settlementItemWhere(query);
+    const [rows, total, sum] = await Promise.all([
+      this.prisma.settlementItem.findMany({
+        where,
+        orderBy: [{ createdAt: 'desc' }, { id: 'asc' }],
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+        include: {
+          batch: {
+            select: { id: true, runKey: true, status: true, error: true },
+          },
+          _count: { select: { retries: true } },
+        },
+      }),
+      this.prisma.settlementItem.count({ where }),
+      this.prisma.settlementItem.aggregate({ where, _sum: { amount: true } }),
+    ]);
+    return {
+      items: rows.map((row) => ({
+        id: row.id,
+        beneficiaryName: row.beneficiaryName,
+        beneficiaryType: row.beneficiaryType,
+        amount: Number(row.amount),
+        status: row.status,
+        followUpCode: row.followUpCode,
+        error: row.error,
+        createdAt: row.createdAt,
+        settledAt: row.settledAt,
+        retryOfId: row.retryOfId,
+        retried: row._count.retries > 0,
+        batch: row.batch,
+      })),
+      total,
+      sumAmount: Number(sum._sum.amount ?? 0),
+    };
   }
 
   async one(id: string) {
@@ -764,4 +810,55 @@ export class SettlementsService {
       ? error.message.slice(0, 2_000)
       : String(error).slice(0, 2_000);
   }
+}
+
+export interface SettlementItemQuery {
+  q?: string;
+  status?: string;
+  beneficiaryType?: string;
+  /** روز تقویمی `YYYY-MM-DD` به وقت تهران */
+  from?: string;
+  to?: string;
+  page?: number;
+  pageSize?: number;
+}
+
+/** شروع یک روز تقویمی به وقت تهران — ایران از ۱۴۰۱ ساعت تابستانی ندارد */
+function tehranDayStart(day: string): Date {
+  return new Date(`${day}T00:00:00+03:30`);
+}
+
+export function settlementItemWhere(
+  query: SettlementItemQuery,
+): Prisma.SettlementItemWhereInput {
+  const text = query.q?.trim();
+  const createdAt: Prisma.DateTimeFilter = {};
+  if (query.from) createdAt.gte = tehranDayStart(query.from);
+  if (query.to)
+    createdAt.lt = new Date(tehranDayStart(query.to).getTime() + 86_400_000);
+  return {
+    ...(query.status
+      ? {
+          status:
+            query.status as Prisma.EnumSettlementItemStatusFilter['equals'],
+        }
+      : {}),
+    ...(query.beneficiaryType
+      ? {
+          beneficiaryType:
+            query.beneficiaryType as Prisma.EnumSettlementBeneficiaryTypeFilter['equals'],
+        }
+      : {}),
+    ...(query.from || query.to ? { createdAt } : {}),
+    ...(text
+      ? {
+          OR: [
+            { beneficiaryName: { contains: text, mode: 'insensitive' } },
+            { followUpCode: { contains: text } },
+            { trackerId: { contains: text } },
+            { batch: { runKey: { contains: text } } },
+          ],
+        }
+      : {}),
+  };
 }
