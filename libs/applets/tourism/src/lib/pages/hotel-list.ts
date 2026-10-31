@@ -11,7 +11,14 @@ import { NgTemplateOutlet } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { NgIcon, provideIcons } from '@ng-icons/core';
-import { lucideHotel, lucideMinus, lucidePlane, lucidePlus } from '@ng-icons/lucide';
+import {
+  lucideHotel,
+  lucideMinus,
+  lucidePlane,
+  lucidePlus,
+  lucideSearch,
+  lucideX,
+} from '@ng-icons/lucide';
 import { HlmBadgeImports } from '@sanpay/ui/badge';
 import { HlmButtonImports } from '@sanpay/ui/button';
 import { HlmCardImports } from '@sanpay/ui/card';
@@ -68,7 +75,14 @@ import { LoadMore } from '../ui/load-more';
     LoadMore,
   ],
   viewProviders: [
-    provideIcons({ lucideHotel, lucidePlane, lucideMinus, lucidePlus }),
+    provideIcons({
+      lucideHotel,
+      lucidePlane,
+      lucideMinus,
+      lucidePlus,
+      lucideSearch,
+      lucideX,
+    }),
   ],
   templateUrl: './hotel-list.html',
 })
@@ -90,7 +104,9 @@ export class HotelListPage {
     maxCapacity: 0,
   });
   private page = 0;
-  protected readonly hasMore = computed(() => this.hotels().length < this.total());
+  protected readonly hasMore = computed(
+    () => this.hotels().length < this.total(),
+  );
   protected readonly loadingMore = signal(false);
   /**
    * با شهر انتخاب‌شده فهرست از جست‌وجوی اتاق خالیِ همان تاریخ می‌آید (فقط
@@ -162,18 +178,19 @@ export class HotelListPage {
     () => this.filters().price ?? this.priceBounds() ?? [0, 0],
   );
   protected readonly maxCapacity = computed(() => this.facets().maxCapacity);
-  protected readonly sortOptions = computed<{ value: HotelSort; label: string }[]>(
-    () =>
-      this.dated()
-        ? [
-            { value: 'cheap', label: 'ارزان‌ترین' },
-            { value: 'expensive', label: 'گران‌ترین' },
-            { value: 'stars', label: 'بیشترین ستاره' },
-          ]
-        : [
-            { value: 'cheap', label: 'پیش‌فرض' },
-            { value: 'stars', label: 'بیشترین ستاره' },
-          ],
+  protected readonly sortOptions = computed<
+    { value: HotelSort; label: string }[]
+  >(() =>
+    this.dated()
+      ? [
+          { value: 'cheap', label: 'ارزان‌ترین' },
+          { value: 'expensive', label: 'گران‌ترین' },
+          { value: 'stars', label: 'بیشترین ستاره' },
+        ]
+      : [
+          { value: 'cheap', label: 'پیش‌فرض' },
+          { value: 'stars', label: 'بیشترین ستاره' },
+        ],
   );
   /** فقط ۳ ستاره به بالا — زیر آن را سرور اصلاً برنمی‌گرداند */
   protected readonly starOptions = [5, 4, 3, 2, 1].filter(
@@ -208,8 +225,13 @@ export class HotelListPage {
     this.setFilter('minCapacity', next);
   }
 
+  /** جست‌وجوی نام کادر جدای خودش را دارد و با «پاک کردن فیلترها» نمی‌رود */
   protected clearFilters(): void {
-    this.filters.update((filters) => ({ ...NO_HOTEL_FILTERS, sort: filters.sort }));
+    this.filters.update((filters) => ({
+      ...NO_HOTEL_FILTERS,
+      sort: filters.sort,
+      query: filters.query,
+    }));
   }
 
   /** هتل‌هایی که تصویرشان لود نشد — به‌جای کادر خالی، آیکون جایگزین می‌گیرند */

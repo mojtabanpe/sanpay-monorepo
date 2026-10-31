@@ -48,6 +48,15 @@
         }
       }
     },
+    "test-hotel-filters": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "node -r @swc-node/register --test apps/api/tests/hotel-filters.test.ts",
+        "env": {
+          "SWC_NODE_PROJECT": "apps/api/tsconfig.test.json"
+        }
+      }
+    },
     "test-flights-integration": {
       "executor": "nx:run-commands",
       "options": {
@@ -70,7 +79,9 @@
       "executor": "nx:run-commands",
       "options": {
         "command": "node -r @swc-node/register --test apps/api/tests/toman-log.test.ts",
-        "env": { "SWC_NODE_PROJECT": "apps/api/tsconfig.test.json" }
+        "env": {
+          "SWC_NODE_PROJECT": "apps/api/tsconfig.test.json"
+        }
       }
     },
     "test-toman": {

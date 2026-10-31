@@ -1,13 +1,50 @@
 <div class="flex min-w-0 flex-col gap-5 px-4 pb-8 pt-5">
-  <nav class="flex items-center justify-between gap-2" aria-label="خدمات گردشگری"><div class="bg-muted flex gap-1 rounded-2xl p-1"><a hlmBtn variant="ghost" class="min-h-11 min-w-20 rounded-xl bg-background text-primary shadow-sm" routerLink="/tourism" aria-current="page"><ng-icon name="lucideHotel" aria-hidden="true" />هتل</a><a hlmBtn variant="ghost" class="min-h-11 min-w-20 rounded-xl " routerLink="/tourism/flights" ><ng-icon name="lucidePlane" aria-hidden="true" />پرواز</a></div><a hlmBtn variant="ghost" class="min-h-11 px-2 text-xs" routerLink="/tourism/bookings">رزروهای من</a></nav>
+  <nav
+    class="flex items-center justify-between gap-2"
+    aria-label="خدمات گردشگری"
+  >
+    <div class="bg-muted flex gap-1 rounded-2xl p-1">
+      <a
+        hlmBtn
+        variant="ghost"
+        class="min-h-11 min-w-20 rounded-xl bg-background text-primary shadow-sm"
+        routerLink="/tourism"
+        aria-current="page"
+        ><ng-icon name="lucideHotel" aria-hidden="true" />هتل</a
+      ><a
+        hlmBtn
+        variant="ghost"
+        class="min-h-11 min-w-20 rounded-xl"
+        routerLink="/tourism/flights"
+        ><ng-icon name="lucidePlane" aria-hidden="true" />پرواز</a
+      >
+    </div>
+    <a
+      hlmBtn
+      variant="ghost"
+      class="min-h-11 px-2 text-xs"
+      routerLink="/tourism/bookings"
+      >رزروهای من</a
+    >
+  </nav>
 
   <!-- نوار جست‌وجو -->
   <section hlmCard>
     <div hlmCardContent class="flex flex-col gap-3 pt-6">
-
       <div class="flex items-center gap-2">
-        <div class="bg-secondary text-primary flex size-10 shrink-0 items-center justify-center rounded-[0.625rem]">
-          <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <div
+          class="bg-secondary text-primary flex size-10 shrink-0 items-center justify-center rounded-[0.625rem]"
+        >
+          <svg
+            class="size-5"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
             <path d="M2 20h20" />
             <path d="M4 20V8l8-5 8 5v12" />
             <path d="M9 20v-6h6v6" />
@@ -29,168 +66,243 @@
         />
       </hlm-field>
 
+      <!-- با و بی شهر کار می‌کند؛ روی نتیجهٔ کش‌شده و سمت سرور، پس درخواست
+           تازه‌ای به تأمین‌کننده نمی‌رود -->
+      <hlm-field>
+        <label hlmFieldLabel for="hotel-search">نام هتل</label>
+        <hlm-input-group>
+          <hlm-input-group-addon align="inline-start">
+            <ng-icon name="lucideSearch" aria-hidden="true" />
+          </hlm-input-group-addon>
+          <input
+            hlmInputGroupInput
+            id="hotel-search"
+            type="text"
+            enterkeyhint="search"
+            autocomplete="off"
+            placeholder="مثلاً اسپیناس"
+            [value]="filters().query"
+            (input)="setFilter('query', $any($event.target).value)"
+          />
+          @if (filters().query) {
+          <hlm-input-group-addon align="inline-end">
+            <button
+              hlmInputGroupButton
+              type="button"
+              aria-label="پاک کردن جست‌وجو"
+              (click)="setFilter('query', '')"
+            >
+              <ng-icon name="lucideX" />
+            </button>
+          </hlm-input-group-addon>
+          }
+        </hlm-input-group>
+      </hlm-field>
+
       <tourism-stay-picker [(checkin)]="checkin" [(nights)]="nights" />
       @if (!dated()) {
-        <p hlmFieldDescription>
-          برای دیدن اتاق خالی و قیمت این تاریخ، شهر را انتخاب کنید.
-        </p>
+      <p hlmFieldDescription>
+        برای دیدن اتاق خالی و قیمت این تاریخ، شهر را انتخاب کنید.
+      </p>
       }
-
     </div>
   </section>
 
   @if (loading()) {
-    <div class="grid grid-cols-2 gap-3 sm:gap-4">
-      @for (placeholder of [1, 2, 3, 4]; track placeholder) {
-        <hlm-skeleton class="h-60 w-full" />
-      }
-    </div>
+  <div class="grid grid-cols-2 gap-3 sm:gap-4">
+    @for (placeholder of [1, 2, 3, 4]; track placeholder) {
+    <hlm-skeleton class="h-60 w-full" />
+    }
+  </div>
   } @else if (error()) {
-    <section hlmCard>
-      <div hlmCardContent class="flex flex-col items-center gap-4 py-10 text-center">
-        <p class="text-muted-foreground text-sm">{{ error() }}</p>
-        <button class="text-primary text-sm font-medium hover:underline" (click)="load()">
-          تلاش دوباره
-        </button>
-      </div>
-    </section>
-  } @else {
-
-    @if (unfilteredTotal() > 0) {
-      <div class="flex items-center justify-between gap-3">
-        <p class="text-muted-foreground px-1 text-xs" role="status">
-          @if (activeFilters()) {
-            {{ count(total()) }} از {{ count(unfilteredTotal()) }} اقامتگاه
-          } @else if (dated()) {
-            {{ count(total()) }} اقامتگاه با اتاق خالی برای این تاریخ
-          } @else {
-            {{ count(total()) }} اقامتگاه پیدا شد
-          }
-        </p>
-        <tourism-filter-sheet
-          [(open)]="filtersOpen"
-          [resultCount]="total()"
-          [activeCount]="activeFilters()"
-          (clear)="clearFilters()"
-        >
-          <ng-container *ngTemplateOutlet="filterControls" />
-        </tourism-filter-sheet>
-      </div>
-    }
-
-    <!-- همیشه دو ستون. کارت تمام‌عرض روی موبایل یعنی قاب ۳۴۳ پیکسلی برای عکسی
-         که گاهی فقط ۱۵۰ پیکسل است — تار درمی‌آید. در دو ستون قاب حدود ۱۶۰
-         پیکسل می‌شود و همان عکس تقریباً در اندازهٔ طبیعی خودش می‌نشیند. -->
-    @if (unfilteredTotal() === 0) {
-      <section hlmCard>
-        <div hlmCardContent class="py-10 text-center">
-          <p class="text-muted-foreground text-sm">
-            @if (dated()) {
-              در این تاریخ اتاق خالی در این شهر پیدا نشد؛ تاریخ یا تعداد شب را
-              عوض کنید.
-            } @else {
-              هتلی در این شهر پیدا نشد.
-            }
-          </p>
-        </div>
-      </section>
-    } @else if (visible().length === 0) {
-      <section hlmCard>
-        <div hlmCardContent class="flex flex-col items-center gap-3 py-10 text-center">
-          <p class="text-muted-foreground text-sm">با این فیلترها اقامتگاهی پیدا نشد.</p>
-          <button hlmBtn variant="outline" type="button" (click)="clearFilters()">
-            پاک کردن فیلترها
-          </button>
-        </div>
-      </section>
-    }
-
-    <ng-container *ngTemplateOutlet="cards; context: { $implicit: visible() }" />
-
-    <!-- صفحهٔ بعد: `@defer (on viewport)` همین که انتهای فهرست به دید رسید
-         بارش می‌کند. بلوکِ defer فقط یک‌بار فعال می‌شود، پس با تعداد کارت‌ها
-         کلید خورده تا بعد از هر صفحه از نو ساخته شود. -->
-    @if (hasMore()) {
-      @for (loaded of [visible().length]; track loaded) {
-        @defer (on viewport) {
-          <tourism-load-more [loading]="loadingMore()" (appear)="loadMore()" />
-        } @placeholder {
-          <div class="h-16" aria-hidden="true"></div>
-        }
-      }
-    }
-
+  <section hlmCard>
+    <div
+      hlmCardContent
+      class="flex flex-col items-center gap-4 py-10 text-center"
+    >
+      <p class="text-muted-foreground text-sm">{{ error() }}</p>
+      <button
+        class="text-primary text-sm font-medium hover:underline"
+        (click)="load()"
+      >
+        تلاش دوباره
+      </button>
+    </div>
+  </section>
+  } @else { @if (unfilteredTotal() > 0) {
+  <div class="flex items-center justify-between gap-3">
+    <p class="text-muted-foreground px-1 text-xs" role="status">
+      @if (activeFilters() || filters().query.trim()) { {{ count(total()) }} از
+      {{ count(unfilteredTotal()) }} اقامتگاه } @else if (dated()) { {{
+      count(total()) }} اقامتگاه با اتاق خالی برای این تاریخ } @else { {{
+      count(total()) }} اقامتگاه پیدا شد }
+    </p>
+    <tourism-filter-sheet
+      [(open)]="filtersOpen"
+      [resultCount]="total()"
+      [activeCount]="activeFilters()"
+      (clear)="clearFilters()"
+    >
+      <ng-container *ngTemplateOutlet="filterControls" />
+    </tourism-filter-sheet>
+  </div>
   }
 
+  <!-- همیشه دو ستون. کارت تمام‌عرض روی موبایل یعنی قاب ۳۴۳ پیکسلی برای عکسی
+         که گاهی فقط ۱۵۰ پیکسل است — تار درمی‌آید. در دو ستون قاب حدود ۱۶۰
+         پیکسل می‌شود و همان عکس تقریباً در اندازهٔ طبیعی خودش می‌نشیند. -->
+  @if (unfilteredTotal() === 0) {
+  <section hlmCard>
+    <div hlmCardContent class="py-10 text-center">
+      <p class="text-muted-foreground text-sm">
+        @if (dated()) { در این تاریخ اتاق خالی در این شهر پیدا نشد؛ تاریخ یا
+        تعداد شب را عوض کنید. } @else { هتلی در این شهر پیدا نشد. }
+      </p>
+    </div>
+  </section>
+  } @else if (visible().length === 0) {
+  <section hlmCard>
+    <div
+      hlmCardContent
+      class="flex flex-col items-center gap-3 py-10 text-center"
+    >
+      @if (filters().query.trim() && !activeFilters()) {
+      <p class="text-muted-foreground text-sm">
+        اقامتگاهی با نام «{{ filters().query.trim() }}» پیدا نشد@if (dated()) {؛
+        شاید در این تاریخ اتاق خالی ندارد}.
+      </p>
+      <button
+        hlmBtn
+        variant="outline"
+        type="button"
+        (click)="setFilter('query', '')"
+      >
+        پاک کردن جست‌وجو
+      </button>
+      } @else {
+      <p class="text-muted-foreground text-sm">
+        با این فیلترها اقامتگاهی پیدا نشد.
+      </p>
+      <button hlmBtn variant="outline" type="button" (click)="clearFilters()">
+        پاک کردن فیلترها
+      </button>
+      }
+    </div>
+  </section>
+  }
+
+  <ng-container *ngTemplateOutlet="cards; context: { $implicit: visible() }" />
+
+  <!-- صفحهٔ بعد: `@defer (on viewport)` همین که انتهای فهرست به دید رسید
+         بارش می‌کند. بلوکِ defer فقط یک‌بار فعال می‌شود، پس با تعداد کارت‌ها
+         کلید خورده تا بعد از هر صفحه از نو ساخته شود. -->
+  @if (hasMore()) { @for (loaded of [visible().length]; track loaded) { @defer
+  (on viewport) {
+  <tourism-load-more [loading]="loadingMore()" (appear)="loadMore()" />
+  } @placeholder {
+  <div class="h-16" aria-hidden="true"></div>
+  } } } }
 </div>
 
 <ng-template #cards let-chunk>
   <div class="grid grid-cols-2 gap-3 sm:gap-4">
     @for (hotel of chunk; track hotel.id; let i = $index) {
-      <button
-        animate.enter="sanpay-rise"
-        [style.--i]="i"
-        type="button"
-        class="h-full w-full text-right transition-transform active:scale-[0.96]"
-        (click)="openHotel(hotel)"
-      >
-        <!-- card-flush در glass.css تعریف شده: padding عمودی خودِ کارت را صفر
+    <button
+      animate.enter="sanpay-rise"
+      [style.--i]="i"
+      type="button"
+      class="h-full w-full text-right transition-transform active:scale-[0.96]"
+      (click)="openHotel(hotel)"
+    >
+      <!-- card-flush در glass.css تعریف شده: padding عمودی خودِ کارت را صفر
              می‌کند تا تصویر از لبهٔ بالا شروع کند و نوار سفید نیفتد. -->
-        <section hlmCard class="card-flush flex h-full flex-col gap-0 overflow-hidden">
-
-          <!-- نسبت ثابت ۱۶:۱۰: جای تصویر پیش از رسیدنش رزرو می‌شود، پس فهرست
+      <section
+        hlmCard
+        class="card-flush flex h-full flex-col gap-0 overflow-hidden"
+      >
+        <!-- نسبت ثابت ۱۶:۱۰: جای تصویر پیش از رسیدنش رزرو می‌شود، پس فهرست
                هنگام لود عکس‌ها نمی‌پرد. عکس‌های هتل‌یار اندازه‌های بسیار
                متفاوتی دارند (از ۱۵۰ تا ۱۶۰۰ پیکسل) و object-cover همه را در
                همین قاب یکدست می‌کند. -->
-          <div class="bg-secondary aspect-[16/10] w-full overflow-hidden">
-            @if (hotel.photo && !brokenImages().has(hotel.id)) {
-              <img
-                [src]="hotel.photo"
-                [alt]="hotel.name"
-                loading="lazy"
-                decoding="async"
-                class="size-full object-cover"
-                (error)="markBroken(hotel.id)"
-              />
-            } @else {
-              <div class="flex size-full items-center justify-center">
-                <svg class="text-muted-foreground size-10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
-                  <path d="M2 20h20M4 20V8l8-5 8 5v12" />
-                </svg>
-              </div>
-            }
+        <div class="bg-secondary aspect-[16/10] w-full overflow-hidden">
+          @if (hotel.photo && !brokenImages().has(hotel.id)) {
+          <img
+            [src]="hotel.photo"
+            [alt]="hotel.name"
+            loading="lazy"
+            decoding="async"
+            class="size-full object-cover"
+            (error)="markBroken(hotel.id)"
+          />
+          } @else {
+          <div class="flex size-full items-center justify-center">
+            <svg
+              class="text-muted-foreground size-10"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.5"
+              aria-hidden="true"
+            >
+              <path d="M2 20h20M4 20V8l8-5 8 5v12" />
+            </svg>
           </div>
+          }
+        </div>
 
-          <!-- ستون باریک است (حدود ۱۶۰ پیکسل)، پس نام و ستاره‌ها هم‌ردیف
+        <!-- ستون باریک است (حدود ۱۶۰ پیکسل)، پس نام و ستاره‌ها هم‌ردیف
                نمی‌شوند — «چمران شیراز» می‌شد «چمرا…». هر کدام سطر خودش. -->
-          <div hlmCardContent class="flex min-w-0 flex-1 flex-col gap-1.5 px-3 py-3">
-            <h2 class="line-clamp-2 text-sm font-bold leading-snug">{{ hotel.name }}</h2>
+        <div
+          hlmCardContent
+          class="flex min-w-0 flex-1 flex-col gap-1.5 px-3 py-3"
+        >
+          <h2 class="line-clamp-2 text-sm font-bold leading-snug">
+            {{ hotel.name }}
+          </h2>
 
-            <span class="flex items-center gap-0.5" style="color: var(--gold-500)">
-              @for (star of stars(hotel.rate); track star) {
-                <svg class="size-3" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                  <path d="m12 2 3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01z" />
-                </svg>
-              }
-              <span class="sr-only">{{ count(hotel.rate) }} ستاره</span>
-            </span>
-
-            @if (hotel.cityName) {
-              <span hlmBadge variant="secondary" class="w-fit rounded-full font-normal">{{ hotel.cityName }}</span>
+          <span
+            class="flex items-center gap-0.5"
+            style="color: var(--gold-500)"
+          >
+            @for (star of stars(hotel.rate); track star) {
+            <svg
+              class="size-3"
+              viewBox="0 0 24 24"
+              fill="currentColor"
+              aria-hidden="true"
+            >
+              <path
+                d="m12 2 3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01z"
+              />
+            </svg>
             }
+            <span class="sr-only">{{ count(hotel.rate) }} ستاره</span>
+          </span>
 
-            <p class="text-muted-foreground line-clamp-2 text-[11px] leading-relaxed">{{ hotel.address }}</p>
+          @if (hotel.cityName) {
+          <span
+            hlmBadge
+            variant="secondary"
+            class="w-fit rounded-full font-normal"
+            >{{ hotel.cityName }}</span
+          >
+          }
 
-            @if (hotel.fromPrice) {
-              <p class="mt-auto pt-1 text-xs">
-                <span class="text-muted-foreground">از</span>
-                <span class="font-bold">{{ money(hotel.fromPrice) }}</span>
-              </p>
-            }
-          </div>
+          <p
+            class="text-muted-foreground line-clamp-2 text-[11px] leading-relaxed"
+          >
+            {{ hotel.address }}
+          </p>
 
-        </section>
-      </button>
+          @if (hotel.fromPrice) {
+          <p class="mt-auto pt-1 text-xs">
+            <span class="text-muted-foreground">از</span>
+            <span class="font-bold">{{ money(hotel.fromPrice) }}</span>
+          </p>
+          }
+        </div>
+      </section>
+    </button>
     }
   </div>
 </ng-template>
@@ -206,28 +318,32 @@
       (valueChange)="$event && setFilter('sort', $any($event))"
     >
       @for (option of sortOptions(); track option.value) {
-        <button hlmToggleGroupItem [value]="option.value">{{ option.label }}</button>
+      <button hlmToggleGroupItem [value]="option.value">
+        {{ option.label }}
+      </button>
       }
     </hlm-toggle-group>
   </tourism-filter-group>
 
   @if (typeOptions().length > 1 || filters().types.length) {
-    <tourism-filter-group label="نوع اقامتگاه">
-      <hlm-toggle-group
-        type="multiple"
-        [spacing]="2"
-        class="flex-wrap"
-        [value]="filters().types"
-        (valueChange)="setTypes($any($event))"
-      >
-        @for (option of typeOptions(); track option.type) {
-          <button hlmToggleGroupItem [value]="option.type">
-            {{ option.type }}
-            <span class="text-muted-foreground text-xs">{{ count(option.count) }}</span>
-          </button>
-        }
-      </hlm-toggle-group>
-    </tourism-filter-group>
+  <tourism-filter-group label="نوع اقامتگاه">
+    <hlm-toggle-group
+      type="multiple"
+      [spacing]="2"
+      class="flex-wrap"
+      [value]="filters().types"
+      (valueChange)="setTypes($any($event))"
+    >
+      @for (option of typeOptions(); track option.type) {
+      <button hlmToggleGroupItem [value]="option.type">
+        {{ option.type }}
+        <span class="text-muted-foreground text-xs"
+          >{{ count(option.count) }}</span
+        >
+      </button>
+      }
+    </hlm-toggle-group>
+  </tourism-filter-group>
   }
 
   <tourism-filter-group label="ستاره">
@@ -239,87 +355,107 @@
       (valueChange)="setRates($any($event))"
     >
       @for (star of starOptions; track star) {
-        <button hlmToggleGroupItem [value]="star">
-          {{ count(star) }}<span class="sr-only"> ستاره</span>
-          <svg class="size-3.5" viewBox="0 0 24 24" fill="currentColor" style="color: var(--gold-500)" aria-hidden="true">
-            <path d="m12 2 3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01z" />
-          </svg>
-        </button>
+      <button hlmToggleGroupItem [value]="star">
+        {{ count(star) }}<span class="sr-only"> ستاره</span>
+        <svg
+          class="size-3.5"
+          viewBox="0 0 24 24"
+          fill="currentColor"
+          style="color: var(--gold-500)"
+          aria-hidden="true"
+        >
+          <path
+            d="m12 2 3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01z"
+          />
+        </svg>
+      </button>
       }
     </hlm-toggle-group>
   </tourism-filter-group>
 
-  @if (dated() && priceBounds(); as bounds) {
-    @if (bounds[1] > bounds[0]) {
-      <tourism-filter-group label="قیمت کل اقامت">
-        <hlm-slider
-          aria-label="بازهٔ قیمت"
-          [min]="bounds[0]"
-          [max]="bounds[1]"
-          [step]="priceStep()"
-          [value]="$any(priceValue())"
-          (valueChange)="setPrice($event)"
-        />
-        <div class="text-muted-foreground flex justify-between text-xs tabular-nums">
-          <span>{{ money(priceValue()[0]) }}</span>
-          <span>{{ money(priceValue()[1]) }}</span>
-        </div>
-      </tourism-filter-group>
-    }
+  @if (dated() && priceBounds(); as bounds) { @if (bounds[1] > bounds[0]) {
+  <tourism-filter-group label="قیمت کل اقامت">
+    <hlm-slider
+      aria-label="بازهٔ قیمت"
+      [min]="bounds[0]"
+      [max]="bounds[1]"
+      [step]="priceStep()"
+      [value]="$any(priceValue())"
+      (valueChange)="setPrice($event)"
+    />
+    <div
+      class="text-muted-foreground flex justify-between text-xs tabular-nums"
+    >
+      <span>{{ money(priceValue()[0]) }}</span>
+      <span>{{ money(priceValue()[1]) }}</span>
+    </div>
+  </tourism-filter-group>
+  }
 
-    <tourism-filter-group label="اتاق">
-      <label class="flex min-h-11 items-center justify-between gap-3 text-sm" for="filter-breakfast">
-        با صبحانه
-        <hlm-switch
-          inputId="filter-breakfast"
-          [checked]="filters().breakfast"
-          (checkedChange)="setFilter('breakfast', $event)"
-        />
-      </label>
-      <label class="flex min-h-11 items-center justify-between gap-3 text-sm" for="filter-discount">
-        فقط تخفیف‌دار
-        <hlm-switch
-          inputId="filter-discount"
-          [checked]="filters().discountOnly"
-          (checkedChange)="setFilter('discountOnly', $event)"
-        />
-      </label>
-      @if (maxCapacity() > 1) {
-        <div class="flex min-h-11 items-center justify-between gap-3 text-sm">
-          <span id="filter-capacity-label">ظرفیت اتاق</span>
-          <hlm-input-group class="w-44" role="group" aria-labelledby="filter-capacity-label">
-            <hlm-input-group-addon align="inline-start">
-              <button
-                hlmInputGroupButton
-                type="button"
-                aria-label="ظرفیت کمتر"
-                [disabled]="filters().minCapacity === 0"
-                (click)="stepCapacity(-1)"
-              >
-                <ng-icon name="lucideMinus" />
-              </button>
-            </hlm-input-group-addon>
-            <span class="flex-1 text-center text-sm" aria-live="polite">
-              {{ filters().minCapacity ? count(filters().minCapacity) + ' نفر به بالا' : 'مهم نیست' }}
-            </span>
-            <hlm-input-group-addon align="inline-end">
-              <button
-                hlmInputGroupButton
-                type="button"
-                aria-label="ظرفیت بیشتر"
-                [disabled]="filters().minCapacity >= maxCapacity()"
-                (click)="stepCapacity(1)"
-              >
-                <ng-icon name="lucidePlus" />
-              </button>
-            </hlm-input-group-addon>
-          </hlm-input-group>
-        </div>
-      }
-    </tourism-filter-group>
+  <tourism-filter-group label="اتاق">
+    <label
+      class="flex min-h-11 items-center justify-between gap-3 text-sm"
+      for="filter-breakfast"
+    >
+      با صبحانه
+      <hlm-switch
+        inputId="filter-breakfast"
+        [checked]="filters().breakfast"
+        (checkedChange)="setFilter('breakfast', $event)"
+      />
+    </label>
+    <label
+      class="flex min-h-11 items-center justify-between gap-3 text-sm"
+      for="filter-discount"
+    >
+      فقط تخفیف‌دار
+      <hlm-switch
+        inputId="filter-discount"
+        [checked]="filters().discountOnly"
+        (checkedChange)="setFilter('discountOnly', $event)"
+      />
+    </label>
+    @if (maxCapacity() > 1) {
+    <div class="flex min-h-11 items-center justify-between gap-3 text-sm">
+      <span id="filter-capacity-label">ظرفیت اتاق</span>
+      <hlm-input-group
+        class="w-44"
+        role="group"
+        aria-labelledby="filter-capacity-label"
+      >
+        <hlm-input-group-addon align="inline-start">
+          <button
+            hlmInputGroupButton
+            type="button"
+            aria-label="ظرفیت کمتر"
+            [disabled]="filters().minCapacity === 0"
+            (click)="stepCapacity(-1)"
+          >
+            <ng-icon name="lucideMinus" />
+          </button>
+        </hlm-input-group-addon>
+        <span class="flex-1 text-center text-sm" aria-live="polite">
+          {{ filters().minCapacity ? count(filters().minCapacity) + ' نفر به
+          بالا' : 'مهم نیست' }}
+        </span>
+        <hlm-input-group-addon align="inline-end">
+          <button
+            hlmInputGroupButton
+            type="button"
+            aria-label="ظرفیت بیشتر"
+            [disabled]="filters().minCapacity >= maxCapacity()"
+            (click)="stepCapacity(1)"
+          >
+            <ng-icon name="lucidePlus" />
+          </button>
+        </hlm-input-group-addon>
+      </hlm-input-group>
+    </div>
+    }
+  </tourism-filter-group>
   } @else if (!dated()) {
-    <p class="text-muted-foreground text-xs">
-      برای فیلتر قیمت، صبحانه و ظرفیت، اول شهر را انتخاب کنید.
-    </p>
+  <p class="text-muted-foreground text-xs">
+    برای فیلتر قیمت، صبحانه و ظرفیت، اول شهر را انتخاب کنید.
+  </p>
   }
 </ng-template>

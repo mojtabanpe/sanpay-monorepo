@@ -36,6 +36,8 @@ export function allowedHotelRate(rate: number, unknownOk = false): boolean {
 }
 
 export interface HotelFilters {
+  /** جست‌وجو در نام هتل و نام شهر — خالی یعنی همه */
+  query: string;
   /** نوع اقامتگاه (هتل، هتل‌آپارتمان، …) — خالی یعنی همه */
   types: string[];
   /** ستاره‌ها — خالی یعنی همه */
@@ -51,6 +53,7 @@ export interface HotelFilters {
 }
 
 export const NO_HOTEL_FILTERS: HotelFilters = {
+  query: '',
   types: [],
   rates: [],
   price: null,
@@ -60,7 +63,7 @@ export const NO_HOTEL_FILTERS: HotelFilters = {
   sort: 'cheap',
 };
 
-/** تعداد فیلترهای فعال — مرتب‌سازی فیلتر نیست */
+/** تعداد فیلترهای باتم‌شیت — مرتب‌سازی و جست‌وجوی نام (کادر جدا) حساب نمی‌شوند */
 export function activeHotelFilters(filters: HotelFilters): number {
   return (
     (filters.types.length ? 1 : 0) +
@@ -84,6 +87,7 @@ export function applyHotelFilters(
 ): HotelCard[] {
   const types = new Set(filters.types.map(typeKey));
   const rates = new Set(filters.rates);
+  const words = hotelQueryWords(filters.query ?? '');
   const roomMatches = (room: RoomOffer): boolean =>
     (!filters.price ||
       (room.price >= filters.price[0] && room.price <= filters.price[1])) &&
@@ -93,6 +97,10 @@ export function applyHotelFilters(
 
   const result: HotelCard[] = [];
   for (const hotel of hotels) {
+    if (words.length) {
+      const haystack = searchKey(`${hotel.name} ${hotel.cityName}`);
+      if (!words.every((word) => haystack.includes(word))) continue;
+    }
     if (types.size && !types.has(typeKey(hotel.type))) continue;
     if (rates.size && !rates.has(hotel.rate)) continue;
     if (!hotel.rooms) {
@@ -118,6 +126,33 @@ export function applyHotelFilters(
     case 'stars':
       return result.sort((a, b) => b.rate - a.rate || byPrice(a, b));
   }
+}
+
+/**
+ * واژه‌های جست‌وجوی نام، یکسان‌شده. «هتل» کنار گذاشته می‌شود چون در نام
+ * بیشتر اقامتگاه‌ها نیست («هتل اسپیناس» باید «اسپیناس پالاس» را پیدا کند).
+ */
+export function hotelQueryWords(query: string): string[] {
+  return query
+    .split(/[\s\u200c]+/)
+    .map(searchKey)
+    .filter((word) => word && word !== 'هتل' && word !== 'hotel');
+}
+
+/**
+ * متن یکسان برای مقایسه: ی/ك عربی، آ، ارقام فارسی و عربی، حروف بزرگ
+ * لاتین، و فاصله و نیم‌فاصله (که تأمین‌کننده‌ها یکدست نمی‌نویسند) حذف.
+ */
+function searchKey(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/[يى]/g, 'ی')
+    .replace(/ك/g, 'ک')
+    .replace(/[آأإ]/g, 'ا')
+    .replace(/ة/g, 'ه')
+    .replace(/[۰-۹]/g, (digit) => String(digit.charCodeAt(0) - 0x06f0))
+    .replace(/[٠-٩]/g, (digit) => String(digit.charCodeAt(0) - 0x0660))
+    .replace(/[\s\u200c\u0640]+/g, '');
 }
 
 /**

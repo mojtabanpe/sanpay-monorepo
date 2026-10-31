@@ -11,6 +11,7 @@ import {
   IsUUID,
   Matches,
   Max,
+  MaxLength,
   Min,
   ValidateNested,
 } from 'class-validator';
@@ -56,6 +57,11 @@ export class SearchHotelsDto {
 }
 
 export class HotelFiltersDto {
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  query = '';
+
   @IsArray()
   @ArrayMaxSize(20)
   @IsString({ each: true })
