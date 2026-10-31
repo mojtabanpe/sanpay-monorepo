@@ -17,6 +17,7 @@ import { HlmCardImports } from '@sanpay/ui/card';
 import { HlmCheckboxImports } from '@sanpay/ui/checkbox';
 import { HlmDatePickerImports } from '@sanpay/ui/date-picker';
 import { HlmDialogImports } from '@sanpay/ui/dialog';
+import { HlmDropdownMenuImports } from '@sanpay/ui/dropdown-menu';
 import { HlmFieldImports } from '@sanpay/ui/field';
 import { HlmInputImports } from '@sanpay/ui/input';
 import { HlmLabelImports } from '@sanpay/ui/label';
@@ -67,6 +68,7 @@ type Kind = 'CREDIT' | 'TOURISM';
     HlmCheckboxImports,
     HlmDatePickerImports,
     HlmDialogImports,
+    HlmDropdownMenuImports,
     HlmFieldImports,
     HlmInputImports,
     HlmLabelImports,

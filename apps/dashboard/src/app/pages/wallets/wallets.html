@@ -23,8 +23,8 @@
 
   <!-- فیلترها -->
   <section hlmCard>
-    <div hlmCardContent class="grid gap-4 pt-6 md:grid-cols-6">
-      <hlm-field class="md:col-span-2">
+    <div hlmCardContent class="flex flex-wrap items-end gap-4 pt-6">
+      <hlm-field class="min-w-64 flex-[2_1_16rem]">
         <label hlmFieldLabel for="wallet-q">جست‌وجو</label>
         <input
           hlmInput
@@ -35,7 +35,7 @@
           (input)="filterQuery.set($any($event.target).value)"
         />
       </hlm-field>
-      <hlm-field>
+      <hlm-field class="min-w-52 flex-[1_1_13rem]">
         <label hlmFieldLabel for="wallet-filter-company">شرکت</label>
         <hlm-select
           [value]="filterCompanyId()"
@@ -55,7 +55,7 @@
           </hlm-select-content>
         </hlm-select>
       </hlm-field>
-      <hlm-field>
+      <hlm-field class="w-auto shrink-0">
         <span hlmFieldLabel>نوع</span>
         <hlm-toggle-group
           [spacing]="2"
@@ -72,7 +72,7 @@
           </button>
         </hlm-toggle-group>
       </hlm-field>
-      <hlm-field>
+      <hlm-field class="w-auto shrink-0">
         <span hlmFieldLabel>وضعیت</span>
         <hlm-toggle-group
           [spacing]="2"
@@ -85,7 +85,7 @@
           <button hlmToggleGroupItem value="inactive">غیرفعال</button>
         </hlm-toggle-group>
       </hlm-field>
-      <div class="flex items-end">
+      <div class="flex shrink-0 items-end">
         <button hlmBtn variant="ghost" (click)="clearFilters()">
           پاک‌کردن
         </button>
@@ -101,23 +101,23 @@
             <tr hlmTr>
               <th hlmTh>نام</th>
               <th hlmTh>شرکت</th>
-              <th hlmTh>نوع</th>
-              <th hlmTh>وضعیت</th>
+              <th hlmTh>نوع و وضعیت</th>
               <th hlmTh>تخصیص‌ها</th>
               <th hlmTh>شارژ پیش‌فرض</th>
-              <th hlmTh>جمع اعتبار</th>
-              <th hlmTh>مصرف‌شده</th>
+              <th hlmTh>مصرف از اعتبار</th>
               <th hlmTh>فروشگاه‌ها</th>
               @if (canWrite()) {
-              <th hlmTh></th>
+              <th hlmTh class="bg-card sticky left-0">
+                <span class="sr-only">کارها</span>
+              </th>
               }
             </tr>
           </thead>
           <tbody hlmTBody>
             @for (definition of filtered(); track definition.id) {
             <tr hlmTr>
-              <td hlmTd>
-                <div class="flex items-center gap-3">
+              <td hlmTd class="whitespace-normal">
+                <div class="flex min-w-44 items-center gap-3">
                   @if (definition.imageUrl) {
                   <img
                     [src]="definition.imageUrl"
@@ -125,7 +125,7 @@
                     class="h-9 w-14 shrink-0 rounded-md object-cover"
                   />
                   }
-                  <div>
+                  <div class="min-w-0">
                     <div class="font-medium">{{ definition.name }}</div>
                     @if (definition.description) {
                     <div class="text-muted-foreground text-xs">
@@ -135,32 +135,40 @@
                   </div>
                 </div>
               </td>
-              <td hlmTd>{{ definition.company.name }}</td>
-              <td hlmTd>
-                <span hlmBadge variant="secondary"
-                  >{{ kindLabels[definition.kind] }}</span
+              <td hlmTd class="whitespace-normal">
+                <span class="block min-w-24"
+                  >{{ definition.company.name }}</span
                 >
               </td>
               <td hlmTd>
-                <span
-                  hlmBadge
-                  [variant]="definition.isActive ? 'default' : 'outline'"
-                >
-                  {{ definition.isActive ? 'فعال' : 'غیرفعال' }}
-                </span>
+                <div class="flex flex-col items-start gap-1">
+                  <span hlmBadge variant="secondary"
+                    >{{ kindLabels[definition.kind] }}</span
+                  >
+                  <span
+                    hlmBadge
+                    [variant]="definition.isActive ? 'default' : 'outline'"
+                  >
+                    {{ definition.isActive ? 'فعال' : 'غیرفعال' }}
+                  </span>
+                </div>
               </td>
               <td hlmTd>{{ fa(definition.allocationCount) }} کارمند</td>
               <td hlmTd>
                 {{ definition.defaultCap === null ? '—' :
                 toman(definition.defaultCap) }}
               </td>
-              <td hlmTd>{{ toman(definition.allocatedAmount) }}</td>
-              <td hlmTd>{{ toman(definition.spentAmount) }}</td>
+              <td hlmTd>
+                <div>{{ toman(definition.spentAmount) }}</div>
+                <div class="text-muted-foreground text-xs">
+                  از {{ toman(definition.allocatedAmount) }}
+                </div>
+              </td>
               <td hlmTd class="whitespace-normal">
                 @if (definition.kind === 'TOURISM') {
                 <span class="text-muted-foreground text-xs">هتل و پرواز</span>
                 } @else {
-                <span class="flex max-w-72 flex-wrap gap-1">
+                <span class="flex max-w-56 flex-wrap gap-1">
                   @for (store of definition.stores; track store.id) {
                   <span hlmBadge variant="secondary">{{ store.name }}</span>
                   } @empty {
@@ -170,44 +178,65 @@
                 }
               </td>
               @if (canWrite()) {
-              <td hlmTd class="text-left whitespace-nowrap">
-                <button
-                  hlmBtn
-                  size="sm"
-                  variant="secondary"
-                  (click)="openBulk(definition)"
-                >
-                  شارژ
-                </button>
-                <button
-                  hlmBtn
-                  size="sm"
-                  variant="ghost"
-                  (click)="startEdit(definition)"
-                >
-                  ویرایش
-                </button>
-                <button
-                  hlmBtn
-                  size="sm"
-                  variant="ghost"
-                  [disabled]="saving()"
-                  (click)="toggleActive(definition)"
-                >
-                  {{ definition.isActive ? 'غیرفعال کردن' : 'فعال کردن' }}
-                </button>
-                @if (isSuperAdmin()) {
-                <button
-                  hlmBtn
-                  size="sm"
-                  variant="ghost"
-                  class="text-destructive"
-                  [disabled]="saving()"
-                  (click)="remove(definition)"
-                >
-                  حذف
-                </button>
-                }
+              <!-- چسبیده به لبه تا اگر جدول در صفحهٔ باریک اسکرول شد، کارها دیده شوند -->
+              <td
+                hlmTd
+                class="bg-card sticky left-0 text-left whitespace-nowrap"
+              >
+                <div class="flex items-center justify-end gap-1">
+                  <button
+                    hlmBtn
+                    size="sm"
+                    variant="secondary"
+                    (click)="openBulk(definition)"
+                  >
+                    شارژ
+                  </button>
+                  <button
+                    hlmBtn
+                    size="icon"
+                    variant="ghost"
+                    [hlmDropdownMenuTrigger]="rowMenu"
+                    align="end"
+                    [attr.aria-label]="'کارهای بیشتر برای ' + definition.name"
+                  >
+                    <svg
+                      class="size-5"
+                      viewBox="0 0 24 24"
+                      fill="currentColor"
+                      aria-hidden="true"
+                    >
+                      <circle cx="5" cy="12" r="1.8" />
+                      <circle cx="12" cy="12" r="1.8" />
+                      <circle cx="19" cy="12" r="1.8" />
+                    </svg>
+                  </button>
+                </div>
+                <ng-template #rowMenu>
+                  <hlm-dropdown-menu class="min-w-44">
+                    <button hlmDropdownMenuItem (click)="startEdit(definition)">
+                      ویرایش
+                    </button>
+                    <button
+                      hlmDropdownMenuItem
+                      [disabled]="saving()"
+                      (click)="toggleActive(definition)"
+                    >
+                      {{ definition.isActive ? 'غیرفعال کردن' : 'فعال کردن' }}
+                    </button>
+                    @if (isSuperAdmin()) {
+                    <hlm-dropdown-menu-separator />
+                    <button
+                      hlmDropdownMenuItem
+                      variant="destructive"
+                      [disabled]="saving()"
+                      (click)="remove(definition)"
+                    >
+                      حذف
+                    </button>
+                    }
+                  </hlm-dropdown-menu>
+                </ng-template>
               </td>
               }
             </tr>
@@ -215,7 +244,7 @@
             <tr hlmTr>
               <td
                 hlmTd
-                [attr.colspan]="canWrite() ? 10 : 9"
+                [attr.colspan]="canWrite() ? 8 : 7"
                 class="text-muted-foreground text-center"
               >
                 {{ loading() ? 'در حال بارگذاری…' : definitions().length ? 'کیف
