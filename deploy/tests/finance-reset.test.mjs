@@ -39,13 +39,16 @@ function fixture(t, extra = {}) {
     join(root, 'deploy', 'backup-database.sh'),
     '#!/bin/bash\necho backup >> "$TEST_LOG"\nexit "${TEST_BACKUP_FAIL:-0}"\n',
   );
-  writeFileSync(join(root, 'bin', 'flock'), '#!/bin/bash\nexit 0\n');
+  writeFileSync(
+    join(root, 'bin', 'flock'),
+    '#!/bin/bash\nexit "${TEST_LOCK_BUSY:-0}"\n',
+  );
   writeFileSync(
     join(root, 'bin', 'docker'),
     `#!/usr/bin/env node
 const fs=require('node:fs');const args=process.argv.slice(2);const input=fs.readFileSync(0,'utf8');
 fs.appendFileSync(process.env.TEST_LOG,JSON.stringify({args,input})+'\\n');
-if (args.includes('node') && process.env.TEST_LIVE) process.exit(1);
+if (args.includes('api') && args.includes('node') && process.env.TEST_API_UNAVAILABLE) process.exit(1);
 if (input.includes('TRUNCATE TABLE') && process.env.TEST_SQL_FAIL) process.exit(1);
 `,
   );
@@ -81,10 +84,29 @@ test('preview is read only and does not stop the API or take a backup', (t) => {
   assert.doesNotMatch(f.calls(), /backup|TRUNCATE TABLE|"stop"/);
   assert.match(f.calls(), /BEGIN READ ONLY/);
 });
-test('live endpoint refusal prevents backup, stop and deletion', (t) => {
-  const f = fixture(t, { TEST_LIVE: '1' });
-  assert.notEqual(f.run(...apply).status, 0);
-  assert.doesNotMatch(f.calls(), /backup|TRUNCATE TABLE|"stop"/);
+test('reset is independent of Toman URLs and does not require a running API', (t) => {
+  const f = fixture(t, {
+    TEST_API_UNAVAILABLE: '1',
+    TOMAN_API_URL: 'https://dbank.toman.ir/api/v1',
+    TOMAN_AUTH_URL: 'https://accounts.qbitpay.org/oauth2/token/',
+    TOMAN_IPG_URL: 'https://ipg.toman.ir',
+  });
+  const result = f.run(...apply);
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(f.calls(), /TRUNCATE TABLE/);
+  assert.doesNotMatch(f.calls(), /"node"|TOMAN_API_URL|TOMAN_AUTH_URL|https:/);
+});
+test('busy deployment lock prevents any database or service operation', (t) => {
+  const f = fixture(t, { TEST_LOCK_BUSY: '1' });
+  const result = f.run(...apply);
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /Deployment\/reset already running/);
+  assert.equal(existsSync(join(f.root, 'calls')), false);
+});
+test('deletion still requires explicit all-test-data confirmation', (t) => {
+  const f = fixture(t);
+  assert.notEqual(f.run('--apply').status, 0);
+  assert.equal(existsSync(join(f.root, 'calls')), false);
 });
 test('failed backup leaves maintenance active and never executes deletion', (t) => {
   const f = fixture(t, { TEST_BACKUP_FAIL: '1' });

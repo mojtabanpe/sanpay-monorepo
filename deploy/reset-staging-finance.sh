@@ -10,7 +10,7 @@ usage() {
   echo 'Default: read-only counts. Apply: stop API, verify backup, reset ALL test financial history.'
   echo 'Includes hotel/flight bookings, QR/OTP purchase requests, refunds, reviews and settlements.'
   echo 'Preserves people, stores, admins, wallet definitions and assigned credit limits.'
-  echo 'The API stays stopped after apply; configure live endpoints before restarting.'
+  echo 'No Toman API is called. The API stays stopped after apply; verify configuration before restarting.'
 }
 apply=false
 if [[ $# -eq 0 ]]; then :
@@ -47,25 +47,10 @@ FROM "WalletAllocation" a JOIN "WalletDefinition" d ON d.id=a."definitionId" GRO
 COMMIT;
 SQL
 if [[ "${apply}" != true ]]; then
-  echo 'Preview only. No changes made. Use --apply --confirm-all-data-is-test before switching to live.'
+  echo 'Preview only. No changes made. Use --apply --confirm-all-data-is-test to delete all test financial history.'
   exit 0
 fi
 if [[ -e "${marker}" ]]; then echo "Reset already completed: ${marker}. Refusing a second reset." >&2; exit 1; fi
-# Inspect the running service, not the host shell. Default URLs match the app.
-# Refuse after either integration has already been pointed at production.
-compose exec -T api node - <<'JS'
-const e = process.env;
-const checks = [
-  [e.TOMAN_API_URL || 'https://dbank-staging.qcluster.org/api/v1', 'https://dbank-staging.qcluster.org'],
-  [e.TOMAN_AUTH_URL || 'https://auth.qbitpay.org/oauth2/token/', 'https://auth.qbitpay.org'],
-  [e.TOMAN_IPG_URL || 'https://ipg-staging.toman.ir', 'https://ipg-staging.toman.ir'],
-  [e.TOMAN_IPG_AUTH_URL || 'https://auth.qbitpay.org/oauth2/token/', 'https://auth.qbitpay.org'],
-];
-if (checks.some(([value, origin]) => new URL(value).origin !== origin)) {
-  console.error('Refusing reset: running API is not configured exclusively for Toman staging.');
-  process.exit(1);
-}
-JS
 echo 'Stopping the API for backup and reset. It will remain stopped, including on failure.'
 date -u +%FT%TZ > "${project_root}/.deploy/finance-maintenance"
 compose stop api
@@ -73,5 +58,5 @@ bash "${project_root}/deploy/backup-database.sh"
 compose exec -T postgres sh -ec 'export PGPASSWORD="$POSTGRES_PASSWORD"; exec psql -X --set=ON_ERROR_STOP=1 --username="$POSTGRES_USER" --dbname="$POSTGRES_DB"' < "${project_root}/deploy/reset-staging-finance.sql"
 mkdir -p "${project_root}/.deploy"
 date -u +%FT%TZ > "${marker}"
-echo 'Reset committed. API is STOPPED. Set live configuration, then recreate the API.'
+echo 'Reset committed. API is STOPPED. Verify configuration, then recreate the API.'
 echo 'See docs/tomanpay/live-migration-and-diagnostics.md for restart and diagnostics commands.'
