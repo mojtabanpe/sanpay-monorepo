@@ -19,6 +19,13 @@ import {
   TomanTransferItemInput,
 } from './toman-client.service';
 
+import {
+  tomanLog,
+  tomanOperation,
+  tomanError,
+  withTomanTrace,
+} from '../toman/toman-log';
+
 const IRAN_TIME_ZONE = 'Asia/Tehran';
 const SUCCESS_STATUS = 6;
 const FINAL_FAILURE_STATUSES = new Set([8, 9, 10, 11, 20, 30, 40, 41]);
@@ -48,6 +55,11 @@ export class SettlementsService {
   /** هر روز ساعت ۰۲:۰۰ به وقت تهران؛ runKey جلوی اجرای دوباره در چند replica را می‌گیرد. */
   @Cron('0 2 * * *', { timeZone: IRAN_TIME_ZONE })
   async scheduledSettlement() {
+    tomanLog('settlement.schedule', {
+      source: 'cron',
+      enabled: this.enabled(),
+      mode: this.toman.isLive() ? 'live' : 'mock',
+    });
     if (!this.enabled()) return;
     const types: BeneficiaryType[] = ['STORE'];
     const weekday = this.tehranWeekday();
@@ -59,6 +71,10 @@ export class SettlementsService {
   /** وضعیت انتقال‌ها ناهمگام است؛ تا نهایی‌شدن هر ۱۵ دقیقه تطبیق می‌دهیم. */
   @Cron('*/15 * * * *')
   async scheduledReconciliation() {
+    tomanLog('settlement.poll_schedule', {
+      source: 'cron',
+      enabled: this.enabled(),
+    });
     if (!this.enabled()) return;
     await this.reconcileOpenBatches();
   }
@@ -110,6 +126,14 @@ export class SettlementsService {
 
   /** A signed snapshot and serializable claim bind approval to exactly one store. */
   async runManual(storeId: string, previewToken: string) {
+    return tomanOperation(
+      'settlement.manual',
+      { storeId, source: 'manual' },
+      () => this.runManualImpl(storeId, previewToken),
+    );
+  }
+
+  private async runManualImpl(storeId: string, previewToken: string) {
     let approval: {
       purpose: string;
       storeId: string;
@@ -251,9 +275,23 @@ export class SettlementsService {
   }
 
   private async runWithKey(runKey: string, types: BeneficiaryType[]) {
+    return tomanOperation(
+      'settlement.run',
+      { runKey, types, mode: this.toman.isLive() ? 'live' : 'mock' },
+      () => this.runWithKeyImpl(runKey, types),
+    );
+  }
+
+  private async runWithKeyImpl(runKey: string, types: BeneficiaryType[]) {
     const batch = await this.prepareBatch(runKey, types);
-    if (batch.itemCount === 0 || batch.status === 'COMPLETED')
+    if (batch.itemCount === 0 || batch.status === 'COMPLETED') {
+      tomanLog('settlement.skipped', {
+        batchId: batch.id,
+        reason:
+          batch.itemCount === 0 ? 'no_eligible_items' : 'already_completed',
+      });
       return this.one(batch.id);
+    }
     if (!batch.submittedAt) await this.submitBatch(batch.id);
     await this.reconcileBatch(batch.id);
     return this.one(batch.id);
@@ -318,6 +356,14 @@ export class SettlementsService {
   }
 
   async reconcileOpenBatches() {
+    return tomanOperation(
+      'settlement.reconcile_scan',
+      { source: 'reconcile' },
+      () => this.reconcileOpenBatchesImpl(),
+    );
+  }
+
+  private async reconcileOpenBatchesImpl() {
     const batches = await this.prisma.settlementBatch.findMany({
       where: {
         OR: [
@@ -368,6 +414,12 @@ export class SettlementsService {
   }
 
   async reconcileBatch(batchId: string) {
+    return tomanOperation('settlement.reconcile', { batchId }, () =>
+      this.reconcileBatchImpl(batchId),
+    );
+  }
+
+  private async reconcileBatchImpl(batchId: string) {
     const batch = await this.prisma.settlementBatch.findUniqueOrThrow({
       where: { id: batchId },
       include: { items: true },
@@ -394,7 +446,18 @@ export class SettlementsService {
       (row) => !['SUCCEEDED', 'FAILED'].includes(row.status),
     )) {
       try {
-        const transfer = await this.toman.getTransfer(item.trackerId);
+        const transfer = await withTomanTrace(
+          { itemId: item.id, trackerId: item.trackerId },
+          () => this.toman.getTransfer(item.trackerId),
+        );
+        tomanLog('settlement.transfer_observed', {
+          itemId: item.id,
+          trackerId: item.trackerId,
+          ref: transfer.uuid,
+          previousStatus: item.status,
+          providerStatus: transfer.status,
+          amountToman: item.amount,
+        });
         if (transfer.status === SUCCESS_STATUS) {
           const settledAt = new Date();
           await this.prisma.$transaction([
@@ -440,7 +503,17 @@ export class SettlementsService {
             },
           });
         }
+        tomanLog('settlement.transfer_persisted', {
+          itemId: item.id,
+          trackerId: item.trackerId,
+          providerStatus: transfer.status,
+        });
       } catch (error) {
+        tomanLog(
+          'settlement.transfer_failed',
+          { itemId: item.id, trackerId: item.trackerId, ...tomanError(error) },
+          'error',
+        );
         this.logger.warn(
           `Transfer ${item.trackerId} is not queryable yet: ${this.message(error)}`,
         );
@@ -556,6 +629,11 @@ export class SettlementsService {
             orderBy: { createdAt: 'asc' },
           });
           const groups = this.groups(payments, bookings);
+          tomanLog('settlement.eligibility', {
+            count: payments.length + bookings.length,
+            succeeded: groups.length,
+            types,
+          });
           const batch = await tx.settlementBatch.create({ data: { runKey } });
           let total = 0n;
           for (const group of groups) {
@@ -615,7 +693,18 @@ export class SettlementsService {
     const map = new Map<string, Group>();
     for (const payment of payments) {
       const iban = this.validIban(payment.store.settlementIban);
-      if (!iban) continue;
+      if (!iban) {
+        tomanLog(
+          'settlement.ineligible',
+          {
+            storeId: payment.storeId,
+            paymentId: payment.id,
+            reason: 'missing_or_invalid_iban',
+          },
+          'warn',
+        );
+        continue;
+      }
       const key = `STORE:${payment.storeId}`;
       const group: Group = map.get(key) ?? {
         type: 'STORE' as const,
@@ -638,7 +727,17 @@ export class SettlementsService {
           isHotelyar ? 'TOMAN_HOTELYAR_IBAN' : 'TOMAN_EGHAMAT24_IBAN'
         ],
       );
-      if (!iban) continue;
+      if (!iban) {
+        tomanLog(
+          'settlement.ineligible',
+          {
+            beneficiaryType: isHotelyar ? 'HOTELYAR' : 'EGHAMAT24',
+            reason: 'missing_or_invalid_iban',
+          },
+          'warn',
+        );
+        continue;
+      }
       const type = isHotelyar ? 'HOTELYAR' : 'EGHAMAT24';
       const key = `${type}:${booking.provider}`;
       const group: Group = map.get(key) ?? {
@@ -661,6 +760,14 @@ export class SettlementsService {
   }
 
   private async submitBatch(batchId: string) {
+    return tomanOperation(
+      'settlement.submit',
+      { batchId, mode: this.toman.isLive() ? 'live' : 'mock' },
+      () => this.submitBatchImpl(batchId),
+    );
+  }
+
+  private async submitBatchImpl(batchId: string) {
     const batch = await this.prisma.settlementBatch.findUniqueOrThrow({
       where: { id: batchId },
       include: { items: true },
@@ -693,6 +800,12 @@ export class SettlementsService {
               submittedAt: new Date(),
             },
           });
+          tomanLog('settlement.item_submitted', {
+            itemId: item.id,
+            trackerId: item.trackerId,
+            ref: remote.uuid,
+            amountToman: item.amount,
+          });
         }
       }
       const pending = batch.items.filter(
@@ -720,8 +833,19 @@ export class SettlementsService {
               submittedAt: new Date(),
             },
           });
+          tomanLog('settlement.item_submitted', {
+            itemId: item.id,
+            trackerId: item.trackerId,
+            ref: remote.uuid,
+            amountToman: item.amount,
+          });
         }
       }
+      tomanLog('settlement.commit_started', {
+        ref: tomanBatchUuid,
+        count: batch.itemCount,
+        amountToman: batch.totalAmount,
+      });
       await this.toman.commitBatch(tomanBatchUuid);
       await this.prisma.settlementBatch.update({
         where: { id: batchId },

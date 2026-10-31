@@ -210,9 +210,12 @@
                 {{ rial(receipt.amount) }}
               </td>
               <td hlmTd class="text-muted-foreground text-xs whitespace-normal">
-                @for (line of receipt.lines; track line.walletName; let last = $last) {
-                <span>{{ line.walletName }}@if (receipt.lines.length > 1) { ({{ rial(line.amount) }})}</span>@if (!last) {<span>، </span>}
-                }
+                @for (line of receipt.lines; track line.walletName; let last =
+                $last) {
+                <span
+                  >{{ line.walletName }}@if (receipt.lines.length > 1) { ({{
+                  rial(line.amount) }})}</span
+                >@if (!last) {<span>، </span>} }
               </td>
               <td hlmTd class="text-xs whitespace-nowrap">
                 {{ day(receipt.createdAt) }}، {{ time(receipt.createdAt) }}

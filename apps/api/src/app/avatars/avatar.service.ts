@@ -88,7 +88,10 @@ export class AvatarService {
     try {
       // سقف پیکسل جلوی «بمب تصویری» را می‌گیرد: PNG کوچکی که به میلیاردها
       // پیکسل باز می‌شود
-      const image = sharp(input, { limitInputPixels: 40_000_000, failOn: 'error' });
+      const image = sharp(input, {
+        limitInputPixels: 40_000_000,
+        failOn: 'error',
+      });
       format = (await image.metadata()).format;
       if (!format || !ACCEPTED_FORMATS.has(format)) throw new Error(format);
       return await image

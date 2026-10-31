@@ -7,6 +7,7 @@ import { StoreJwtGuard } from './store-jwt.guard';
 import { StorePaymentsService } from './store-payments.service';
 import { StoreController } from './store.controller';
 import { MerchantPaymentsService } from './merchant-payments.service';
+import { StorePasswordService } from './store-password.service';
 
 @Module({
   imports: [PaymentsModule, AuthModule, UpgModule],
@@ -16,6 +17,7 @@ import { MerchantPaymentsService } from './merchant-payments.service';
     StorePaymentsService,
     StoreJwtGuard,
     MerchantPaymentsService,
+    StorePasswordService,
   ],
 })
 export class StoreModule {}

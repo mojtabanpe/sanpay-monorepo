@@ -162,3 +162,11 @@ Local regression tests use a local PostgreSQL database and a fake Toman client:
 pnpm nx run api:test-settlements
 pnpm nx run dashboard:test
 ```
+
+## Toman staging reset and production diagnostics
+
+See [the migration and diagnostics runbook](../docs/tomanpay/live-migration-and-diagnostics.md)
+for the one-time staging financial reset, persistent Toman logs and the read-only
+`deploy/collect-toman-diagnostics.sh` support bundle. The reset stops the API,
+verifies a full database backup and leaves finance maintenance enabled until live
+configuration is ready.

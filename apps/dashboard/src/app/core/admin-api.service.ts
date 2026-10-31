@@ -22,6 +22,8 @@ import {
   AdminPermission,
   AdminStoreRow,
   AdminWalletDefinitionRow,
+  WalletDeletionPreview,
+  WalletDeletionResult,
   BulkAllocateInput,
   BulkAllocateResult,
   ImportEmployeesInput,
@@ -255,6 +257,21 @@ export class AdminApiService {
     );
   }
 
+  walletDeletionPreview(id: string) {
+    return this.get<WalletDeletionPreview>(
+      `/api/admin/wallet-definitions/${id}/deletion-preview`,
+    );
+  }
+
+  deleteWalletDefinition(id: string, note: string) {
+    return firstValueFrom(
+      this.http.delete<WalletDeletionResult>(
+        `/api/admin/wallet-definitions/${id}`,
+        { body: { note } },
+      ),
+    );
+  }
+
   bulkAllocate(input: BulkAllocateInput) {
     return this.post<BulkAllocateResult>(
       '/api/admin/wallet-definitions/bulk-allocate',
@@ -295,10 +312,7 @@ export class AdminApiService {
   }
 
   tourismSplit(query: Query = {}) {
-    return this.get<AdminTourismSplitReport>(
-      '/api/admin/tourism-split',
-      query,
-    );
+    return this.get<AdminTourismSplitReport>('/api/admin/tourism-split', query);
   }
 
   async downloadTourismSplitExcel(query: Query = {}): Promise<void> {
@@ -325,15 +339,23 @@ export class AdminApiService {
   }
 
   previewSettlement(storeId: string) {
-    return this.post<StoreSettlementPreview>('/api/admin/settlements/preview', { storeId });
+    return this.post<StoreSettlementPreview>('/api/admin/settlements/preview', {
+      storeId,
+    });
   }
 
   runSettlements(storeId: string, previewToken: string) {
-    return this.post<SettlementBatchView>('/api/admin/settlements/run', { storeId, previewToken });
+    return this.post<SettlementBatchView>('/api/admin/settlements/run', {
+      storeId,
+      previewToken,
+    });
   }
 
   reconcileSettlement(id: string) {
-    return this.post<SettlementBatchView>(`/api/admin/settlements/${id}/reconcile`, {});
+    return this.post<SettlementBatchView>(
+      `/api/admin/settlements/${id}/reconcile`,
+      {},
+    );
   }
 
   retrySettlementItem(id: string) {
@@ -416,7 +438,12 @@ export class AdminApiService {
 
   updateAdmin(
     id: string,
-    input: { name?: string; role?: string; isActive?: boolean; permissions?: AdminPermission[] },
+    input: {
+      name?: string;
+      role?: string;
+      isActive?: boolean;
+      permissions?: AdminPermission[];
+    },
   ) {
     return this.patch<AdminProfile>(`/api/admin/admins/${id}`, input);
   }

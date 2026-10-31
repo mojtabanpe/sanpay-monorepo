@@ -64,8 +64,21 @@ export function flightAmount(
  * strings — and log any rule that still cannot be read, so the real shape
  * shows up in the API log instead of vanishing.
  */
-const RULE_TEXT = ['timeframe_description', 'description', 'title', 'text', 'timeframe', 'name'];
-const RULE_PERCENT = ['penalty_percent', 'percent', 'percentage', 'penalty', 'value'];
+const RULE_TEXT = [
+  'timeframe_description',
+  'description',
+  'title',
+  'text',
+  'timeframe',
+  'name',
+];
+const RULE_PERCENT = [
+  'penalty_percent',
+  'percent',
+  'percentage',
+  'penalty',
+  'value',
+];
 const ruleLogger = new Logger('FlightCancellationRules');
 function cancellationRule(raw: unknown): string {
   if (typeof raw === 'string') return raw.trim();

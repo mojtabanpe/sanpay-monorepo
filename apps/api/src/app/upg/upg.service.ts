@@ -36,6 +36,13 @@ import {
 import { WELFARE_DEFINITION, ensurePersonalWallet } from './personal-wallet';
 import { CreateIntentInput, Tx, UpgError, UpgFulfiller } from './upg.types';
 
+import {
+  tomanLog,
+  tomanOperation,
+  tomanError,
+  withTomanTrace,
+} from '../toman/toman-log';
+
 const DEFAULT_TTL_MS = 15 * 60_000;
 /**
  * پرداختی که کاربر در درگاه رها کرده، بعد از انقضای intent تا این مدت هم
@@ -226,12 +233,24 @@ export class UpgService {
         },
       });
       try {
-        const created = await gateway.create({
-          amountRial: amount * 10,
-          trackerId: payment.trackerId,
-          callbackUrl: `${this.publicUrl}/api/upg/callback/${gateway.key}`,
-          mobile: employee.phone,
-        });
+        const created = await tomanOperation(
+          'payment.create',
+          {
+            gateway: gateway.key,
+            mode: gateway.simulated ? 'mock' : 'live',
+            paymentId: payment.id,
+            intentId: intent.id,
+            trackerId: payment.trackerId,
+            amountToman: amount,
+          },
+          () =>
+            gateway.create({
+              amountRial: amount * 10,
+              trackerId: payment.trackerId,
+              callbackUrl: `${this.publicUrl}/api/upg/callback/${gateway.key}`,
+              mobile: employee.phone,
+            }),
+        );
         await this.prisma.gatewayPayment.update({
           where: { id: payment.id },
           data: {
@@ -244,8 +263,27 @@ export class UpgService {
           where: { id: intent.id, status: { in: OPEN } },
           data: { status: 'AWAITING_GATEWAY' },
         });
+        tomanLog('payment.redirect_ready', {
+          gateway: gateway.key,
+          paymentId: payment.id,
+          intentId: intent.id,
+          trackerId: payment.trackerId,
+          ref: created.ref,
+          status: 'REDIRECTED',
+        });
         return { kind: 'redirect', url: created.redirectUrl };
       } catch (error) {
+        tomanLog(
+          'payment.create_or_persist_failed',
+          {
+            gateway: gateway.key,
+            paymentId: payment.id,
+            intentId: intent.id,
+            trackerId: payment.trackerId,
+            ...tomanError(error),
+          },
+          'error',
+        );
         this.logger.error(
           `ساخت پرداخت در درگاه ${gateway.key} شکست خورد — درگاه بعدی`,
           error instanceof Error ? error.stack : String(error),
@@ -256,6 +294,11 @@ export class UpgService {
         });
       }
     }
+    tomanLog(
+      'payment.no_gateway',
+      { intentId: intent.id, reason: 'no_successful_gateway' },
+      'error',
+    );
     throw new ServiceUnavailableException(
       'درگاه پرداخت در دسترس نیست؛ کمی بعد دوباره تلاش کنید',
     );
@@ -270,21 +313,49 @@ export class UpgService {
     gatewayKey: string,
     body: Record<string, unknown>,
   ): Promise<string> {
+    return tomanOperation(
+      'payment.callback',
+      { source: 'callback', gateway: gatewayKey },
+      () => this.handleCallbackImpl(gatewayKey, body),
+    );
+  }
+
+  private async handleCallbackImpl(
+    gatewayKey: string,
+    body: Record<string, unknown>,
+  ): Promise<string> {
     const home = `${this.publicUrl}/home`;
     const gateway = this.gateways.get(gatewayKey);
     if (!gateway) return home;
 
     const callback = gateway.parseCallback(body);
+    tomanLog('payment.callback_received', {
+      gateway: gatewayKey,
+      source: 'callback',
+      trackerId: callback.trackerId,
+      ref: callback.ref,
+    });
     const payment = callback.trackerId
       ? await this.prisma.gatewayPayment.findUnique({
           where: { trackerId: callback.trackerId },
         })
       : null;
     if (!payment || payment.gateway !== gateway.key) {
+      tomanLog(
+        'payment.callback_unmatched',
+        {
+          gateway: gatewayKey,
+          trackerId: callback.trackerId,
+          reason: 'payment_not_found_or_wrong_gateway',
+        },
+        'warn',
+      );
       this.logger.warn(`callback بدون پرداخت متناظر از ${gatewayKey}`);
       return home;
     }
-    await this.resolvePayment(gateway, payment, callback);
+    await withTomanTrace({ source: 'callback' }, () =>
+      this.resolvePayment(gateway, payment, callback),
+    );
     return `${this.publicUrl}/upg/${payment.intentId}/result`;
   }
 
@@ -301,11 +372,40 @@ export class UpgService {
     callback: GatewayCallback | null,
     known?: GatewayVerified,
   ): Promise<void> {
+    return tomanOperation(
+      'payment.resolve',
+      {
+        gateway: payment.gateway,
+        paymentId: payment.id,
+        intentId: payment.intentId,
+        trackerId: payment.trackerId,
+        ref: payment.ref,
+        previousStatus: payment.status,
+      },
+      () => this.resolvePaymentImpl(gateway, payment, callback, known),
+    );
+  }
+
+  private async resolvePaymentImpl(
+    gateway: PaymentGateway,
+    payment: GatewayPayment,
+    callback: GatewayCallback | null,
+    known?: GatewayVerified,
+  ): Promise<void> {
     // callback تکراری یا refresh صفحه
     if (payment.status !== 'REDIRECTED' && payment.status !== 'CREATED') {
+      tomanLog('payment.resolve_skipped', {
+        reason: 'already_resolved',
+        status: payment.status,
+      });
       return;
     }
     if (callback?.ref && payment.ref && callback.ref !== payment.ref) {
+      tomanLog(
+        'payment.callback_ref_mismatch',
+        { reason: 'ref_mismatch' },
+        'error',
+      );
       await this.failGateway(payment, 'شناسهٔ پرداخت در callback مطابقت ندارد');
       return;
     }
@@ -315,6 +415,10 @@ export class UpgService {
     });
     const waiting = await this.isWaitingFor(intent, payment);
     if (!waiting && !known?.ok) {
+      tomanLog('payment.verify_skipped', {
+        reason: 'intent_not_waiting',
+        status: intent.status,
+      });
       // intent دیگر منتظر این پرداخت نیست (منقضی/لغو/تلاش تازه‌تر). verify
       // نمی‌کنیم تا درگاه خودش پول را به کارت برگرداند.
       await this.failGateway(
@@ -341,6 +445,17 @@ export class UpgService {
       }
     }
 
+    tomanLog('payment.verification_result', {
+      status: verified.ok
+        ? 'verified'
+        : verified.pending
+          ? 'pending'
+          : verified.unknown
+            ? 'unknown'
+            : 'failed',
+      amountRial: verified.amountRial,
+      expectedAmountRial: Number(payment.amount) * 10,
+    });
     if (verified.pending) {
       // درگاه می‌گوید کاربر هنوز در بانک است، یا جوابی نرسید — cron استعلام
       // بعداً دوباره می‌پرسد
@@ -367,6 +482,14 @@ export class UpgService {
       return;
     }
     if (verified.amountRial !== Number(payment.amount) * 10) {
+      tomanLog(
+        'payment.amount_mismatch',
+        {
+          amountRial: verified.amountRial,
+          expectedAmountRial: Number(payment.amount) * 10,
+        },
+        'error',
+      );
       // پول گرفته شده ولی مبلغش با ما نمی‌خواند — هیچ تصمیم خودکاری امن نیست
       await this.markUnknown(
         payment,
@@ -393,6 +516,10 @@ export class UpgService {
       ),
     );
 
+    tomanLog('payment.topup_committed', {
+      changed: toppedUp,
+      reason: waiting ? 'intent_waiting' : 'intent_closed',
+    });
     if (toppedUp && waiting) {
       await this.settle(intent.id, ['AWAITING_GATEWAY']);
     } else if (toppedUp) {
@@ -462,10 +589,21 @@ export class UpgService {
     raw?: unknown,
     status: 'FAILED' | 'EXPIRED' = 'FAILED',
   ): Promise<void> {
-    await this.prisma.gatewayPayment.updateMany({
+    const changed = await this.prisma.gatewayPayment.updateMany({
       where: { id: payment.id, status: { in: ['CREATED', 'REDIRECTED'] } },
       data: { status, error, raw: json(raw) },
     });
+    tomanLog(
+      'payment.closed',
+      {
+        paymentId: payment.id,
+        trackerId: payment.trackerId,
+        intentId: payment.intentId,
+        status,
+        changed: changed.count,
+      },
+      'warn',
+    );
   }
 
   /** پرداخت کارتی نشد — کارمند می‌تواند دوباره تلاش کند */
@@ -496,6 +634,17 @@ export class UpgService {
       where: { id: payment.id, status: { in: ['CREATED', 'REDIRECTED'] } },
       data: { status: 'UNKNOWN', error, raw: json(raw) },
     });
+    tomanLog(
+      'payment.unknown',
+      {
+        paymentId: payment.id,
+        trackerId: payment.trackerId,
+        intentId: payment.intentId,
+        changed: marked.count,
+        reason: 'manual_review_required',
+      },
+      'error',
+    );
     if (marked.count === 1) {
       this.logger.error(
         `نتیجهٔ پرداخت ${payment.id} نامعلوم ماند — بررسی دستی: ${error}`,
@@ -557,6 +706,12 @@ export class UpgService {
       );
     }
 
+    tomanLog('payment.manual_resolved', {
+      paymentId: payment.id,
+      intentId: payment.intentId,
+      trackerId: payment.trackerId,
+      status: outcome,
+    });
     if (outcome === 'failed') {
       await this.reopenIntent(payment);
       return;
@@ -620,14 +775,35 @@ export class UpgService {
         orderBy: { createdAt: 'asc' },
         take: 20,
       });
+      tomanLog('payment.reconcile_queue', {
+        count: open.length,
+        source: 'cron',
+      });
       for (const payment of open) {
-        await this.reconcile(payment).catch((error) =>
+        await tomanOperation(
+          'payment.reconcile',
+          {
+            source: 'cron',
+            paymentId: payment.id,
+            intentId: payment.intentId,
+            trackerId: payment.trackerId,
+            gateway: payment.gateway,
+          },
+          () => this.reconcile(payment),
+        ).catch((error) =>
           this.logger.error(
             `استعلام پرداخت ${payment.id} شکست خورد`,
             error instanceof Error ? error.stack : String(error),
           ),
         );
       }
+    } catch (error) {
+      tomanLog(
+        'payment.reconcile_scan_failed',
+        { ...tomanError(error) },
+        'error',
+      );
+      throw error;
     } finally {
       this.reconciling = false;
     }
@@ -655,9 +831,39 @@ export class UpgService {
     }
 
     let inquiry: GatewayInquiry;
+    tomanLog('payment.inquiry_started', {
+      source: 'reconcile',
+      paymentId: payment.id,
+      intentId: payment.intentId,
+      trackerId: payment.trackerId,
+      ref: payment.ref,
+    });
     try {
-      inquiry = await gateway.inquire(gatewayRef(payment));
+      inquiry = await withTomanTrace(
+        {
+          source: 'reconcile',
+          paymentId: payment.id,
+          intentId: payment.intentId,
+          trackerId: payment.trackerId,
+        },
+        () => gateway.inquire(gatewayRef(payment)),
+      );
+      tomanLog('payment.inquiry_result', {
+        paymentId: payment.id,
+        intentId: payment.intentId,
+        trackerId: payment.trackerId,
+        status: inquiry.state,
+      });
     } catch (error) {
+      tomanLog(
+        'payment.inquiry_failed',
+        {
+          paymentId: payment.id,
+          trackerId: payment.trackerId,
+          ...tomanError(error),
+        },
+        'error',
+      );
       this.logger.warn(
         `استعلام ${payment.gateway} برای ${payment.id} نرسید: ${messageOf(error)}`,
       );
@@ -703,6 +909,15 @@ export class UpgService {
     intentId: string,
     from: PaymentIntentStatus[],
   ): Promise<void> {
+    return tomanOperation('payment.fulfillment', { intentId }, () =>
+      this.settleImpl(intentId, from),
+    );
+  }
+
+  private async settleImpl(
+    intentId: string,
+    from: PaymentIntentStatus[],
+  ): Promise<void> {
     let intent: PaymentIntent | null;
     try {
       intent = await this.prisma.$transaction(async (tx) => {
@@ -718,6 +933,17 @@ export class UpgService {
         return current;
       });
     } catch (error) {
+      tomanLog(
+        'payment.capture_failed',
+        {
+          ...tomanError(error),
+          reason:
+            error instanceof HttpException
+              ? 'capture_rejected'
+              : 'capture_database_or_internal_failure',
+        },
+        'error',
+      );
       await this.prisma.paymentIntent.updateMany({
         where: { id: intentId, status: { in: from } },
         data: {
@@ -739,7 +965,13 @@ export class UpgService {
         where: { id: intent.id },
         data: { status: 'COMPLETED', completedAt: new Date() },
       });
+      tomanLog('payment.completed', { status: 'COMPLETED' });
     } catch (error) {
+      tomanLog(
+        'payment.fulfillment_failed',
+        { ...tomanError(error), reason: 'refund_to_wallet' },
+        'error',
+      );
       this.logger.warn(
         `نهایی‌سازی intent ${intent.id} (${intent.purpose}) شکست خورد — برگشت کامل`,
         error instanceof Error ? error.stack : String(error),
@@ -772,6 +1004,11 @@ export class UpgService {
 
     const total = [...amounts.values()].reduce((sum, value) => sum + value, 0n);
     if (total !== intent.amount) {
+      tomanLog(
+        'payment.capture_rejected',
+        { reason: 'plan_total_mismatch' },
+        'error',
+      );
       throw new UpgError('جمع سهم‌ها با مبلغ پرداخت برابر نیست');
     }
 
@@ -787,19 +1024,39 @@ export class UpgService {
         allocation.employeeId !== intent.employeeId ||
         (!personal && !intent.allowedAllocationIds.includes(allocation.id))
       ) {
+        tomanLog(
+          'payment.capture_rejected',
+          { allocationId, reason: 'allocation_not_allowed' },
+          'warn',
+        );
         throw new UpgError('کیف پول انتخاب‌شده برای این پرداخت مجاز نیست');
       }
       if (!allocation.isActive || !allocation.definition.isActive) {
+        tomanLog(
+          'payment.capture_rejected',
+          { allocationId, reason: 'allocation_inactive' },
+          'warn',
+        );
         throw new UpgError(
           `کیف پول «${allocation.definition.name}» غیرفعال است`,
         );
       }
       if (allocation.expiresAt <= now) {
+        tomanLog(
+          'payment.capture_rejected',
+          { allocationId, reason: 'allocation_expired' },
+          'warn',
+        );
         throw new UpgError(
           `اعتبار کیف پول «${allocation.definition.name}» منقضی شده است`,
         );
       }
       if (allocation.cap - allocation.spent < amount) {
+        tomanLog(
+          'payment.capture_rejected',
+          { allocationId, reason: 'insufficient_balance', amountToman: amount },
+          'warn',
+        );
         throw new UpgError(
           personal
             ? 'ماندهٔ پرداخت کارتی کافی نیست'
@@ -811,6 +1068,11 @@ export class UpgService {
         data: { spent: allocation.spent + amount },
       });
       if (updated.count !== 1) {
+        tomanLog(
+          'payment.capture_rejected',
+          { allocationId, reason: 'concurrent_balance_change' },
+          'warn',
+        );
         throw new UpgError(
           'ماندهٔ کیف پول هم‌زمان تغییر کرد؛ دوباره تلاش کنید',
         );

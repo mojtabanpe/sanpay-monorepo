@@ -12,6 +12,7 @@ import {
   PaymentGateway,
 } from '../payment-gateway';
 import { TomanIpgHttpClient } from './toman-ipg-http.client';
+import { tomanLog } from '../../../toman/toman-log';
 import { TomanIpgMockClient } from './toman-ipg-mock.client';
 import {
   TomanIpgApi,
@@ -101,6 +102,15 @@ export class TomanIpgGateway implements PaymentGateway {
         error instanceof TomanIpgError &&
         error.has('psp_verify_rejected', 'tampered_payment_data')
       ) {
+        tomanLog(
+          'ipg.verify_rejected',
+          {
+            trackerId: payment.trackerId,
+            ref: payment.ref,
+            codes: error.codes,
+          },
+          'warn',
+        );
         return {
           ok: false,
           amountRial: null,
@@ -110,6 +120,16 @@ export class TomanIpgGateway implements PaymentGateway {
       }
       // بقیهٔ خطاها مبهم‌اند — وضعیت واقعی را بپرس
     }
+
+    tomanLog(
+      'ipg.verify_fallback',
+      {
+        trackerId: payment.trackerId,
+        ref: payment.ref,
+        reason: 'verify_inconclusive_inquiry_required',
+      },
+      'warn',
+    );
 
     let inquiry: GatewayInquiry;
     try {

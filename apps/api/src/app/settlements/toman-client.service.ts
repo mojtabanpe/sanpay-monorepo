@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import { TomanOAuth, tomanCredentialsFromEnv } from '../toman/toman-oauth';
+import { tomanError, tomanLog } from '../toman/toman-log';
 
 export interface TomanTransferItemInput {
   amount: number;
@@ -139,7 +140,23 @@ export class TomanClientService {
       init,
     );
     if (!response.ok) throw await this.httpError(response, path);
-    return (await response.json()) as T;
+    try {
+      const data = (await response.json()) as T;
+      const summary = data as { uuid?: string; status?: number };
+      tomanLog('corporate.response_parsed', {
+        endpoint: path,
+        ref: summary?.uuid,
+        providerStatus: summary?.status,
+      });
+      return data;
+    } catch (error) {
+      tomanLog(
+        'corporate.invalid_response',
+        { endpoint: path, ...tomanError(error) },
+        'error',
+      );
+      throw error;
+    }
   }
 
   private apiUrl() {

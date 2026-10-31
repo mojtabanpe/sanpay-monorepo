@@ -1,7 +1,10 @@
 import 'reflect-metadata';
 import assert from 'node:assert/strict';
 import { afterEach, beforeEach, test } from 'node:test';
-import { TomanIpgHttpClient, parseErrors } from '../src/app/upg/gateways/toman/toman-ipg-http.client';
+import {
+  TomanIpgHttpClient,
+  parseErrors,
+} from '../src/app/upg/gateways/toman/toman-ipg-http.client';
 import { TomanIpgMockClient } from '../src/app/upg/gateways/toman/toman-ipg-mock.client';
 import { TomanIpgGateway } from '../src/app/upg/gateways/toman/toman-ipg.gateway';
 
@@ -53,7 +56,10 @@ beforeEach(() => {
   delete process.env.UPG_MOCK_REFUND_RESULT;
   delete process.env.UPG_MOCK_REFUND_WALLET_RIAL;
 
-  globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) => {
+  globalThis.fetch = (async (
+    input: string | URL | Request,
+    init?: RequestInit,
+  ) => {
     const url = new URL(String(input));
     if (url.href === AUTH_URL) {
       const body = init?.body as URLSearchParams;
@@ -161,7 +167,12 @@ test('ambiguous verify asks for the real status', async () => {
     ),
   );
   route('GET', '/payments/pay-uuid', () =>
-    Response.json({ uuid: 'pay-uuid', amount: 120_000, status: 5, terminal_number: 14115046 }),
+    Response.json({
+      uuid: 'pay-uuid',
+      amount: 120_000,
+      status: 5,
+      terminal_number: 14115046,
+    }),
   );
   const verified = await live().verify(payment);
   assert.equal(verified.ok, true);
@@ -215,13 +226,24 @@ test('inquire maps every Toman payment status', async () => {
   };
   for (const [status, state] of Object.entries(expected)) {
     route('GET', '/payments/pay-uuid', () =>
-      Response.json({ uuid: 'pay-uuid', amount: 120_000, status: Number(status) }),
+      Response.json({
+        uuid: 'pay-uuid',
+        amount: 120_000,
+        status: Number(status),
+      }),
     );
-    assert.equal((await live().inquire(payment)).state, state, `status ${status}`);
+    assert.equal(
+      (await live().inquire(payment)).state,
+      state,
+      `status ${status}`,
+    );
   }
   // Toman's own Unknown (-3) through verify is "unknown", never retried
   route('POST', '/payments/pay-uuid/verify', () =>
-    Response.json({ non_field_errors: [{ code: 'psp_not_respond' }] }, { status: 400 }),
+    Response.json(
+      { non_field_errors: [{ code: 'psp_not_respond' }] },
+      { status: 400 },
+    ),
   );
   route('GET', '/payments/pay-uuid', () =>
     Response.json({ uuid: 'pay-uuid', amount: 120_000, status: -3 }),
@@ -237,16 +259,27 @@ test('refund create and status mapping', async () => {
     amountRial: 50_000,
   };
   route('POST', '/payments/pay-uuid/refund', () =>
-    Response.json({ uuid: 'refund-uuid', payment: 'pay-uuid', status: 0, amount: 50_000 }),
+    Response.json({
+      uuid: 'refund-uuid',
+      payment: 'pay-uuid',
+      status: 0,
+      amount: 50_000,
+    }),
   );
   const created = await live().refund(ref);
   assert.equal(created.state, 'pending');
   assert.equal(created.ref, 'refund-uuid');
-  assert.deepEqual(calls.at(-1)?.body, { amount: 50_000, tracker_id: 'refund-tracker' });
+  assert.deepEqual(calls.at(-1)?.body, {
+    amount: 50_000,
+    tracker_id: 'refund-tracker',
+  });
   assert.equal(calls.at(-1)?.scope, 'ipg.refund.create');
 
   route('POST', '/payments/pay-uuid/refund', () =>
-    Response.json({ non_field_errors: [{ code: 'not_enough_balance' }] }, { status: 400 }),
+    Response.json(
+      { non_field_errors: [{ code: 'not_enough_balance' }] },
+      { status: 400 },
+    ),
   );
   assert.equal((await live().refund(ref)).state, 'denied');
 
@@ -255,7 +288,11 @@ test('refund create and status mapping', async () => {
   );
   assert.equal((await live().refund(ref)).state, 'unreachable');
 
-  route('POST', '/payments/pay-uuid/refund', () => new Response(null, { status: 502 }));
+  route(
+    'POST',
+    '/payments/pay-uuid/refund',
+    () => new Response(null, { status: 502 }),
+  );
   assert.equal((await live().refund(ref)).state, 'unreachable');
 
   const statuses: Record<number, string> = {
@@ -268,14 +305,22 @@ test('refund create and status mapping', async () => {
   };
   for (const [status, state] of Object.entries(statuses)) {
     route('GET', '/refunds/tracking/refund-tracker', () =>
-      Response.json({ uuid: 'refund-uuid', payment: 'pay-uuid', status: Number(status), amount: 50_000 }),
+      Response.json({
+        uuid: 'refund-uuid',
+        payment: 'pay-uuid',
+        status: Number(status),
+        amount: 50_000,
+      }),
     );
     const result = await live().refundStatus(ref);
     assert.equal(result.state, state, `refund status ${status}`);
     assert.equal(calls.at(-1)?.scope, 'ipg.refund.read');
   }
   route('GET', '/refunds/tracking/refund-tracker', () =>
-    Response.json({ non_field_errors: [{ code: 'refund_not_found' }] }, { status: 404 }),
+    Response.json(
+      { non_field_errors: [{ code: 'refund_not_found' }] },
+      { status: 404 },
+    ),
   );
   assert.equal((await live().refundStatus(ref)).state, 'missing');
 });
@@ -332,7 +377,10 @@ test('mock client runs the same gateway logic end to end', async () => {
     callbackUrl: 'http://localhost:6200/api/upg/callback/toman',
     mobile: '09121234567',
   });
-  assert.match(created.redirectUrl, /^http:\/\/localhost:6200\/api\/upg\/mock-toman\//);
+  assert.match(
+    created.redirectUrl,
+    /^http:\/\/localhost:6200\/api\/upg\/mock-toman\//,
+  );
   const ref = { ...payment, ref: created.ref, trackerId: 'mock-tracker' };
 
   // callback before the user finished at the bank → still pending
@@ -341,18 +389,36 @@ test('mock client runs the same gateway logic end to end', async () => {
 
   const back = mock.complete(created.ref, 'success');
   assert.equal(back?.fields['status'], '4');
-  assert.equal(gateway.parseCallback(back?.fields ?? {}).trackerId, 'mock-tracker');
+  assert.equal(
+    gateway.parseCallback(back?.fields ?? {}).trackerId,
+    'mock-tracker',
+  );
   const verified = await gateway.verify(ref);
   assert.equal(verified.ok, true);
   assert.equal(verified.amountRial, 120_000);
   // a second verify (duplicate callback / cron race) still reports success
   assert.equal((await gateway.verify(ref)).ok, true);
 
-  const refund = { payment: ref, trackerId: 'mock-refund', ref: null, amountRial: 70_000 };
+  const refund = {
+    payment: ref,
+    trackerId: 'mock-refund',
+    ref: null,
+    amountRial: 70_000,
+  };
   assert.equal((await gateway.refund(refund)).state, 'pending');
-  assert.equal((await gateway.refund(refund)).state, 'unreachable', 'duplicate tracker');
   assert.equal(
-    (await gateway.refund({ ...refund, trackerId: 'too-much', amountRial: 60_000 })).state,
+    (await gateway.refund(refund)).state,
+    'unreachable',
+    'duplicate tracker',
+  );
+  assert.equal(
+    (
+      await gateway.refund({
+        ...refund,
+        trackerId: 'too-much',
+        amountRial: 60_000,
+      })
+    ).state,
     'failed',
     'more than what is left of the payment',
   );

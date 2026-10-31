@@ -11,7 +11,8 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"']
+      test:
+        ['CMD-SHELL', 'pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"']
       interval: 5s
       timeout: 5s
       retries: 20
@@ -27,10 +28,12 @@ services:
     environment:
       PORT: 6500
       UPLOADS_DIR: /app/data/uploads
+      TOMAN_LOG_DIR: /app/data/toman-logs
       DATABASE_URL: postgresql://${POSTGRES_USER:-sanpay}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-sanpay}?schema=public
     # عکس‌های پروفایل — بیرون از image تا با هر deploy پاک نشوند
     volumes:
       - api_uploads:/app/data/uploads
+      - ./.deploy/toman-logs:/app/data/toman-logs
     depends_on:
       postgres:
         condition: service_healthy

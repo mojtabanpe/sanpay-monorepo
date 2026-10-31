@@ -77,10 +77,7 @@ export interface ProviderReserveRequest {
  * - `REJECTED` رد شد.
  */
 export type ProviderReserveStatus =
-  | 'CONFIRMED'
-  | 'HOLD'
-  | 'PENDING'
-  | 'REJECTED';
+  'CONFIRMED' | 'HOLD' | 'PENDING' | 'REJECTED';
 
 export interface ProviderReserveResult {
   status: ProviderReserveStatus;

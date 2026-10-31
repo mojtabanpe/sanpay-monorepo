@@ -518,12 +518,10 @@ test('suggestion sends each child age with the requested occupancy and hotel', a
 });
 
 test('dated search results carry the hotel card fields (stars, address, photo)', async () => {
-  const { suggestionToAvailability } = await import(
-    '../src/app/tourism/providers/eghamat24/eghamat24.mapper'
-  );
-  const { toAvailability } = await import(
-    '../src/app/tourism/providers/hotelyar/hotelyar.mapper'
-  );
+  const { suggestionToAvailability } =
+    await import('../src/app/tourism/providers/eghamat24/eghamat24.mapper');
+  const { toAvailability } =
+    await import('../src/app/tourism/providers/hotelyar/hotelyar.mapper');
 
   const grs = suggestionToAvailability(
     {
@@ -531,7 +529,9 @@ test('dated search results carry the hotel card fields (stars, address, photo)',
       property_name: 'هتل تست',
       star: 4,
       address: 'مشهد، بلوار سجاد',
-      images: [{ name: 'a', caption: '', room_type_id: null, url: 'https://x/a.jpg' }],
+      images: [
+        { name: 'a', caption: '', room_type_id: null, url: 'https://x/a.jpg' },
+      ],
       rooms: [],
     },
     '2090-01-01',

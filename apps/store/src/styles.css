@@ -13,8 +13,9 @@
 
 /* Persian app: Vazirmatn for both body and display type. */
 :root {
-  --font-sans: 'Vazirmatn FD', -apple-system, BlinkMacSystemFont, 'Segoe UI',
-    Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-sans:
+    'Vazirmatn FD', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+    'Helvetica Neue', Arial, sans-serif;
   --font-display: 'Vazirmatn FD', var(--font-sans);
 
   /*

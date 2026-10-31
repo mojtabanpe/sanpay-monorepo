@@ -5,6 +5,11 @@ readonly project_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 readonly compose_file="${project_root}/compose.production.yml"
 readonly env_file="${project_root}/.env.production"
 
+if [[ -e "${project_root}/.deploy/finance-maintenance" ]]; then
+  echo 'Finance migration maintenance is active; deployment blocked.' >&2
+  exit 1
+fi
+
 if [[ ! -f "${env_file}" ]]; then
   echo "Missing ${env_file}. Copy .env.production.example and fill in real values." >&2
   exit 1

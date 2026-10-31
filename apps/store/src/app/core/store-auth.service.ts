@@ -1,6 +1,6 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, computed, inject, signal } from '@angular/core';
-import { StoreProfile } from '@sanpay/models';
+import { StorePasswordOtpChallenge, StoreProfile } from '@sanpay/models';
 import { firstValueFrom } from 'rxjs';
 
 const TOKEN_KEY = 'sanpay_store_token';
@@ -36,6 +36,49 @@ export class StoreAuthService {
         password,
       }),
     );
+    this.save(response);
+  }
+
+  /** اولین تغییر رمز، با رمزی که مدیریت داده */
+  async changePassword(
+    currentPassword: string,
+    newPassword: string,
+  ): Promise<void> {
+    this.save(
+      await firstValueFrom(
+        this.http.post<LoginResponse>('/api/store/auth/change-password', {
+          currentPassword,
+          newPassword,
+        }),
+      ),
+    );
+  }
+
+  requestPasswordOtp(): Promise<StorePasswordOtpChallenge> {
+    return firstValueFrom(
+      this.http.post<StorePasswordOtpChallenge>(
+        '/api/store/auth/change-password/otp',
+        {},
+      ),
+    );
+  }
+
+  async changePasswordWithOtp(
+    code: string,
+    newPassword: string,
+  ): Promise<void> {
+    this.save(
+      await firstValueFrom(
+        this.http.post<LoginResponse>(
+          '/api/store/auth/change-password/verify',
+          { code, newPassword },
+        ),
+      ),
+    );
+  }
+
+  /** تغییر رمز توکن‌های قبلی را باطل می‌کند؛ پاسخ، توکن تازهٔ همین دستگاه است */
+  private save(response: LoginResponse): void {
     localStorage.setItem(TOKEN_KEY, response.accessToken);
     localStorage.setItem(PROFILE_KEY, JSON.stringify(response.store));
     this._profile.set(response.store);

@@ -43,9 +43,7 @@ export class GdsWebhookGuard implements CanActivate {
         );
         return true;
       }
-      this.logger.error(
-        'GDS_WEBHOOK_SECRET تنظیم نشده — رویداد webhook رد شد',
-      );
+      this.logger.error('GDS_WEBHOOK_SECRET تنظیم نشده — رویداد webhook رد شد');
       throw new UnauthorizedException();
     }
 

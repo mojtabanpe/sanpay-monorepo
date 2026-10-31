@@ -33,7 +33,8 @@ export interface AdminPaymentPage extends Paginated<AdminPaymentRow> {
 }
 
 export type WalletKind = 'CREDIT' | 'RATION' | 'TOURISM';
-export type OrganizationalRank = 'CEO' | 'MANAGER' | 'DEPUTY' | 'HEAD' | 'EMPLOYEE';
+export type OrganizationalRank =
+  'CEO' | 'MANAGER' | 'DEPUTY' | 'HEAD' | 'EMPLOYEE';
 
 export interface AdminCompanyRow {
   logoUrl: string | null;
@@ -213,6 +214,21 @@ export type UpdateStoreInput = Partial<Omit<CreateStoreInput, 'password'>> & {
 
 // ─── تعریف کیف پول ───────────────────────────────────────────────────────────
 
+/** پیش از حذف کیف پول به سوپر ادمین نشان داده می‌شود */
+export interface WalletDeletionPreview {
+  /** `delete` = بی‌سابقه، کامل پاک می‌شود؛ `archive` = تاریخچه دارد، بایگانی می‌شود */
+  mode: 'delete' | 'archive';
+  allocationCount: number;
+  /** کارمندانی که اعتبار مصرف‌نشده و منقضی‌نشده دارند */
+  affectedEmployees: number;
+  /** جمع اعتبار باقی‌مانده‌ای که از دسترس خارج می‌شود (تومان) */
+  remainingAmount: number;
+}
+
+export interface WalletDeletionResult {
+  mode: WalletDeletionPreview['mode'];
+}
+
 export interface AdminWalletDefinitionRow {
   id: string;
   name: string;
@@ -263,10 +279,9 @@ export interface UpdateAllocationInput {
 }
 
 /** تخصیص گروهی یک کیف پول به چند کارمند */
-/** یک سطر فایل تخصیص: کارمند با رده، سقف و انقضای مخصوص خودش */
+/** یک سطر فایل تخصیص: کارمند با مبلغ شارژ و انقضای مخصوص خودش */
 export interface BulkAllocateEntry {
   nationalCode: string;
-  organizationalRank: OrganizationalRank;
   cap: number;
   /** ISO date */
   expiresAt: string;
@@ -290,12 +305,6 @@ export interface BulkAllocateResult {
   skipped: number;
   /** کد ملی‌های فایل که کارمندی با آن‌ها پیدا نشد */
   notFound: string[];
-  /** ردیف‌هایی که ردهٔ فایل با ردهٔ ثبت‌شدهٔ کارمند هم‌خوان نیست */
-  rankMismatches: Array<{
-    nationalCode: string;
-    fileRank: OrganizationalRank;
-    employeeRank: OrganizationalRank;
-  }>;
 }
 
 // ─── پرداخت و رزرو ───────────────────────────────────────────────────────────

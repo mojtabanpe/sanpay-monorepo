@@ -133,7 +133,14 @@ export class AdminTourismSplitService {
         cardRefunded: sum.cardRefunded + person.cardRefunded,
         invoiceBase: sum.invoiceBase + person.invoiceBase,
       }),
-      { count: 0, total: 0, credit: 0, card: 0, cardRefunded: 0, invoiceBase: 0 },
+      {
+        count: 0,
+        total: 0,
+        credit: 0,
+        card: 0,
+        cardRefunded: 0,
+        invoiceBase: 0,
+      },
     );
     return { persons, items, totals };
   }
@@ -201,7 +208,13 @@ export class AdminTourismSplitService {
 
     for (const sheet of [people, detail]) {
       sheet.getRow(1).font = { bold: true };
-      for (const key of ['total', 'credit', 'card', 'cardRefunded', 'invoiceBase']) {
+      for (const key of [
+        'total',
+        'credit',
+        'card',
+        'cardRefunded',
+        'invoiceBase',
+      ]) {
         sheet.getColumn(key).numFmt = '#,##0';
       }
     }

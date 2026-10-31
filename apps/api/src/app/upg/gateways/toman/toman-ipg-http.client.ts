@@ -1,4 +1,5 @@
 import { Logger } from '@nestjs/common';
+import { tomanError, tomanLog } from '../../../toman/toman-log';
 import {
   TomanOAuth,
   tomanCredentialsFromEnv,
@@ -142,12 +143,33 @@ export class TomanIpgHttpClient implements TomanIpgApi {
     } catch (error) {
       // خطای توکن (ServiceUnavailableException) هم این‌جا می‌رسد: یعنی
       // درخواست اصلی هرگز فرستاده نشد
-      this.logger.error(
-        `Toman IPG ${method} ${path}: ${error instanceof Error ? error.message : String(error)}`,
+      tomanLog(
+        'ipg.request_failed',
+        { method, endpoint: path, ...tomanError(error) },
+        'error',
       );
       throw new TomanIpgError(null);
     }
-    if (response.ok) return (await response.json()) as T;
+    if (response.ok) {
+      try {
+        const data = (await response.json()) as T;
+        const summary = data as { uuid?: string; status?: number };
+        tomanLog('ipg.response_parsed', {
+          method,
+          endpoint: path,
+          ref: summary?.uuid,
+          providerStatus: summary?.status,
+        });
+        return data;
+      } catch (error) {
+        tomanLog(
+          'ipg.invalid_response',
+          { method, endpoint: path, ...tomanError(error) },
+          'error',
+        );
+        throw new TomanIpgError(null);
+      }
+    }
     throw await this.toError(response, `${method} ${path}`);
   }
 

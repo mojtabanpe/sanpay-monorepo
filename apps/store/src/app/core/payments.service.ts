@@ -22,7 +22,9 @@ export class StorePaymentsService {
   }
 
   /** تأیید رسید — از «آخرین پرداخت‌ها» حذف می‌شود (سمت سرور ذخیره می‌شود) */
-  confirm(paymentId: string): Promise<{ id: string; storeConfirmedAt: string }> {
+  confirm(
+    paymentId: string,
+  ): Promise<{ id: string; storeConfirmedAt: string }> {
     return firstValueFrom(
       this.http.post<{ id: string; storeConfirmedAt: string }>(
         `/api/store/payments/${paymentId}/confirm`,

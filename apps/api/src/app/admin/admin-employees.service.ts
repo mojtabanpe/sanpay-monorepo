@@ -382,7 +382,7 @@ export class AdminEmployeesService {
         where: { id: dto.definitionId },
       }),
     ]);
-    if (!definition || definition.kind === 'PERSONAL')
+    if (!definition || definition.kind === 'PERSONAL' || definition.deletedAt)
       throw new NotFoundException('کیف پول پیدا نشد');
     if (definition.companyId !== employee.companyId) {
       throw new BadRequestException(
@@ -410,7 +410,11 @@ export class AdminEmployeesService {
         where: { id },
         include: { definition: true },
       });
-      if (!existing || existing.definition.kind === 'PERSONAL')
+      if (
+        !existing ||
+        existing.definition.kind === 'PERSONAL' ||
+        existing.definition.deletedAt
+      )
         throw new NotFoundException('کیف پول پیدا نشد');
       if (!existing.isActive || !existing.definition.isActive)
         throw new BadRequestException('کیف پول غیرفعال قابل شارژ نیست');
@@ -443,7 +447,11 @@ export class AdminEmployeesService {
         where: { id },
         include: { definition: true },
       });
-      if (!existing || existing.definition.kind === 'PERSONAL')
+      if (
+        !existing ||
+        existing.definition.kind === 'PERSONAL' ||
+        existing.definition.deletedAt
+      )
         throw new NotFoundException('تخصیص پیدا نشد');
       if (dto.cap !== undefined && BigInt(dto.cap) < existing.spent)
         throw new BadRequestException(
@@ -487,7 +495,11 @@ export class AdminEmployeesService {
         include: { definition: true },
       });
       // کیف پول شخصی فقط از UPG تغییر می‌کند
-      if (!allocation || allocation.definition.kind === 'PERSONAL')
+      if (
+        !allocation ||
+        allocation.definition.kind === 'PERSONAL' ||
+        allocation.definition.deletedAt
+      )
         throw new NotFoundException('تخصیص پیدا نشد');
 
       const delta = BigInt(-amount); // افزایش مانده = کاهش spent

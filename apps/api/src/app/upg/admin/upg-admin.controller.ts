@@ -11,7 +11,10 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { AdminJwtGuard, AdminRequest } from '../../admin/admin-jwt.guard';
-import { AdminAccess, AnyAdminPermission } from '../../admin/permissions.decorator';
+import {
+  AdminAccess,
+  AnyAdminPermission,
+} from '../../admin/permissions.decorator';
 import { Roles, WRITE_ROLES } from '../../admin/roles.decorator';
 import { GatewayPaymentQueryDto, UpgReviewDto } from './upg-admin.dto';
 import { UpgAdminService } from './upg-admin.service';

@@ -171,7 +171,9 @@ export class FlightsService {
     };
   }
   /** قوانین کنسلی فقط بعد از انتخاب پرواز گرفته می‌شود، نه برای هر نتیجهٔ جست‌وجو */
-  private async withCancellationRules(offer: FlightOffer): Promise<FlightOffer> {
+  private async withCancellationRules(
+    offer: FlightOffer,
+  ): Promise<FlightOffer> {
     const fill = async (leg: FlightLeg): Promise<FlightLeg> =>
       leg.cancellationRules.length || !leg.rateClass
         ? leg
@@ -202,7 +204,8 @@ export class FlightsService {
     });
     if (existing?.intentId && existing.employeeId === employeeId)
       return { intentId: existing.intentId };
-    if (existing) throw new ConflictException('این پیش‌فاکتور قبلاً استفاده شده است');
+    if (existing)
+      throw new ConflictException('این پیش‌فاکتور قبلاً استفاده شده است');
     this.provider.assertConfigured();
     const quote = await this.prisma.flightQuote.findFirst({
       where: { id: input.quoteId, employeeId },
@@ -289,7 +292,8 @@ export class FlightsService {
       bookerFirstName: booking.bookerFirstName ?? '',
       bookerLastName: booking.bookerLastName ?? '',
       mobile: booking.bookerMobile ?? '',
-      passengers: booking.passengers as unknown as FlightBookingInput['passengers'],
+      passengers:
+        booking.passengers as unknown as FlightBookingInput['passengers'],
     };
     try {
       const locked = await this.provider.create(offer, input);
@@ -366,7 +370,12 @@ export class FlightsService {
         data: { amount },
       });
       if (claimed.count !== 1) return;
-      await this.giveBack(tx, booking, difference, `بازگشت مابه‌التفاوت قیمت پرواز — ${id}`);
+      await this.giveBack(
+        tx,
+        booking,
+        difference,
+        `بازگشت مابه‌التفاوت قیمت پرواز — ${id}`,
+      );
     });
   }
   private async applyStatus(
@@ -417,7 +426,11 @@ export class FlightsService {
    */
   private async giveBack(
     tx: Prisma.TransactionClient,
-    booking: { employeeId: string; allocationId: string | null; intentId: string | null },
+    booking: {
+      employeeId: string;
+      allocationId: string | null;
+      intentId: string | null;
+    },
     amount: bigint,
     note: string,
   ): Promise<void> {

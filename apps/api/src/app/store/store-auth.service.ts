@@ -2,12 +2,15 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service';
+import { maskPhone, normalizeMobile } from './store-password.service';
 
 /** توکن پنل فروشگاه — با `role` از توکن کارمند تفکیک می‌شود */
 export interface StoreJwtPayload {
   sub: string;
   username: string;
   role: 'store';
+  /** افزوده‌شده توسط jsonwebtoken */
+  iat?: number;
 }
 
 @Injectable()
@@ -31,14 +34,31 @@ export class StoreAuthService {
       throw new UnauthorizedException('نام کاربری یا رمز عبور نادرست است');
     }
 
+    return {
+      accessToken: await this.issueToken(store),
+      store: this.toProfile(store),
+    };
+  }
+
+  issueToken(store: { id: string; username: string }): Promise<string> {
     const payload: StoreJwtPayload = {
       sub: store.id,
       username: store.username,
       role: 'store',
     };
+    return this.jwt.signAsync(payload);
+  }
 
+  /** پس از تغییر رمز: توکن‌های قبلی باطل شده‌اند، این دستگاه توکن تازه می‌گیرد */
+  async session(storeId: string) {
+    const store = await this.prisma.store.findUnique({
+      where: { id: storeId },
+    });
+    if (!store || !store.isActive) {
+      throw new UnauthorizedException();
+    }
     return {
-      accessToken: await this.jwt.signAsync(payload),
+      accessToken: await this.issueToken(store),
       store: this.toProfile(store),
     };
   }
@@ -63,7 +83,9 @@ export class StoreAuthService {
     logoUrl: string | null;
     latitude: { toString(): string } | null;
     longitude: { toString(): string } | null;
+    passwordChangedAt: Date | null;
   }) {
+    const mobile = normalizeMobile(store.phone);
     return {
       id: store.id,
       name: store.name,
@@ -75,6 +97,8 @@ export class StoreAuthService {
       logoUrl: store.logoUrl,
       latitude: store.latitude === null ? null : Number(store.latitude),
       longitude: store.longitude === null ? null : Number(store.longitude),
+      passwordChanged: store.passwordChangedAt !== null,
+      otpPhone: mobile ? maskPhone(mobile) : null,
     };
   }
 }

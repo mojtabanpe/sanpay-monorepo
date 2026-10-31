@@ -1,4 +1,4 @@
-import { BulkAllocateEntry, OrganizationalRank } from '@sanpay/models';
+import { BulkAllocateEntry } from '@sanpay/models';
 import { PersianDate } from '@spartan-ng/brain/date-time';
 
 export interface AllocationFileResult {
@@ -15,16 +15,6 @@ const HEADERS = {
     'nationalcode',
     'national_code',
     'national code',
-  ],
-  organizationalRank: [
-    'رده سازمانی',
-    'ردهٔ سازمانی',
-    'رده',
-    'سمت',
-    'organizational rank',
-    'organizational_rank',
-    'rank',
-    'position',
   ],
   cap: [
     'مبلغ شارژ (ریال)',
@@ -53,14 +43,15 @@ const HEADERS = {
 /**
  * فایل تخصیص گروهی (CSV یا XLSX) را به سطرهای `BulkAllocateEntry` تبدیل می‌کند.
  *
- * فایل چهار ستون دارد: کد ملی، ردهٔ سازمانی، سقف اعتبار (ریال) و تاریخ انقضای جلالی
- * (مثل ۱۴۰۵/۰۶/۳۱). ارقام فارسی و عربی، جداکنندهٔ هزار و جداکننده‌های `/`، `-`
+ * فایل سه ستون دارد: کد ملی، مبلغ شارژ (ریال) و تاریخ انقضای جلالی
+ * (مثل ۱۴۰۵/۰۶/۳۱). نمونه‌اش `public/allocation-sample.xlsx` است. ارقام فارسی و عربی، جداکنندهٔ هزار و جداکننده‌های `/`، `-`
  * و `.` در تاریخ همه پذیرفته می‌شوند، چون فایلی که واحد رفاه دستی می‌سازد
  * هیچ‌وقت یک‌دست نیست. تاریخ همین‌جا به میلادی تبدیل می‌شود چون API فقط
  * `YYYY-MM-DD` میلادی می‌فهمد.
  *
  * سرستون اختیاری است: اگر سطر اول سرستون باشد، ستون‌ها از روی نامشان تشخیص
- * داده می‌شوند؛ وگرنه ترتیب کد ملی، رده، سقف، انقضا فرض می‌شود.
+ * داده می‌شوند (ستون اضافه، مثل ردهٔ سازمانیِ قالب قدیم، نادیده گرفته می‌شود)؛
+ * وگرنه ترتیب کد ملی، مبلغ، انقضا فرض می‌شود.
  */
 export async function parseAllocationFile(
   file: File,
@@ -80,11 +71,12 @@ export async function parseAllocationFile(
       errors: [`ستون‌های الزامی فایل پیدا نشد: ${missingColumns.join('، ')}`],
     };
   }
-  if (!columns.fromHeader && filled[0].length < 4) {
+  // قالب قدیم بی‌سرستون (با ستون رده) را نباید با جابه‌جایی ستون‌ها خواند
+  if (!columns.fromHeader && usedColumns(filled[0]) !== 3) {
     return {
       entries: [],
       errors: [
-        'فایل بدون سرستون باید چهار ستون کد ملی، رده سازمانی، سقف و انقضا داشته باشد',
+        'فایل بدون سرستون باید دقیقاً سه ستون کد ملی، مبلغ شارژ و تاریخ انقضا داشته باشد',
       ],
     };
   }
@@ -109,16 +101,6 @@ export async function parseAllocationFile(
       return;
     }
 
-    const organizationalRank = parseOrganizationalRank(
-      row[columns.organizationalRank] ?? '',
-    );
-    if (!organizationalRank) {
-      errors.push(
-        `سطر ${lineNo}: رده سازمانی نامعتبر است (مدیرعامل، مدیر، معاون، رییس یا کارمند)`,
-      );
-      return;
-    }
-
     const capRaw = toLatinDigits(row[columns.cap] ?? '').replace(/[^\d]/g, '');
     const cap = Number(capRaw) / 10;
     if (!capRaw || !Number.isSafeInteger(cap) || cap <= 0) {
@@ -133,7 +115,7 @@ export async function parseAllocationFile(
     }
 
     seen.add(nationalCode);
-    entries.push({ nationalCode, organizationalRank, cap, expiresAt });
+    entries.push({ nationalCode, cap, expiresAt });
   });
 
   return { entries, errors };
@@ -159,7 +141,6 @@ async function readXlsx(file: File): Promise<string[][]> {
 /** ستون‌ها را از سرستون پیدا می‌کند، وگرنه به ترتیب پیش‌فرض برمی‌گردد */
 function detectColumns(header: string[]): {
   nationalCode: number;
-  organizationalRank: number;
   cap: number;
   expiresAt: number;
   fromHeader: boolean;
@@ -176,30 +157,13 @@ function detectColumns(header: string[]): {
     );
 
   const nationalCode = find(HEADERS.nationalCode);
-  const organizationalRank = find(HEADERS.organizationalRank);
   const cap = find(HEADERS.cap);
   const expiresAt = find(HEADERS.expiresAt);
 
-  if (
-    [nationalCode, organizationalRank, cap, expiresAt].some(
-      (index) => index >= 0,
-    )
-  ) {
-    return {
-      nationalCode,
-      organizationalRank,
-      cap,
-      expiresAt,
-      fromHeader: true,
-    };
+  if ([nationalCode, cap, expiresAt].some((index) => index >= 0)) {
+    return { nationalCode, cap, expiresAt, fromHeader: true };
   }
-  return {
-    nationalCode: 0,
-    organizationalRank: 1,
-    cap: 2,
-    expiresAt: 3,
-    fromHeader: false,
-  };
+  return { nationalCode: 0, cap: 1, expiresAt: 2, fromHeader: false };
 }
 
 function missingRequiredColumns(
@@ -208,7 +172,6 @@ function missingRequiredColumns(
   if (!columns.fromHeader) return [];
   return [
     [columns.nationalCode, 'کد ملی'],
-    [columns.organizationalRank, 'رده سازمانی'],
     [columns.cap, 'مبلغ شارژ'],
     [columns.expiresAt, 'تاریخ انقضا'],
   ]
@@ -216,29 +179,11 @@ function missingRequiredColumns(
     .map(([, label]) => String(label));
 }
 
-/** مقدار فارسی یا انگلیسی رده را به enum مشترک تبدیل می‌کند. */
-function parseOrganizationalRank(raw: string): OrganizationalRank | null {
-  const normalized = raw
-    .trim()
-    .replace(/[يى]/g, 'ی')
-    .replace(/ك/g, 'ک')
-    .replace(/[\s_\-‌]+/g, '')
-    .toLowerCase();
-
-  const ranks: Record<string, OrganizationalRank> = {
-    مدیرعامل: 'CEO',
-    ceo: 'CEO',
-    مدیر: 'MANAGER',
-    manager: 'MANAGER',
-    معاون: 'DEPUTY',
-    deputy: 'DEPUTY',
-    رییس: 'HEAD',
-    رئیس: 'HEAD',
-    head: 'HEAD',
-    کارمند: 'EMPLOYEE',
-    employee: 'EMPLOYEE',
-  };
-  return ranks[normalized] ?? null;
+/** اکسل سلول‌های خالیِ انتهای سطر را هم می‌فرستد */
+function usedColumns(row: string[]): number {
+  let length = row.length;
+  while (length > 0 && row[length - 1].trim() === '') length--;
+  return length;
 }
 
 /** «۱۴۰۵/۰۶/۳۱» یا «1405-6-31» → «2026-09-22» */
@@ -268,7 +213,7 @@ function toLatinDigits(value: string): string {
 
 /**
  * CSV سبک — نقل‌قول دوتایی و کاما/سمی‌کالن داخل نقل‌قول را می‌فهمد.
- * برای فایل چهارستونی که واحد رفاه از اکسل «Save as CSV» می‌گیرد کافی است و
+ * برای فایل سه‌ستونی که واحد رفاه از اکسل «Save as CSV» می‌گیرد کافی است و
  * ما را از یک وابستگی دیگر بی‌نیاز می‌کند.
  */
 function parseCsv(text: string): string[][] {

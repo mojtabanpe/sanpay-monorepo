@@ -23,6 +23,8 @@ import {
 import { ensurePersonalWallet } from './personal-wallet';
 import { gatewayRef } from './upg.service';
 
+import { tomanLog, tomanOperation, tomanError } from '../toman/toman-log';
+
 /** وضعیت‌هایی که هنوز پیگیری می‌شوند */
 const OPEN: GatewayRefundStatus[] = ['SUBMITTING', 'PENDING', 'UNKNOWN'];
 /**
@@ -208,6 +210,10 @@ export class CardRefundService {
         orderBy: { createdAt: 'asc' },
         take: 20,
       });
+      tomanLog('refund.reconcile_queue', {
+        count: open.length,
+        source: 'cron',
+      });
       for (const refund of open) {
         await this.check(refund, refund.gatewayPayment).catch((error) =>
           this.logger.error(
@@ -216,12 +222,38 @@ export class CardRefundService {
           ),
         );
       }
+    } catch (error) {
+      tomanLog(
+        'refund.reconcile_scan_failed',
+        { ...tomanError(error) },
+        'error',
+      );
+      throw error;
     } finally {
       this.polling = false;
     }
   }
 
   private async check(
+    refund: GatewayRefund,
+    payment: GatewayPayment,
+  ): Promise<void> {
+    return tomanOperation(
+      'refund.check',
+      {
+        refundId: refund.id,
+        paymentId: payment.id,
+        intentId: payment.intentId,
+        trackerId: refund.trackerId,
+        ref: refund.ref,
+        gateway: refund.gateway,
+        amountToman: refund.amount,
+      },
+      () => this.checkImpl(refund, payment),
+    );
+  }
+
+  private async checkImpl(
     refund: GatewayRefund,
     payment: GatewayPayment,
   ): Promise<void> {
@@ -251,6 +283,25 @@ export class CardRefundService {
     refund: GatewayRefund,
     payment: GatewayPayment,
   ): Promise<void> {
+    return tomanOperation(
+      'refund.submit',
+      {
+        refundId: refund.id,
+        paymentId: payment.id,
+        intentId: payment.intentId,
+        trackerId: refund.trackerId,
+        ref: refund.ref,
+        gateway: refund.gateway,
+        amountToman: refund.amount,
+      },
+      () => this.submitImpl(refund, payment),
+    );
+  }
+
+  private async submitImpl(
+    refund: GatewayRefund,
+    payment: GatewayPayment,
+  ): Promise<void> {
     const gateway = this.refundGateway(refund.gateway);
     if (!gateway) return;
     let result: GatewayRefundResult;
@@ -269,6 +320,14 @@ export class CardRefundService {
     refund: GatewayRefund,
     result: GatewayRefundResult,
   ): Promise<void> {
+    tomanLog('refund.result', {
+      refundId: refund.id,
+      trackerId: refund.trackerId,
+      paymentId: refund.gatewayPaymentId,
+      previousStatus: refund.status,
+      status: result.state,
+      ref: result.ref,
+    });
     const raw = json(result.raw);
     switch (result.state) {
       case 'succeeded':
@@ -419,6 +478,12 @@ export class CardRefundService {
         'وضعیت بازگشت هم‌زمان تغییر کرد؛ صفحه را تازه کنید',
       );
     }
+    tomanLog('refund.manual_resolved', {
+      refundId: refund.id,
+      paymentId: refund.gatewayPaymentId,
+      trackerId: refund.trackerId,
+      status: outcome,
+    });
   }
 
   /** وضعیت فعلی یک بازگشت نزد درگاه (با tracker) — چیزی را تغییر نمی‌دهد */

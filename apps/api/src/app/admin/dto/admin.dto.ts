@@ -493,6 +493,13 @@ export class CreateWalletDefinitionDto {
   storeIds?: string[];
 }
 
+export class DeleteWalletDefinitionDto {
+  /** یادداشت حسابرسی: چرا کیف پول حذف شد */
+  @IsString()
+  @MinLength(3, { message: 'دلیل حذف را بنویسید' })
+  note!: string;
+}
+
 export class UpdateWalletDefinitionDto {
   @IsOptional()
   @IsString()
@@ -574,14 +581,11 @@ export class UpdateAllocationDto {
   isActive?: boolean;
 }
 
-/** یک سطر از فایل تخصیص: کارمند با رده، سقف و انقضای مخصوص خودش */
+/** یک سطر از فایل تخصیص: کارمند با مبلغ شارژ و انقضای مخصوص خودش */
 export class BulkAllocateEntryDto {
   @IsString()
   @IsNotEmpty()
   nationalCode!: string;
-
-  @IsIn(ORGANIZATIONAL_RANKS)
-  organizationalRank!: (typeof ORGANIZATIONAL_RANKS)[number];
 
   @Type(() => Number)
   @IsInt()

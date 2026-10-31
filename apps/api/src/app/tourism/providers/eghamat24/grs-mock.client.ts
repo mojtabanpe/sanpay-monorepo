@@ -239,7 +239,9 @@ export class GrsMockClient extends GrsClient {
     const reserve = this.mustFind(confirmationCode);
 
     if (reserve.status !== 'booking') {
-      throw new NotFoundException('this action not acceptable in this status!!');
+      throw new NotFoundException(
+        'this action not acceptable in this status!!',
+      );
     }
     const expiresAt = parseGrsStamp(reserve.expire_date);
     if (expiresAt && expiresAt.getTime() < Date.now()) {
@@ -279,7 +281,9 @@ export class GrsMockClient extends GrsClient {
     const reserve = this.mustFind(confirmationCode);
 
     if (reserve.status !== 'canceling') {
-      throw new NotFoundException('this action not acceptable in this status!!');
+      throw new NotFoundException(
+        'this action not acceptable in this status!!',
+      );
     }
 
     reserve.status = 'canceled';
@@ -291,7 +295,9 @@ export class GrsMockClient extends GrsClient {
     const reserve = this.mustFind(confirmationCode);
 
     if (reserve.status !== 'canceling') {
-      throw new NotFoundException('this action not acceptable in this status!!');
+      throw new NotFoundException(
+        'this action not acceptable in this status!!',
+      );
     }
 
     reserve.status = 'cancellation_rejected';
@@ -336,7 +342,10 @@ const CITIES: GrsCity[] = [
   },
 ];
 
-function image(name: string, hue: number): { name: string; caption: string; room_type_id: null; url: string } {
+function image(
+  name: string,
+  hue: number,
+): { name: string; caption: string; room_type_id: null; url: string } {
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="800" height="500"><defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="hsl(${hue},45%,38%)"/><stop offset="1" stop-color="hsl(${hue},45%,22%)"/></linearGradient></defs><rect width="800" height="500" fill="url(#g)"/><text x="400" y="260" font-family="sans-serif" font-size="34" fill="#fff" text-anchor="middle">${name}</text></svg>`;
   return {
     name,

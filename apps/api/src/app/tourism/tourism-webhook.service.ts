@@ -159,12 +159,7 @@ export class TourismWebhookService {
         }
         // جریمهٔ کنسلی سهم هتل است؛ فقط totalReturnToCustomer به کیف پول برمی‌گردد
         const refund = returnToCustomer(report) ?? booking.amount;
-        await this.settleAsFailed(
-          booking,
-          'CANCELED',
-          refund,
-          'رزرو کنسل شد',
-        );
+        await this.settleAsFailed(booking, 'CANCELED', refund, 'رزرو کنسل شد');
         return;
       }
 

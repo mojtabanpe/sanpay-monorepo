@@ -22,7 +22,9 @@ export function parseGrsStamp(value: string | null): Date | null {
   if (!value) {
     return null;
   }
-  const parsed = Date.parse(`${value.trim().replace(' ', 'T')}${TEHRAN_OFFSET}`);
+  const parsed = Date.parse(
+    `${value.trim().replace(' ', 'T')}${TEHRAN_OFFSET}`,
+  );
   return Number.isFinite(parsed) ? new Date(parsed) : null;
 }
 

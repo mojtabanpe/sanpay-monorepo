@@ -5,11 +5,7 @@ import {
   inject,
   signal,
 } from '@angular/core';
-import {
-  SanpayDatePickerWidth,
-  isoToJalali,
-  jalaliToIso,
-} from '@sanpay/dates';
+import { SanpayDatePickerWidth, isoToJalali, jalaliToIso } from '@sanpay/dates';
 import { StorePaymentReport, StoreSettlementStatus } from '@sanpay/models';
 import { HlmBadgeImports } from '@sanpay/ui/badge';
 import { HlmButtonImports } from '@sanpay/ui/button';

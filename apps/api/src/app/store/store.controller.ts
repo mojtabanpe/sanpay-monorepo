@@ -25,6 +25,11 @@ import {
   VerifyMerchantPaymentIntentDto,
 } from './dto/merchant-payment.dto';
 import { StorePaymentReportQueryDto } from './dto/store-report.dto';
+import {
+  StoreChangePasswordDto,
+  StoreChangePasswordWithOtpDto,
+} from './dto/store-password.dto';
+import { StorePasswordService } from './store-password.service';
 
 type StoreRequest = Request & { store: StoreJwtPayload };
 
@@ -35,6 +40,7 @@ export class StoreController {
     private readonly payments: StorePaymentsService,
     private readonly events: PaymentEventsService,
     private readonly merchantPayments: MerchantPaymentsService,
+    private readonly password: StorePasswordService,
   ) {}
 
   @Post('auth/login')
@@ -47,6 +53,45 @@ export class StoreController {
   @UseGuards(StoreJwtGuard)
   me(@Req() request: StoreRequest) {
     return this.auth.profile(request.store.sub);
+  }
+
+  /** اولین تغییر رمز (رمزی که مدیریت داده) — با رمز فعلی */
+  @Post('auth/change-password')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(StoreJwtGuard)
+  async changePassword(
+    @Req() request: StoreRequest,
+    @Body() dto: StoreChangePasswordDto,
+  ) {
+    await this.password.changeWithPassword(
+      request.store.sub,
+      dto.currentPassword,
+      dto.newPassword,
+    );
+    return this.auth.session(request.store.sub);
+  }
+
+  /** تغییرهای بعدی: کد به موبایل ثبت‌شدهٔ فروشگاه */
+  @Post('auth/change-password/otp')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(StoreJwtGuard)
+  requestPasswordOtp(@Req() request: StoreRequest) {
+    return this.password.requestOtp(request.store.sub);
+  }
+
+  @Post('auth/change-password/verify')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(StoreJwtGuard)
+  async changePasswordWithOtp(
+    @Req() request: StoreRequest,
+    @Body() dto: StoreChangePasswordWithOtpDto,
+  ) {
+    await this.password.changeWithOtp(
+      request.store.sub,
+      dto.code,
+      dto.newPassword,
+    );
+    return this.auth.session(request.store.sub);
   }
 
   @Get('payments')

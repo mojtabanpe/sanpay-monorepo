@@ -163,7 +163,9 @@ export function hotelPriceBounds(
 export function hotelMaxCapacity(hotels: HotelCard[]): number {
   return Math.max(
     0,
-    ...hotels.flatMap((hotel) => (hotel.rooms ?? []).map((room) => room.capacity)),
+    ...hotels.flatMap((hotel) =>
+      (hotel.rooms ?? []).map((room) => room.capacity),
+    ),
   );
 }
 

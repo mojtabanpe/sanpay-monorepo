@@ -18,7 +18,10 @@ async function main() {
     assert.equal(headers.has('Authorization'), false);
     const response = await fetchOriginal(input, init);
     if (String(input).includes('/flights/search')) {
-      rawFlightSearch = await response.clone().json().catch(() => null);
+      rawFlightSearch = await response
+        .clone()
+        .json()
+        .catch(() => null);
     }
     return response;
   }) as typeof fetch;

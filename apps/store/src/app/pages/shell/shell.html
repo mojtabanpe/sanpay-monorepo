@@ -124,6 +124,29 @@
         </svg>
         گزارش‌ها
       </a>
+      <a
+        routerLink="/account"
+        routerLinkActive="bg-primary/10 text-primary font-semibold"
+        #accountSide="routerLinkActive"
+        [attr.aria-current]="accountSide.isActive ? 'page' : null"
+        class="hover:bg-muted flex min-h-11 items-center gap-3 rounded-xl px-3 text-sm transition-colors"
+      >
+        <svg
+          class="size-5 shrink-0"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.7"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
+          <path
+            d="M6 11h12a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1v-8a1 1 0 0 1 1-1ZM8 11V7a4 4 0 0 1 8 0v4M12 15v2"
+          />
+        </svg>
+        تغییر رمز
+      </a>
     </nav>
 
     <div class="border-t pt-4">
@@ -241,6 +264,16 @@
               [attr.aria-current]="reportsLink.isActive ? 'page' : null"
               class="text-muted-foreground [&.border-current]:text-foreground inline-flex min-h-11 items-center border-b-2 border-transparent px-3 text-sm transition-colors"
               >گزارش‌ها</a
+            >
+          </li>
+          <li>
+            <a
+              routerLink="/account"
+              routerLinkActive="border-current font-bold"
+              #accountLink="routerLinkActive"
+              [attr.aria-current]="accountLink.isActive ? 'page' : null"
+              class="text-muted-foreground [&.border-current]:text-foreground inline-flex min-h-11 items-center border-b-2 border-transparent px-3 text-sm transition-colors"
+              >تغییر رمز</a
             >
           </li>
         </ul>

@@ -32,9 +32,17 @@ export class StoreJwtGuard implements CanActivate {
       }
       const store = await this.prisma.store.findFirst({
         where: { id: payload.sub, isActive: true, deletedAt: null },
-        select: { id: true },
+        select: { id: true, sessionsValidAfter: true },
       });
       if (!store) throw new UnauthorizedException();
+      // توکنِ صادرشده پیش از آخرین تغییر رمز (iat ثانیه است)
+      if (
+        store.sessionsValidAfter &&
+        (payload.iat ?? 0) <
+          Math.floor(store.sessionsValidAfter.getTime() / 1000)
+      ) {
+        throw new UnauthorizedException();
+      }
       (request as Request & { store: StoreJwtPayload }).store = payload;
       return true;
     } catch {

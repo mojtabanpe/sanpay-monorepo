@@ -54,6 +54,7 @@ import {
   UpdateEmployeeDto,
   UpdateStoreDto,
   UpdateWalletDefinitionDto,
+  DeleteWalletDefinitionDto,
 } from './dto/admin.dto';
 import { AdminAccess, AnyAdminPermission } from './permissions.decorator';
 import { Roles, WRITE_ROLES } from './roles.decorator';
@@ -320,6 +321,23 @@ export class AdminWalletsController {
   @Roles(...WRITE_ROLES)
   bulkAllocate(@Body() dto: BulkAllocateDto) {
     return this.wallets.bulkAllocate(dto);
+  }
+
+  /** حذف کیف پول فقط برای سوپر ادمین — اعتبار باقی‌ماندهٔ کارمندان از بین می‌رود */
+  @Get(':id/deletion-preview')
+  @Roles('SUPER_ADMIN')
+  deletionPreview(@Param('id') id: string) {
+    return this.wallets.deletionPreview(id);
+  }
+
+  @Delete(':id')
+  @Roles('SUPER_ADMIN')
+  remove(
+    @Req() request: AdminRequest,
+    @Param('id') id: string,
+    @Body() dto: DeleteWalletDefinitionDto,
+  ) {
+    return this.wallets.remove(id, dto.note, request.admin.sub);
   }
 }
 

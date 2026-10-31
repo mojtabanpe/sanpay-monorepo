@@ -165,10 +165,19 @@ export class AdminStoresService {
 
   async resetPassword(id: string, password: string) {
     await this.mustExist(id);
-    await this.prisma.store.update({
-      where: { id },
-      data: { passwordHash: await bcrypt.hash(password, 10) },
-    });
+    const now = new Date();
+    await this.prisma.$transaction([
+      // رمزِ دادهٔ مدیریت: تغییر بعدیِ فروشنده دوباره با همین رمز است، نه پیامک
+      this.prisma.store.update({
+        where: { id },
+        data: {
+          passwordHash: await bcrypt.hash(password, 10),
+          passwordChangedAt: null,
+          sessionsValidAfter: now,
+        },
+      }),
+      this.prisma.storePasswordOtp.deleteMany({ where: { storeId: id } }),
+    ]);
     return { ok: true };
   }
 

@@ -131,12 +131,16 @@ async function main() {
     type: result['type'],
     address: result['address'],
     photo: result['photo'],
-    rooms: Array.isArray(result['room']) ? result['room'].length : result['room'],
+    rooms: Array.isArray(result['room'])
+      ? result['room'].length
+      : result['room'],
   }));
   console.log(`  نمونهٔ فیلدهای کارت:\n${JSON.stringify(sample, null, 2)}`);
   console.log(
     `  getHotel ${hotels.length} هتل ↔ searchHotel ${results.length} نتیجه` +
-      (results.length > 0 && results.length < hotels.length ? ' (کمتر بودن طبیعی است اگر بقیه پرند)' : ''),
+      (results.length > 0 && results.length < hotels.length
+        ? ' (کمتر بودن طبیعی است اگر بقیه پرند)'
+        : ''),
   );
   console.log('\nاتصال به هتل‌یار سالم است.');
 }

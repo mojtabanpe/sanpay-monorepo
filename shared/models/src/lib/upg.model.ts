@@ -95,12 +95,7 @@ export type UpgPayResponse =
  * به همان کارت برمی‌گردد. این مانده هرگز به‌عنوان «کیف پول» نمایش داده نمی‌شود.
  */
 export type CardRefundStatus =
-  | 'SUBMITTING'
-  | 'PENDING'
-  | 'UNKNOWN'
-  | 'SUCCEEDED'
-  | 'FAILED'
-  | 'DENIED';
+  'SUBMITTING' | 'PENDING' | 'UNKNOWN' | 'SUCCEEDED' | 'FAILED' | 'DENIED';
 
 export interface CardRefundItem {
   id: string;

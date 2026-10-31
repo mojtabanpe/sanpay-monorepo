@@ -64,8 +64,12 @@
           aria-label="فیلتر نوع"
         >
           <button hlmToggleGroupItem value="">همه</button>
-          <button hlmToggleGroupItem value="CREDIT">{{ kindLabels['CREDIT'] }}</button>
-          <button hlmToggleGroupItem value="TOURISM">{{ kindLabels['TOURISM'] }}</button>
+          <button hlmToggleGroupItem value="CREDIT">
+            {{ kindLabels['CREDIT'] }}
+          </button>
+          <button hlmToggleGroupItem value="TOURISM">
+            {{ kindLabels['TOURISM'] }}
+          </button>
         </hlm-toggle-group>
       </hlm-field>
       <hlm-field>
@@ -82,7 +86,9 @@
         </hlm-toggle-group>
       </hlm-field>
       <div class="flex items-end">
-        <button hlmBtn variant="ghost" (click)="clearFilters()">پاک‌کردن</button>
+        <button hlmBtn variant="ghost" (click)="clearFilters()">
+          پاک‌کردن
+        </button>
       </div>
     </div>
   </section>
@@ -190,6 +196,18 @@
                 >
                   {{ definition.isActive ? 'غیرفعال کردن' : 'فعال کردن' }}
                 </button>
+                @if (isSuperAdmin()) {
+                <button
+                  hlmBtn
+                  size="sm"
+                  variant="ghost"
+                  class="text-destructive"
+                  [disabled]="saving()"
+                  (click)="remove(definition)"
+                >
+                  حذف
+                </button>
+                }
               </td>
               }
             </tr>
@@ -200,9 +218,9 @@
                 [attr.colspan]="canWrite() ? 10 : 9"
                 class="text-muted-foreground text-center"
               >
-                {{ loading() ? 'در حال بارگذاری…' : definitions().length ?
-                'کیف پولی با این فیلترها پیدا نشد.' : 'هنوز کیف پولی تعریف نشده
-                است.' }}
+                {{ loading() ? 'در حال بارگذاری…' : definitions().length ? 'کیف
+                پولی با این فیلترها پیدا نشد.' : 'هنوز کیف پولی تعریف نشده است.'
+                }}
               </td>
             </tr>
             }
@@ -227,9 +245,9 @@
       } @else {
       <p hlmDialogDescription>
         بدون فایل، به همهٔ کارمندان فعال شرکت «{{ definition.company.name }}» با
-        مبلغ شارژ و انقضای یکسان اعمال می‌شود. با فایل، فقط به همان کد ملی‌ها،
-        پس از تطبیق ردهٔ سازمانی، و با مبالغ خودشان شارژ می‌شود. مبلغ شارژ به
-        ماندهٔ فعلی هر کارمند اضافه می‌شود.
+        مبلغ شارژ و انقضای یکسان اعمال می‌شود. با فایل، فقط به همان کد ملی‌ها و
+        با مبالغ خودشان شارژ می‌شود. مبلغ شارژ به ماندهٔ فعلی هر کارمند اضافه
+        می‌شود.
       </p>
       }
     </div>
@@ -259,10 +277,17 @@
             placeholder="نام، کد ملی یا کد پرسنلی"
           />
           <hlm-autocomplete-content *hlmAutocompletePortal>
+            <!-- prettier-ignore -->
             <hlm-autocomplete-status class="justify-start">
-              @if (employeeOptions.error()) { جست‌وجوی کارمند ناموفق بود } @else if (employeeOptions.isLoading()) { در حال جست‌وجو… } @else if (employeeSearch().trim().length < 2) { دست‌کم دو حرف یا رقم
-              بنویسید } @else if (employeeOptions.value().length === 0) { کارمند
-              فعالی با این مشخصات پیدا نشد }
+              @if (employeeOptions.error()) {
+                جست‌وجوی کارمند ناموفق بود
+              } @else if (employeeOptions.isLoading()) {
+                در حال جست‌وجو…
+              } @else if (employeeSearch().trim().length < 2) {
+                دست‌کم دو حرف یا رقم بنویسید
+              } @else if (employeeOptions.value().length === 0) {
+                کارمند فعالی با این مشخصات پیدا نشد
+              }
             </hlm-autocomplete-status>
             <div hlmAutocompleteList>
               @for (employee of employeeOptions.value(); track employee.id) {
@@ -288,9 +313,8 @@
       >
         <span class="text-sm font-medium">بارگذاری فایل (اختیاری)</span>
         <p class="text-muted-foreground text-xs">
-          اکسل یا CSV با چهار ستون: کد ملی، رده سازمانی، مبلغ شارژ (ریال)، تاریخ
-          انقضای جلالی — مثل ۱۴۰۵/۰۶/۳۱. رده یکی از مدیر، معاون، رییس یا کارمند
-          است.
+          اکسل یا CSV با سه ستون: کد ملی، مبلغ شارژ (ریال)، تاریخ انقضای جلالی —
+          مثل ۱۴۰۵/۰۶/۳۱.
         </p>
 
         <input
@@ -310,6 +334,15 @@
           >
             {{ parsingFile() ? 'در حال خواندن…' : 'انتخاب فایل' }}
           </button>
+          <a
+            hlmBtn
+            size="sm"
+            variant="ghost"
+            href="allocation-sample.xlsx"
+            download="نمونه-شارژ-کیف-پول.xlsx"
+          >
+            دانلود فایل نمونه
+          </a>
           @if (fileName()) {
           <span class="text-muted-foreground text-xs">{{ fileName() }}</span>
           <button hlmBtn size="sm" variant="ghost" (click)="clearFile()">
@@ -328,8 +361,7 @@
             @for (entry of filePreview(); track entry.nationalCode) {
             <li>
               <span dir="ltr">{{ entry.nationalCode }}</span> — {{
-              rankLabels[entry.organizationalRank] }} — {{ toman(entry.cap) }} —
-              تا {{ jalali(entry.expiresAt) }}
+              toman(entry.cap) }} — تا {{ jalali(entry.expiresAt) }}
             </li>
             }
           </ul>
@@ -569,7 +601,6 @@
         </div>
       </div>
       }
-
     </div>
     <div hlmDialogFooter>
       <button hlmBtn variant="ghost" (click)="closeForm()">انصراف</button>

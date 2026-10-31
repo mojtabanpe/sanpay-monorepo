@@ -198,7 +198,9 @@ export class TourismService {
     // اپ کاتالوگ بی‌قیمت (`GET /hotels`) را نشان می‌دهد.
     const scope = dto.hotelId ?? dto.cityId;
     if (!scope) {
-      throw new BadRequestException('برای جست‌وجوی اتاق خالی، شهر را انتخاب کنید');
+      throw new BadRequestException(
+        'برای جست‌وجوی اتاق خالی، شهر را انتخاب کنید',
+      );
     }
     const results = await this.providers.forId(scope).search(params);
     // هتلِ مشخص با ستارهٔ نامعلوم رد نمی‌شود؛ جست‌وجوی شهری فقط ۳ ستاره به بالا
@@ -579,7 +581,8 @@ export class TourismService {
         data: {
           status: 'REJECTED',
           canceledAt: new Date(),
-          statusNote: 'نهایی‌سازی رزرو نزد تأمین‌کننده انجام نشد؛ مبلغ برگشت داده شد',
+          statusNote:
+            'نهایی‌سازی رزرو نزد تأمین‌کننده انجام نشد؛ مبلغ برگشت داده شد',
         },
       });
       await this.prisma.hotelBooking.update({

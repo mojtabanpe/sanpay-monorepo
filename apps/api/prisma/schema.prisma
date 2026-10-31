@@ -164,6 +164,11 @@ model WalletDefinition {
   /// سقف پیش‌فرض تخصیص‌ها (تومان) — قابل بازنویسی به‌ازای هر کارمند
   defaultCap  BigInt?
   isActive    Boolean    @default(true)
+  /// حذف توسط سوپر ادمین. کیف پولی که تاریخچه دارد به‌جای پاک‌شدن بایگانی
+  /// می‌شود: غیرفعال، از داشبورد و اپ پنهان، تراکنش‌ها و گزارش‌ها دست‌نخورده.
+  deletedAt   DateTime?
+  deletedById String?
+  deletedNote String?
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
 
@@ -222,16 +227,37 @@ model Store {
   /// ورود پنل فروشگاه
   username            String    @unique
   passwordHash        String
+  /// آخرین تغییر رمز توسط خود فروشنده؛ null = هنوز با رمزی که مدیریت داده وارد
+  /// می‌شود و با رمز فعلی عوضش می‌کند. پس از آن هر تغییر رمز کد پیامکی می‌خواهد.
+  /// بازنشانی رمز از داشبورد دوباره null می‌کند.
+  passwordChangedAt   DateTime?
+  /// هر تغییر رمز (فروشنده یا مدیریت): توکن‌های صادرشده پیش از آن رد می‌شوند
+  sessionsValidAfter  DateTime?
   isActive            Boolean   @default(true)
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
 
+  passwordOtp            StorePasswordOtp?
   walletDefinitions      WalletDefinitionStore[]
   transactions           Transaction[]
   payments               Payment[]
   settlementItems        SettlementItem[]
   merchantPaymentIntents MerchantPaymentIntent[]
   paymentIntents         PaymentIntent[]
+}
+
+/// آخرین کد پیامکی تغییر رمز پنل فروشگاه؛ کد خام هرگز ذخیره نمی‌شود.
+model StorePasswordOtp {
+  id        String   @id @default(uuid())
+  storeId   String   @unique
+  /// شماره‌ای که کد به آن رفته؛ اگر شمارهٔ فروشگاه عوض شود کد باطل است
+  phone     String
+  codeHash  String
+  expiresAt DateTime
+  attempts  Int      @default(0)
+  sentAt    DateTime @default(now())
+
+  store Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
 }
 
 /// رابطهٔ چند-به-چند: هر کیف پول در کدام فروشگاه‌ها قابل استفاده است

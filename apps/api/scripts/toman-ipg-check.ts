@@ -25,7 +25,10 @@ async function main() {
   const base = new URL(client.baseUrl);
 
   // هر درخواستی به IPG جز «ساخت پرداخت» و «استعلام پرداخت» متوقف می‌شود
-  globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) => {
+  globalThis.fetch = (async (
+    input: string | URL | Request,
+    init?: RequestInit,
+  ) => {
     const url = new URL(String(input));
     if (url.host === base.host) {
       const method = init?.method ?? 'GET';
@@ -65,7 +68,9 @@ async function main() {
     'payment.create is required to take payments',
   );
 
-  const publicUrl = (process.env.UPG_PUBLIC_URL || 'http://localhost:6200').replace(/\/+$/, '');
+  const publicUrl = (
+    process.env.UPG_PUBLIC_URL || 'http://localhost:6200'
+  ).replace(/\/+$/, '');
   const trackerId = `sanpay-check-${randomUUID()}`;
   const terminal = process.env.TOMAN_IPG_TERMINAL?.trim();
   const created = await client.createPayment({
@@ -94,10 +99,14 @@ async function main() {
       'toman_wage',
       'shaparak_wage',
     ]) {
-      console.log(`  ${key.padEnd(14)} ${String((payment as unknown as Record<string, unknown>)[key] ?? '—')}`);
+      console.log(
+        `  ${key.padEnd(14)} ${String((payment as unknown as Record<string, unknown>)[key] ?? '—')}`,
+      );
     }
   } else {
-    console.log('\npayment.list not granted — skipped the inquiry (the reconciliation cron needs it)');
+    console.log(
+      '\npayment.list not granted — skipped the inquiry (the reconciliation cron needs it)',
+    );
   }
   if (granted.has(TOMAN_IPG_SCOPES.refundWallet)) {
     const wallet = await client.getRefundWallet();
@@ -105,7 +114,9 @@ async function main() {
     console.log(`  balance    ${wallet.balance} rial`);
     console.log(`  address    ${wallet.address ?? '—'}`);
   } else {
-    console.log('\nipg.wallet.read not granted — the dashboard cannot show the refund wallet balance');
+    console.log(
+      '\nipg.wallet.read not granted — the dashboard cannot show the refund wallet balance',
+    );
   }
   console.log('\nOK — nothing was verified, refunded or reversed.');
 }

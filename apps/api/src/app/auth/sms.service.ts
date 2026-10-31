@@ -22,6 +22,10 @@ const LOGIN_TEMPLATE_ID = 938507;
 const PURCHASE_TEMPLATE_ID = 944060;
 const LOGIN_NOTICE_TEMPLATE_ID = 723463;
 const PAYMENT_NOTICE_TEMPLATE_ID = 279643;
+/** قالب‌های تغییر موبایل و رمز فروشگاه؛ متغیر env در صورت وجود جایگزینشان می‌شود */
+const PHONE_CHANGE_OTP_TEMPLATE_ID = 672582;
+const PHONE_CHANGE_NOTICE_TEMPLATE_ID = 195588;
+const STORE_PASSWORD_OTP_TEMPLATE_ID = 403664;
 
 interface SmsParameter {
   name: string;
@@ -49,7 +53,8 @@ export class SmsService {
   ): Promise<void> {
     await this.sendVerify(
       phone,
-      Number(process.env.SMSIR_PHONE_CHANGE_OTP_TEMPLATE_ID),
+      Number(process.env.SMSIR_PHONE_CHANGE_OTP_TEMPLATE_ID) ||
+        PHONE_CHANGE_OTP_TEMPLATE_ID,
       [
         { name: 'CODE', value: code },
         { name: 'NEWPHONE', value: newPhone },
@@ -66,12 +71,23 @@ export class SmsService {
   ): Promise<void> {
     await this.sendVerify(
       phone,
-      Number(process.env.SMSIR_PHONE_CHANGE_NOTICE_TEMPLATE_ID),
+      Number(process.env.SMSIR_PHONE_CHANGE_NOTICE_TEMPLATE_ID) ||
+        PHONE_CHANGE_NOTICE_TEMPLATE_ID,
       [
         { name: 'OLDPHONE', value: oldPhone },
         { name: 'NEWPHONE', value: newPhone },
         { name: 'TIME', value: formatTehranTime(at) },
       ],
+    );
+  }
+
+  /** کد تغییر رمز پنل فروشگاه — قالب `SMSIR_STORE_PASSWORD_OTP_TEMPLATE_ID` (پارامتر CODE) */
+  async sendStorePasswordOtp(phone: string, code: string): Promise<void> {
+    await this.sendVerify(
+      phone,
+      Number(process.env.SMSIR_STORE_PASSWORD_OTP_TEMPLATE_ID) ||
+        STORE_PASSWORD_OTP_TEMPLATE_ID,
+      [{ name: OTP_PARAMETER_NAME, value: code }],
     );
   }
 

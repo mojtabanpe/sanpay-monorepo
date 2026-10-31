@@ -10,6 +10,10 @@ readonly lock_file="${state_dir}/deploy.lock"
 mkdir -p "${state_dir}"
 exec 9>"${lock_file}"
 flock -n 9 || exit 0
+if [[ -e "${state_dir}/finance-maintenance" ]]; then
+  echo 'Finance migration maintenance is active; deployment skipped.'
+  exit 0
+fi
 
 cd "${project_root}"
 git fetch --quiet origin "${deploy_branch}"

@@ -6,6 +6,7 @@ import {
   AdminCompanyRow,
   AdminEmployeeRow,
   AdminWalletDefinitionRow,
+  WalletDeletionPreview,
   BulkAllocateEntry,
 } from '@sanpay/models';
 import { HlmAlertImports } from '@sanpay/ui/alert';
@@ -29,7 +30,6 @@ import { ConfirmService } from '../../core/confirm';
 import { parseAllocationFile } from '../../core/allocation-file';
 import {
   WALLET_KIND_LABELS,
-  ORGANIZATIONAL_RANK_LABELS,
   fa,
   isoDate,
   jalali,
@@ -81,12 +81,15 @@ export class WalletsPage {
   private readonly auth = inject(AdminAuthService);
   private readonly confirm = inject(ConfirmService);
 
-  protected readonly canWrite = computed(() => this.auth.hasPermission('wallets:write'));
+  protected readonly canWrite = computed(() =>
+    this.auth.hasPermission('wallets:write'),
+  );
+  /** حذف فقط برای سوپر ادمین؛ API هم همین را اعمال می‌کند */
+  protected readonly isSuperAdmin = this.auth.isSuperAdmin;
   protected readonly toman = toman;
   protected readonly fa = fa;
   protected readonly jalali = jalali;
   protected readonly kindLabels = WALLET_KIND_LABELS;
-  protected readonly rankLabels = ORGANIZATIONAL_RANK_LABELS;
   protected readonly kinds: Kind[] = ['CREDIT', 'TOURISM'];
 
   protected readonly definitions = signal<AdminWalletDefinitionRow[]>([]);
@@ -408,6 +411,43 @@ export class WalletsPage {
     }, 'تغییر وضعیت ممکن نشد');
   }
 
+  protected async remove(definition: AdminWalletDefinitionRow): Promise<void> {
+    let preview: WalletDeletionPreview;
+    try {
+      preview = await this.api.walletDeletionPreview(definition.id);
+    } catch (caught) {
+      this.error.set(apiError(caught, 'بررسی حذف کیف پول ممکن نشد'));
+      return;
+    }
+    const lost = preview.affectedEmployees
+      ? `${fa(preview.affectedEmployees)} کارمند مجموعاً ${toman(preview.remainingAmount)} اعتبار مصرف‌نشده در این کیف پول دارند که از بین می‌رود. `
+      : 'هیچ کارمندی اعتبار مصرف‌نشده در این کیف پول ندارد. ';
+    const how =
+      preview.mode === 'delete'
+        ? 'کیف پول هنوز استفاده نشده و کامل پاک می‌شود.'
+        : 'چون تاریخچهٔ تراکنش دارد، بایگانی می‌شود: از داشبورد و اپ کارمندان حذف و غیرقابل‌استفاده می‌شود، ولی تراکنش‌ها و گزارش‌ها می‌مانند.';
+    const note = await this.confirm.askNote({
+      title: `حذف کیف پول «${definition.name}»`,
+      description: `${lost}${how} این کار برگشت‌پذیر نیست.`,
+      action: 'حذف کیف پول',
+      destructive: true,
+      note: {
+        label: 'دلیل حذف',
+        placeholder: 'برای سوابق حسابرسی ثبت می‌شود',
+        minLength: 3,
+      },
+    });
+    if (note === null) return;
+    await this.run(async () => {
+      const result = await this.api.deleteWalletDefinition(definition.id, note);
+      this.notice.set(
+        result.mode === 'delete'
+          ? `کیف پول «${definition.name}» حذف شد.`
+          : `کیف پول «${definition.name}» بایگانی شد و دیگر برای کارمندان نمایش داده نمی‌شود.`,
+      );
+    }, 'حذف کیف پول ممکن نشد');
+  }
+
   // ─── مدال تخصیص گروهی ───────────────────────────────────────────────
 
   protected openBulk(definition: AdminWalletDefinitionRow): void {
@@ -511,8 +551,7 @@ export class WalletsPage {
   }
 
   /**
-   * با فایل: فقط به کد ملی‌های همان فایل، پس از تطبیق ردهٔ سازمانی، هرکدام با
-   * سقف و انقضای خودش.
+   * با فایل: فقط به کد ملی‌های همان فایل، هرکدام با مبلغ و انقضای خودش.
    * بدون فایل: سقف و انقضای یکسان برای همهٔ کارمندان فعال.
    */
   protected async bulkAllocate(): Promise<void> {
@@ -547,18 +586,6 @@ export class WalletsPage {
         parts.push(
           `${fa(result.notFound.length)} کد ملی پیدا نشد: ` +
             result.notFound.slice(0, 10).join('، '),
-        );
-      }
-      if (result.rankMismatches.length) {
-        parts.push(
-          `${fa(result.rankMismatches.length)} رده ناسازگار: ` +
-            result.rankMismatches
-              .slice(0, 10)
-              .map(
-                (item) =>
-                  `${item.nationalCode} (${this.rankLabels[item.fileRank]} در فایل، ${this.rankLabels[item.employeeRank]} در سامانه)`,
-              )
-              .join('، '),
         );
       }
       this.notice.set(parts.join('، ') + '.');

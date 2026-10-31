@@ -40,6 +40,18 @@ export interface StoreProfile {
   logoUrl: string | null;
   latitude: number | null;
   longitude: number | null;
+  /** فروشنده رمز را خودش عوض کرده؛ تغییر بعدی کد پیامکی می‌خواهد، نه رمز فعلی */
+  passwordChanged: boolean;
+  /** موبایلی که کد تغییر رمز به آن می‌رود، پوشیده (`0912***6789`)؛ null = موبایل ثبت نشده */
+  otpPhone: string | null;
+}
+
+/** پاسخ ارسال کد تغییر رمز پنل فروشگاه */
+export interface StorePasswordOtpChallenge {
+  /** پوشیده، مثل `0912***6789` */
+  phone: string;
+  expiresInSeconds: number;
+  retryAfterSeconds: number;
 }
 
 /** جمع فروش در یک بازهٔ زمانی */

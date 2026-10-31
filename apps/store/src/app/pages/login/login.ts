@@ -32,7 +32,8 @@ export class LoginPage {
       await this.auth.login(username, password);
       void this.router.navigate(['/payments']);
     } catch (caught) {
-      const message = (caught as { error?: { message?: unknown } })?.error?.message;
+      const message = (caught as { error?: { message?: unknown } })?.error
+        ?.message;
       this.error.set(
         typeof message === 'string' ? message : 'ورود به پنل ممکن نشد',
       );

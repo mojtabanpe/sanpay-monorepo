@@ -582,7 +582,10 @@ import { PATH_METADATA } from '@nestjs/common/constants';
 import * as dashboardControllers from '../src/app/admin/admin.controller';
 import { SettlementsController } from '../src/app/settlements/settlements.controller';
 import { UpgAdminController } from '../src/app/upg/admin/upg-admin.controller';
-import { ADMIN_RESOURCE, ADMIN_REQUIRED_PERMISSIONS } from '../src/app/admin/permissions.decorator';
+import {
+  ADMIN_RESOURCE,
+  ADMIN_REQUIRED_PERMISSIONS,
+} from '../src/app/admin/permissions.decorator';
 
 test('every protected dashboard feature endpoint declares a resource or explicit permission', () => {
   const controllers = [
@@ -599,11 +602,15 @@ test('every protected dashboard feature endpoint declares a resource or explicit
   for (const controller of controllers) {
     for (const name of Object.getOwnPropertyNames(controller.prototype)) {
       if (name === 'constructor') continue;
-      const handler = controller.prototype[name as keyof typeof controller.prototype];
+      const handler =
+        controller.prototype[name as keyof typeof controller.prototype];
       if (Reflect.getMetadata(PATH_METADATA, handler) === undefined) continue;
       const targets = [handler, controller];
-      assert.ok(reflector.getAllAndOverride(ADMIN_RESOURCE, targets) ||
-        reflector.getAllAndOverride(ADMIN_REQUIRED_PERMISSIONS, targets), `${controller.name}.${name}`);
+      assert.ok(
+        reflector.getAllAndOverride(ADMIN_RESOURCE, targets) ||
+          reflector.getAllAndOverride(ADMIN_REQUIRED_PERMISSIONS, targets),
+        `${controller.name}.${name}`,
+      );
     }
   }
 });

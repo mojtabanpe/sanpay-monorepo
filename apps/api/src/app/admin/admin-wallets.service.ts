@@ -2,15 +2,18 @@ import {
   BadRequestException,
   ConflictException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import {
   AdminWalletDefinitionRow,
   BulkAllocateResult,
   Paginated,
-  OrganizationalRank,
+  WalletDeletionPreview,
+  WalletDeletionResult,
   WalletKind,
 } from '@sanpay/models';
+import { Prisma } from '../../generated/prisma/client';
 import { creditAllocation } from './credit-allocation';
 import { WELFARE_DEFINITION } from '../upg/personal-wallet';
 import { PrismaService } from '../prisma/prisma.service';
@@ -31,11 +34,14 @@ interface AllocationTargets {
   rows: AllocationTarget[];
   /** کد ملی‌هایی از فایل که کارمندی با آن‌ها ثبت نشده است */
   notFound: string[];
-  rankMismatches: BulkAllocateResult['rankMismatches'];
 }
+
+type Db = PrismaService | Prisma.TransactionClient;
 
 @Injectable()
 export class AdminWalletsService {
+  private readonly logger = new Logger(AdminWalletsService.name);
+
   constructor(private readonly prisma: PrismaService) {}
 
   async list(
@@ -48,6 +54,7 @@ export class AdminWalletsService {
     // کیف پول شخصی (PERSONAL) پول خود کارمند است و در داشبورد اعتبار مدیریت نمی‌شود
     const where = {
       ...WELFARE_DEFINITION,
+      deletedAt: null,
       ...(query.active ? { isActive: query.active === 'true' } : {}),
       ...(query.companyId ? { companyId: query.companyId } : {}),
       ...(q ? { name: { contains: q, mode: 'insensitive' as const } } : {}),
@@ -140,7 +147,7 @@ export class AdminWalletsService {
     const existing = await this.prisma.walletDefinition.findUnique({
       where: { id },
     });
-    if (!existing || existing.kind === 'PERSONAL')
+    if (!existing || existing.kind === 'PERSONAL' || existing.deletedAt)
       throw new NotFoundException('کیف پول پیدا نشد');
     if (dto.companyId) {
       await this.mustHaveActiveCompany(dto.companyId);
@@ -209,6 +216,114 @@ export class AdminWalletsService {
     return this.one(id);
   }
 
+  /** پیش‌نمایش حذف: اعتباری که کارمندان از دست می‌دهند و حذف یا بایگانی */
+  async deletionPreview(id: string): Promise<WalletDeletionPreview> {
+    await this.mustBeDeletable(this.prisma, id);
+    return this.preview(this.prisma, id);
+  }
+
+  /**
+   * حذف کیف پول (فقط سوپر ادمین). بی‌سابقه = پاک‌شدن کامل؛ با سابقه =
+   * بایگانی: غیرفعال و پنهان از داشبورد و اپ، تخصیص‌ها غیرقابل‌خرج، تاریخچه و
+   * گزارش‌ها دست‌نخورده. اعتبار باقی‌ماندهٔ کارمندان از دسترس خارج می‌شود.
+   */
+  async remove(
+    id: string,
+    note: string,
+    adminId: string,
+  ): Promise<WalletDeletionResult> {
+    const result = await this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM "WalletDefinition" WHERE id = ${id} FOR UPDATE`;
+      await this.mustBeDeletable(tx, id);
+      const preview = await this.preview(tx, id);
+      if (preview.mode === 'delete') {
+        await tx.walletDefinitionStore.deleteMany({
+          where: { definitionId: id },
+        });
+        await tx.walletAllocation.deleteMany({ where: { definitionId: id } });
+        await tx.walletDefinition.delete({ where: { id } });
+      } else {
+        await tx.walletAllocation.updateMany({
+          where: { definitionId: id },
+          data: { isActive: false },
+        });
+        await tx.walletDefinition.update({
+          where: { id },
+          data: {
+            isActive: false,
+            deletedAt: new Date(),
+            deletedById: adminId,
+            deletedNote: note,
+          },
+        });
+      }
+      return preview;
+    });
+    this.logger.warn(
+      `wallet ${id} ${result.mode === 'delete' ? 'deleted' : 'archived'} by admin ${adminId}; ` +
+        `${result.affectedEmployees} employees lost ${result.remainingAmount} toman; note: ${note}`,
+    );
+    return { mode: result.mode };
+  }
+
+  private async mustBeDeletable(db: Db, id: string): Promise<void> {
+    const definition = await db.walletDefinition.findUnique({
+      where: { id },
+      select: { kind: true, deletedAt: true },
+    });
+    if (!definition || definition.kind === 'PERSONAL' || definition.deletedAt)
+      throw new NotFoundException('کیف پول پیدا نشد');
+  }
+
+  private async preview(db: Db, id: string): Promise<WalletDeletionPreview> {
+    const allocations = await db.walletAllocation.findMany({
+      where: { definitionId: id },
+      select: {
+        id: true,
+        employeeId: true,
+        cap: true,
+        spent: true,
+        isActive: true,
+        expiresAt: true,
+        _count: {
+          select: {
+            transactions: true,
+            purchaseCodes: true,
+            hotelBookings: true,
+            flightBookings: true,
+          },
+        },
+      },
+    });
+    const now = new Date();
+    const lost = new Map<string, bigint>();
+    for (const allocation of allocations) {
+      const left = allocation.cap - allocation.spent;
+      if (allocation.isActive && allocation.expiresAt > now && left > 0n) {
+        lost.set(
+          allocation.employeeId,
+          (lost.get(allocation.employeeId) ?? 0n) + left,
+        );
+      }
+    }
+    const ids = allocations.map((allocation) => allocation.id);
+    // allowedAllocationIds کلید خارجی ندارد؛ پاک‌کردن، intent باز را بی‌صاحب می‌کرد
+    const used =
+      allocations.some((allocation) =>
+        Object.values(allocation._count).some((count) => count > 0),
+      ) ||
+      (ids.length > 0 &&
+        (await db.paymentIntent.count({
+          where: { allowedAllocationIds: { hasSome: ids } },
+        })) > 0);
+    return {
+      mode: used ? 'archive' : 'delete',
+      allocationCount: allocations.length,
+      affectedEmployees: lost.size,
+      remainingAmount: Number([...lost.values()].reduce((a, b) => a + b, 0n)),
+    };
+  }
+
   async one(id: string): Promise<AdminWalletDefinitionRow> {
     const { items } = await this.list({ pageSize: 200, page: 1 });
     const found = items.find((definition) => definition.id === id);
@@ -230,7 +345,7 @@ export class AdminWalletsService {
     const definition = await this.prisma.walletDefinition.findUnique({
       where: { id: dto.definitionId },
     });
-    if (!definition || definition.kind === 'PERSONAL')
+    if (!definition || definition.kind === 'PERSONAL' || definition.deletedAt)
       throw new NotFoundException('کیف پول پیدا نشد');
 
     const targets = dto.entries?.length
@@ -242,7 +357,6 @@ export class AdminWalletsService {
       updated: 0,
       skipped: 0,
       notFound: targets.notFound,
-      rankMismatches: targets.rankMismatches,
     };
 
     for (const target of targets.rows) {
@@ -270,7 +384,7 @@ export class AdminWalletsService {
     const nationalCodes = entries.map((entry) => entry.nationalCode.trim());
     const employees = await this.prisma.employee.findMany({
       where: { nationalCode: { in: nationalCodes }, companyId },
-      select: { id: true, nationalCode: true, organizationalRank: true },
+      select: { id: true, nationalCode: true },
     });
     const byNationalCode = new Map(
       employees.map((employee) => [employee.nationalCode, employee]),
@@ -278,19 +392,10 @@ export class AdminWalletsService {
 
     const rows: AllocationTarget[] = [];
     const notFound: string[] = [];
-    const rankMismatches: BulkAllocateResult['rankMismatches'] = [];
     for (const entry of entries) {
       const employee = byNationalCode.get(entry.nationalCode.trim());
       if (!employee) {
         notFound.push(entry.nationalCode.trim());
-        continue;
-      }
-      if (employee.organizationalRank !== entry.organizationalRank) {
-        rankMismatches.push({
-          nationalCode: entry.nationalCode.trim(),
-          fileRank: entry.organizationalRank as OrganizationalRank,
-          employeeRank: employee.organizationalRank as OrganizationalRank,
-        });
         continue;
       }
       rows.push({
@@ -299,7 +404,7 @@ export class AdminWalletsService {
         expiresAt: new Date(entry.expiresAt),
       });
     }
-    return { rows, notFound, rankMismatches };
+    return { rows, notFound };
   }
 
   /** سقف و انقضای یکسان برای همهٔ کارمندان فعال (یا فهرست شناسه‌های داده‌شده) */
@@ -325,7 +430,6 @@ export class AdminWalletsService {
         expiresAt,
       })),
       notFound: [],
-      rankMismatches: [],
     };
   }
 
@@ -351,6 +455,8 @@ export class AdminWalletsService {
       where: {
         companyId,
         kind: 'TOURISM',
+        // بایگانی‌شده دیگر فعال‌شدنی نیست؛ جلوی ساختن جایگزین را نمی‌گیرد
+        deletedAt: null,
         ...(excludeId ? { id: { not: excludeId } } : {}),
       },
       select: { name: true },

@@ -25,9 +25,7 @@
       "continuous": true,
       "executor": "@nx/js:node",
       "defaultConfiguration": "development",
-      "dependsOn": [
-        "build"
-      ],
+      "dependsOn": ["build"],
       "options": {
         "buildTarget": "api:build",
         "runBuildTargetDependencies": false
@@ -66,6 +64,13 @@
         "env": {
           "SWC_NODE_PROJECT": "apps/api/tsconfig.test.json"
         }
+      }
+    },
+    "test-toman-logging": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "node -r @swc-node/register --test apps/api/tests/toman-log.test.ts",
+        "env": { "SWC_NODE_PROJECT": "apps/api/tsconfig.test.json" }
       }
     },
     "test-toman": {
@@ -131,6 +136,24 @@
         }
       }
     },
+    "test-store-password": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "node -r @swc-node/register --test apps/api/tests/store-password.test.ts",
+        "env": {
+          "SWC_NODE_PROJECT": "apps/api/tsconfig.test.json"
+        }
+      }
+    },
+    "test-wallet-delete": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "node -r @swc-node/register --test apps/api/tests/wallet-delete.test.ts",
+        "env": {
+          "SWC_NODE_PROJECT": "apps/api/tsconfig.test.json"
+        }
+      }
+    },
     "test-deploy": {
       "executor": "nx:run-commands",
       "options": {
@@ -174,8 +197,5 @@
       }
     }
   },
-  "tags": [
-    "type:app",
-    "scope:api"
-  ]
+  "tags": ["type:app", "scope:api"]
 }

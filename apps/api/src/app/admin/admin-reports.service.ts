@@ -239,7 +239,8 @@ export class AdminReportsService {
       receiptNo: 'جمع کل',
       employee: `${payments.length} پرداخت`,
       amount:
-        Number(payments.reduce((sum, payment) => sum + payment.amount, 0n)) * 10,
+        Number(payments.reduce((sum, payment) => sum + payment.amount, 0n)) *
+        10,
     });
     totalRow.font = { bold: true };
     sheet.getRow(1).font = { bold: true };
