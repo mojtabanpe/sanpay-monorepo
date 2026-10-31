@@ -34,6 +34,8 @@ jobs:
           cache: 'pnpm'
 
       - run: pnpm install --frozen-lockfile
+      # The Prisma client is gitignored; api build, typecheck and tests import it.
+      - run: pnpm prisma:generate
       - run: pnpm nx run api:test-deploy
       - run: pnpm exec playwright install --with-deps
 
