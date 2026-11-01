@@ -1,3 +1,4 @@
+import { notifyError } from '../../core/notifications';
 import { Component, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, RouterModule } from '@angular/router';
 import { SanpayDatePickerWidth, isoToJalali, jalaliToIso } from '@sanpay/dates';
@@ -61,7 +62,6 @@ export class GatewayPaymentsPage {
     Math.max(1, Math.ceil(this.total() / this.pageSize)),
   );
   protected readonly loading = signal(false);
-  protected readonly error = signal<string | null>(null);
 
   protected readonly query = signal('');
   protected readonly status = signal(
@@ -109,7 +109,6 @@ export class GatewayPaymentsPage {
 
   protected async load(): Promise<void> {
     this.loading.set(true);
-    this.error.set(null);
     try {
       const result = await this.api.gatewayPayments({
         q: this.query().trim() || undefined,
@@ -124,7 +123,7 @@ export class GatewayPaymentsPage {
       this.rows.set(result.items);
       this.total.set(result.total);
     } catch (caught) {
-      this.error.set(apiError(caught, 'خواندن پرداخت‌های درگاه ممکن نشد'));
+      notifyError(apiError(caught, 'خواندن پرداخت‌های درگاه ممکن نشد'));
     } finally {
       this.loading.set(false);
     }

@@ -1,3 +1,4 @@
+import { notifyError } from '../../core/notifications';
 import { ConfirmService } from '../../core/confirm';
 import { Component, computed, inject, signal } from '@angular/core';
 import { RouterModule } from '@angular/router';
@@ -44,7 +45,9 @@ export class EmployeesPage {
   private readonly confirm = inject(ConfirmService);
   private readonly auth = inject(AdminAuthService);
 
-  protected readonly canWrite = computed(() => this.auth.hasPermission('employees:write'));
+  protected readonly canWrite = computed(() =>
+    this.auth.hasPermission('employees:write'),
+  );
   protected readonly toman = toman;
   protected readonly fa = fa;
   protected readonly rankLabels = ORGANIZATIONAL_RANK_LABELS;
@@ -62,7 +65,6 @@ export class EmployeesPage {
   protected readonly page = signal(1);
   protected readonly pageSize = 25;
   protected readonly loading = signal(false);
-  protected readonly error = signal<string | null>(null);
   protected readonly importOpen = signal(false);
   protected readonly importCompanyId = signal('');
   protected readonly importEntries = signal<EmployeeImportEntry[]>([]);
@@ -82,7 +84,6 @@ export class EmployeesPage {
 
   protected readonly showForm = signal(false);
   protected readonly saving = signal(false);
-  protected readonly formError = signal<string | null>(null);
   protected readonly form = signal({
     nationalCode: '',
     birthDay: '',
@@ -108,7 +109,6 @@ export class EmployeesPage {
 
   protected async load(): Promise<void> {
     this.loading.set(true);
-    this.error.set(null);
     try {
       const [result, companies] = await Promise.all([
         this.api.employees({
@@ -123,7 +123,7 @@ export class EmployeesPage {
       this.total.set(result.total);
       this.companies.set(companies.items);
     } catch (caught) {
-      this.error.set(apiError(caught, 'خواندن فهرست کارمندان ممکن نشد'));
+      notifyError(apiError(caught, 'خواندن فهرست کارمندان ممکن نشد'));
     } finally {
       this.loading.set(false);
     }
@@ -154,7 +154,6 @@ export class EmployeesPage {
     const form = this.form();
     if (this.saving()) return;
     this.saving.set(true);
-    this.formError.set(null);
     try {
       await this.api.createEmployee({
         nationalCode: form.nationalCode.trim(),
@@ -184,7 +183,7 @@ export class EmployeesPage {
       this.page.set(1);
       await this.load();
     } catch (caught) {
-      this.formError.set(apiError(caught, 'ثبت کارمند ممکن نشد'));
+      notifyError(apiError(caught, 'ثبت کارمند ممکن نشد'));
     } finally {
       this.saving.set(false);
     }
@@ -213,7 +212,7 @@ export class EmployeesPage {
       await this.api.deleteEmployee(row.id);
       await this.load();
     } catch (caught) {
-      this.error.set(apiError(caught, 'حذف کارمند ممکن نشد'));
+      notifyError(apiError(caught, 'حذف کارمند ممکن نشد'));
     }
   }
 
@@ -275,7 +274,7 @@ export class EmployeesPage {
       await this.api.updateEmployee(row.id, { isActive: !row.isActive });
       await this.load();
     } catch (caught) {
-      this.error.set(apiError(caught, 'تغییر وضعیت ممکن نشد'));
+      notifyError(apiError(caught, 'تغییر وضعیت ممکن نشد'));
     }
   }
 }

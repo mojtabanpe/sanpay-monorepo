@@ -628,7 +628,7 @@ test('failed batch creation can resume once with the same payments and tracker',
     );
   }));
 
-test('resume refuses an existing remote batch after a commit timeout', async () =>
+test('resume continues the same remote batch after a commit timeout', async () =>
   fixture(async (f) => {
     const preview = await f.service.previewStore(f.stores[0].id);
     f.state.failCommit = true;
@@ -639,33 +639,42 @@ test('resume refuses an existing remote batch after a commit timeout', async () 
       preview.storeId,
       preview.previewToken,
     );
-    await assert.rejects(f.service.resumeFailedBatch(batch.id), /قابل ادامه/);
+    f.state.failCommit = false;
+    await f.service.resumeFailedBatch(batch.id);
     assert.equal(f.state.creates, 1);
-    assert.equal(f.state.commits, 1);
+    assert.equal(f.state.commits, 1); // Remote batch is already committed; inquiry only.
   }));
 
-test('resume claim serializes concurrent callers before any gateway request (no database)', async () => {
+// In-memory recovery tests run without a local database or a financial API.
+function recoveryFixture(remoteUuid: string | null = null) {
   const batch = {
-    id: 'resume-unit',
+    id: 'recovery-unit',
     status: 'FAILED',
-    tomanBatchUuid: null as string | null,
+    tomanBatchUuid: remoteUuid,
     submittedAt: null as Date | null,
+    error: null as string | null,
     totalAmount: 100n,
     itemCount: 1,
-    runKey: 'resume-unit',
+    runKey: 'recovery-unit',
     items: [
       {
         id: 'item-unit',
         status: 'CREATED',
-        tomanItemUuid: null,
+        tomanItemUuid: null as string | null,
         trackerId: 'original-tracker',
         amount: 100n,
         destinationIban: 'IR062960000000100324200001',
       },
     ],
   };
-  let creates = 0;
-  let commits = 0;
+  const state = {
+    creates: 0,
+    commits: 0,
+    adds: 0,
+    status: 1,
+    failInquiry: false,
+    failAdd: false,
+  };
   const db = {
     settlementBatch: {
       updateMany: async ({
@@ -675,18 +684,14 @@ test('resume claim serializes concurrent callers before any gateway request (no 
         where: Record<string, unknown>;
         data: object;
       }) => {
-        assert.equal(where.status, 'FAILED');
-        assert.equal(where.tomanBatchUuid, null);
-        assert.equal(where.submittedAt, null);
-        assert.deepEqual(where.items, {
-          some: {},
-          every: { status: 'CREATED', tomanItemUuid: null, submittedAt: null },
-        });
-        if (
-          batch.status !== 'FAILED' ||
-          batch.tomanBatchUuid ||
-          batch.submittedAt
-        )
+        if (where.items) {
+          assert.deepEqual(where.items, {
+            some: {},
+            every: { status: { in: ['CREATED', 'SUBMITTED'] } },
+          });
+          assert.equal(where.submittedAt, null);
+        }
+        if (batch.status !== where.status || (where.items && batch.submittedAt))
           return { count: 0 };
         Object.assign(batch, data);
         return { count: 1 };
@@ -695,37 +700,107 @@ test('resume claim serializes concurrent callers before any gateway request (no 
       update: async ({ data }: { data: object }) => Object.assign(batch, data),
     },
     settlementItem: {
-      update: async () => ({}),
+      update: async ({ data }: { data: object }) =>
+        Object.assign(batch.items[0], data),
+      findMany: async () => batch.items,
+      updateMany: async () => ({ count: 0 }),
     },
   };
   const toman = {
     isLive: () => false,
     createBatch: async () => {
-      creates++;
+      state.creates++;
       return { uuid: 'remote-unit' };
     },
-    listBatchItems: async () => [],
+    listBatchItems: async () =>
+      batch.items[0].tomanItemUuid
+        ? [
+            {
+              tracker_id: 'original-tracker',
+              uuid: batch.items[0].tomanItemUuid,
+            },
+          ]
+        : [],
     addItems: async (_: string, items: TomanTransferItemInput[]) => {
+      if (state.failAdd) throw new Error('add denied');
+      state.adds++;
       assert.equal(items[0].tracker_id, 'original-tracker');
       return [{ tracker_id: 'original-tracker', uuid: 'remote-item' }];
     },
     commitBatch: async () => {
-      commits++;
+      state.commits++;
+      state.status = 2;
     },
-    // Keep reconciliation read-only without requiring transfer fixtures.
-    getBatch: async () => ({ status: -2 }),
+    getBatch: async () => {
+      if (state.failInquiry) throw new Error('inquiry denied');
+      return { status: state.status };
+    },
+    getTransfer: async () => ({ status: 2 }),
   };
   const service = new SettlementsService(
     db as unknown as PrismaService,
     toman as unknown as TomanClientService,
     new JwtService(),
   );
+  return { batch, state, service };
+}
+
+test('recovery unit: concurrent recovery sends once and retains trackers', async () => {
+  const { batch, state, service } = recoveryFixture();
   const results = await Promise.allSettled([
     service.resumeFailedBatch(batch.id),
     service.resumeFailedBatch(batch.id),
   ]);
   assert.equal(results.filter((r) => r.status === 'fulfilled').length, 1);
-  assert.equal(creates, 1);
-  assert.equal(commits, 1);
+  assert.equal(state.creates, 1);
+  assert.equal(state.commits, 1);
   await assert.rejects(service.resumeFailedBatch(batch.id), /قابل ادامه/);
+});
+
+test('recovery unit: a failed add remains recoverable with the same remote batch', async () => {
+  const { batch, state, service } = recoveryFixture();
+  state.failAdd = true;
+  await assert.rejects(service.resumeFailedBatch(batch.id), /add denied/);
+  assert.equal(batch.status, 'FAILED');
+  assert.equal(batch.tomanBatchUuid, 'remote-unit');
+  state.failAdd = false;
+  await service.resumeFailedBatch(batch.id);
+  assert.equal(state.creates, 1);
+  assert.equal(state.commits, 1);
+});
+
+test('recovery unit: an inquiry failure releases the claim for another attempt', async () => {
+  const { batch, state, service } = recoveryFixture('remote-existing');
+  state.failInquiry = true;
+  await assert.rejects(service.resumeFailedBatch(batch.id), /inquiry denied/);
+  assert.equal(batch.status, 'FAILED');
+  state.failInquiry = false;
+  await service.resumeFailedBatch(batch.id);
+  assert.equal(state.creates, 0);
+  assert.equal(state.commits, 1);
+});
+
+test('recovery unit: already committed batches are only reconciled, never submitted again', async () => {
+  for (const remoteStatus of [2, 3, 4]) {
+    const { batch, state, service } = recoveryFixture('remote-existing');
+    state.status = remoteStatus;
+    await service.resumeFailedBatch(batch.id);
+    assert.ok(batch.submittedAt);
+    assert.equal(state.creates, 0);
+    assert.equal(state.adds, 0);
+    assert.equal(state.commits, 0);
+  }
+});
+
+test('recovery unit: terminal remote states cannot be submitted again', async () => {
+  for (const remoteStatus of [-2, -3, 99]) {
+    const { batch, state, service } = recoveryFixture('remote-existing');
+    state.status = remoteStatus;
+    await assert.rejects(
+      service.resumeFailedBatch(batch.id),
+      /قابل ادامه نیست/,
+    );
+    assert.equal(batch.status, 'FAILED');
+    assert.equal(state.commits, 0);
+  }
 });

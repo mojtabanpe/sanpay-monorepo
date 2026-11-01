@@ -1,3 +1,4 @@
+import { notifyError } from '../../core/notifications';
 import { Component, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { HlmAlertImports } from '@sanpay/ui/alert';
@@ -24,7 +25,6 @@ export class LoginPage {
   private readonly router = inject(Router);
 
   protected readonly loading = signal(false);
-  protected readonly error = signal<string | null>(null);
 
   /**
    * به رویداد بومی `submit` وصل است، نه `ngSubmit` — این فرم `FormsModule` ندارد،
@@ -42,12 +42,11 @@ export class LoginPage {
     if (!username || !password || this.loading()) return;
 
     this.loading.set(true);
-    this.error.set(null);
     try {
       await this.auth.login(username, password);
       void this.router.navigateByUrl(this.auth.landingPath());
     } catch (caught) {
-      this.error.set(apiError(caught, 'ورود به داشبورد ممکن نشد'));
+      notifyError(apiError(caught, 'ورود به داشبورد ممکن نشد'));
     } finally {
       this.loading.set(false);
     }

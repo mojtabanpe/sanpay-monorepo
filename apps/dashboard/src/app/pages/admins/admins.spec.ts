@@ -1,3 +1,4 @@
+import { toast } from '@spartan-ng/brain/sonner';
 import { TestBed } from '@angular/core/testing';
 import { AdminProfile } from '@sanpay/models';
 import { AdminApiService } from '../../core/admin-api.service';
@@ -15,6 +16,10 @@ const admin: AdminProfile = {
 };
 
 describe('dashboard admin password reset', () => {
+  beforeEach(() => {
+    vi.spyOn(toast, 'error');
+  });
+  afterEach(() => vi.restoreAllMocks());
   async function setup() {
     const api = {
       admins: vi.fn().mockResolvedValue([admin]),
@@ -60,16 +65,23 @@ describe('dashboard admin password reset', () => {
     await fixture.whenStable();
     fixture.detectChanges();
     expect(input.value).toBe('retry-password');
-    expect(host.textContent).toContain('ذخیرهٔ رمز ممکن نشد');
+    expect(toast.error).toHaveBeenCalledWith(
+      'ذخیرهٔ رمز ممکن نشد',
+      expect.any(Object),
+    );
+    expect(host.textContent).not.toContain('ذخیرهٔ رمز ممکن نشد');
   });
 
   it('rejects short passwords without sending a request', async () => {
-    const { api, fixture, input, button, host } = await setup();
+    const { api, fixture, input, button } = await setup();
     input.value = 'short';
     button.click();
     await fixture.whenStable();
     fixture.detectChanges();
     expect(api.resetAdminPassword).not.toHaveBeenCalled();
-    expect(host.textContent).toContain('حداقل ۸ نویسه');
+    expect(toast.error).toHaveBeenCalledWith(
+      expect.stringContaining('حداقل ۸ نویسه'),
+      expect.any(Object),
+    );
   });
 });

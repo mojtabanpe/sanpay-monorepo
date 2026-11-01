@@ -1,3 +1,4 @@
+import { notifyError } from '../../core/notifications';
 import { Component, inject, signal } from '@angular/core';
 import { AdminRefundWallet, AdminUpgSettings } from '@sanpay/models';
 import { HlmAlertImports } from '@sanpay/ui/alert';
@@ -32,7 +33,6 @@ export class GatewaysPage {
   protected readonly wallets = signal<AdminRefundWallet[]>([]);
   protected readonly settings = signal<AdminUpgSettings | null>(null);
   protected readonly loading = signal(false);
-  protected readonly error = signal<string | null>(null);
 
   constructor() {
     void this.load();
@@ -40,7 +40,6 @@ export class GatewaysPage {
 
   protected async load(): Promise<void> {
     this.loading.set(true);
-    this.error.set(null);
     try {
       const [wallets, settings] = await Promise.all([
         this.api.refundWallets(),
@@ -49,7 +48,7 @@ export class GatewaysPage {
       this.wallets.set(wallets);
       this.settings.set(settings);
     } catch (caught) {
-      this.error.set(apiError(caught, 'خواندن وضعیت درگاه‌ها ممکن نشد'));
+      notifyError(apiError(caught, 'خواندن وضعیت درگاه‌ها ممکن نشد'));
     } finally {
       this.loading.set(false);
     }

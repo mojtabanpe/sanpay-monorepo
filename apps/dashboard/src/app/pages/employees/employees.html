@@ -140,11 +140,7 @@
           (input)="update('phone', $any($event.target).value)"
         />
       </hlm-field>
-      @if (formError()) {
-      <div hlmAlert variant="destructive" class="md:col-span-4">
-        <p hlmAlertDescription>{{ formError() }}</p>
-      </div>
-      }
+
 
       <div class="md:col-span-4">
         <button
@@ -275,9 +271,7 @@
     </div>
   </div>
 
-  @if (error()) {
-  <p class="text-destructive text-sm">{{ error() }}</p>
-  }
+
 
   <section hlmCard class="w-full">
     <div hlmCardContent class="pt-6">

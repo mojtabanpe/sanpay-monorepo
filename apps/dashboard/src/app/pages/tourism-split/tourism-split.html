@@ -58,9 +58,7 @@
     </div>
   </div>
 
-  @if (error()) {
-  <p class="text-destructive text-sm">{{ error() }}</p>
-  } @if (report(); as data) {
+   @if (report(); as data) {
   <section hlmCard class="w-full">
     <div hlmCardContent class="pt-6">
       <div hlmTableContainer>

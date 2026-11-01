@@ -1,3 +1,4 @@
+import { notifyError } from '../../core/notifications';
 import { Component, computed, inject, signal } from '@angular/core';
 import { RouterModule } from '@angular/router';
 import { AdminBookingRow } from '@sanpay/models';
@@ -8,7 +9,13 @@ import { HlmInputImports } from '@sanpay/ui/input';
 import { HlmTableImports } from '@sanpay/ui/table';
 import { HlmToggleGroupImports } from '@sanpay/ui/toggle-group';
 import { AdminApiService, apiError } from '../../core/admin-api.service';
-import { BOOKING_STATUS_LABELS, fa, jalali, jalaliTime, toman } from '../../core/format';
+import {
+  BOOKING_STATUS_LABELS,
+  fa,
+  jalali,
+  jalaliTime,
+  toman,
+} from '../../core/format';
 
 /** رزروهای هتل (اعتبار گردشگری) — وضعیت، بدهی به هتل‌یار و تسویه */
 @Component({
@@ -32,7 +39,13 @@ export class BookingsPage {
   protected readonly jalali = jalali;
   protected readonly jalaliTime = jalaliTime;
   protected readonly statusLabels = BOOKING_STATUS_LABELS;
-  protected readonly statuses = ['', 'CONFIRMED', 'PENDING', 'REJECTED', 'CANCELED'];
+  protected readonly statuses = [
+    '',
+    'CONFIRMED',
+    'PENDING',
+    'REJECTED',
+    'CANCELED',
+  ];
 
   protected readonly rows = signal<AdminBookingRow[]>([]);
   protected readonly total = signal(0);
@@ -42,7 +55,6 @@ export class BookingsPage {
     Math.max(1, Math.ceil(this.total() / this.pageSize)),
   );
   protected readonly loading = signal(false);
-  protected readonly error = signal<string | null>(null);
 
   protected readonly query = signal('');
   protected readonly status = signal('');
@@ -53,7 +65,6 @@ export class BookingsPage {
 
   protected async load(): Promise<void> {
     this.loading.set(true);
-    this.error.set(null);
     try {
       const result = await this.api.bookings({
         q: this.query().trim() || undefined,
@@ -64,7 +75,7 @@ export class BookingsPage {
       this.rows.set(result.items);
       this.total.set(result.total);
     } catch (caught) {
-      this.error.set(apiError(caught, 'خواندن رزروها ممکن نشد'));
+      notifyError(apiError(caught, 'خواندن رزروها ممکن نشد'));
     } finally {
       this.loading.set(false);
     }
@@ -87,7 +98,9 @@ export class BookingsPage {
     void this.load();
   }
 
-  protected statusVariant(status: string): 'default' | 'secondary' | 'destructive' {
+  protected statusVariant(
+    status: string,
+  ): 'default' | 'secondary' | 'destructive' {
     if (status === 'CONFIRMED') return 'default';
     if (status === 'REJECTED' || status === 'CANCELED') return 'destructive';
     return 'secondary';

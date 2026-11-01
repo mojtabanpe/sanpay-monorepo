@@ -1,3 +1,4 @@
+import { notifyError } from '../../core/notifications';
 import { Component, inject, signal } from '@angular/core';
 import { HlmAlertImports } from '@sanpay/ui/alert';
 import { HlmBadgeImports } from '@sanpay/ui/badge';
@@ -33,20 +34,18 @@ export class SettingsPage {
   protected readonly next = signal('');
   protected readonly repeat = signal('');
   protected readonly saving = signal(false);
-  protected readonly error = signal<string | null>(null);
   protected readonly notice = signal<string | null>(null);
 
   protected async submit(): Promise<void> {
     if (this.saving()) return;
-    this.error.set(null);
     this.notice.set(null);
 
     if (this.next().length < 8) {
-      this.error.set('رمز جدید باید حداقل ۸ نویسه باشد');
+      notifyError('رمز جدید باید حداقل ۸ نویسه باشد');
       return;
     }
     if (this.next() !== this.repeat()) {
-      this.error.set('تکرار رمز جدید یکی نیست');
+      notifyError('تکرار رمز جدید یکی نیست');
       return;
     }
 
@@ -58,7 +57,7 @@ export class SettingsPage {
       this.repeat.set('');
       this.notice.set('رمز عبور تغییر کرد.');
     } catch (caught) {
-      this.error.set(apiError(caught, 'تغییر رمز ممکن نشد'));
+      notifyError(apiError(caught, 'تغییر رمز ممکن نشد'));
     } finally {
       this.saving.set(false);
     }

@@ -7,11 +7,7 @@
     </p>
   </header>
 
-  @if (error()) {
-  <div hlmAlert variant="destructive" role="alert">
-    <p hlmAlertDescription>{{ error() }}</p>
-  </div>
-  } @if (notice()) {
+   @if (notice()) {
   <div hlmAlert role="status">
     <p hlmAlertDescription>{{ notice() }}</p>
   </div>

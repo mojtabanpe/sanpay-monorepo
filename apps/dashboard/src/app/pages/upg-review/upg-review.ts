@@ -1,3 +1,4 @@
+import { notifyError } from '../../core/notifications';
 import { Component, computed, inject, signal } from '@angular/core';
 import { RouterModule } from '@angular/router';
 import {
@@ -53,13 +54,14 @@ export class UpgReviewPage {
   protected readonly variant = gatewayStatusVariant;
   protected readonly refundLabels = GATEWAY_REFUND_STATUS_LABELS;
   protected readonly purposeLabels = INTENT_PURPOSE_LABELS;
-  protected readonly canWrite = computed(() => this.auth.hasPermission('upg-review:write'));
+  protected readonly canWrite = computed(() =>
+    this.auth.hasPermission('upg-review:write'),
+  );
 
   protected readonly queue = signal<AdminUpgReviewQueue | null>(null);
   protected readonly wallets = signal<AdminRefundWallet[]>([]);
   protected readonly loading = signal(false);
   protected readonly busy = signal(false);
-  protected readonly error = signal<string | null>(null);
   protected readonly notice = signal<string | null>(null);
 
   protected readonly lowWallets = computed(() =>
@@ -72,7 +74,6 @@ export class UpgReviewPage {
 
   protected async load(): Promise<void> {
     this.loading.set(true);
-    this.error.set(null);
     try {
       const [queue, wallets] = await Promise.all([
         this.api.upgReviewQueue(),
@@ -82,7 +83,7 @@ export class UpgReviewPage {
       this.queue.set(queue);
       this.wallets.set(wallets);
     } catch (caught) {
-      this.error.set(apiError(caught, 'خواندن صف بررسی ممکن نشد'));
+      notifyError(apiError(caught, 'خواندن صف بررسی ممکن نشد'));
     } finally {
       this.loading.set(false);
     }
@@ -118,7 +119,6 @@ export class UpgReviewPage {
   ): Promise<void> {
     if (this.busy()) return;
     this.busy.set(true);
-    this.error.set(null);
     this.notice.set(null);
     try {
       if ((await action()) === null) return;
@@ -126,7 +126,7 @@ export class UpgReviewPage {
       void this.queueCount.refresh();
       await this.load();
     } catch (caught) {
-      this.error.set(apiError(caught, 'ثبت تصمیم ممکن نشد'));
+      notifyError(apiError(caught, 'ثبت تصمیم ممکن نشد'));
       await this.load();
     } finally {
       this.busy.set(false);

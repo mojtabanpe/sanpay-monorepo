@@ -1,3 +1,4 @@
+import { toast } from '@spartan-ng/brain/sonner';
 import { TestBed } from '@angular/core/testing';
 import {
   AdminApiService,
@@ -52,6 +53,7 @@ function buttons(fixture: { nativeElement: unknown }, text: string) {
 describe('manual store settlement approval', () => {
   // jsdom has no ResizeObserver; the date-picker width directive needs one.
   beforeEach(() => {
+    vi.spyOn(toast, 'error');
     vi.stubGlobal(
       'ResizeObserver',
       class {
@@ -61,7 +63,10 @@ describe('manual store settlement approval', () => {
       },
     );
   });
-  afterEach(() => vi.unstubAllGlobals());
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
 
   async function setup(write = true) {
     const api = {
@@ -309,8 +314,51 @@ describe('manual store settlement approval', () => {
     fixture.detectChanges();
     await fixture.whenStable();
     expect(component.confirmationOpen()).toBe('open');
-    expect(document.querySelector('hlm-dialog-content')?.textContent).toContain(
+    expect(toast.error).toHaveBeenCalledWith(
       'خطای آزمایشی',
+      expect.any(Object),
+    );
+    expect(
+      document.querySelector('hlm-dialog-content')?.textContent,
+    ).not.toContain('خطای آزمایشی');
+  });
+
+  it('retains recovery and inquiry actions after a failed add in a remote batch', async () => {
+    const { api, fixture } = await setup();
+    api.settlementItems.mockResolvedValue({
+      items: [
+        row({
+          status: 'CREATED',
+          batch: {
+            id: 'remote-batch',
+            runKey: 'manual',
+            status: 'FAILED',
+            error: 'add denied',
+            canResume: true,
+            canInquire: true,
+          },
+        }),
+      ],
+      total: 1,
+      sumAmount: 12345,
+    });
+    await (
+      fixture.componentInstance as unknown as { load(): Promise<void> }
+    ).load();
+    fixture.detectChanges();
+    const callsBefore = api.settlementItems.mock.calls.length;
+    api.resumeSettlement.mockRejectedValue({
+      error: { message: 'add denied again' },
+    });
+    buttons(fixture, 'ادامه ارسال')[0].click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(api.settlementItems.mock.calls.length).toBe(callsBefore + 1);
+    expect(buttons(fixture, 'ادامه ارسال')).toHaveLength(1);
+    expect(buttons(fixture, 'استعلام وضعیت')).toHaveLength(1);
+    expect(toast.error).toHaveBeenCalledWith(
+      'add denied again',
+      expect.any(Object),
     );
   });
 

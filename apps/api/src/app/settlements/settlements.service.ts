@@ -349,10 +349,8 @@ export class SettlementsService {
         retried: row._count.retries > 0,
         batch: {
           ...row.batch,
-          canResume:
-            row.batch.status === 'FAILED' &&
-            !row.batch.tomanBatchUuid &&
-            !row.batch.submittedAt,
+          canResume: row.batch.status === 'FAILED' && !row.batch.submittedAt,
+          canInquire: !!row.batch.tomanBatchUuid,
         },
       })),
       total,
@@ -402,21 +400,8 @@ export class SettlementsService {
           !batch.submittedAt &&
           batch.tomanBatchUuid
         ) {
-          const remote = await this.toman.getBatch(batch.tomanBatchUuid);
-          if (remote.status === 1) {
-            await this.submitBatch(batch.id);
-          } else if ([2, 3, 4].includes(remote.status)) {
-            await this.prisma.settlementBatch.update({
-              where: { id: batch.id },
-              data: {
-                status: 'SUBMITTED',
-                submittedAt: new Date(),
-                error: null,
-              },
-            });
-          } else {
-            continue;
-          }
+          await this.resumeFailedBatch(batch.id, 'reconcile');
+          continue;
         }
         await this.reconcileBatch(batch.id);
       } catch (error) {
@@ -542,28 +527,27 @@ export class SettlementsService {
     return this.one(batchId);
   }
 
-  /** Recover a failed create without reallocating payments or changing trackers.
-   * An unrecorded remote create can only leave an empty, uncommitted batch.
-   * The atomic claim excludes concurrent operators and the reconciliation scan.
+  /** Resume only uncommitted work, retaining payments and tracker IDs.
+   * The claim is shared by manual recovery and the reconciliation worker.
+   * Always inquire before continuing a known remote batch: a commit timeout
+   * may mean Toman has already accepted the transfer.
    */
-  async resumeFailedBatch(batchId: string) {
+  async resumeFailedBatch(
+    batchId: string,
+    source: 'manual' | 'reconcile' = 'manual',
+  ) {
     return tomanOperation(
       'settlement.resume',
-      { batchId, source: 'manual' },
+      { batchId, source },
       async () => {
         const claimed = await this.prisma.settlementBatch.updateMany({
           where: {
             id: batchId,
             status: 'FAILED',
-            tomanBatchUuid: null,
             submittedAt: null,
             items: {
               some: {},
-              every: {
-                status: 'CREATED',
-                tomanItemUuid: null,
-                submittedAt: null,
-              },
+              every: { status: { in: ['CREATED', 'SUBMITTED'] } },
             },
           },
           data: { status: 'BUILDING' },
@@ -573,9 +557,40 @@ export class SettlementsService {
             'این دسته قابل ادامه ارسال نیست یا ارسال آن قبلاً شروع شده است؛ وضعیت را تازه کنید.',
           );
         }
-        await this.submitBatch(batchId);
-        await this.reconcileBatch(batchId);
-        return this.one(batchId);
+        try {
+          const batch = await this.prisma.settlementBatch.findUniqueOrThrow({
+            where: { id: batchId },
+          });
+          let shouldSubmit = true;
+          if (batch.tomanBatchUuid) {
+            const remote = await this.toman.getBatch(batch.tomanBatchUuid);
+            if ([2, 3, 4].includes(remote.status)) {
+              shouldSubmit = false;
+              await this.prisma.settlementBatch.update({
+                where: { id: batchId },
+                data: {
+                  status: 'SUBMITTED',
+                  submittedAt: new Date(),
+                  error: null,
+                },
+              });
+            } else if (remote.status !== 1) {
+              throw new BadRequestException(
+                `دسته در تومان قابل ادامه نیست (وضعیت ${remote.status})؛ وضعیت را استعلام کنید.`,
+              );
+            }
+          }
+          if (shouldSubmit) await this.submitBatch(batchId);
+          await this.reconcileBatch(batchId);
+          return this.one(batchId);
+        } catch (error) {
+          // Includes inquiry failures before submitBatch: do not strand BUILDING.
+          await this.prisma.settlementBatch.updateMany({
+            where: { id: batchId, status: 'BUILDING' },
+            data: { status: 'FAILED', error: this.message(error) },
+          });
+          throw error;
+        }
       },
     );
   }

@@ -1,3 +1,4 @@
+import { notifyError } from '../../core/notifications';
 import { NgIcon, provideIcons } from '@ng-icons/core';
 import { lucideCircleAlert } from '@ng-icons/lucide';
 import { HlmPopoverImports } from '@sanpay/ui/popover';
@@ -89,7 +90,6 @@ export class Settlements {
     this.stores().find((store) => store.id === value)?.name ?? '';
   protected readonly loading = signal(false);
   protected readonly notice = signal<string | null>(null);
-  protected readonly error = signal<string | null>(null);
   protected readonly canWrite = computed(() =>
     this.auth.hasPermission('settlements:write'),
   );
@@ -103,7 +103,6 @@ export class Settlements {
 
   protected async load(): Promise<void> {
     this.loading.set(true);
-    this.error.set(null);
     try {
       const [result, stores] = await Promise.all([
         this.api.settlementItems({
@@ -122,7 +121,7 @@ export class Settlements {
       this.sumAmount.set(result.sumAmount);
       this.stores.set(stores);
     } catch (caught) {
-      this.error.set(apiError(caught, 'خواندن تسویه‌ها ممکن نشد'));
+      notifyError(apiError(caught, 'خواندن تسویه‌ها ممکن نشد'));
     } finally {
       this.loading.set(false);
     }
@@ -172,8 +171,8 @@ export class Settlements {
   /** انتقالی که هنوز نهایی نشده — استعلام وضعیت دسته‌اش معنا دارد */
   protected inquirable(row: SettlementItemRow): boolean {
     return (
-      ['SUBMITTED', 'PROCESSING', 'UNKNOWN'].includes(row.status) &&
-      !row.batch.canResume
+      row.batch.canInquire ??
+      ['SUBMITTED', 'PROCESSING', 'UNKNOWN'].includes(row.status)
     );
   }
 
@@ -234,13 +233,13 @@ export class Settlements {
   ): Promise<void> {
     if (this.loading()) return;
     this.loading.set(true);
-    this.error.set(null);
     this.notice.set(null);
     try {
       await action();
       if (reload) await this.load();
     } catch (caught) {
-      this.error.set(apiError(caught, 'انجام عملیات تسویه ممکن نشد'));
+      if (reload) await this.load();
+      notifyError(apiError(caught, 'انجام عملیات تسویه ممکن نشد'));
     } finally {
       this.loading.set(false);
     }

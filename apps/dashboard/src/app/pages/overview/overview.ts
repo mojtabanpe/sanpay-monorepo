@@ -1,3 +1,4 @@
+import { notifyError } from '../../core/notifications';
 import { Component, computed, inject, signal } from '@angular/core';
 import { RouterModule } from '@angular/router';
 import { AdminOverview } from '@sanpay/models';
@@ -23,7 +24,6 @@ export class OverviewPage {
   private readonly api = inject(AdminApiService);
 
   protected readonly data = signal<AdminOverview | null>(null);
-  protected readonly error = signal<string | null>(null);
 
   protected readonly toman = toman;
   protected readonly fa = fa;
@@ -47,11 +47,10 @@ export class OverviewPage {
   }
 
   protected async load(): Promise<void> {
-    this.error.set(null);
     try {
       this.data.set(await this.api.overview());
     } catch (caught) {
-      this.error.set(apiError(caught, 'خواندن آمار ممکن نشد'));
+      notifyError(apiError(caught, 'خواندن آمار ممکن نشد'));
     }
   }
 

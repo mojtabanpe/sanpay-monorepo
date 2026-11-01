@@ -1,3 +1,4 @@
+import { notifyError } from '../../core/notifications';
 import { Component, computed, inject, signal } from '@angular/core';
 import { SanpayDatePickerWidth, isoToJalali, jalaliToIso } from '@sanpay/dates';
 import { AdminTourismSplitReport } from '@sanpay/models';
@@ -41,7 +42,6 @@ export class TourismSplit {
 
   protected readonly report = signal<AdminTourismSplitReport | null>(null);
   protected readonly loading = signal(false);
-  protected readonly error = signal<string | null>(null);
 
   protected readonly query = signal('');
   protected readonly kind = signal<Kind>('');
@@ -72,22 +72,20 @@ export class TourismSplit {
 
   protected async load(): Promise<void> {
     this.loading.set(true);
-    this.error.set(null);
     try {
       this.report.set(await this.api.tourismSplit(this.filters()));
     } catch (caught) {
-      this.error.set(apiError(caught, 'خواندن گزارش ممکن نشد'));
+      notifyError(apiError(caught, 'خواندن گزارش ممکن نشد'));
     } finally {
       this.loading.set(false);
     }
   }
 
   protected async exportExcel(): Promise<void> {
-    this.error.set(null);
     try {
       await this.api.downloadTourismSplitExcel(this.filters());
     } catch (caught) {
-      this.error.set(apiError(caught, 'ساخت خروجی اکسل ممکن نشد'));
+      notifyError(apiError(caught, 'ساخت خروجی اکسل ممکن نشد'));
     }
   }
 

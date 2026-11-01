@@ -1,3 +1,4 @@
+import { notifyError } from '../../core/notifications';
 import { ConfirmService } from '../../core/confirm';
 import { Component, computed, inject, signal } from '@angular/core';
 import { AdminStoreRow } from '@sanpay/models';
@@ -33,7 +34,9 @@ export class StoresPage {
   private readonly confirm = inject(ConfirmService);
   private readonly auth = inject(AdminAuthService);
 
-  protected readonly canWrite = computed(() => this.auth.hasPermission('stores:write'));
+  protected readonly canWrite = computed(() =>
+    this.auth.hasPermission('stores:write'),
+  );
   protected readonly toman = toman;
   protected readonly fa = fa;
 
@@ -47,7 +50,6 @@ export class StoresPage {
 
   protected readonly query = signal('');
   protected readonly loading = signal(false);
-  protected readonly error = signal<string | null>(null);
   protected readonly notice = signal<string | null>(null);
 
   protected readonly showForm = signal(false);
@@ -88,7 +90,6 @@ export class StoresPage {
 
   protected async load(): Promise<void> {
     this.loading.set(true);
-    this.error.set(null);
     try {
       const result = await this.api.stores({
         q: this.query().trim() || undefined,
@@ -98,7 +99,7 @@ export class StoresPage {
       this.rows.set(result.items);
       this.total.set(result.total);
     } catch (caught) {
-      this.error.set(apiError(caught, 'خواندن فهرست فروشگاه‌ها ممکن نشد'));
+      notifyError(apiError(caught, 'خواندن فهرست فروشگاه‌ها ممکن نشد'));
     } finally {
       this.loading.set(false);
     }
@@ -242,7 +243,7 @@ export class StoresPage {
     // دقیقاً همان چیزی باشد که فروشنده تایپ می‌کند
     const password = input.value;
     if (password.length < 8) {
-      this.error.set('رمز جدید باید حداقل ۸ نویسه باشد');
+      notifyError('رمز جدید باید حداقل ۸ نویسه باشد');
       return;
     }
     await this.run(async () => {
@@ -259,7 +260,7 @@ export class StoresPage {
       !['image/png', 'image/jpeg', 'image/webp'].includes(file.type) ||
       file.size > 75_000
     ) {
-      this.error.set('لوگو باید PNG، JPEG یا WebP و حداکثر ۷۵ کیلوبایت باشد');
+      notifyError('لوگو باید PNG، JPEG یا WebP و حداکثر ۷۵ کیلوبایت باشد');
       return;
     }
     const value = await fileToDataUrl(file);
@@ -273,13 +274,12 @@ export class StoresPage {
   ): Promise<void> {
     if (this.saving()) return;
     this.saving.set(true);
-    this.error.set(null);
     this.notice.set(null);
     try {
       await action();
       await this.load();
     } catch (caught) {
-      this.error.set(apiError(caught, fallback));
+      notifyError(apiError(caught, fallback));
     } finally {
       this.saving.set(false);
     }

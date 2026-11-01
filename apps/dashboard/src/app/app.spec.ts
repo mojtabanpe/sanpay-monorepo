@@ -12,6 +12,13 @@ describe('App', () => {
     }).compileComponents();
   });
 
+  it('hosts global error notifications outside routed pages', async () => {
+    const fixture = TestBed.createComponent(App);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(fixture.nativeElement.querySelector('hlm-toaster')).not.toBeNull();
+  });
+
   it('should create the shell host', () => {
     const fixture = TestBed.createComponent(App);
     expect(fixture.componentInstance).toBeTruthy();

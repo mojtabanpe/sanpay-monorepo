@@ -1,3 +1,4 @@
+import { notifyError } from '../../core/notifications';
 import { Component, inject, signal } from '@angular/core';
 import {
   ADMIN_PERMISSIONS,
@@ -107,7 +108,6 @@ export class AdminsPage {
   }
 
   protected readonly rows = signal<AdminProfile[]>([]);
-  protected readonly error = signal<string | null>(null);
   protected readonly notice = signal<string | null>(null);
   protected readonly saving = signal(false);
 
@@ -123,11 +123,10 @@ export class AdminsPage {
   }
 
   protected async load(): Promise<void> {
-    this.error.set(null);
     try {
       this.rows.set(await this.api.admins());
     } catch (caught) {
-      this.error.set(apiError(caught, 'خواندن کاربران داشبورد ممکن نشد'));
+      notifyError(apiError(caught, 'خواندن کاربران داشبورد ممکن نشد'));
     }
   }
 
@@ -170,7 +169,7 @@ export class AdminsPage {
   ): Promise<void> {
     const password = input.value;
     if (password.length < 8) {
-      this.error.set('رمز جدید باید حداقل ۸ نویسه باشد');
+      notifyError('رمز جدید باید حداقل ۸ نویسه باشد');
       return;
     }
     const saved = await this.run(async () => {
@@ -186,14 +185,13 @@ export class AdminsPage {
   ): Promise<boolean> {
     if (this.saving()) return false;
     this.saving.set(true);
-    this.error.set(null);
     this.notice.set(null);
     try {
       await action();
       await this.load();
       return true;
     } catch (caught) {
-      this.error.set(apiError(caught, fallback));
+      notifyError(apiError(caught, fallback));
       return false;
     } finally {
       this.saving.set(false);

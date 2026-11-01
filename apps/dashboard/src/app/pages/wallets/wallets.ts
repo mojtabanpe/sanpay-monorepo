@@ -1,3 +1,4 @@
+import { notifyError } from '../../core/notifications';
 import { SanpayAmountInput } from '@sanpay/forms';
 import { Component, computed, inject, resource, signal } from '@angular/core';
 import { SanpayDatePickerWidth, isoToJalali, jalaliToIso } from '@sanpay/dates';
@@ -99,7 +100,6 @@ export class WalletsPage {
   protected readonly stores = signal<AdminStoreRow[]>([]);
   protected readonly loading = signal(false);
   protected readonly saving = signal(false);
-  protected readonly error = signal<string | null>(null);
   protected readonly notice = signal<string | null>(null);
 
   // ─── فیلتر جدول — کل تعریف‌ها یک‌جا خوانده می‌شوند، فیلتر سمت کلاینت است ──
@@ -267,7 +267,6 @@ export class WalletsPage {
 
   protected async load(): Promise<void> {
     this.loading.set(true);
-    this.error.set(null);
     try {
       const [definitions, stores, companies] = await Promise.all([
         this.api.walletDefinitions({ pageSize: 200 }),
@@ -278,7 +277,7 @@ export class WalletsPage {
       this.stores.set(stores.items);
       this.companies.set(companies.items);
     } catch (caught) {
-      this.error.set(apiError(caught, 'خواندن کیف‌پول‌ها ممکن نشد'));
+      notifyError(apiError(caught, 'خواندن کیف‌پول‌ها ممکن نشد'));
     } finally {
       this.loading.set(false);
     }
@@ -323,7 +322,6 @@ export class WalletsPage {
       storeIds: [],
       companyId: '',
     });
-    this.error.set(null);
     this.showForm.set(true);
   }
 
@@ -342,7 +340,6 @@ export class WalletsPage {
       storeIds: definition.stores.map((store) => store.id),
       companyId: definition.company.id,
     });
-    this.error.set(null);
     this.showForm.set(true);
   }
 
@@ -355,7 +352,7 @@ export class WalletsPage {
       !['image/png', 'image/jpeg', 'image/webp'].includes(file.type) ||
       file.size > 75_000
     ) {
-      this.error.set(
+      notifyError(
         'تصویر کارت باید PNG، JPEG یا WebP و حداکثر ۷۵ کیلوبایت باشد',
       );
       return;
@@ -363,7 +360,7 @@ export class WalletsPage {
     const reader = new FileReader();
     reader.onload = () => this.update('imageUrl', String(reader.result));
     reader.onerror = () =>
-      this.error.set('خواندن تصویر ممکن نشد؛ دوباره انتخاب کنید');
+      notifyError('خواندن تصویر ممکن نشد؛ دوباره انتخاب کنید');
     reader.readAsDataURL(file);
   }
 
@@ -418,7 +415,7 @@ export class WalletsPage {
     try {
       preview = await this.api.walletDeletionPreview(definition.id);
     } catch (caught) {
-      this.error.set(apiError(caught, 'بررسی حذف کیف پول ممکن نشد'));
+      notifyError(apiError(caught, 'بررسی حذف کیف پول ممکن نشد'));
       return;
     }
     const lost = preview.affectedEmployees
@@ -463,13 +460,11 @@ export class WalletsPage {
     this.allocMode.set('group');
     this.singleEmployee.set(null);
     this.employeeSearch.set('');
-    this.error.set(null);
   }
 
   protected setAllocMode(mode: string | string[] | null | undefined): void {
     if (mode !== 'group' && mode !== 'single') return;
     this.allocMode.set(mode);
-    this.error.set(null);
   }
 
   protected onEmployeePicked(employee: AdminEmployeeRow | null): void {
@@ -482,12 +477,12 @@ export class WalletsPage {
   ): Promise<void> {
     const employee = this.singleEmployee();
     if (!employee) {
-      this.error.set('کارمند را انتخاب کنید');
+      notifyError('کارمند را انتخاب کنید');
       return;
     }
     const cap = parseAmount(this.bulkCap());
     if (cap <= 0) {
-      this.error.set('مبلغ شارژ را وارد کنید');
+      notifyError('مبلغ شارژ را وارد کنید');
       return;
     }
     const name = `${employee.firstName} ${employee.lastName}`;
@@ -531,18 +526,17 @@ export class WalletsPage {
     if (!file) return;
 
     this.parsingFile.set(true);
-    this.error.set(null);
     try {
       const { entries, errors } = await parseAllocationFile(file);
       this.fileEntries.set(entries);
       this.fileErrors.set(errors);
       this.fileName.set(file.name);
       if (!entries.length) {
-        this.error.set('هیچ سطر معتبری در فایل پیدا نشد.');
+        notifyError('هیچ سطر معتبری در فایل پیدا نشد.');
       }
     } catch {
       this.clearFile();
-      this.error.set('خواندن فایل ممکن نشد — فقط CSV و XLSX پشتیبانی می‌شود.');
+      notifyError('خواندن فایل ممکن نشد — فقط CSV و XLSX پشتیبانی می‌شود.');
     } finally {
       this.parsingFile.set(false);
     }
@@ -565,7 +559,7 @@ export class WalletsPage {
     if (!entries.length) {
       const cap = parseAmount(this.bulkCap());
       if (cap <= 0) {
-        this.error.set('مبلغ شارژ را وارد کنید');
+        notifyError('مبلغ شارژ را وارد کنید');
         return;
       }
     }
@@ -600,13 +594,12 @@ export class WalletsPage {
   ): Promise<void> {
     if (this.saving()) return;
     this.saving.set(true);
-    this.error.set(null);
     this.notice.set(null);
     try {
       await action();
       await this.load();
     } catch (caught) {
-      this.error.set(apiError(caught, fallback));
+      notifyError(apiError(caught, fallback));
     } finally {
       this.saving.set(false);
     }

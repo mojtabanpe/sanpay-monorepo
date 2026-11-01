@@ -1,3 +1,4 @@
+import { notifyError } from '../../core/notifications';
 import {
   Component,
   computed,
@@ -71,12 +72,13 @@ export class GatewayPaymentPage {
   protected readonly intentLabels = INTENT_STATUS_LABELS;
   protected readonly purposeLabels = INTENT_PURPOSE_LABELS;
   protected readonly transactionLabels = TRANSACTION_TYPE_LABELS;
-  protected readonly canWrite = computed(() => this.auth.hasPermission('upg-review:write'));
+  protected readonly canWrite = computed(() =>
+    this.auth.hasPermission('upg-review:write'),
+  );
 
   protected readonly payment = signal<AdminGatewayPaymentDetail | null>(null);
   protected readonly loading = signal(false);
   protected readonly busy = signal(false);
-  protected readonly error = signal<string | null>(null);
   protected readonly notice = signal<string | null>(null);
   /** آخرین استعلام زنده — برای پرداخت (`payment`) یا یک بازگشت (شناسه‌اش) */
   protected readonly inquiry = signal<{
@@ -107,11 +109,10 @@ export class GatewayPaymentPage {
 
   protected async load(): Promise<void> {
     this.loading.set(true);
-    this.error.set(null);
     try {
       this.payment.set(await this.api.gatewayPayment(this.id()));
     } catch (caught) {
-      this.error.set(apiError(caught, 'خواندن پرداخت ممکن نشد'));
+      notifyError(apiError(caught, 'خواندن پرداخت ممکن نشد'));
     } finally {
       this.loading.set(false);
     }
@@ -172,12 +173,11 @@ export class GatewayPaymentPage {
   ): Promise<void> {
     if (this.busy()) return;
     this.busy.set(true);
-    this.error.set(null);
     this.notice.set(null);
     try {
       await action();
     } catch (caught) {
-      this.error.set(apiError(caught, fallback));
+      notifyError(apiError(caught, fallback));
     } finally {
       this.busy.set(false);
     }

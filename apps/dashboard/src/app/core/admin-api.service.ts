@@ -92,6 +92,7 @@ export interface SettlementItemRow {
     status: string;
     error: string | null;
     canResume?: boolean;
+    canInquire?: boolean;
   };
 }
 

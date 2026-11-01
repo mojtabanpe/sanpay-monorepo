@@ -1,3 +1,4 @@
+import { notifyError } from '../../core/notifications';
 import { Component, computed, inject, signal } from '@angular/core';
 import { AdminCompanyRow } from '@sanpay/models';
 import { HlmAlertImports } from '@sanpay/ui/alert';
@@ -28,7 +29,9 @@ export class CompaniesPage {
   private readonly api = inject(AdminApiService);
   private readonly auth = inject(AdminAuthService);
 
-  protected readonly canWrite = computed(() => this.auth.hasPermission('companies:write'));
+  protected readonly canWrite = computed(() =>
+    this.auth.hasPermission('companies:write'),
+  );
   protected readonly fa = fa;
   protected readonly rows = signal<AdminCompanyRow[]>([]);
   protected readonly total = signal(0);
@@ -40,7 +43,6 @@ export class CompaniesPage {
   protected readonly query = signal('');
   protected readonly loading = signal(false);
   protected readonly saving = signal(false);
-  protected readonly error = signal<string | null>(null);
   protected readonly notice = signal<string | null>(null);
   protected readonly showForm = signal(false);
   protected readonly editingId = signal<string | null>(null);
@@ -53,7 +55,6 @@ export class CompaniesPage {
 
   protected async load(): Promise<void> {
     this.loading.set(true);
-    this.error.set(null);
     try {
       const result = await this.api.companies({
         q: this.query().trim() || undefined,
@@ -63,7 +64,7 @@ export class CompaniesPage {
       this.rows.set(result.items);
       this.total.set(result.total);
     } catch (caught) {
-      this.error.set(apiError(caught, 'خواندن فهرست شرکت‌ها ممکن نشد'));
+      notifyError(apiError(caught, 'خواندن فهرست شرکت‌ها ممکن نشد'));
     } finally {
       this.loading.set(false);
     }
@@ -129,7 +130,7 @@ export class CompaniesPage {
       !['image/png', 'image/jpeg', 'image/webp'].includes(file.type) ||
       file.size > 75000
     ) {
-      this.error.set('لوگو باید PNG، JPEG یا WebP و حداکثر ۷۵ کیلوبایت باشد');
+      notifyError('لوگو باید PNG، JPEG یا WebP و حداکثر ۷۵ کیلوبایت باشد');
       input.value = '';
       return;
     }
@@ -141,9 +142,8 @@ export class CompaniesPage {
         reader.readAsDataURL(file);
       });
       this.logoUrl.set(data);
-      this.error.set(null);
     } catch {
-      this.error.set('خواندن فایل لوگو ممکن نشد');
+      notifyError('خواندن فایل لوگو ممکن نشد');
     }
   }
 
@@ -153,13 +153,12 @@ export class CompaniesPage {
   ): Promise<void> {
     if (this.saving()) return;
     this.saving.set(true);
-    this.error.set(null);
     this.notice.set(null);
     try {
       await action();
       await this.load();
     } catch (caught) {
-      this.error.set(apiError(caught, fallback));
+      notifyError(apiError(caught, fallback));
     } finally {
       this.saving.set(false);
     }

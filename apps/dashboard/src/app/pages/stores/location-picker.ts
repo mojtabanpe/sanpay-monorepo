@@ -1,3 +1,4 @@
+import { notifyError } from '../../core/notifications';
 import {
   afterNextRender,
   afterRenderEffect,
@@ -66,9 +67,6 @@ import type { Map, Marker, TileLayer } from 'leaflet';
           : 'هنوز موقعیتی انتخاب نشده است'
       }}</span>
     </div>
-    @if (error()) {
-      <p class="text-destructive mt-2 text-xs" role="alert">{{ error() }}</p>
-    }
   `,
 })
 export class StoreLocationPicker {
@@ -80,7 +78,6 @@ export class StoreLocationPicker {
   private readonly destroyRef = inject(DestroyRef);
   protected readonly ready = signal(false);
   protected readonly locating = signal(false);
-  protected readonly error = signal<string | null>(null);
   protected readonly tilesFailed = signal(false);
   private map?: Map;
   private tiles?: TileLayer;
@@ -121,12 +118,11 @@ export class StoreLocationPicker {
           selected ? 16 : 5,
         );
       this.map.zoomControl.setPosition('topright');
-      this.tiles = leaflet
-        .tileLayer('/map-tiles/{z}/{x}/{y}.png', {
-          attribution:
-            '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-          maxZoom: 19,
-        });
+      this.tiles = leaflet.tileLayer('/map-tiles/{z}/{x}/{y}.png', {
+        attribution:
+          '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+        maxZoom: 19,
+      });
       this.tiles.on('tileerror', () => {
         if (!this.destroyRef.destroyed) this.tilesFailed.set(true);
       });
@@ -140,7 +136,7 @@ export class StoreLocationPicker {
       this.ready.set(true);
     } catch {
       if (!this.destroyRef.destroyed)
-        this.error.set('بارگذاری نقشه ممکن نشد؛ صفحه را دوباره باز کنید.');
+        notifyError('بارگذاری نقشه ممکن نشد؛ صفحه را دوباره باز کنید.');
     }
   }
 
@@ -194,9 +190,8 @@ export class StoreLocationPicker {
   }
 
   protected locate(): void {
-    this.error.set(null);
     if (!navigator.geolocation) {
-      this.error.set(
+      notifyError(
         'مرورگر امکان دریافت موقعیت فعلی را ندارد؛ محل را روی نقشه انتخاب کنید.',
       );
       return;
@@ -213,7 +208,7 @@ export class StoreLocationPicker {
       () => {
         if (this.destroyRef.destroyed) return;
         this.locating.set(false);
-        this.error.set(
+        notifyError(
           'دریافت موقعیت فعلی ممکن نشد؛ محل را روی نقشه انتخاب کنید.',
         );
       },

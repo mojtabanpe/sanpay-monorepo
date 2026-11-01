@@ -1,3 +1,4 @@
+import { notifyError } from '../../core/notifications';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -63,7 +64,6 @@ export class FlightBookings {
     Math.max(1, Math.ceil(this.total() / this.pageSize)),
   );
   protected readonly loading = signal(false);
-  protected readonly error = signal<string | null>(null);
   protected readonly query = signal('');
   protected readonly status = signal<FlightBookingStatus | ''>('');
 
@@ -73,7 +73,6 @@ export class FlightBookings {
 
   protected async load(): Promise<void> {
     this.loading.set(true);
-    this.error.set(null);
     try {
       const result = await this.api.flightBookings({
         q: this.query().trim() || undefined,
@@ -84,7 +83,7 @@ export class FlightBookings {
       this.rows.set(result.items);
       this.total.set(result.total);
     } catch (caught) {
-      this.error.set(apiError(caught, 'خواندن رزروهای پرواز ممکن نشد'));
+      notifyError(apiError(caught, 'خواندن رزروهای پرواز ممکن نشد'));
     } finally {
       this.loading.set(false);
     }

@@ -1,3 +1,4 @@
+import { notifyError } from '../../core/notifications';
 import {
   Component,
   ElementRef,
@@ -55,7 +56,6 @@ export class PaymentsPage {
     Math.max(1, Math.ceil(this.total() / this.pageSize)),
   );
   protected readonly loading = signal(false);
-  protected readonly error = signal<string | null>(null);
 
   protected readonly query = signal('');
   protected readonly storeId = signal('');
@@ -104,7 +104,6 @@ export class PaymentsPage {
 
   protected async load(): Promise<void> {
     this.loading.set(true);
-    this.error.set(null);
     try {
       const result = await this.api.payments({
         q: this.query().trim() || undefined,
@@ -119,7 +118,7 @@ export class PaymentsPage {
       this.total.set(result.total);
       this.sumAmount.set(result.sumAmount);
     } catch (caught) {
-      this.error.set(apiError(caught, 'خواندن پرداخت‌ها ممکن نشد'));
+      notifyError(apiError(caught, 'خواندن پرداخت‌ها ممکن نشد'));
     } finally {
       this.loading.set(false);
     }
@@ -162,11 +161,10 @@ export class PaymentsPage {
   }
 
   protected async exportExcel(): Promise<void> {
-    this.error.set(null);
     try {
       await this.api.downloadPaymentsExcel(this.reportQuery());
     } catch (caught) {
-      this.error.set(apiError(caught, 'ساخت خروجی اکسل ممکن نشد'));
+      notifyError(apiError(caught, 'ساخت خروجی اکسل ممکن نشد'));
     }
   }
 
@@ -174,7 +172,6 @@ export class PaymentsPage {
   protected async print(): Promise<void> {
     if (this.printing()) return;
     this.printing.set(true);
-    this.error.set(null);
     try {
       const pageSize = 200;
       const all: AdminPaymentRow[] = [];
@@ -193,7 +190,7 @@ export class PaymentsPage {
       const element = this.printRef()?.nativeElement;
       if (element) printSheet(element);
     } catch (caught) {
-      this.error.set(apiError(caught, 'آماده‌سازی چاپ ممکن نشد'));
+      notifyError(apiError(caught, 'آماده‌سازی چاپ ممکن نشد'));
     } finally {
       this.printing.set(false);
     }

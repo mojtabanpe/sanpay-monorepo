@@ -1,3 +1,4 @@
+import { notifyError } from '../../core/notifications';
 import { ConfirmService } from '../../core/confirm';
 import { SanpayAmountInput } from '@sanpay/forms';
 import {
@@ -71,8 +72,12 @@ export class EmployeeDetailPage implements OnInit {
   private readonly confirm = inject(ConfirmService);
   private readonly auth = inject(AdminAuthService);
 
-  protected readonly canManageWallets = computed(() => this.auth.hasPermission('wallets:write'));
-  protected readonly canWrite = computed(() => this.auth.hasPermission('employees:write'));
+  protected readonly canManageWallets = computed(() =>
+    this.auth.hasPermission('wallets:write'),
+  );
+  protected readonly canWrite = computed(() =>
+    this.auth.hasPermission('employees:write'),
+  );
   protected readonly toman = toman;
   protected readonly fa = fa;
   protected readonly jalali = jalali;
@@ -90,7 +95,6 @@ export class EmployeeDetailPage implements OnInit {
   protected readonly employee = signal<AdminEmployeeDetail | null>(null);
   protected readonly definitions = signal<AdminWalletDefinitionRow[]>([]);
   protected readonly companies = signal<AdminCompanyRow[]>([]);
-  protected readonly error = signal<string | null>(null);
   protected readonly notice = signal<string | null>(null);
   protected readonly saving = signal(false);
 
@@ -167,7 +171,6 @@ export class EmployeeDetailPage implements OnInit {
     ORGANIZATIONAL_RANK_LABELS[String(value)] ?? 'انتخاب رده';
 
   protected async load(): Promise<void> {
-    this.error.set(null);
     try {
       const employee = await this.api.employee(this.id());
       const [definitions, companies] = await Promise.all([
@@ -193,7 +196,7 @@ export class EmployeeDetailPage implements OnInit {
         organizationalRank: employee.organizationalRank,
       });
     } catch (caught) {
-      this.error.set(apiError(caught, 'خواندن اطلاعات کارمند ممکن نشد'));
+      notifyError(apiError(caught, 'خواندن اطلاعات کارمند ممکن نشد'));
     }
   }
 
@@ -237,7 +240,7 @@ export class EmployeeDetailPage implements OnInit {
       await this.api.deleteEmployee(this.id());
       await this.router.navigate(['/employees']);
     } catch (caught) {
-      this.error.set(apiError(caught, 'حذف کارمند ممکن نشد'));
+      notifyError(apiError(caught, 'حذف کارمند ممکن نشد'));
     } finally {
       this.saving.set(false);
     }
@@ -259,7 +262,7 @@ export class EmployeeDetailPage implements OnInit {
   protected async resetPassword(): Promise<void> {
     const password = this.newPassword().trim();
     if (password.length < 8) {
-      this.error.set('رمز جدید باید حداقل ۸ نویسه باشد');
+      notifyError('رمز جدید باید حداقل ۸ نویسه باشد');
       return;
     }
     await this.run(async () => {
@@ -272,7 +275,7 @@ export class EmployeeDetailPage implements OnInit {
   protected async addAllocation(): Promise<void> {
     const form = this.allocForm();
     if (!form.definitionId) {
-      this.error.set('کیف پول را انتخاب کنید');
+      notifyError('کیف پول را انتخاب کنید');
       return;
     }
     await this.run(async () => {
@@ -296,7 +299,7 @@ export class EmployeeDetailPage implements OnInit {
   ): Promise<void> {
     const amount = parseAmount(input.value);
     if (!Number.isSafeInteger(amount) || amount <= 0) {
-      this.error.set('مبلغ شارژ باید مثبت و مضربی از ۱۰ ریال باشد');
+      notifyError('مبلغ شارژ باید مثبت و مضربی از ۱۰ ریال باشد');
       return;
     }
     await this.run(async () => {
@@ -330,7 +333,7 @@ export class EmployeeDetailPage implements OnInit {
   protected async refund(allocationId: string, raw: string): Promise<void> {
     const amount = parseAmount(raw);
     if (amount <= 0) {
-      this.error.set('مبلغ برگشتی را وارد کنید');
+      notifyError('مبلغ برگشتی را وارد کنید');
       return;
     }
     await this.run(async () => {
@@ -352,11 +355,11 @@ export class EmployeeDetailPage implements OnInit {
     if (!employee || !file) return;
     // همان محدودیت سرور، تا فایل بزرگ بی‌جهت آپلود نشود
     if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
-      this.error.set('فقط عکس JPEG، PNG یا WebP پذیرفته می‌شود');
+      notifyError('فقط عکس JPEG، PNG یا WebP پذیرفته می‌شود');
       return;
     }
     if (file.size > 2 * 1024 * 1024) {
-      this.error.set('حجم عکس باید حداکثر ۲ مگابایت باشد');
+      notifyError('حجم عکس باید حداکثر ۲ مگابایت باشد');
       return;
     }
     await this.run(async () => {
@@ -380,13 +383,12 @@ export class EmployeeDetailPage implements OnInit {
   ): Promise<void> {
     if (this.saving()) return;
     this.saving.set(true);
-    this.error.set(null);
     this.notice.set(null);
     try {
       await action();
       await this.load();
     } catch (caught) {
-      this.error.set(apiError(caught, fallback));
+      notifyError(apiError(caught, fallback));
     } finally {
       this.saving.set(false);
     }
