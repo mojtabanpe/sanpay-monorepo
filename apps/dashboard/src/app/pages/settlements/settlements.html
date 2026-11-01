@@ -227,7 +227,31 @@
                     dir="rtl"
                     class="max-w-[calc(100vw-2rem)]"
                   >
-                    <p hlmPopoverTitle>شناسه دسته</p>
+                    <p hlmPopoverTitle>جزئیات پیگیری</p>
+                    @if (row.batch.tomanBatchUuid) {
+                    <p hlmPopoverDescription>شناسه دسته در تومان</p>
+                    <p
+                      dir="ltr"
+                      class="select-text whitespace-normal break-all"
+                    >
+                      {{ row.batch.tomanBatchUuid }}
+                    </p>
+                    } @if (row.trackerId) {
+                    <p hlmPopoverDescription>شناسه حواله</p>
+                    <p
+                      dir="ltr"
+                      class="select-text whitespace-normal break-all"
+                    >
+                      {{ row.trackerId }}
+                    </p>
+                    } @if (row.batch.tomanStatus === -2 || row.batch.tomanStatus
+                    === -3) {
+                    <p class="text-destructive whitespace-normal">
+                      پردازش دسته در تومان ناموفق است؛ نتیجه حواله‌ها را استعلام
+                      کنید.
+                    </p>
+                    }
+                    <p hlmPopoverDescription>شناسه داخلی دسته</p>
                     <p
                       hlmPopoverDescription
                       dir="ltr"

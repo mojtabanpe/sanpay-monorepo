@@ -109,7 +109,7 @@ export class TomanClientService {
 
   async getBatch(batchUuid: string) {
     if (!this.isLive()) return { uuid: batchUuid, status: 4 };
-    return this.request<{ uuid: string; status: number }>(
+    return this.request<{ uuid: string; status: number; errors?: unknown }>(
       `/batch-transfer/${batchUuid}/`,
       BATCH_READ_SCOPE,
     );

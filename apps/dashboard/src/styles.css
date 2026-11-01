@@ -88,3 +88,47 @@ body {
     break-inside: avoid;
   }
 }
+
+/* Match notification typography and surfaces to the dashboard, not Sonner defaults. */
+.dashboard-toasts {
+  --brn-sonner-font-family: var(--font-sans);
+}
+.dashboard-toasts [data-sonner-toast][data-styled='true'] {
+  direction: rtl;
+  text-align: start;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.875rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl, 1rem);
+  background: var(--popover);
+  color: var(--popover-foreground);
+  box-shadow: 0 8px 28px color-mix(in oklch, var(--foreground) 10%, transparent);
+  font-family: var(--font-sans);
+  font-size: 0.875rem;
+  font-weight: 400;
+  line-height: 1.8;
+}
+.dashboard-toasts [data-sonner-toast][data-type='error'] {
+  border-inline-start: 3px solid var(--destructive);
+}
+.dashboard-toasts [data-sonner-toast][data-type='error'] [data-icon] {
+  color: var(--destructive);
+  margin-top: 0.25rem;
+}
+.dashboard-toasts [data-sonner-toast][data-styled='true'] [data-title] {
+  padding-inline-end: 1.5rem;
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+.dashboard-toasts [data-sonner-toast][data-styled='true'] [data-close-button] {
+  left: 0.5rem;
+  right: auto;
+  inset-inline-start: auto;
+  inset-inline-end: 0.5rem;
+  top: 0.5rem;
+  transform: none;
+  background: transparent;
+  border: 0;
+  color: var(--muted-foreground);
+}

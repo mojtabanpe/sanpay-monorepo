@@ -8,9 +8,10 @@ import { ConfirmHost } from './core/confirm';
   selector: 'app-root',
   template: `<router-outlet /><app-confirm-host />
     <hlm-toaster
+      class="dashboard-toasts"
       position="top-center"
       [closeButton]="true"
-      [richColors]="true"
+      [richColors]="false"
     />`,
 })
 export class App {}

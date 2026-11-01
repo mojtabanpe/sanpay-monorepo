@@ -86,7 +86,9 @@ describe('manual store settlement approval', () => {
         .mockResolvedValue([{ id: preview.storeId, name: preview.storeName }]),
       previewSettlement: vi.fn().mockResolvedValue(preview),
       runSettlements: vi.fn().mockResolvedValue({}),
-      reconcileSettlement: vi.fn().mockResolvedValue({ status: 'PROCESSING' }),
+      reconcileSettlement: vi
+        .fn()
+        .mockResolvedValue({ status: 'PROCESSING', items: [] }),
     };
     await TestBed.configureTestingModule({
       imports: [Settlements],
@@ -267,7 +269,7 @@ describe('manual store settlement approval', () => {
     trigger?.click();
     await fixture.whenStable();
     fixture.detectChanges();
-    expect(document.body.textContent).toContain('شناسه دسته');
+    expect(document.body.textContent).toContain('جزئیات پیگیری');
     expect(document.body.textContent).toContain('test-batch');
   });
 
@@ -360,6 +362,44 @@ describe('manual store settlement approval', () => {
       'add denied again',
       expect.any(Object),
     );
+  });
+
+  it('shows inquiry and support identifiers, not resume or retry, for unknown transfers in a failed container', async () => {
+    const { api, fixture } = await setup();
+    api.settlementItems.mockResolvedValue({
+      items: [
+        row({
+          status: 'UNKNOWN',
+          trackerId: 'sp-support-tracker',
+          batch: {
+            id: 'failed-container',
+            runKey: 'manual',
+            status: 'PROCESSING',
+            error: 'پردازش دسته ناموفق است',
+            canResume: false,
+            canInquire: true,
+            tomanStatus: -2,
+            tomanBatchUuid: 'provider-batch-id',
+          },
+        }),
+      ],
+      total: 1,
+      sumAmount: 12345,
+    });
+    await (
+      fixture.componentInstance as unknown as { load(): Promise<void> }
+    ).load();
+    fixture.detectChanges();
+    expect(buttons(fixture, 'ادامه ارسال')).toHaveLength(0);
+    expect(buttons(fixture, 'تلاش مجدد')).toHaveLength(0);
+    expect(buttons(fixture, 'استعلام وضعیت')).toHaveLength(1);
+    (fixture.nativeElement as HTMLElement)
+      .querySelector<HTMLButtonElement>('[aria-label="نمایش شناسه دسته"]')
+      ?.click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(document.body.textContent).toContain('provider-batch-id');
+    expect(document.body.textContent).toContain('sp-support-tracker');
   });
 
   it('read-only admins cannot preview, submit or see write controls', async () => {

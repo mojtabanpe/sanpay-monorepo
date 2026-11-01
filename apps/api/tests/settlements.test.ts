@@ -650,6 +650,7 @@ function recoveryFixture(remoteUuid: string | null = null) {
   const batch = {
     id: 'recovery-unit',
     status: 'FAILED',
+    tomanStatus: null as number | null,
     tomanBatchUuid: remoteUuid,
     submittedAt: null as Date | null,
     error: null as string | null,
@@ -674,8 +675,14 @@ function recoveryFixture(remoteUuid: string | null = null) {
     status: 1,
     failInquiry: false,
     failAdd: false,
+    transferStatus: 2,
+    failTransfer: false,
   };
   const db = {
+    $transaction: async (operations: Promise<unknown>[]) =>
+      Promise.all(operations),
+    payment: { updateMany: async () => ({ count: 1 }) },
+    hotelBooking: { updateMany: async () => ({ count: 0 }) },
     settlementBatch: {
       updateMany: async ({
         where,
@@ -703,7 +710,10 @@ function recoveryFixture(remoteUuid: string | null = null) {
       update: async ({ data }: { data: object }) =>
         Object.assign(batch.items[0], data),
       findMany: async () => batch.items,
-      updateMany: async () => ({ count: 0 }),
+      updateMany: async ({ data }: { data: object }) => {
+        Object.assign(batch.items[0], data);
+        return { count: 1 };
+      },
     },
   };
   const toman = {
@@ -735,7 +745,10 @@ function recoveryFixture(remoteUuid: string | null = null) {
       if (state.failInquiry) throw new Error('inquiry denied');
       return { status: state.status };
     },
-    getTransfer: async () => ({ status: 2 }),
+    getTransfer: async () => {
+      if (state.failTransfer) throw new Error('transfer not found');
+      return { status: state.transferStatus };
+    },
   };
   const service = new SettlementsService(
     db as unknown as PrismaService,
@@ -792,15 +805,47 @@ test('recovery unit: already committed batches are only reconciled, never submit
   }
 });
 
-test('recovery unit: terminal remote states cannot be submitted again', async () => {
-  for (const remoteStatus of [-2, -3, 99]) {
+test('recovery unit: failed containers still inquire about each transfer without resubmitting', async () => {
+  for (const remoteStatus of [-2, -3]) {
     const { batch, state, service } = recoveryFixture('remote-existing');
     state.status = remoteStatus;
-    await assert.rejects(
-      service.resumeFailedBatch(batch.id),
-      /قابل ادامه نیست/,
-    );
-    assert.equal(batch.status, 'FAILED');
+    await service.resumeFailedBatch(batch.id);
+    assert.equal(batch.tomanStatus, remoteStatus);
+    assert.equal(batch.items[0].status, 'PROCESSING');
+    assert.equal(state.commits, 0);
+    assert.equal(state.creates, 0);
+  }
+});
+
+test('recovery unit: unknown remote status cannot be submitted again', async () => {
+  const { batch, state, service } = recoveryFixture('remote-existing');
+  state.status = 99;
+  await assert.rejects(service.resumeFailedBatch(batch.id), /قابل ادامه نیست/);
+  assert.equal(batch.status, 'FAILED');
+  assert.equal(state.commits, 0);
+});
+
+test('recovery unit: a missing transfer in a failed batch stays unknown, not retryable', async () => {
+  const { batch, state, service } = recoveryFixture('remote-existing');
+  state.status = -2;
+  state.failTransfer = true;
+  await service.resumeFailedBatch(batch.id);
+  assert.equal(batch.items[0].status, 'UNKNOWN');
+  assert.equal(batch.tomanStatus, -2);
+  assert.equal(state.commits, 0);
+});
+
+test('recovery unit: a failed batch preserves successful transfers and confirms individual failures', async () => {
+  for (const [transferStatus, expected] of [
+    [6, 'SUCCEEDED'],
+    [8, 'FAILED'],
+  ] as const) {
+    const { batch, state, service } = recoveryFixture('remote-existing');
+    state.status = -2;
+    state.transferStatus = transferStatus;
+    await service.resumeFailedBatch(batch.id);
+    assert.equal(batch.items[0].status, expected);
+    assert.equal(state.creates, 0);
     assert.equal(state.commits, 0);
   }
 });

@@ -496,6 +496,7 @@ model SettlementBatch {
   runKey         String                @unique
   status         SettlementBatchStatus @default(BUILDING)
   tomanBatchUuid String?               @unique
+  tomanStatus    Int?
   totalAmount    BigInt                @default(0)
   itemCount      Int                   @default(0)
   error          String?

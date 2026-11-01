@@ -84,6 +84,7 @@ export interface SettlementItemRow {
   createdAt: string;
   settledAt: string | null;
   retryOfId: string | null;
+  trackerId?: string;
   /** برای این انتقال ناموفق قبلاً تلاش مجدد ساخته شده */
   retried: boolean;
   batch: {
@@ -93,6 +94,8 @@ export interface SettlementItemRow {
     error: string | null;
     canResume?: boolean;
     canInquire?: boolean;
+    tomanStatus?: number | null;
+    tomanBatchUuid?: string | null;
   };
 }
 
@@ -104,6 +107,7 @@ export interface SettlementItemPage {
 }
 
 export interface SettlementBatchView {
+  tomanStatus?: number | null;
   id: string;
   runKey: string;
   status: string;

@@ -23,6 +23,7 @@ import {
   tomanLog,
   tomanOperation,
   tomanError,
+  tomanErrorCodes,
   withTomanTrace,
 } from '../toman/toman-log';
 
@@ -325,6 +326,7 @@ export class SettlementsService {
               status: true,
               error: true,
               tomanBatchUuid: true,
+              tomanStatus: true,
               submittedAt: true,
             },
           },
@@ -346,10 +348,14 @@ export class SettlementsService {
         createdAt: row.createdAt,
         settledAt: row.settledAt,
         retryOfId: row.retryOfId,
+        trackerId: row.trackerId,
         retried: row._count.retries > 0,
         batch: {
           ...row.batch,
-          canResume: row.batch.status === 'FAILED' && !row.batch.submittedAt,
+          canResume:
+            row.batch.status === 'FAILED' &&
+            !row.batch.submittedAt &&
+            ![-2, -3].includes(row.batch.tomanStatus ?? 0),
           canInquire: !!row.batch.tomanBatchUuid,
         },
       })),
@@ -381,6 +387,11 @@ export class SettlementsService {
           { status: { in: ['SUBMITTED', 'PROCESSING'] } },
           {
             status: 'FAILED',
+            tomanStatus: { in: [-2, -3] },
+            items: { some: { status: { notIn: ['SUCCEEDED', 'FAILED'] } } },
+          },
+          {
+            status: 'FAILED',
             submittedAt: null,
             tomanBatchUuid: { not: null },
           },
@@ -391,6 +402,7 @@ export class SettlementsService {
         status: true,
         submittedAt: true,
         tomanBatchUuid: true,
+        tomanStatus: true,
       },
     });
     for (const batch of batches) {
@@ -398,7 +410,8 @@ export class SettlementsService {
         if (
           batch.status === 'FAILED' &&
           !batch.submittedAt &&
-          batch.tomanBatchUuid
+          batch.tomanBatchUuid &&
+          ![-2, -3].includes(batch.tomanStatus ?? 0)
         ) {
           await this.resumeFailedBatch(batch.id, 'reconcile');
           continue;
@@ -425,16 +438,20 @@ export class SettlementsService {
     if (!batch.tomanBatchUuid) return this.one(batchId);
 
     const remoteBatch = await this.toman.getBatch(batch.tomanBatchUuid);
-    if (remoteBatch.status === -2 || remoteBatch.status === -3) {
-      await this.prisma.settlementBatch.update({
-        where: { id: batchId },
-        data: {
-          status: 'FAILED',
-          error: `Toman batch status: ${remoteBatch.status}`,
-        },
-      });
-      return this.one(batchId);
-    }
+    const terminalBatch = [-2, -3].includes(remoteBatch.status);
+    const codes = tomanErrorCodes(remoteBatch.errors);
+    const batchError = terminalBatch
+      ? `پردازش دسته در تومان ناموفق است (وضعیت ${remoteBatch.status})؛ نتیجه هر حواله باید جداگانه بررسی شود.${codes.length ? ` کد خطا: ${codes.join('، ')}` : ''}`
+      : null;
+    await this.prisma.settlementBatch.update({
+      where: { id: batchId },
+      data: {
+        tomanStatus: remoteBatch.status,
+        ...(terminalBatch ? { status: 'FAILED', error: batchError } : {}),
+      },
+    });
+    // A failed container may already have created transfers. Never infer item
+    // failure (or allow a new payment) from the batch status alone.
 
     // An uncommitted batch must stay failed/building during a read-only inquiry.
     if (!batch.submittedAt && remoteBatch.status === 1)
@@ -518,12 +535,21 @@ export class SettlementsService {
         await this.prisma.settlementItem.updateMany({
           where: { id: item.id, status: { notIn: ['SUCCEEDED', 'FAILED'] } },
           data: {
-            error: 'استعلام وضعیت انتقال ناموفق بود؛ دوباره استعلام کنید.',
+            ...(terminalBatch ? { status: 'UNKNOWN' } : {}),
+            error: terminalBatch
+              ? 'نتیجه این حواله هنوز مشخص نیست؛ با شناسه دسته و شناسه حواله از تومان پیگیری کنید. تا تأیید شکست نهایی دوباره پرداخت نکنید.'
+              : 'استعلام وضعیت انتقال ناموفق بود؛ دوباره استعلام کنید.',
           },
         });
       }
     }
     await this.refreshBatchStatus(batchId);
+    if (terminalBatch) {
+      await this.prisma.settlementBatch.update({
+        where: { id: batchId },
+        data: { error: batchError },
+      });
+    }
     return this.one(batchId);
   }
 
@@ -574,6 +600,9 @@ export class SettlementsService {
                   error: null,
                 },
               });
+            } else if ([-2, -3].includes(remote.status)) {
+              await this.reconcileBatch(batchId);
+              return this.one(batchId);
             } else if (remote.status !== 1) {
               throw new BadRequestException(
                 `دسته در تومان قابل ادامه نیست (وضعیت ${remote.status})؛ وضعیت را استعلام کنید.`,

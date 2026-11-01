@@ -203,6 +203,19 @@ export class Settlements {
       .status;
     await this.action(async () => {
       const result = await this.api.reconcileSettlement(batchId);
+      if (result.error && result.status !== 'COMPLETED') {
+        notifyError(result.error);
+        return;
+      }
+      if (
+        result.items.some((item) => item.error && item.status !== 'SUCCEEDED')
+      ) {
+        notifyError(
+          result.items.find((item) => item.error && item.status !== 'SUCCEEDED')
+            ?.error ?? 'استعلام حواله نیازمند پیگیری است.',
+        );
+        return;
+      }
       this.notice.set(
         result.status === previous
           ? 'استعلام انجام شد؛ وضعیت دسته هنوز تغییری نکرده است.'
@@ -212,7 +225,18 @@ export class Settlements {
   }
 
   protected async resume(batchId: string): Promise<void> {
-    await this.action(() => this.api.resumeSettlement(batchId));
+    await this.action(async () => {
+      const result = await this.api.resumeSettlement(batchId);
+      if (
+        [-2, -3].includes(result.tomanStatus ?? 0) &&
+        result.status !== 'COMPLETED'
+      ) {
+        notifyError(
+          result.error ??
+            'پردازش دسته در تومان ناموفق است؛ نتیجه حواله‌ها را استعلام کنید.',
+        );
+      }
+    });
   }
 
   protected async retry(itemId: string): Promise<void> {
