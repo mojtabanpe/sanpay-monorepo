@@ -1,4 +1,5 @@
 import {
+  StreamableFile,
   Body,
   Controller,
   Get,
@@ -111,6 +112,22 @@ export class StoreController {
   @UseGuards(StoreJwtGuard)
   reportFilters(@Req() request: StoreRequest) {
     return this.payments.reportFilters(request.store.sub);
+  }
+
+  /** StreamableFile، نه Buffer خام — Nest یک Buffer را JSON می‌کند */
+  @Get('reports/payments.xlsx')
+  @UseGuards(StoreJwtGuard)
+  async reportExcel(
+    @Req() request: StoreRequest,
+    @Query() query: StorePaymentReportQueryDto,
+  ) {
+    return new StreamableFile(
+      await this.payments.reportExcel(request.store.sub, query),
+      {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        disposition: `attachment; filename="sanpay-store-payments-${new Date().toISOString().slice(0, 10)}.xlsx"`,
+      },
+    );
   }
 
   @Get('reports/payments')

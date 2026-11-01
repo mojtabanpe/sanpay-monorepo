@@ -7,6 +7,7 @@ import {
   StoreStatsBucket,
   StoreStatsPoint,
 } from '@sanpay/models';
+import * as ExcelJS from 'exceljs';
 import { Prisma } from '../../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { settlementStatus } from '../admin/payment-row';
@@ -167,6 +168,62 @@ export class StorePaymentsService {
         .map(([id, name]) => ({ id, name }))
         .sort((a, b) => a.name.localeCompare(b.name, 'fa')),
     };
+  }
+
+  /** همهٔ سطرهای فیلترشده (بدون صفحه‌بندی) + سطر «جمع کل» — مبالغ به ریال */
+  async reportExcel(
+    storeId: string,
+    query: StorePaymentReportQueryDto,
+  ): Promise<Buffer> {
+    const payments = await this.prisma.payment.findMany({
+      where: this.reportWhere(storeId, query),
+      orderBy: { createdAt: 'desc' },
+      include: { employee: true, settlementItem: true },
+    });
+    const labels: Record<string, string> = {
+      PENDING: 'در انتظار تسویه',
+      PROCESSING: 'در حال تسویه',
+      SUCCEEDED: 'تسویه‌شده',
+      FAILED: 'ناموفق',
+    };
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet('پرداخت‌ها', {
+      views: [{ rightToLeft: true }],
+    });
+    sheet.columns = [
+      { header: 'شماره رسید', key: 'receiptNo', width: 16 },
+      { header: 'خریدار', key: 'employee', width: 24 },
+      { header: 'مبلغ (ریال)', key: 'amount', width: 18 },
+      { header: 'زمان پرداخت', key: 'createdAt', width: 22 },
+      { header: 'وضعیت تسویه', key: 'settlement', width: 18 },
+      { header: 'زمان تسویه', key: 'settledAt', width: 22 },
+      { header: 'کد پیگیری', key: 'followUpCode', width: 18 },
+    ];
+    let total = 0n;
+    for (const payment of payments) {
+      total += payment.amount;
+      sheet.addRow({
+        receiptNo: payment.receiptNo,
+        employee: `${payment.employee.firstName} ${payment.employee.lastName}`,
+        amount: Number(payment.amount) * 10,
+        createdAt: payment.createdAt,
+        settlement: labels[settlementStatus(payment.settlementItem?.status)],
+        settledAt: payment.settledAt ?? '',
+        followUpCode: payment.settlementItem?.followUpCode ?? '',
+      });
+    }
+    const totalRow = sheet.addRow({
+      receiptNo: 'جمع کل',
+      employee: `${payments.length} پرداخت`,
+      amount: Number(total) * 10,
+    });
+    totalRow.font = { bold: true };
+    sheet.getRow(1).font = { bold: true };
+    sheet.getColumn('amount').numFmt = '#,##0';
+    sheet.getColumn('createdAt').numFmt = 'yyyy-mm-dd hh:mm';
+    sheet.getColumn('settledAt').numFmt = 'yyyy-mm-dd hh:mm';
+    sheet.autoFilter = { from: 'A1', to: 'G1' };
+    return Buffer.from(await workbook.xlsx.writeBuffer());
   }
 
   private reportWhere(

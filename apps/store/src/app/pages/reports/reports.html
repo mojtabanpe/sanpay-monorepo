@@ -1,4 +1,4 @@
-<div class="report-root flex w-full flex-col gap-4 px-4 py-5 lg:px-0 print:p-0">
+<div class="report-root flex w-full flex-col gap-4 px-4 py-5 lg:px-0">
   <header class="flex items-start justify-between gap-3">
     <div>
       <h1 class="text-xl font-bold">گزارش پرداخت‌ها</h1>
@@ -6,10 +6,28 @@
         {{ store()?.name }} — وضعیت پرداخت و تسویه فروش‌ها
       </p>
     </div>
-    <button hlmBtn class="print:hidden" (click)="print()">چاپ گزارش</button>
+    <div class="flex flex-wrap gap-2">
+      <button
+        hlmBtn
+        variant="outline"
+        [disabled]="exporting()"
+        (click)="exportExcel()"
+      >
+        {{ exporting() ? 'در حال ساخت…' : 'خروجی Excel' }}
+      </button>
+      <button hlmBtn [disabled]="printing()" (click)="print()">
+        {{ printing() ? 'در حال آماده‌سازی…' : 'چاپ گزارش' }}
+      </button>
+    </div>
   </header>
 
-  <section hlmCard class="print:hidden">
+  @if (actionError()) {
+  <div hlmAlert variant="destructive">
+    <p hlmAlertDescription>{{ actionError() }}</p>
+  </div>
+  }
+
+  <section hlmCard>
     <div hlmCardContent class="grid gap-3 pt-6 sm:grid-cols-2">
       <div class="flex flex-col gap-1.5 sm:col-span-2">
         <label hlmLabel for="report-query">جست‌وجو</label>
@@ -172,7 +190,7 @@
         </table>
       </div>
 
-      <div class="flex items-center justify-between pt-4 print:hidden">
+      <div class="flex items-center justify-between pt-4">
         <span class="text-muted-foreground text-sm"
           >صفحه {{ count(page()) }} از {{ count(pageCount()) }}</span
         >
@@ -188,4 +206,45 @@
     </div>
   </section>
   }
+
+  <!-- فقط هنگام چاپ دیده می‌شود: همهٔ صفحه‌های فیلترشده + جمع کل -->
+  <div #printArea class="print-sheet" dir="rtl">
+    <h1 style="font-size: 14px; font-weight: bold">
+      گزارش پرداخت‌ها — {{ store()?.name }}
+    </h1>
+    <p style="margin: 4px 0 8px">{{ filterSummary() }}</p>
+    <table>
+      <thead>
+        <tr>
+          <th>شماره رسید</th>
+          <th>خریدار</th>
+          <th>مبلغ</th>
+          <th>زمان پرداخت</th>
+          <th>وضعیت تسویه</th>
+          <th>زمان تسویه</th>
+          <th>کد پیگیری</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (row of printRows(); track row.id) {
+        <tr>
+          <td dir="ltr">{{ row.receiptNo }}</td>
+          <td>{{ row.employeeName }}</td>
+          <td>{{ rial(row.amount) }}</td>
+          <td>{{ dateTime(row.createdAt) }}</td>
+          <td>{{ statusLabels[row.settlement.status] }}</td>
+          <td>{{ dateTime(row.settlement.settledAt) }}</td>
+          <td dir="ltr">{{ row.settlement.followUpCode || '—' }}</td>
+        </tr>
+        }
+      </tbody>
+      <tfoot>
+        <tr style="font-weight: bold">
+          <td colspan="2">جمع کل {{ count(printRows().length) }} پرداخت</td>
+          <td>{{ rial(printSum()) }}</td>
+          <td colspan="4"></td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
 </div>

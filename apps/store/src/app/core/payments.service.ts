@@ -57,6 +57,25 @@ export class StorePaymentsService {
     );
   }
 
+  async downloadReportExcel(query: Record<string, string | undefined>) {
+    let params = new HttpParams();
+    for (const [key, value] of Object.entries(query)) {
+      if (value) params = params.set(key, value);
+    }
+    const blob = await firstValueFrom(
+      this.http.get('/api/store/reports/payments.xlsx', {
+        params,
+        responseType: 'blob',
+      }),
+    );
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = `sanpay-payments-${new Date().toISOString().slice(0, 10)}.xlsx`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+  }
+
   reportFilters(): Promise<StorePaymentReportFilters> {
     return firstValueFrom(
       this.http.get<StorePaymentReportFilters>(

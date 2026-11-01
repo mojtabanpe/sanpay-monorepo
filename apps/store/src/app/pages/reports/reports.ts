@@ -1,9 +1,10 @@
 import {
-  ChangeDetectionStrategy,
   Component,
+  ElementRef,
   computed,
   inject,
   signal,
+  viewChild,
 } from '@angular/core';
 import { SanpayDatePickerWidth, isoToJalali, jalaliToIso } from '@sanpay/dates';
 import {
@@ -11,6 +12,7 @@ import {
   StorePaymentReportFilters,
   StoreSettlementStatus,
 } from '@sanpay/models';
+import { HlmAlertImports } from '@sanpay/ui/alert';
 import { HlmBadgeImports } from '@sanpay/ui/badge';
 import { HlmButtonImports } from '@sanpay/ui/button';
 import { HlmCardImports } from '@sanpay/ui/card';
@@ -22,11 +24,12 @@ import { HlmTableImports } from '@sanpay/ui/table';
 import { JalaliDate } from '@spartan-ng/brain/date-time';
 import { StorePaymentsService } from '../../core/payments.service';
 import { StoreAuthService } from '../../core/store-auth.service';
+import { printSheet } from '../../core/print-sheet';
 
 @Component({
   selector: 'store-reports',
-  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
+    HlmAlertImports,
     HlmBadgeImports,
     HlmButtonImports,
     HlmCardImports,
@@ -38,24 +41,6 @@ import { StoreAuthService } from '../../core/store-auth.service';
     HlmTableImports,
   ],
   templateUrl: './reports.html',
-  styles: `
-    @media print {
-      :host {
-        display: block;
-      }
-      .report-root {
-        max-width: none;
-        padding: 0;
-      }
-      .report-card {
-        border: 0;
-        box-shadow: none;
-      }
-      table {
-        font-size: 10px;
-      }
-    }
-  `,
 })
 export class Reports {
   private readonly payments = inject(StorePaymentsService);
@@ -144,12 +129,7 @@ export class Reports {
     try {
       this.report.set(
         await this.payments.report({
-          q: this.query().trim() || undefined,
-          from: this.from() ? `${this.from()}T00:00:00+03:30` : undefined,
-          to: this.to() ? `${this.to()}T23:59:59.999+03:30` : undefined,
-          settlementStatus: this.settlementStatus() || undefined,
-          companyId: this.companyId() || undefined,
-          walletDefinitionId: this.walletDefinitionId() || undefined,
+          ...this.reportQuery(),
           page: this.page(),
           pageSize: this.pageSize,
         }),
@@ -191,8 +171,95 @@ export class Reports {
     void this.load();
   }
 
-  protected print(): void {
-    window.print();
+  private reportQuery() {
+    return {
+      q: this.query().trim() || undefined,
+      from: this.from() ? `${this.from()}T00:00:00+03:30` : undefined,
+      to: this.to() ? `${this.to()}T23:59:59.999+03:30` : undefined,
+      settlementStatus: this.settlementStatus() || undefined,
+      companyId: this.companyId() || undefined,
+      walletDefinitionId: this.walletDefinitionId() || undefined,
+    };
+  }
+
+  protected readonly exporting = signal(false);
+  protected readonly actionError = signal('');
+
+  protected async exportExcel(): Promise<void> {
+    if (this.exporting()) return;
+    this.exporting.set(true);
+    this.actionError.set('');
+    try {
+      await this.payments.downloadReportExcel(this.reportQuery());
+    } catch {
+      this.actionError.set('ساخت خروجی اکسل ممکن نشد.');
+    } finally {
+      this.exporting.set(false);
+    }
+  }
+
+  /** همهٔ سطرهای فیلترشده برای چاپ — فقط هنگام چاپ پر می‌شود */
+  protected readonly printRows = signal<StorePaymentReport['items']>([]);
+  protected readonly printSum = computed(() =>
+    this.printRows().reduce((sum, row) => sum + row.amount, 0),
+  );
+  protected readonly printing = signal(false);
+  private readonly printRef = viewChild<ElementRef<HTMLElement>>('printArea');
+
+  /** شرح فیلترها در سربرگ چاپ */
+  protected readonly filterSummary = computed(() => {
+    const parts: string[] = [];
+    const company = this.filters().companies.find(
+      (item) => item.id === this.companyId(),
+    );
+    if (company) parts.push(`شرکت: ${company.name}`);
+    const wallet = this.filters().wallets.find(
+      (item) => item.id === this.walletDefinitionId(),
+    );
+    if (wallet) parts.push(`کیف پول: ${wallet.name}`);
+    if (this.from()) parts.push(`از ${this.dateOnly(this.from())}`);
+    if (this.to()) parts.push(`تا ${this.dateOnly(this.to())}`);
+    const status = this.settlementStatus();
+    if (status) parts.push(`تسویه: ${this.statusLabels[status]}`);
+    if (this.query().trim()) parts.push(`جست‌وجو: ${this.query().trim()}`);
+    return parts.join(' — ') || 'همهٔ پرداخت‌ها';
+  });
+
+  private readonly dateFormatter = new Intl.DateTimeFormat(
+    'fa-IR-u-ca-persian',
+    { year: 'numeric', month: '2-digit', day: '2-digit' },
+  );
+
+  private dateOnly(iso: string): string {
+    return this.dateFormatter.format(new Date(`${iso}T12:00:00`));
+  }
+
+  /** همهٔ صفحه‌های فیلترشده را می‌گیرد و فقط جدول چاپی را چاپ می‌کند */
+  protected async print(): Promise<void> {
+    if (this.printing()) return;
+    this.printing.set(true);
+    this.actionError.set('');
+    try {
+      const pageSize = 200;
+      const all: StorePaymentReport['items'] = [];
+      for (let page = 1; ; page++) {
+        const result = await this.payments.report({
+          ...this.reportQuery(),
+          page,
+          pageSize,
+        });
+        all.push(...result.items);
+        if (all.length >= result.total || result.items.length === 0) break;
+      }
+      this.printRows.set(all);
+      await new Promise((resolve) => requestAnimationFrame(resolve));
+      const element = this.printRef()?.nativeElement;
+      if (element) printSheet(element);
+    } catch {
+      this.actionError.set('آماده‌سازی چاپ ممکن نشد.');
+    } finally {
+      this.printing.set(false);
+    }
   }
 
   protected rial(value: number): string {
