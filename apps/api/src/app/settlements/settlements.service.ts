@@ -319,7 +319,14 @@ export class SettlementsService {
         take: pageSize,
         include: {
           batch: {
-            select: { id: true, runKey: true, status: true, error: true },
+            select: {
+              id: true,
+              runKey: true,
+              status: true,
+              error: true,
+              tomanBatchUuid: true,
+              submittedAt: true,
+            },
           },
           _count: { select: { retries: true } },
         },
@@ -340,7 +347,13 @@ export class SettlementsService {
         settledAt: row.settledAt,
         retryOfId: row.retryOfId,
         retried: row._count.retries > 0,
-        batch: row.batch,
+        batch: {
+          ...row.batch,
+          canResume:
+            row.batch.status === 'FAILED' &&
+            !row.batch.tomanBatchUuid &&
+            !row.batch.submittedAt,
+        },
       })),
       total,
       sumAmount: Number(sum._sum.amount ?? 0),
@@ -527,6 +540,44 @@ export class SettlementsService {
     }
     await this.refreshBatchStatus(batchId);
     return this.one(batchId);
+  }
+
+  /** Recover a failed create without reallocating payments or changing trackers.
+   * An unrecorded remote create can only leave an empty, uncommitted batch.
+   * The atomic claim excludes concurrent operators and the reconciliation scan.
+   */
+  async resumeFailedBatch(batchId: string) {
+    return tomanOperation(
+      'settlement.resume',
+      { batchId, source: 'manual' },
+      async () => {
+        const claimed = await this.prisma.settlementBatch.updateMany({
+          where: {
+            id: batchId,
+            status: 'FAILED',
+            tomanBatchUuid: null,
+            submittedAt: null,
+            items: {
+              some: {},
+              every: {
+                status: 'CREATED',
+                tomanItemUuid: null,
+                submittedAt: null,
+              },
+            },
+          },
+          data: { status: 'BUILDING' },
+        });
+        if (claimed.count !== 1) {
+          throw new ConflictException(
+            'این دسته قابل ادامه ارسال نیست یا ارسال آن قبلاً شروع شده است؛ وضعیت را تازه کنید.',
+          );
+        }
+        await this.submitBatch(batchId);
+        await this.reconcileBatch(batchId);
+        return this.one(batchId);
+      },
+    );
   }
 
   async retryFailedItem(itemId: string) {

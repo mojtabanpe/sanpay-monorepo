@@ -74,13 +74,14 @@ describe('manual store settlement approval', () => {
         total: 3,
         sumAmount: 37035,
       }),
+      resumeSettlement: vi.fn().mockResolvedValue({}),
       retrySettlementItem: vi.fn().mockResolvedValue({}),
       settlementStores: vi
         .fn()
         .mockResolvedValue([{ id: preview.storeId, name: preview.storeName }]),
       previewSettlement: vi.fn().mockResolvedValue(preview),
       runSettlements: vi.fn().mockResolvedValue({}),
-      reconcileSettlement: vi.fn().mockResolvedValue({}),
+      reconcileSettlement: vi.fn().mockResolvedValue({ status: 'PROCESSING' }),
     };
     await TestBed.configureTestingModule({
       imports: [Settlements],
@@ -151,6 +152,10 @@ describe('manual store settlement approval', () => {
     await fixture.whenStable();
     expect(api.reconcileSettlement).toHaveBeenCalledExactlyOnceWith('batch-a');
     expect(api.runSettlements).not.toHaveBeenCalled();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain(
+      'وضعیت دسته هنوز تغییری نکرده',
+    );
   });
 
   it('lists transfers as one table with the server-side total', async () => {
@@ -181,6 +186,84 @@ describe('manual store settlement approval', () => {
     expect(api.retrySettlementItem).toHaveBeenCalledExactlyOnceWith(
       'item-failed',
     );
+  });
+
+  it('resumes a failed create using the existing batch id', async () => {
+    const { api, fixture } = await setup();
+    api.settlementItems.mockResolvedValue({
+      items: [
+        row({
+          status: 'CREATED',
+          batch: {
+            id: 'failed-create',
+            runKey: 'manual',
+            status: 'FAILED',
+            error: 'permission_denied',
+            canResume: true,
+          },
+        }),
+      ],
+      total: 1,
+      sumAmount: 12345,
+    });
+    await (
+      fixture.componentInstance as unknown as { load(): Promise<void> }
+    ).load();
+    fixture.detectChanges();
+    const resume = buttons(fixture, 'ادامه ارسال');
+    expect(resume).toHaveLength(1);
+    resume[0].click();
+    await fixture.whenStable();
+    expect(api.resumeSettlement).toHaveBeenCalledExactlyOnceWith(
+      'failed-create',
+    );
+    expect(api.retrySettlementItem).not.toHaveBeenCalled();
+  });
+
+  it('does not offer inquiry before submission and opens error details on tap', async () => {
+    const { api, fixture } = await setup();
+    api.settlementItems.mockResolvedValue({
+      items: [
+        row({
+          status: 'CREATED',
+          batch: {
+            id: 'failed-create',
+            runKey: 'store-manual-long-identifier',
+            status: 'FAILED',
+            error: 'ارتباط با تومان ناموفق بود',
+            canResume: true,
+          },
+        }),
+      ],
+      total: 1,
+      sumAmount: 12345,
+    });
+    await (
+      fixture.componentInstance as unknown as { load(): Promise<void> }
+    ).load();
+    fixture.detectChanges();
+    expect(buttons(fixture, 'استعلام وضعیت')).toHaveLength(0);
+    const trigger = (
+      fixture.nativeElement as HTMLElement
+    ).querySelector<HTMLButtonElement>('[aria-label="جزئیات خطای تسویه"]');
+    expect(trigger).not.toBeNull();
+    trigger?.click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(document.body.textContent).toContain('خطای تسویه');
+    expect(document.body.textContent).toContain('ارتباط با تومان ناموفق بود');
+  });
+
+  it('opens the full batch identifier on tap', async () => {
+    const { fixture } = await setup();
+    const trigger = (
+      fixture.nativeElement as HTMLElement
+    ).querySelector<HTMLButtonElement>('[aria-label="نمایش شناسه دسته"]');
+    trigger?.click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(document.body.textContent).toContain('شناسه دسته');
+    expect(document.body.textContent).toContain('test-batch');
   });
 
   it('filters go to the server and reset to the first page', async () => {

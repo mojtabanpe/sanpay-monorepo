@@ -1,3 +1,7 @@
+import { NgIcon, provideIcons } from '@ng-icons/core';
+import { lucideCircleAlert } from '@ng-icons/lucide';
+import { HlmPopoverImports } from '@sanpay/ui/popover';
+import { HlmTooltip } from '@sanpay/ui/tooltip';
 import { Component, computed, inject, signal } from '@angular/core';
 import { SanpayDatePickerWidth, isoToJalali, jalaliToIso } from '@sanpay/dates';
 import { HlmAlertImports } from '@sanpay/ui/alert';
@@ -23,7 +27,11 @@ import { fa, jalaliTime, toman } from '../../core/format';
 
 @Component({
   selector: 'app-settlements',
+  providers: [provideIcons({ lucideCircleAlert })],
   imports: [
+    NgIcon,
+    HlmPopoverImports,
+    HlmTooltip,
     SanpayDatePickerWidth,
     HlmAlertImports,
     HlmBadgeImports,
@@ -80,6 +88,7 @@ export class Settlements {
   protected readonly storeLabel = (value: unknown) =>
     this.stores().find((store) => store.id === value)?.name ?? '';
   protected readonly loading = signal(false);
+  protected readonly notice = signal<string | null>(null);
   protected readonly error = signal<string | null>(null);
   protected readonly canWrite = computed(() =>
     this.auth.hasPermission('settlements:write'),
@@ -162,7 +171,10 @@ export class Settlements {
 
   /** انتقالی که هنوز نهایی نشده — استعلام وضعیت دسته‌اش معنا دارد */
   protected inquirable(row: SettlementItemRow): boolean {
-    return row.status !== 'SUCCEEDED' && row.status !== 'FAILED';
+    return (
+      ['SUBMITTED', 'PROCESSING', 'UNKNOWN'].includes(row.status) &&
+      !row.batch.canResume
+    );
   }
 
   protected async showPreview(): Promise<void> {
@@ -188,7 +200,20 @@ export class Settlements {
   }
 
   protected async reconcile(batchId: string): Promise<void> {
-    await this.action(() => this.api.reconcileSettlement(batchId));
+    const previous = this.rows().find((row) => row.batch.id === batchId)?.batch
+      .status;
+    await this.action(async () => {
+      const result = await this.api.reconcileSettlement(batchId);
+      this.notice.set(
+        result.status === previous
+          ? 'استعلام انجام شد؛ وضعیت دسته هنوز تغییری نکرده است.'
+          : `استعلام انجام شد؛ وضعیت دسته: ${this.label(result.status)}`,
+      );
+    });
+  }
+
+  protected async resume(batchId: string): Promise<void> {
+    await this.action(() => this.api.resumeSettlement(batchId));
   }
 
   protected async retry(itemId: string): Promise<void> {
@@ -210,6 +235,7 @@ export class Settlements {
     if (this.loading()) return;
     this.loading.set(true);
     this.error.set(null);
+    this.notice.set(null);
     try {
       await action();
       if (reload) await this.load();

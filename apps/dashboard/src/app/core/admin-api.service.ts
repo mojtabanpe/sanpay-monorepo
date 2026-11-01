@@ -86,7 +86,13 @@ export interface SettlementItemRow {
   retryOfId: string | null;
   /** برای این انتقال ناموفق قبلاً تلاش مجدد ساخته شده */
   retried: boolean;
-  batch: { id: string; runKey: string; status: string; error: string | null };
+  batch: {
+    id: string;
+    runKey: string;
+    status: string;
+    error: string | null;
+    canResume?: boolean;
+  };
 }
 
 export interface SettlementItemPage {
@@ -354,6 +360,13 @@ export class AdminApiService {
   reconcileSettlement(id: string) {
     return this.post<SettlementBatchView>(
       `/api/admin/settlements/${id}/reconcile`,
+      {},
+    );
+  }
+
+  resumeSettlement(id: string) {
+    return this.post<SettlementBatchView>(
+      `/api/admin/settlements/${id}/resume`,
       {},
     );
   }

@@ -15,6 +15,8 @@
   <div hlmAlert variant="destructive">
     <p hlmAlertDescription>{{ error() }}</p>
   </div>
+  } @if (notice()) {
+  <div hlmAlert role="status"><p hlmAlertDescription>{{ notice() }}</p></div>
   } @if (canWrite()) {
   <section hlmCard>
     <div hlmCardHeader>
@@ -182,17 +184,77 @@
                   [variant]="row.status === 'FAILED' ? 'destructive' : row.status === 'SUCCEEDED' ? 'default' : 'secondary'"
                   >{{ label(row.status) }}</span
                 >
-                @if (row.retryOfId) {
+                @if (row.error ?? (row.status !== 'SUCCEEDED' ? row.batch.error
+                : null); as message) {
+                <hlm-popover class="inline-flex md:hidden" [autoFocus]="false">
+                  <button
+                    hlmBtn
+                    hlmPopoverTrigger
+                    variant="ghost"
+                    size="icon"
+                    class="text-destructive"
+                    aria-label="جزئیات خطای تسویه"
+                  >
+                    <ng-icon name="lucideCircleAlert" aria-hidden="true" />
+                  </button>
+                  <div
+                    *hlmPopoverPortal
+                    hlmPopoverContent
+                    dir="rtl"
+                    class="max-w-[calc(100vw-2rem)] whitespace-normal break-words"
+                  >
+                    <p hlmPopoverTitle>خطای تسویه</p>
+                    <p hlmPopoverDescription>{{ message }}</p>
+                  </div>
+                </hlm-popover>
+                } @if (row.retryOfId) {
                 <p class="text-muted-foreground mt-1 text-xs">تلاش مجدد</p>
                 }
               </td>
               <td hlmTd dir="ltr">{{ row.followUpCode ?? '—' }}</td>
-              <td hlmTd class="text-muted-foreground text-xs" dir="ltr">
-                {{ row.batch.runKey }}
+              <td hlmTd class="w-28 max-w-28" dir="ltr">
+                <hlm-popover [autoFocus]="false">
+                  <button
+                    hlmBtn
+                    hlmPopoverTrigger
+                    variant="ghost"
+                    size="sm"
+                    class="max-w-24"
+                    [hlmTooltip]="row.batch.runKey"
+                    aria-label="نمایش شناسه دسته"
+                  >
+                    <span class="truncate">{{ row.batch.runKey }}</span>
+                  </button>
+                  <div
+                    *hlmPopoverPortal
+                    hlmPopoverContent
+                    dir="rtl"
+                    class="max-w-[calc(100vw-2rem)]"
+                  >
+                    <p hlmPopoverTitle>شناسه دسته</p>
+                    <p
+                      hlmPopoverDescription
+                      dir="ltr"
+                      class="whitespace-normal break-all"
+                    >
+                      {{ row.batch.runKey }}
+                    </p>
+                  </div>
+                </hlm-popover>
               </td>
               <td hlmTd>
-                @if (canWrite() && row.status === 'FAILED') { @if (row.retried)
-                {
+                @if (canWrite() && row.batch.canResume) {
+                <button
+                  hlmBtn
+                  variant="outline"
+                  size="sm"
+                  [disabled]="loading()"
+                  (click)="resume(row.batch.id)"
+                >
+                  ادامه ارسال
+                </button>
+                } @else if (canWrite() && row.status === 'FAILED') { @if
+                (row.retried) {
                 <span class="text-muted-foreground text-xs"
                   >تلاش مجدد ثبت شده</span
                 >
@@ -221,7 +283,7 @@
             </tr>
             @if (row.error ?? (row.status !== 'SUCCEEDED' ? row.batch.error :
             null); as message) {
-            <tr hlmTr>
+            <tr hlmTr class="hidden md:table-row">
               <td hlmTd colspan="8" class="text-destructive text-xs">
                 {{ message }}
               </td>

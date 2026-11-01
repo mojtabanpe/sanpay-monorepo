@@ -107,6 +107,12 @@ export class SettlementsController {
     return this.settlements.reconcileBatch(id);
   }
 
+  @Post(':id/resume')
+  @Roles(...WRITE_ROLES)
+  resume(@Param('id') id: string) {
+    return this.settlements.resumeFailedBatch(id);
+  }
+
   @Post('items/:id/retry')
   @Roles(...WRITE_ROLES)
   retry(@Param('id') id: string) {

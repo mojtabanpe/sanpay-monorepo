@@ -131,6 +131,7 @@ async function createFixture() {
     creates: 0,
     commits: 0,
     failCommit: false,
+    failCreate: false,
     failInquiry: false,
     items: [] as TomanTransferItemInput[],
   };
@@ -140,6 +141,7 @@ async function createFixture() {
       assert.equal(count, 1);
       assert.equal(amount, 100000);
       state.creates++;
+      if (state.failCreate) throw new Error('permission_denied');
       return { uuid: randomUUID(), status: 1 };
     },
     listBatchItems: async () => [],
@@ -548,7 +550,12 @@ test('settlement table pages on the server, sums every filtered row and flags re
             destinationIban: 'IR000000000000000000000000',
             trackerId: 'sp-secret',
             _count: { retries: 1 },
-            batch: { id: 'b', runKey: '2026-10-28', status: 'FAILED', error: null },
+            batch: {
+              id: 'b',
+              runKey: '2026-10-28',
+              status: 'FAILED',
+              error: null,
+            },
           },
         ];
       },
@@ -561,14 +568,21 @@ test('settlement table pages on the server, sums every filtered row and flags re
     {} as TomanClientService,
     {} as JwtService,
   );
-  const result = await service.listItems({ status: 'FAILED', page: 3, pageSize: 20 });
+  const result = await service.listItems({
+    status: 'FAILED',
+    page: 3,
+    pageSize: 20,
+  });
   assert.equal(result.total, 41);
   assert.equal(result.sumAmount, 9_000_000);
   assert.equal(result.items[0].amount, 120_000);
   assert.equal(result.items[0].retried, true);
   assert.equal('destinationIban' in result.items[0], false);
   assert.deepEqual(
-    { skip: (calls.findMany as { skip: number }).skip, take: (calls.findMany as { take: number }).take },
+    {
+      skip: (calls.findMany as { skip: number }).skip,
+      take: (calls.findMany as { take: number }).take,
+    },
     { skip: 40, take: 20 },
   );
 });
@@ -576,4 +590,142 @@ test('settlement table pages on the server, sums every filtered row and flags re
 test('the items route is registered before the batch id route', () => {
   const names = Object.getOwnPropertyNames(SettlementsController.prototype);
   assert.ok(names.indexOf('items') < names.indexOf('one'));
+});
+
+test('failed batch creation can resume once with the same payments and tracker', async () =>
+  fixture(async (f) => {
+    const preview = await f.service.previewStore(f.stores[0].id);
+    f.state.failCreate = true;
+    await assert.rejects(
+      f.service.runManual(preview.storeId, preview.previewToken),
+      /permission_denied/,
+    );
+    const original = await f.service.runManual(
+      preview.storeId,
+      preview.previewToken,
+    );
+    const item = await f.db.settlementItem.findFirstOrThrow({
+      where: { batchId: original.id },
+    });
+    assert.equal(original.status, 'FAILED');
+    assert.equal(f.state.commits, 0);
+    f.state.failCreate = false;
+    const attempts = await Promise.allSettled([
+      f.service.resumeFailedBatch(original.id),
+      f.service.resumeFailedBatch(original.id),
+    ]);
+    assert.equal(attempts.filter((r) => r.status === 'fulfilled').length, 1);
+    assert.equal(f.state.creates, 2); // One denied create and one recovery.
+    assert.equal(f.state.commits, 1);
+    assert.equal(f.state.items[0].tracker_id, item.trackerId);
+    const payment = await f.db.payment.findUniqueOrThrow({
+      where: { id: f.payments[0].id },
+    });
+    assert.equal(payment.settlementItemId, item.id);
+    await assert.rejects(
+      f.service.resumeFailedBatch(original.id),
+      /قابل ادامه/,
+    );
+  }));
+
+test('resume refuses an existing remote batch after a commit timeout', async () =>
+  fixture(async (f) => {
+    const preview = await f.service.previewStore(f.stores[0].id);
+    f.state.failCommit = true;
+    await assert.rejects(
+      f.service.runManual(preview.storeId, preview.previewToken),
+    );
+    const batch = await f.service.runManual(
+      preview.storeId,
+      preview.previewToken,
+    );
+    await assert.rejects(f.service.resumeFailedBatch(batch.id), /قابل ادامه/);
+    assert.equal(f.state.creates, 1);
+    assert.equal(f.state.commits, 1);
+  }));
+
+test('resume claim serializes concurrent callers before any gateway request (no database)', async () => {
+  const batch = {
+    id: 'resume-unit',
+    status: 'FAILED',
+    tomanBatchUuid: null as string | null,
+    submittedAt: null as Date | null,
+    totalAmount: 100n,
+    itemCount: 1,
+    runKey: 'resume-unit',
+    items: [
+      {
+        id: 'item-unit',
+        status: 'CREATED',
+        tomanItemUuid: null,
+        trackerId: 'original-tracker',
+        amount: 100n,
+        destinationIban: 'IR062960000000100324200001',
+      },
+    ],
+  };
+  let creates = 0;
+  let commits = 0;
+  const db = {
+    settlementBatch: {
+      updateMany: async ({
+        where,
+        data,
+      }: {
+        where: Record<string, unknown>;
+        data: object;
+      }) => {
+        assert.equal(where.status, 'FAILED');
+        assert.equal(where.tomanBatchUuid, null);
+        assert.equal(where.submittedAt, null);
+        assert.deepEqual(where.items, {
+          some: {},
+          every: { status: 'CREATED', tomanItemUuid: null, submittedAt: null },
+        });
+        if (
+          batch.status !== 'FAILED' ||
+          batch.tomanBatchUuid ||
+          batch.submittedAt
+        )
+          return { count: 0 };
+        Object.assign(batch, data);
+        return { count: 1 };
+      },
+      findUniqueOrThrow: async () => batch,
+      update: async ({ data }: { data: object }) => Object.assign(batch, data),
+    },
+    settlementItem: {
+      update: async () => ({}),
+    },
+  };
+  const toman = {
+    isLive: () => false,
+    createBatch: async () => {
+      creates++;
+      return { uuid: 'remote-unit' };
+    },
+    listBatchItems: async () => [],
+    addItems: async (_: string, items: TomanTransferItemInput[]) => {
+      assert.equal(items[0].tracker_id, 'original-tracker');
+      return [{ tracker_id: 'original-tracker', uuid: 'remote-item' }];
+    },
+    commitBatch: async () => {
+      commits++;
+    },
+    // Keep reconciliation read-only without requiring transfer fixtures.
+    getBatch: async () => ({ status: -2 }),
+  };
+  const service = new SettlementsService(
+    db as unknown as PrismaService,
+    toman as unknown as TomanClientService,
+    new JwtService(),
+  );
+  const results = await Promise.allSettled([
+    service.resumeFailedBatch(batch.id),
+    service.resumeFailedBatch(batch.id),
+  ]);
+  assert.equal(results.filter((r) => r.status === 'fulfilled').length, 1);
+  assert.equal(creates, 1);
+  assert.equal(commits, 1);
+  await assert.rejects(service.resumeFailedBatch(batch.id), /قابل ادامه/);
 });
