@@ -126,7 +126,12 @@ export class AdminUsersController {
 export class AdminCompaniesController {
   constructor(private readonly companies: AdminCompaniesService) {}
 
-  @AnyAdminPermission('companies:read', 'employees:read', 'wallets:read')
+  @AnyAdminPermission(
+    'companies:read',
+    'employees:read',
+    'wallets:read',
+    'payments:read',
+  )
   @Get()
   list(@Query() query: ListQueryDto) {
     return this.companies.list(query);
@@ -299,7 +304,7 @@ export class AdminWalletsController {
   constructor(private readonly wallets: AdminWalletsService) {}
 
   @Get()
-  @AnyAdminPermission('wallets:read', 'employees:read')
+  @AnyAdminPermission('wallets:read', 'employees:read', 'payments:read')
   list(@Query() query: ListQueryDto) {
     return this.wallets.list(query);
   }

@@ -23,6 +23,15 @@ export class StorePaymentReportQueryDto {
   to?: string;
 
   @IsOptional()
+  @IsString()
+  companyId?: string;
+
+  /** فقط پرداخت‌هایی که بخشی از آن از این کیف پول کسر شده */
+  @IsOptional()
+  @IsString()
+  walletDefinitionId?: string;
+
+  @IsOptional()
   @IsIn(['PENDING', 'PROCESSING', 'SUCCEEDED', 'FAILED'])
   settlementStatus?: string;
 

@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import {
   Receipt,
   StorePaymentReport,
+  StorePaymentReportFilters,
   StoreStats,
   StoreStatsBucket,
   StoreStatsPoint,
@@ -141,6 +142,33 @@ export class StorePaymentsService {
     };
   }
 
+  /**
+   * گزینه‌های فیلتر گزارش: کیف‌پول‌هایی که به این فروشگاه وصل‌اند و شرکت‌هایشان.
+   * کیف پول بایگانی‌شده هم می‌آید، چون پرداخت‌های قدیمی‌اش در گزارش هست.
+   */
+  async reportFilters(storeId: string): Promise<StorePaymentReportFilters> {
+    const links = await this.prisma.walletDefinitionStore.findMany({
+      where: { storeId },
+      include: { definition: { include: { company: true } } },
+    });
+    const companies = new Map<string, string>();
+    for (const link of links) {
+      companies.set(link.definition.company.id, link.definition.company.name);
+    }
+    return {
+      wallets: links
+        .map(({ definition }) => ({
+          id: definition.id,
+          name: definition.name,
+          companyId: definition.companyId,
+        }))
+        .sort((a, b) => a.name.localeCompare(b.name, 'fa')),
+      companies: [...companies]
+        .map(([id, name]) => ({ id, name }))
+        .sort((a, b) => a.name.localeCompare(b.name, 'fa')),
+    };
+  }
+
   private reportWhere(
     storeId: string,
     query: StorePaymentReportQueryDto,
@@ -165,6 +193,17 @@ export class StorePaymentsService {
     return {
       storeId,
       ...settlementWhere,
+      ...(query.companyId ? { employee: { companyId: query.companyId } } : {}),
+      ...(query.walletDefinitionId
+        ? {
+            transactions: {
+              some: {
+                type: 'PURCHASE' as const,
+                allocation: { definitionId: query.walletDefinitionId },
+              },
+            },
+          }
+        : {}),
       ...(query.from || query.to
         ? {
             createdAt: {

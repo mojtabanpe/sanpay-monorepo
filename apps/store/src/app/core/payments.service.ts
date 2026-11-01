@@ -6,6 +6,7 @@ import {
   MerchantPaymentVerifyResult,
   Receipt,
   StorePaymentReport,
+  StorePaymentReportFilters,
   StoreStats,
   VerifyMerchantPaymentIntentInput,
 } from '@sanpay/models';
@@ -38,6 +39,8 @@ export class StorePaymentsService {
     from?: string;
     to?: string;
     settlementStatus?: string;
+    companyId?: string;
+    walletDefinitionId?: string;
     page?: number;
     pageSize?: number;
   }): Promise<StorePaymentReport> {
@@ -51,6 +54,14 @@ export class StorePaymentsService {
       this.http.get<StorePaymentReport>('/api/store/reports/payments', {
         params,
       }),
+    );
+  }
+
+  reportFilters(): Promise<StorePaymentReportFilters> {
+    return firstValueFrom(
+      this.http.get<StorePaymentReportFilters>(
+        '/api/store/reports/payments/filters',
+      ),
     );
   }
 

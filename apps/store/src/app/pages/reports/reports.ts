@@ -6,7 +6,11 @@ import {
   signal,
 } from '@angular/core';
 import { SanpayDatePickerWidth, isoToJalali, jalaliToIso } from '@sanpay/dates';
-import { StorePaymentReport, StoreSettlementStatus } from '@sanpay/models';
+import {
+  StorePaymentReport,
+  StorePaymentReportFilters,
+  StoreSettlementStatus,
+} from '@sanpay/models';
 import { HlmBadgeImports } from '@sanpay/ui/badge';
 import { HlmButtonImports } from '@sanpay/ui/button';
 import { HlmCardImports } from '@sanpay/ui/card';
@@ -72,6 +76,20 @@ export class Reports {
     this.to() ? isoToJalali(this.to()) : undefined,
   );
   protected readonly settlementStatus = signal<StoreSettlementStatus | ''>('');
+  protected readonly companyId = signal('');
+  protected readonly walletDefinitionId = signal('');
+  protected readonly filters = signal<StorePaymentReportFilters>({
+    wallets: [],
+    companies: [],
+  });
+  /** کیف‌پول‌های قابل انتخاب — با شرکت انتخاب‌شده محدود می‌شود */
+  protected readonly walletOptions = computed(() => {
+    const companyId = this.companyId();
+    const wallets = this.filters().wallets;
+    return companyId
+      ? wallets.filter((wallet) => wallet.companyId === companyId)
+      : wallets;
+  });
   protected readonly page = signal(1);
   protected readonly pageSize = 50;
   protected readonly pageCount = computed(() =>
@@ -99,6 +117,25 @@ export class Reports {
 
   constructor() {
     void this.load();
+    void this.loadFilters();
+  }
+
+  private async loadFilters(): Promise<void> {
+    try {
+      this.filters.set(await this.payments.reportFilters());
+    } catch {
+      // فقط برای فیلتر است؛ خطایش نباید گزارش را خراب کند
+    }
+  }
+
+  protected onCompanyChange(value: string): void {
+    this.companyId.set(value);
+    const wallet = this.filters().wallets.find(
+      (item) => item.id === this.walletDefinitionId(),
+    );
+    if (wallet && value && wallet.companyId !== value) {
+      this.walletDefinitionId.set('');
+    }
   }
 
   protected async load(): Promise<void> {
@@ -111,6 +148,8 @@ export class Reports {
           from: this.from() ? `${this.from()}T00:00:00+03:30` : undefined,
           to: this.to() ? `${this.to()}T23:59:59.999+03:30` : undefined,
           settlementStatus: this.settlementStatus() || undefined,
+          companyId: this.companyId() || undefined,
+          walletDefinitionId: this.walletDefinitionId() || undefined,
           page: this.page(),
           pageSize: this.pageSize,
         }),
@@ -132,6 +171,8 @@ export class Reports {
     this.from.set('');
     this.to.set('');
     this.settlementStatus.set('');
+    this.companyId.set('');
+    this.walletDefinitionId.set('');
     this.search();
   }
 

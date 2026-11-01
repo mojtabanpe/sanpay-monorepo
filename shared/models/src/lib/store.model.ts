@@ -94,6 +94,12 @@ export interface StorePaymentReportRow {
   };
 }
 
+/** گزینه‌های فیلتر گزارش پرداخت‌های فروشگاه */
+export interface StorePaymentReportFilters {
+  wallets: Array<{ id: string; name: string; companyId: string }>;
+  companies: Array<{ id: string; name: string }>;
+}
+
 export interface StorePaymentReport {
   items: StorePaymentReportRow[];
   total: number;

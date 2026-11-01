@@ -9,7 +9,12 @@ import {
 } from '@angular/core';
 import { RouterModule } from '@angular/router';
 import { SanpayDatePickerWidth, isoToJalali, jalaliToIso } from '@sanpay/dates';
-import { AdminPaymentRow, AdminStoreRow } from '@sanpay/models';
+import {
+  AdminCompanyRow,
+  AdminPaymentRow,
+  AdminStoreRow,
+  AdminWalletDefinitionRow,
+} from '@sanpay/models';
 import { HlmBadgeImports } from '@sanpay/ui/badge';
 import { HlmButtonImports } from '@sanpay/ui/button';
 import { HlmCardImports } from '@sanpay/ui/card';
@@ -49,6 +54,15 @@ export class PaymentsPage {
 
   protected readonly rows = signal<AdminPaymentRow[]>([]);
   protected readonly stores = signal<AdminStoreRow[]>([]);
+  protected readonly companies = signal<AdminCompanyRow[]>([]);
+  protected readonly wallets = signal<AdminWalletDefinitionRow[]>([]);
+  /** کیف‌پول‌های قابل انتخاب — با شرکت انتخاب‌شده محدود می‌شود */
+  protected readonly walletOptions = computed(() => {
+    const companyId = this.companyId();
+    return companyId
+      ? this.wallets().filter((wallet) => wallet.company.id === companyId)
+      : this.wallets();
+  });
   protected readonly total = signal(0);
   protected readonly page = signal(1);
   protected readonly pageSize = 30;
@@ -59,6 +73,8 @@ export class PaymentsPage {
 
   protected readonly query = signal('');
   protected readonly storeId = signal('');
+  protected readonly companyId = signal('');
+  protected readonly walletDefinitionId = signal('');
   protected readonly from = signal<string | null>(null);
   protected readonly to = signal<string | null>(null);
   protected readonly settlementStatus = signal('');
@@ -86,6 +102,61 @@ export class PaymentsPage {
   constructor() {
     void this.load();
     void this.loadStores();
+    void this.loadCompanies();
+    void this.loadWallets();
+  }
+
+  protected companyLabel = (value: unknown): string =>
+    value === '' || value === undefined
+      ? 'همهٔ شرکت‌ها'
+      : (this.companies().find((company) => company.id === value)?.name ??
+        'شرکت');
+
+  protected walletLabel = (value: unknown): string => {
+    if (value === '' || value === undefined) return 'همهٔ کیف‌پول‌ها';
+    const wallet = this.wallets().find((item) => item.id === value);
+    return wallet ? this.walletText(wallet) : 'کیف پول';
+  };
+
+  protected walletText(wallet: AdminWalletDefinitionRow): string {
+    return this.companyId()
+      ? wallet.name
+      : `${wallet.name} — ${wallet.company.name}`;
+  }
+
+  private async loadCompanies(): Promise<void> {
+    try {
+      const result = await this.api.companies({ pageSize: 200 });
+      this.companies.set(result.items);
+    } catch {
+      // فقط برای فیلتر است
+    }
+  }
+
+  private async loadWallets(): Promise<void> {
+    try {
+      const result = await this.api.walletDefinitions({ pageSize: 200 });
+      this.wallets.set(result.items);
+    } catch {
+      // فقط برای فیلتر است
+    }
+  }
+
+  protected onCompanyChange(value: unknown): void {
+    this.companyId.set((value as string) ?? '');
+    // کیف پولِ شرکت دیگر با این فیلتر هیچ نتیجه‌ای نمی‌دهد
+    const wallet = this.wallets().find(
+      (item) => item.id === this.walletDefinitionId(),
+    );
+    if (wallet && this.companyId() && wallet.company.id !== this.companyId()) {
+      this.walletDefinitionId.set('');
+    }
+    this.search();
+  }
+
+  protected onWalletChange(value: unknown): void {
+    this.walletDefinitionId.set((value as string) ?? '');
+    this.search();
   }
 
   protected storeLabel = (value: unknown): string =>
@@ -106,13 +177,9 @@ export class PaymentsPage {
     this.loading.set(true);
     try {
       const result = await this.api.payments({
-        q: this.query().trim() || undefined,
-        storeId: this.storeId() || undefined,
-        from: this.from() ? `${this.from()}T00:00:00.000Z` : undefined,
-        to: this.to() ? `${this.to()}T23:59:59.999Z` : undefined,
+        ...this.reportQuery(),
         page: this.page(),
         pageSize: this.pageSize,
-        settlementStatus: this.settlementStatus() || undefined,
       });
       this.rows.set(result.items);
       this.total.set(result.total);
@@ -154,6 +221,8 @@ export class PaymentsPage {
   protected clearFilters(): void {
     this.query.set('');
     this.storeId.set('');
+    this.companyId.set('');
+    this.walletDefinitionId.set('');
     this.from.set(null);
     this.to.set(null);
     this.settlementStatus.set('');
@@ -201,6 +270,14 @@ export class PaymentsPage {
     const parts: string[] = [];
     const store = this.stores().find((item) => item.id === this.storeId());
     if (store) parts.push(`فروشگاه: ${store.name}`);
+    const company = this.companies().find(
+      (item) => item.id === this.companyId(),
+    );
+    if (company) parts.push(`شرکت: ${company.name}`);
+    const wallet = this.wallets().find(
+      (item) => item.id === this.walletDefinitionId(),
+    );
+    if (wallet) parts.push(`کیف پول: ${wallet.name}`);
     if (this.from()) parts.push(`از ${jalali(`${this.from()}T12:00:00`)}`);
     if (this.to()) parts.push(`تا ${jalali(`${this.to()}T12:00:00`)}`);
     const status = this.settlementStatus();
@@ -228,6 +305,8 @@ export class PaymentsPage {
     return {
       q: this.query().trim() || undefined,
       storeId: this.storeId() || undefined,
+      companyId: this.companyId() || undefined,
+      walletDefinitionId: this.walletDefinitionId() || undefined,
       from: this.from() ? `${this.from()}T00:00:00.000Z` : undefined,
       to: this.to() ? `${this.to()}T23:59:59.999Z` : undefined,
       settlementStatus: this.settlementStatus() || undefined,

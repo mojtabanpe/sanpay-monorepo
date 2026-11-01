@@ -46,6 +46,39 @@
         </hlm-date-picker>
       </div>
 
+      <div class="flex flex-col gap-1.5">
+        <label hlmLabel for="report-company">شرکت</label>
+        <hlm-native-select
+          selectId="report-company"
+          class="w-full"
+          [value]="companyId()"
+          (valueChange)="onCompanyChange($any($event) ?? '')"
+        >
+          <option hlmNativeSelectOption value="">همه شرکت‌ها</option>
+          @for (company of filters().companies; track company.id) {
+          <option hlmNativeSelectOption [value]="company.id">
+            {{ company.name }}
+          </option>
+          }
+        </hlm-native-select>
+      </div>
+      <div class="flex flex-col gap-1.5">
+        <label hlmLabel for="report-wallet">کیف پول</label>
+        <hlm-native-select
+          selectId="report-wallet"
+          class="w-full"
+          [value]="walletDefinitionId()"
+          (valueChange)="walletDefinitionId.set($any($event) ?? '')"
+        >
+          <option hlmNativeSelectOption value="">همه کیف‌پول‌ها</option>
+          @for (wallet of walletOptions(); track wallet.id) {
+          <option hlmNativeSelectOption [value]="wallet.id">
+            {{ wallet.name }}
+          </option>
+          }
+        </hlm-native-select>
+      </div>
+
       <div class="flex flex-col gap-1.5 sm:col-span-2">
         <label hlmLabel for="report-status">وضعیت تسویه</label>
         <hlm-native-select

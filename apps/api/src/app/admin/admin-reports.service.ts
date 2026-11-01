@@ -272,6 +272,16 @@ export class AdminReportsService {
       ...(query.storeId ? { storeId: query.storeId } : {}),
       ...(query.employeeId ? { employeeId: query.employeeId } : {}),
       ...(query.companyId ? { employee: { companyId: query.companyId } } : {}),
+      ...(query.walletDefinitionId
+        ? {
+            transactions: {
+              some: {
+                type: 'PURCHASE' as const,
+                allocation: { definitionId: query.walletDefinitionId },
+              },
+            },
+          }
+        : {}),
       ...(query.from || query.to
         ? {
             createdAt: {

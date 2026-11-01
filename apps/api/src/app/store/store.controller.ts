@@ -107,6 +107,12 @@ export class StoreController {
     return this.payments.confirm(request.store.sub, id);
   }
 
+  @Get('reports/payments/filters')
+  @UseGuards(StoreJwtGuard)
+  reportFilters(@Req() request: StoreRequest) {
+    return this.payments.reportFilters(request.store.sub);
+  }
+
   @Get('reports/payments')
   @UseGuards(StoreJwtGuard)
   report(

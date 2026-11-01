@@ -7,7 +7,7 @@
   </header>
 
   <section hlmCard class="report-controls">
-    <div hlmCardContent class="grid gap-4 pt-6 md:grid-cols-6">
+    <div hlmCardContent class="grid gap-4 pt-6 md:grid-cols-4">
       <hlm-field class="md:col-span-2">
         <label hlmFieldLabel for="fld-1">جست‌وجو</label>
         <input
@@ -35,6 +35,48 @@
             @for (store of stores(); track store.id) {
             <hlm-select-item [value]="store.id"
               >{{ store.name }}</hlm-select-item
+            >
+            }
+          </hlm-select-content>
+        </hlm-select>
+      </hlm-field>
+
+      <hlm-field>
+        <label hlmFieldLabel for="fld-company">شرکت</label>
+        <hlm-select
+          [value]="companyId()"
+          [itemToString]="companyLabel"
+          (valueChange)="onCompanyChange($event)"
+        >
+          <hlm-select-trigger id="fld-company" class="w-full">
+            <hlm-select-value placeholder="همهٔ شرکت‌ها" />
+          </hlm-select-trigger>
+          <hlm-select-content *hlmSelectPortal>
+            <hlm-select-item value="">همهٔ شرکت‌ها</hlm-select-item>
+            @for (company of companies(); track company.id) {
+            <hlm-select-item [value]="company.id"
+              >{{ company.name }}</hlm-select-item
+            >
+            }
+          </hlm-select-content>
+        </hlm-select>
+      </hlm-field>
+
+      <hlm-field>
+        <label hlmFieldLabel for="fld-wallet">کیف پول</label>
+        <hlm-select
+          [value]="walletDefinitionId()"
+          [itemToString]="walletLabel"
+          (valueChange)="onWalletChange($event)"
+        >
+          <hlm-select-trigger id="fld-wallet" class="w-full">
+            <hlm-select-value placeholder="همهٔ کیف‌پول‌ها" />
+          </hlm-select-trigger>
+          <hlm-select-content *hlmSelectPortal>
+            <hlm-select-item value="">همهٔ کیف‌پول‌ها</hlm-select-item>
+            @for (wallet of walletOptions(); track wallet.id) {
+            <hlm-select-item [value]="wallet.id"
+              >{{ walletText(wallet) }}</hlm-select-item
             >
             }
           </hlm-select-content>
@@ -85,7 +127,7 @@
         </hlm-date-picker>
       </hlm-field>
 
-      <div class="flex flex-wrap items-end gap-2 md:col-span-6">
+      <div class="flex flex-wrap items-end gap-2 md:col-span-4">
         <button hlmBtn (click)="search()">اعمال فیلتر</button>
         <button hlmBtn variant="ghost" (click)="clearFilters()">
           پاک‌کردن

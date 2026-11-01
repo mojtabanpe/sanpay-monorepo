@@ -180,6 +180,11 @@ export class PaymentQueryDto extends ListQueryDto {
   @IsString()
   employeeId?: string;
 
+  /** فقط پرداخت‌هایی که بخشی از آن از این کیف پول کسر شده */
+  @IsOptional()
+  @IsString()
+  walletDefinitionId?: string;
+
   @IsOptional()
   @IsDateString()
   from?: string;
