@@ -182,13 +182,14 @@
                 >
                 @if (row.error ?? (row.status !== 'SUCCEEDED' ? row.batch.error
                 : null); as message) {
-                <hlm-popover class="inline-flex md:hidden" [autoFocus]="false">
+                <hlm-popover class="inline-flex" [autoFocus]="false">
                   <button
                     hlmBtn
                     hlmPopoverTrigger
                     variant="ghost"
                     size="icon"
                     class="text-destructive"
+                    [hlmTooltip]="message"
                     aria-label="جزئیات خطای تسویه"
                   >
                     <ng-icon name="lucideCircleAlert" aria-hidden="true" />
@@ -304,14 +305,7 @@
                 </div>
               </td>
             </tr>
-            @if (row.error ?? (row.status !== 'SUCCEEDED' ? row.batch.error :
-            null); as message) {
-            <tr hlmTr class="hidden md:table-row">
-              <td hlmTd colspan="8" class="text-destructive text-xs">
-                {{ message }}
-              </td>
-            </tr>
-            } } @empty {
+            } @empty {
             <tr hlmTr>
               <td hlmTd colspan="8" class="text-muted-foreground text-center">
                 {{ loading() ? 'در حال بارگذاری…' : 'تسویه‌ای با این فیلتر پیدا

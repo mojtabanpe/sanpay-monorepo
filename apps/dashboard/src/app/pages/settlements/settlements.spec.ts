@@ -254,6 +254,15 @@ describe('manual store settlement approval', () => {
       fixture.nativeElement as HTMLElement
     ).querySelector<HTMLButtonElement>('[aria-label="جزئیات خطای تسویه"]');
     expect(trigger).not.toBeNull();
+    expect(
+      trigger?.closest('hlm-popover')?.classList.contains('md:hidden'),
+    ).toBe(false);
+    expect(
+      (fixture.nativeElement as HTMLElement).querySelectorAll('tbody tr'),
+    ).toHaveLength(1);
+    expect(fixture.nativeElement.textContent).not.toContain(
+      'ارتباط با تومان ناموفق بود',
+    );
     trigger?.click();
     await fixture.whenStable();
     fixture.detectChanges();
