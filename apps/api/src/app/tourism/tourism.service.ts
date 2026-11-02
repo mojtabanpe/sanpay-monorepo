@@ -32,6 +32,7 @@ import {
   HotelPageDto,
   SearchHotelsDto,
 } from './dto/tourism.dto';
+import { TravelersService } from './travelers.service';
 import { HotelProviderRouter } from './providers/hotel-provider.router';
 import {
   PROVIDER_NAMES,
@@ -57,6 +58,7 @@ export class TourismService {
     private readonly prisma: PrismaService,
     private readonly providers: HotelProviderRouter,
     private readonly upg: UpgService,
+    private readonly travelers: TravelersService,
   ) {}
 
   /** شهرهای هر دو تأمین‌کننده، با اعمال قاعدهٔ «مشهد → اقامت۲۴» */
@@ -315,6 +317,8 @@ export class TourismService {
           payable: BigInt(quote.amount),
         },
       });
+      // تاریخ تولد فقط در دفترچهٔ مسافران می‌ماند و به تأمین‌کننده نمی‌رود
+      await this.travelers.remember(employeeId, [dto.guest], tx);
       const intent = await this.upg.createIntent(
         {
           employeeId,
@@ -458,95 +462,7 @@ export class TourismService {
    * کامل رزرو را نمی‌توان با دادهٔ ناقص پر کرد.
    */
   async previousTravelers(employeeId: string): Promise<PreviousTraveler[]> {
-    const [bookings, flightBookings] = await Promise.all([
-      this.prisma.hotelBooking.findMany({
-        where: {
-          employeeId,
-          guestFirstName: { not: null },
-          guestLastName: { not: null },
-          guestMobile: { not: null },
-        },
-        orderBy: { createdAt: 'desc' },
-        take: 50,
-        select: {
-          guestFirstName: true,
-          guestLastName: true,
-          guestIdNo: true,
-          guestMobile: true,
-          createdAt: true,
-        },
-      }),
-      this.prisma.flightBooking.findMany({
-        where: { employeeId, status: 'CONFIRMED' },
-        orderBy: { createdAt: 'desc' },
-        take: 50,
-        select: { passengers: true, bookerMobile: true, createdAt: true },
-      }),
-    ]);
-
-    const travelers = new Map<string, PreviousTraveler>();
-    const candidates: PreviousTraveler[] = [];
-    for (const booking of flightBookings) {
-      if (!Array.isArray(booking.passengers) || !booking.bookerMobile) continue;
-      for (const value of booking.passengers) {
-        if (!value || typeof value !== 'object' || Array.isArray(value))
-          continue;
-        const passenger = value as Record<string, unknown>;
-        const firstName = passenger['firstName'];
-        const lastName = passenger['lastName'];
-        const nationalCode = passenger['nationalCode'];
-        if (
-          typeof firstName !== 'string' ||
-          typeof lastName !== 'string' ||
-          typeof nationalCode !== 'string' ||
-          !nationalCode
-        )
-          continue;
-        candidates.push({
-          firstName,
-          lastName,
-          nationalCode,
-          mobile: booking.bookerMobile,
-          lastUsedAt: booking.createdAt.toISOString(),
-          ...(typeof passenger['birthdate'] === 'string'
-            ? { birthdate: passenger['birthdate'] }
-            : {}),
-          ...(passenger['gender'] === 'male' || passenger['gender'] === 'female'
-            ? { gender: passenger['gender'] }
-            : {}),
-          ...(typeof passenger['nationality'] === 'string'
-            ? { nationality: passenger['nationality'] }
-            : {}),
-          ...(typeof passenger['passportNumber'] === 'string'
-            ? { passportNumber: passenger['passportNumber'] }
-            : {}),
-          ...(typeof passenger['passportExpirationDate'] === 'string'
-            ? { passportExpirationDate: passenger['passportExpirationDate'] }
-            : {}),
-          ...(typeof passenger['passportIssueCountry'] === 'string'
-            ? { passportIssueCountry: passenger['passportIssueCountry'] }
-            : {}),
-        });
-      }
-    }
-    for (const booking of bookings) {
-      const { guestFirstName, guestLastName, guestMobile } = booking;
-      if (!guestFirstName || !guestLastName || !guestMobile) continue;
-      candidates.push({
-        firstName: guestFirstName,
-        lastName: guestLastName,
-        nationalCode: booking.guestIdNo,
-        mobile: guestMobile,
-        lastUsedAt: booking.createdAt.toISOString(),
-      });
-    }
-    candidates.sort((a, b) => b.lastUsedAt.localeCompare(a.lastUsedAt));
-    for (const traveler of candidates) {
-      if (travelers.has(traveler.nationalCode)) continue;
-      travelers.set(traveler.nationalCode, traveler);
-      if (travelers.size === 10) break;
-    }
-    return [...travelers.values()];
+    return this.travelers.recent(employeeId);
   }
 
   /**

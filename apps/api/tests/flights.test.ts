@@ -1,3 +1,4 @@
+import { TravelersService } from '../src/app/tourism/travelers.service';
 import 'reflect-metadata';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
@@ -382,6 +383,7 @@ function harness(
     db as unknown as PrismaService,
     provider as unknown as FlightProvider,
     upg as unknown as UpgService,
+    { remember: async () => undefined } as unknown as TravelersService,
   );
   const intent = { id: 'intent' } as unknown as PaymentIntent;
   return {

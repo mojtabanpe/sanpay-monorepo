@@ -26,6 +26,7 @@ import {
   ProviderReservation,
 } from './flight-provider';
 import { QuoteFlightDto } from './flights.dto';
+import { TravelersService } from '../travelers.service';
 
 export function validateFlightSearch(input: FlightSearchInput): void {
   const today = new Intl.DateTimeFormat('en-CA', {
@@ -119,6 +120,7 @@ export class FlightsService {
     private readonly prisma: PrismaService,
     private readonly provider: FlightProvider,
     private readonly upg: UpgService,
+    private readonly travelers: TravelersService,
   ) {}
   airports() {
     return this.provider.airports();
@@ -237,6 +239,22 @@ export class FlightsService {
             bookerLastName: input.bookerLastName,
           },
         });
+        await this.travelers.remember(
+          employeeId,
+          input.passengers.map((p) => ({
+            nationalCode: p.nationalCode ?? '',
+            firstName: p.firstName,
+            lastName: p.lastName,
+            mobile: input.mobile,
+            birthdate: p.birthdate,
+            gender: p.gender,
+            nationality: p.nationality,
+            passportNumber: p.passportNumber,
+            passportExpirationDate: p.passportExpirationDate,
+            passportIssueCountry: p.passportIssueCountry,
+          })),
+          tx,
+        );
         const intent = await this.upg.createIntent(
           {
             employeeId,
