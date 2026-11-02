@@ -280,6 +280,10 @@
       </nav>
     </header>
 
+    <div class="flex justify-end px-4 pt-4 lg:px-8 print:hidden">
+      <store-clock-card [logoUrl]="store()?.logoUrl" [name]="store()?.name" />
+    </div>
+
     <main class="w-full min-w-0 flex-1 lg:px-8 lg:py-4 print:p-0">
       <router-outlet />
     </main>

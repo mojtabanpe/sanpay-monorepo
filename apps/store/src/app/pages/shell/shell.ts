@@ -6,12 +6,19 @@ import {
   RouterOutlet,
 } from '@angular/router';
 import { HlmButtonImports } from '@sanpay/ui/button';
+import { ClockCard } from './clock-card';
 import { StoreAuthService } from '../../core/store-auth.service';
 
 /** پوستهٔ پنل فروشگاه: سایدبار دسکتاپ و سربرگ/تب‌های موبایل. */
 @Component({
   selector: 'store-shell',
-  imports: [HlmButtonImports, RouterLink, RouterLinkActive, RouterOutlet],
+  imports: [
+    ClockCard,
+    HlmButtonImports,
+    RouterLink,
+    RouterLinkActive,
+    RouterOutlet,
+  ],
   templateUrl: './shell.html',
 })
 export class ShellPage {
