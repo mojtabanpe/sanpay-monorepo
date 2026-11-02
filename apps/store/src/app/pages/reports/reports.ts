@@ -19,7 +19,7 @@ import { HlmCardImports } from '@sanpay/ui/card';
 import { HlmDatePickerImports } from '@sanpay/ui/date-picker';
 import { HlmInputImports } from '@sanpay/ui/input';
 import { HlmLabelImports } from '@sanpay/ui/label';
-import { HlmNativeSelectImports } from '@sanpay/ui/native-select';
+import { HlmSelectImports } from '@sanpay/ui/select';
 import { HlmTableImports } from '@sanpay/ui/table';
 import { JalaliDate } from '@spartan-ng/brain/date-time';
 import { StorePaymentsService } from '../../core/payments.service';
@@ -37,7 +37,7 @@ import { printSheet } from '../../core/print-sheet';
     HlmInputImports,
     SanpayDatePickerWidth,
     HlmLabelImports,
-    HlmNativeSelectImports,
+    HlmSelectImports,
     HlmTableImports,
   ],
   templateUrl: './reports.html',
@@ -99,6 +99,19 @@ export class Reports {
     SUCCEEDED: 'تسویه‌شده',
     FAILED: 'ناموفق',
   };
+
+  protected readonly companyLabel = (value: unknown): string =>
+    !value
+      ? 'همه شرکت‌ها'
+      : (this.filters().companies.find((c) => c.id === value)?.name ?? 'شرکت');
+  protected readonly walletLabel = (value: unknown): string =>
+    !value
+      ? 'همه کیف‌پول‌ها'
+      : (this.filters().wallets.find((w) => w.id === value)?.name ?? 'کیف پول');
+  protected readonly statusLabel = (value: unknown): string =>
+    !value
+      ? 'همه وضعیت‌ها'
+      : (this.statusLabels[value as StoreSettlementStatus] ?? '');
 
   constructor() {
     void this.load();

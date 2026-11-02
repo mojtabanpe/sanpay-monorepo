@@ -66,51 +66,59 @@
 
       <div class="flex flex-col gap-1.5">
         <label hlmLabel for="report-company">شرکت</label>
-        <hlm-native-select
-          selectId="report-company"
-          class="w-full"
+        <hlm-select
           [value]="companyId()"
+          [itemToString]="companyLabel"
           (valueChange)="onCompanyChange($any($event) ?? '')"
         >
-          <option hlmNativeSelectOption value="">همه شرکت‌ها</option>
-          @for (company of filters().companies; track company.id) {
-          <option hlmNativeSelectOption [value]="company.id">
-            {{ company.name }}
-          </option>
-          }
-        </hlm-native-select>
+          <hlm-select-trigger id="report-company" class="w-full">
+            <hlm-select-value placeholder="همه شرکت‌ها" />
+          </hlm-select-trigger>
+          <hlm-select-content *hlmSelectPortal>
+            <hlm-select-item value="">همه شرکت‌ها</hlm-select-item>
+            @for (company of filters().companies; track company.id) {
+            <hlm-select-item [value]="company.id">{{ company.name }}</hlm-select-item>
+            }
+          </hlm-select-content>
+        </hlm-select>
       </div>
       <div class="flex flex-col gap-1.5">
         <label hlmLabel for="report-wallet">کیف پول</label>
-        <hlm-native-select
-          selectId="report-wallet"
-          class="w-full"
+        <hlm-select
           [value]="walletDefinitionId()"
+          [itemToString]="walletLabel"
           (valueChange)="walletDefinitionId.set($any($event) ?? '')"
         >
-          <option hlmNativeSelectOption value="">همه کیف‌پول‌ها</option>
-          @for (wallet of walletOptions(); track wallet.id) {
-          <option hlmNativeSelectOption [value]="wallet.id">
-            {{ wallet.name }}
-          </option>
-          }
-        </hlm-native-select>
+          <hlm-select-trigger id="report-wallet" class="w-full">
+            <hlm-select-value placeholder="همه کیف‌پول‌ها" />
+          </hlm-select-trigger>
+          <hlm-select-content *hlmSelectPortal>
+            <hlm-select-item value="">همه کیف‌پول‌ها</hlm-select-item>
+            @for (wallet of walletOptions(); track wallet.id) {
+            <hlm-select-item [value]="wallet.id">{{ wallet.name }}</hlm-select-item>
+            }
+          </hlm-select-content>
+        </hlm-select>
       </div>
 
       <div class="flex flex-col gap-1.5 sm:col-span-2">
         <label hlmLabel for="report-status">وضعیت تسویه</label>
-        <hlm-native-select
-          selectId="report-status"
-          class="w-full"
+        <hlm-select
           [value]="settlementStatus()"
+          [itemToString]="statusLabel"
           (valueChange)="settlementStatus.set($any($event) ?? '')"
         >
-          <option hlmNativeSelectOption value="">همه وضعیت‌ها</option>
-          <option hlmNativeSelectOption value="SUCCEEDED">تسویه‌شده</option>
-          <option hlmNativeSelectOption value="PENDING">در انتظار تسویه</option>
-          <option hlmNativeSelectOption value="PROCESSING">در حال تسویه</option>
-          <option hlmNativeSelectOption value="FAILED">ناموفق</option>
-        </hlm-native-select>
+          <hlm-select-trigger id="report-status" class="w-full">
+            <hlm-select-value placeholder="همه وضعیت‌ها" />
+          </hlm-select-trigger>
+          <hlm-select-content *hlmSelectPortal>
+            <hlm-select-item value="">همه وضعیت‌ها</hlm-select-item>
+            <hlm-select-item value="SUCCEEDED">تسویه‌شده</hlm-select-item>
+            <hlm-select-item value="PENDING">در انتظار تسویه</hlm-select-item>
+            <hlm-select-item value="PROCESSING">در حال تسویه</hlm-select-item>
+            <hlm-select-item value="FAILED">ناموفق</hlm-select-item>
+          </hlm-select-content>
+        </hlm-select>
       </div>
 
       <div class="flex gap-2 sm:col-span-2">

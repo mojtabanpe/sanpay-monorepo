@@ -107,7 +107,7 @@ const NAV: NavItem[] = [
   },
   {
     path: '/payments',
-    label: 'پرداخت‌ها',
+    label: 'گزارش پرداخت',
     icon: 'M3 10h18M6 6h12a3 3 0 0 1 3 3v6a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3V9a3 3 0 0 1 3-3Zm10 8h2',
   },
   {

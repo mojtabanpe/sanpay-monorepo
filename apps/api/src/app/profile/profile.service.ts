@@ -51,7 +51,23 @@ export class ProfileService {
     cursor?: string,
   ): Promise<WalletTransactionPage> {
     const rows = await this.prisma.transaction.findMany({
-      where: { employeeId, allocation: { definition: WELFARE_DEFINITION } },
+      where: {
+        employeeId,
+        allocation: { definition: WELFARE_DEFINITION },
+        // شارژ کیف‌پولی که حذف یا غیرفعال شده و کارمند هیچ‌وقت از آن خرج نکرده
+        // برایش معنایی ندارد — فقط اعتباری را نشان می‌دهد که دیگر وجود ندارد.
+        NOT: {
+          type: 'TOPUP',
+          allocation: {
+            OR: [
+              { isActive: false },
+              { definition: { isActive: false } },
+              { definition: { deletedAt: { not: null } } },
+            ],
+            transactions: { none: { type: { not: 'TOPUP' } } },
+          },
+        },
+      },
       include: {
         allocation: { select: { definition: { select: { name: true } } } },
         store: { select: { name: true } },
