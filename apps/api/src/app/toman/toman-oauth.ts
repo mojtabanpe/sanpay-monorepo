@@ -7,6 +7,7 @@ import {
   tomanErrorCodes,
   tomanLog,
   withTomanTrace,
+  tomanErrorBody,
 } from './toman-log';
 
 /**
@@ -108,12 +109,18 @@ export class TomanOAuth {
               },
             });
             let codes: string[] = [];
+            let providerError: string | undefined;
             if (!response.ok) {
-              codes = await response
+              const text = await response
                 .clone()
-                .json()
-                .then(tomanErrorCodes)
-                .catch(() => []);
+                .text()
+                .catch(() => '');
+              providerError = text ? tomanErrorBody(text) : undefined;
+              try {
+                codes = tomanErrorCodes(JSON.parse(text));
+              } catch {
+                codes = [];
+              }
             }
             tomanLog(
               'http.response',
@@ -123,6 +130,7 @@ export class TomanOAuth {
                 httpStatus: response.status,
                 durationMs: Date.now() - started,
                 codes,
+                providerError,
                 providerRequestId:
                   response.headers.get('x-request-id') ??
                   response.headers.get('x-correlation-id'),

@@ -5,6 +5,7 @@ import { join } from 'node:path';
 
 // Deliberate allowlist: never serialize request bodies, headers, raw provider
 // responses or Error.message (all may contain credentials or personal data).
+// Exception: `providerError` = a Toman error body, masked by tomanErrorBody().
 const fields = new Set([
   'traceId',
   'requestId',
@@ -34,6 +35,7 @@ const fields = new Set([
   'errorCode',
   'causeCode',
   'codes',
+  'providerError',
   'errorFields',
   'amountToman',
   'amountRial',
@@ -182,4 +184,12 @@ export function tomanLog(
       );
     }
   }
+}
+
+/** متن خطای تومن برای لاگ: شبا و شماره کارت پوشانده و طول آن محدود می‌شود. */
+export function tomanErrorBody(text: string): string {
+  return text
+    .replace(/IR\d{24}/gi, (iban) => `${iban.slice(0, 4)}…${iban.slice(-4)}`)
+    .replace(/\b\d{16}\b/g, (card) => `${card.slice(0, 6)}…${card.slice(-4)}`)
+    .slice(0, 2_000);
 }
