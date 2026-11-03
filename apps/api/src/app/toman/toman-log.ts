@@ -36,6 +36,7 @@ const fields = new Set([
   'causeCode',
   'codes',
   'providerError',
+  'phase',
   'errorFields',
   'amountToman',
   'amountRial',
@@ -106,6 +107,7 @@ export function tomanError(error: unknown): Context {
     name?: unknown;
     code?: unknown;
     cause?: { code?: unknown };
+    getResponse?: () => unknown;
   } | null;
   const safeCode = (v: unknown) =>
     typeof v === 'string' && /^[a-zA-Z0-9_.-]{1,80}$/.test(v) ? v : undefined;
@@ -113,7 +115,14 @@ export function tomanError(error: unknown): Context {
     errorName: safeCode(e?.name) ?? 'Error',
     errorCode: safeCode(e?.code),
     causeCode: safeCode(e?.cause?.code),
+    // ServiceUnavailableException({ status }) از کلاینت‌های تومن: کد HTTP خود تومن
+    httpStatus: providerHttpStatus(e?.getResponse?.()),
   };
+}
+
+function providerHttpStatus(response: unknown): number | undefined {
+  const status = (response as { status?: unknown } | null)?.status;
+  return typeof status === 'number' ? status : undefined;
 }
 
 /** Extract machine codes only; provider detail/error_description are untrusted. */
@@ -149,7 +158,8 @@ export function tomanLog(
     if (!fields.has(key) || value === undefined) continue;
     if (Array.isArray(value))
       safe[key] = value.slice(0, 100).map((v) => String(v).slice(0, 150));
-    else if (typeof value === 'string') safe[key] = value.slice(0, 500);
+    else if (typeof value === 'string')
+      safe[key] = value.slice(0, key === 'providerError' ? 2_000 : 500);
     else if (typeof value === 'bigint') safe[key] = value.toString();
     else if (
       value === null ||
@@ -186,10 +196,22 @@ export function tomanLog(
   }
 }
 
-/** متن خطای تومن برای لاگ: شبا و شماره کارت پوشانده و طول آن محدود می‌شود. */
-export function tomanErrorBody(text: string): string {
-  return text
-    .replace(/IR\d{24}/gi, (iban) => `${iban.slice(0, 4)}…${iban.slice(-4)}`)
+/**
+ * متن خطای تومن برای لاگ: توکن‌ها، اعتبارنامهٔ خود ما (`secrets`)، شبا و شماره
+ * کارت پوشانده می‌شوند و طول آن محدود است.
+ */
+export function tomanErrorBody(
+  text: string,
+  secrets: readonly string[] = [],
+): string {
+  let out = text.replace(
+    /("(?:access_token|refresh_token|id_token|password|client_secret|token)"\s*:\s*)"[^"]*"/gi,
+    '$1"***"',
+  );
+  for (const secret of secrets)
+    if (secret && secret.length >= 4) out = out.split(secret).join('***');
+  return out
+    .replace(/IR\d{8,24}/gi, (iban) => `${iban.slice(0, 4)}…${iban.slice(-4)}`)
     .replace(/\b\d{16}\b/g, (card) => `${card.slice(0, 6)}…${card.slice(-4)}`)
     .slice(0, 2_000);
 }

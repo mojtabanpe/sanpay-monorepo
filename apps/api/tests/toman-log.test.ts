@@ -73,12 +73,16 @@ test('persistent logs isolate concurrent traces and exclude credentials and prov
     const text = readFileSync(file, 'utf8');
     assert.doesNotMatch(
       text,
-      /secret-password|secret-token|secret-username|secret-client|IR1234567890|error_description|access_token/,
+      /secret-password|secret-token|secret-username|secret-client|IR1234567890/,
     );
     const rows = text
       .trim()
       .split('\n')
       .map((line) => JSON.parse(line));
+    // the provider's error body is kept (masked) so a failure can be diagnosed
+    const oauthRejected = rows.find((row) => row.event === 'oauth.rejected');
+    assert.match(oauthRejected.providerError, /invalid_scope/);
+    assert.match(oauthRejected.providerError, /"access_token":"\*\*\*"/);
     const concurrent = rows.filter((row) => row.event === 'test.concurrent');
     assert.equal(concurrent.length, 2);
     assert.equal(concurrent[0].paymentId, 'payment-a');

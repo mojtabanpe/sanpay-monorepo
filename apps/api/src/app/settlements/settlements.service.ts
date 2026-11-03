@@ -870,9 +870,11 @@ export class SettlementsService {
     try {
       let tomanBatchUuid = batch.tomanBatchUuid;
       if (!tomanBatchUuid) {
-        const created = await this.toman.createBatch(
-          this.toSafeRial(batch.totalAmount),
-          batch.itemCount,
+        const created = await this.phase('create_batch', () =>
+          this.toman.createBatch(
+            this.toSafeRial(batch.totalAmount),
+            batch.itemCount,
+          ),
         );
         tomanBatchUuid = created.uuid;
         await this.prisma.settlementBatch.update({
@@ -880,7 +882,10 @@ export class SettlementsService {
           data: { tomanBatchUuid, error: null },
         });
       }
-      const remoteItems = await this.toman.listBatchItems(tomanBatchUuid);
+      const batchRef = tomanBatchUuid;
+      const remoteItems = await this.phase('list_items', () =>
+        this.toman.listBatchItems(batchRef),
+      );
       const remoteByTracker = new Map(
         remoteItems.map((item) => [item.tracker_id, item]),
       );
@@ -915,11 +920,25 @@ export class SettlementsService {
           description: `تسویه صنعت‌پی ${batch.runKey}`,
           reason: 6,
         }));
-        const added = await this.toman.addItems(tomanBatchUuid, inputs);
+        const added = await this.phase('add_items', () =>
+          this.toman.addItems(batchRef, inputs),
+        );
         for (const item of chunk) {
           const remote = added.find((row) => row.tracker_id === item.trackerId);
-          if (!remote?.uuid)
-            throw new Error(`Toman did not return item ${item.trackerId}`);
+          if (!remote?.uuid) {
+            tomanLog(
+              'settlement.phase_failed',
+              {
+                phase: 'add_items',
+                trackerId: item.trackerId,
+                reason: 'item_missing_in_response',
+              },
+              'error',
+            );
+            throw new Error(
+              `مرحلهٔ add_items: تومن حوالهٔ ${item.trackerId} را برنگرداند`,
+            );
+          }
           await this.prisma.settlementItem.update({
             where: { id: item.id },
             data: {
@@ -941,16 +960,39 @@ export class SettlementsService {
         count: batch.itemCount,
         amountToman: batch.totalAmount,
       });
-      await this.toman.commitBatch(tomanBatchUuid);
+      await this.phase('commit', () => this.toman.commitBatch(batchRef));
       await this.prisma.settlementBatch.update({
         where: { id: batchId },
         data: { status: 'SUBMITTED', submittedAt: new Date(), error: null },
       });
     } catch (error) {
+      const phase = (error as { settlementPhase?: string } | null)
+        ?.settlementPhase;
+      const status = tomanError(error).httpStatus;
       await this.prisma.settlementBatch.update({
         where: { id: batchId },
-        data: { status: 'FAILED', error: this.message(error) },
+        data: {
+          status: 'FAILED',
+          error: phase
+            ? `مرحلهٔ ${phase}${status ? ` (HTTP ${status})` : ''}: ${this.message(error)}`
+            : this.message(error),
+        },
       });
+      throw error;
+    }
+  }
+
+  /** یک مرحله از ارسال دسته به تومن؛ نام مرحله در لاگ و در خطای ذخیره‌شده می‌آید. */
+  private async phase<T>(name: string, work: () => Promise<T>): Promise<T> {
+    try {
+      return await withTomanTrace({ phase: name }, () =>
+        tomanOperation(`settlement.phase.${name}`, {}, work),
+      );
+    } catch (error) {
+      // the original error is rethrown (its HTTP type reaches the admin as before);
+      // only the stored batch error names the phase
+      if (error && typeof error === 'object')
+        Object.assign(error, { settlementPhase: name });
       throw error;
     }
   }

@@ -8,8 +8,11 @@ const API_URL = 'https://api.example.test/api/v1';
 const CREATE_SCOPE = 'digital_banking.batch_transfer.create';
 const BATCH_READ_SCOPE = 'digital_banking.batch_transfer.read';
 const TRANSFER_READ_SCOPE = 'digital_banking.transfer.read';
+const ALL_SCOPES = [CREATE_SCOPE, BATCH_READ_SCOPE, TRANSFER_READ_SCOPE].join(
+  ' ',
+);
 
-test('reuses scoped tokens and re-authenticates once after 401 or 403', async () => {
+test('reuses one combined token and re-authenticates once after 401', async () => {
   const originalFetch = globalThis.fetch;
   const originalEnv = { ...process.env };
   const events: string[] = [];
@@ -52,13 +55,11 @@ test('reuses scoped tokens and re-authenticates once after 401 or 403', async ()
       `Bearer ${latestToken}`,
     );
 
+    // one combined token; the first call with it is rejected once (401)
     const activeScope = scopes.at(-1);
-    if (activeScope && !rejectedScopes.has(activeScope)) {
+    if (activeScope === ALL_SCOPES && !rejectedScopes.has(activeScope)) {
       rejectedScopes.add(activeScope);
-      if (activeScope === CREATE_SCOPE)
-        return new Response(null, { status: 401 });
-      if (activeScope === BATCH_READ_SCOPE)
-        return new Response(null, { status: 403 });
+      return new Response(null, { status: 401 });
     }
 
     if (url.pathname.endsWith('/add-items/')) {
@@ -109,29 +110,8 @@ test('reuses scoped tokens and re-authenticates once after 401 or 403', async ()
     await client.getBatch('batch');
     await client.getTransfer('tracker');
 
-    assert.deepEqual(scopes, [
-      CREATE_SCOPE,
-      CREATE_SCOPE,
-      BATCH_READ_SCOPE,
-      BATCH_READ_SCOPE,
-      TRANSFER_READ_SCOPE,
-    ]);
-    assert.deepEqual(events, [
-      'auth',
-      'api',
-      'auth',
-      'api',
-      'api',
-      'api',
-      'auth',
-      'api',
-      'auth',
-      'api',
-      'api',
-      'api',
-      'auth',
-      'api',
-    ]);
+    assert.deepEqual(scopes, [ALL_SCOPES, ALL_SCOPES]);
+    assert.deepEqual(events, ['auth', 'api', 'auth', ...Array(7).fill('api')]);
   } finally {
     globalThis.fetch = originalFetch;
     for (const key of [

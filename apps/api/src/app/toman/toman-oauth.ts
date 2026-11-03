@@ -147,7 +147,12 @@ export class TomanOAuth {
                 .clone()
                 .text()
                 .catch(() => '');
-              providerError = text ? tomanErrorBody(text) : undefined;
+              providerError = text
+                ? tomanErrorBody(
+                    text,
+                    Object.values(this.options.credentials() ?? {}),
+                  )
+                : undefined;
               try {
                 codes = tomanErrorCodes(JSON.parse(text));
               } catch {
@@ -237,16 +242,22 @@ export class TomanOAuth {
         body,
       });
       if (!response.ok) {
-        const codes = await response
-          .json()
-          .then(tomanErrorCodes)
-          .catch(() => []);
+        const text = await response.text().catch(() => '');
+        let codes: string[] = [];
+        try {
+          codes = tomanErrorCodes(JSON.parse(text));
+        } catch {
+          codes = [];
+        }
         tomanLog(
           'oauth.rejected',
           {
             ...details,
             httpStatus: response.status,
             codes,
+            providerError: text
+              ? tomanErrorBody(text, Object.values(credentials))
+              : undefined,
             durationMs: Date.now() - started,
           },
           'error',
