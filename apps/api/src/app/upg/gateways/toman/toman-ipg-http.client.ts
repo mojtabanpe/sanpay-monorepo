@@ -14,8 +14,8 @@ import {
 } from './toman-ipg.types';
 
 /**
- * scopeهای IPG. هرکدام توکن جدا دارد (`TomanOAuth`)، پس نبودِ scope بازگشت پول
- * فقط «بازگشت پول» را از کار می‌اندازد.
+ * scopeهای IPG. یک توکن مشترک برای همه گرفته می‌شود؛ اگر تومان آن را رد کند
+ * `TomanOAuth` به توکن جدا برای هر scope برمی‌گردد.
  */
 export const TOMAN_IPG_SCOPES = {
   /** ساخت و verify پرداخت */
@@ -51,6 +51,7 @@ export class TomanIpgHttpClient implements TomanIpgApi {
       tomanCredentialsFromEnv('TOMAN_IPG_') ??
       tomanCredentialsFromEnv('TOMAN_'),
     timeoutMs: () => Number(process.env.TOMAN_IPG_TIMEOUT_MS || 20_000),
+    scopes: Object.values(TOMAN_IPG_SCOPES),
   });
 
   get baseUrl(): string {

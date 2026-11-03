@@ -96,7 +96,7 @@
     "test-toman-ipg": {
       "executor": "nx:run-commands",
       "options": {
-        "command": "node -r @swc-node/register --test apps/api/tests/toman-ipg.test.ts",
+        "command": "node -r @swc-node/register --test apps/api/tests/toman-ipg.test.ts apps/api/tests/toman-oauth.test.ts",
         "env": {
           "SWC_NODE_PROJECT": "apps/api/tsconfig.test.json"
         }

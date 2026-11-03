@@ -14,10 +14,10 @@ import {
  * توکن OAuth2 تومان (password grant) — مشترک بین بانکداری شرکتی
  * (`settlements/toman-client.service.ts`) و درگاه IPG (`upg/gateways/toman/`).
  *
- * برای هر scope یک توکن جدا گرفته و کش می‌شود: تومان چند scope را با فاصله
- * در یک توکن می‌پذیرد، ولی اگر حتی یکی از آن‌ها برای کاربر ما فعال نباشد
- * کل درخواست `invalid_scope` می‌گیرد — با توکن جدا، نبودِ مثلاً
- * `ipg.refund.create` فقط بازگشت پول را از کار می‌اندازد، نه پرداخت را.
+ * با `scopes` یک توکن برای همهٔ scopeها (جداشده با فاصله) گرفته می‌شود. اگر
+ * تومان آن را رد کند (مثلاً یکی از scopeها برای حساب ما فعال نیست و کل
+ * درخواست `invalid_scope` می‌گیرد)، تا پایان عمر پروسه برای هر scope توکن جدا
+ * گرفته می‌شود تا نبودِ یک scope فقط همان قابلیت را از کار بیندازد.
  */
 export interface TomanCredentials {
   username: string;
@@ -33,6 +33,8 @@ export interface TomanOAuthOptions {
   /** null یعنی تنظیمات ناقص است */
   credentials: () => TomanCredentials | null;
   timeoutMs: () => number;
+  /** همهٔ scopeهای این کلاینت؛ با آن یک توکن مشترک گرفته می‌شود */
+  scopes?: readonly string[];
 }
 
 type TokenResponse = {
@@ -45,13 +47,41 @@ type CachedToken = {
   expiresAt: number;
 };
 
+export class TomanTokenRejectedError extends ServiceUnavailableException {
+  constructor(message: string, status: number) {
+    super({ message, status });
+  }
+}
+
 export class TomanOAuth {
   private readonly tokens = new Map<string, CachedToken>();
   private readonly tokenRequests = new Map<string, Promise<string>>();
 
   constructor(private readonly options: TomanOAuthOptions) {}
 
+  /** true پس از اینکه تومان توکن مشترک را رد کرد — برگشت به توکن جدا */
+  private combinedRejected = false;
+
   async accessToken(scope: string): Promise<string> {
+    const combined = this.combinedScope(scope);
+    if (!combined) return this.tokenFor(scope);
+    try {
+      return await this.tokenFor(combined);
+    } catch (error) {
+      if (!(error instanceof TomanTokenRejectedError)) throw error;
+      this.combinedRejected = true;
+      tomanLog('oauth.combined_rejected', { scope: combined }, 'warn');
+      return this.tokenFor(scope);
+    }
+  }
+
+  private combinedScope(scope: string): string | null {
+    const scopes = this.options.scopes;
+    if (this.combinedRejected || !scopes?.includes(scope)) return null;
+    return [...new Set(scopes)].join(' ');
+  }
+
+  private async tokenFor(scope: string): Promise<string> {
     const cached = this.tokens.get(scope);
     if (cached && cached.expiresAt > Date.now() + 60_000) {
       tomanLog('oauth.cache_hit', { scope });
@@ -75,6 +105,8 @@ export class TomanOAuth {
   /** بعد از 401/403 — توکن بعدی دوباره گرفته می‌شود */
   invalidate(scope: string): void {
     this.tokens.delete(scope);
+    const combined = this.combinedScope(scope);
+    if (combined) this.tokens.delete(combined);
   }
 
   /**
@@ -219,8 +251,12 @@ export class TomanOAuth {
           },
           'error',
         );
+        const message = `احراز هویت ${this.options.label} ناموفق بود`;
+        // 400/401/403 = تومان این درخواست را رد کرده (مثلاً invalid_scope)
+        if ([400, 401, 403].includes(response.status))
+          throw new TomanTokenRejectedError(message, response.status);
         throw new ServiceUnavailableException({
-          message: `احراز هویت ${this.options.label} ناموفق بود`,
+          message,
           status: response.status,
         });
       }

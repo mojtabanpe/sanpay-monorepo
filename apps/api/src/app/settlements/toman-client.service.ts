@@ -45,6 +45,7 @@ export class TomanClientService {
       process.env.TOMAN_AUTH_URL || 'https://auth.qbitpay.org/oauth2/token/',
     credentials: () => tomanCredentialsFromEnv('TOMAN_'),
     timeoutMs: () => Number(process.env.TOMAN_TIMEOUT_MS || 20_000),
+    scopes: [BATCH_CREATE_SCOPE, BATCH_READ_SCOPE, TRANSFER_READ_SCOPE],
   });
 
   isLive(): boolean {

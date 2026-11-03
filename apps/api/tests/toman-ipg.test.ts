@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { afterEach, beforeEach, test } from 'node:test';
 import {
   TomanIpgHttpClient,
+  TOMAN_IPG_SCOPES,
   parseErrors,
 } from '../src/app/upg/gateways/toman/toman-ipg-http.client';
 import { TomanIpgMockClient } from '../src/app/upg/gateways/toman/toman-ipg-mock.client';
@@ -29,6 +30,9 @@ type Handler = (
 
 const originalFetch = globalThis.fetch;
 const originalEnv = { ...process.env };
+/** one combined token for every IPG scope (TomanOAuth `scopes`) */
+const ALL_SCOPES = Object.values(TOMAN_IPG_SCOPES).join(' ');
+
 let calls: { method: string; path: string; body: unknown; scope?: string }[];
 let routes: Map<string, Handler>;
 
@@ -110,7 +114,7 @@ test('create sends rial amount, tracker, callback, normalized mobile and termina
     mobile_number: '09121234567',
     options: { terminal_number: '13268913' },
   });
-  assert.equal(calls[0].scope, 'payment.create');
+  assert.equal(calls[0].scope, ALL_SCOPES);
 });
 
 test('create failure becomes GatewayUnavailableError for failover', async () => {
@@ -180,8 +184,8 @@ test('ambiguous verify asks for the real status', async () => {
   assert.deepEqual(
     calls.map((call) => `${call.method} ${call.path} ${call.scope}`),
     [
-      'POST /payments/pay-uuid/verify payment.create',
-      'GET /payments/pay-uuid payment.list',
+      `POST /payments/pay-uuid/verify ${ALL_SCOPES}`,
+      `GET /payments/pay-uuid ${ALL_SCOPES}`,
     ],
   );
 });
@@ -273,7 +277,7 @@ test('refund create and status mapping', async () => {
     amount: 50_000,
     tracker_id: 'refund-tracker',
   });
-  assert.equal(calls.at(-1)?.scope, 'ipg.refund.create');
+  assert.equal(calls.at(-1)?.scope, ALL_SCOPES);
 
   route('POST', '/payments/pay-uuid/refund', () =>
     Response.json(
@@ -314,7 +318,7 @@ test('refund create and status mapping', async () => {
     );
     const result = await live().refundStatus(ref);
     assert.equal(result.state, state, `refund status ${status}`);
-    assert.equal(calls.at(-1)?.scope, 'ipg.refund.read');
+    assert.equal(calls.at(-1)?.scope, ALL_SCOPES);
   }
   route('GET', '/refunds/tracking/refund-tracker', () =>
     Response.json(
@@ -333,7 +337,7 @@ test('refund wallet reads GET /wallet/refund with its own scope', async () => {
     balanceRial: 1_234_560,
     address: 'ipgrw-abc',
   });
-  assert.equal(calls[0].scope, 'ipg.wallet.read');
+  assert.equal(calls[0].scope, ALL_SCOPES);
 
   // a missing scope / network error surfaces to the dashboard instead of a fake 0
   routes.clear();
