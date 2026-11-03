@@ -1,6 +1,6 @@
 {
   "name": "@sanpay/source",
-  "version": "0.0.0",
+  "version": "1.0.0",
   "license": "MIT",
   "scripts": {
     "serve": "nx run-many -t serve -p app dashboard store api --parallel=4",

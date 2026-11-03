@@ -302,6 +302,10 @@ Must pass AXE and meet WCAG AA: focus management, ≥4.5:1 contrast, correct ARI
 - Runtime connection uses the `@prisma/adapter-pg` driver adapter inside `PrismaService` (`apps/api/src/app/prisma/`), a `@Global()` module. `DATABASE_URL` comes from `.env` (gitignored).
 - Scripts: `pnpm prisma:generate | prisma:migrate | prisma:studio`.
 
+## Versioning
+
+The whole system has one version: `version` in the root `package.json`, shown at the bottom of the dashboard's نمای کلی page. `master` auto-deploys (`deploy/poll-and-deploy.sh`), so **every push to `master` bumps the patch** (`1.0.0` → `1.0.1`) in the same push — unless the user explicitly asks for a minor or major bump.
+
 ## Commands
 
 **The package manager is pnpm** (pinned by `packageManager` in `package.json`; there is no `package-lock.json`). Install with `pnpm install`, run everything through `pnpm` / `pnpm nx` — never `npm install`, which would create a second lockfile and a hoisted `node_modules` that hides missing dependencies.

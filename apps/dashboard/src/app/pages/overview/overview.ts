@@ -8,6 +8,8 @@ import { HlmSkeletonImports } from '@sanpay/ui/skeleton';
 import { HlmTableImports } from '@sanpay/ui/table';
 import { AdminApiService, apiError } from '../../core/admin-api.service';
 import { fa, jalali, jalaliTime, toman } from '../../core/format';
+// only `version` is bundled (esbuild tree-shakes named JSON imports)
+import { version } from '../../../../../../package.json';
 
 @Component({
   selector: 'app-overview',
@@ -26,6 +28,8 @@ export class OverviewPage {
   protected readonly data = signal<AdminOverview | null>(null);
 
   protected readonly toman = toman;
+  /** نسخهٔ کل سامانه — patch با هر deploy روی master بالا می‌رود */
+  protected readonly appVersion = version;
   protected readonly fa = fa;
   protected readonly jalali = jalali;
   protected readonly jalaliTime = jalaliTime;
