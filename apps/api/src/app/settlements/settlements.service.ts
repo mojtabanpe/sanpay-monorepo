@@ -457,6 +457,7 @@ export class SettlementsService {
     if (!batch.submittedAt && remoteBatch.status === 1)
       return this.one(batchId);
 
+    let remoteTrackers: Set<string> | undefined;
     for (const item of batch.items.filter(
       (row) => !['SUCCEEDED', 'FAILED'].includes(row.status),
     )) {
@@ -532,6 +533,40 @@ export class SettlementsService {
         this.logger.warn(
           `Transfer ${item.trackerId} is not queryable yet: ${this.message(error)}`,
         );
+        // Provably never sent: the batch is dead at Toman (-2/-3), this item was
+        // never accepted by add-items (no tomanItemUuid), Toman has no transfer
+        // for its tracker (404) and the batch's own item list lacks it. Only
+        // then is it a final failure, so «تلاش مجدد» can pay it in a new batch.
+        if (
+          terminalBatch &&
+          !item.tomanItemUuid &&
+          tomanError(error).httpStatus === 404
+        ) {
+          remoteTrackers ??= new Set(
+            (await this.toman.listBatchItems(batch.tomanBatchUuid)).map(
+              (row) => row.tracker_id,
+            ),
+          );
+          if (!remoteTrackers.has(item.trackerId)) {
+            tomanLog('settlement.item_never_sent', {
+              itemId: item.id,
+              trackerId: item.trackerId,
+              providerStatus: remoteBatch.status,
+            });
+            await this.prisma.settlementItem.updateMany({
+              where: {
+                id: item.id,
+                status: { notIn: ['SUCCEEDED', 'FAILED'] },
+              },
+              data: {
+                status: 'FAILED',
+                error:
+                  'این حواله هرگز در تومان ثبت نشد (دسته در تومان ناموفق است و حواله‌ای با این شناسه وجود ندارد)؛ می‌توانید تلاش مجدد کنید.',
+              },
+            });
+            continue;
+          }
+        }
         await this.prisma.settlementItem.updateMany({
           where: { id: item.id, status: { notIn: ['SUCCEEDED', 'FAILED'] } },
           data: {
