@@ -42,7 +42,7 @@ Base URL اصلی: `https://dbank.toman.ir/api/v1`
 - `GET /batch-transfer/{uuid}/`
 - `GET /transfer/tracker/{tracker_id}/`
 
-هر آیتم شامل `amount`، `iban_destination`، `tracker_id`، توضیح و `reason=6` (تسویهٔ بدهی) است. `tracker_id` در کل حساب همکار یکتا و حداکثر ۵۰ نویسه است؛ بنابراین نقش idempotency هم دارد.
+هر آیتم شامل `amount`، `iban_source` (شبای حساب مبدأ ما از `TOMAN_SOURCE_IBAN`؛ بدون آن تومن `ERR_MISSING_ACCOUNT_NUMBER` می‌دهد و در حالت live پیش از ساخت batch خطا داده می‌شود)، `iban_destination`، `tracker_id`، توضیح و `reason=6` (تسویهٔ بدهی) است. `tracker_id` در کل حساب همکار یکتا و حداکثر ۵۰ نویسه است؛ بنابراین نقش idempotency هم دارد.
 
 ## وضعیت‌ها و قواعد ایمنی
 

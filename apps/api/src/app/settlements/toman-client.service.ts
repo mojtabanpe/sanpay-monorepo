@@ -9,6 +9,8 @@ import { tomanError, tomanLog } from '../toman/toman-log';
 
 export interface TomanTransferItemInput {
   amount: number;
+  /** شبای حساب مبدأ ما؛ تومن بدون آن ERR_MISSING_ACCOUNT_NUMBER می‌دهد */
+  iban_source?: string;
   iban_destination: string;
   tracker_id: string;
   description?: string;
@@ -47,6 +49,15 @@ export class TomanClientService {
     timeoutMs: () => Number(process.env.TOMAN_TIMEOUT_MS || 20_000),
     scopes: [BATCH_CREATE_SCOPE, BATCH_READ_SCOPE, TRANSFER_READ_SCOPE],
   });
+
+  /** `TOMAN_SOURCE_IBAN` نرمال‌شده، یا null اگر خالی/نامعتبر باشد */
+  sourceIban(): string | null {
+    const value = process.env.TOMAN_SOURCE_IBAN?.replace(
+      /\s/g,
+      '',
+    ).toUpperCase();
+    return value && /^IR\d{24}$/.test(value) ? value : null;
+  }
 
   isLive(): boolean {
     return process.env.TOMAN_MODE?.toLowerCase() === 'live';

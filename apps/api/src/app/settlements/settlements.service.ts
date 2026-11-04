@@ -868,6 +868,22 @@ export class SettlementsService {
       include: { items: true },
     });
     try {
+      // checked before anything is created at Toman, so a missing source account
+      // never leaves an empty INITIATED batch behind
+      const sourceIban = this.toman.sourceIban();
+      if (this.toman.isLive() && !sourceIban) {
+        tomanLog(
+          'settlement.phase_failed',
+          { phase: 'configuration', reason: 'missing_source_iban' },
+          'error',
+        );
+        throw Object.assign(
+          new Error(
+            'شبای حساب مبدأ (TOMAN_SOURCE_IBAN) تنظیم نشده یا نامعتبر است.',
+          ),
+          { settlementPhase: 'configuration' },
+        );
+      }
       let tomanBatchUuid = batch.tomanBatchUuid;
       if (!tomanBatchUuid) {
         const created = await this.phase('create_batch', () =>
@@ -915,6 +931,7 @@ export class SettlementsService {
         const chunk = pending.slice(offset, offset + 1_000);
         const inputs: TomanTransferItemInput[] = chunk.map((item) => ({
           amount: this.toSafeRial(item.amount),
+          ...(sourceIban ? { iban_source: sourceIban } : {}),
           iban_destination: item.destinationIban,
           tracker_id: item.trackerId,
           description: `تسویه صنعت‌پی ${batch.runKey}`,
