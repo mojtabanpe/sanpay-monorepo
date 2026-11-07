@@ -27,6 +27,10 @@ import {
 } from './dto/admin.dto';
 import { toPaymentRow } from './payment-row';
 import { creditAllocation } from './credit-allocation';
+import {
+  releaseDeletedEmployeeSlots,
+  restoreDeletedEmployee,
+} from './deleted-employees';
 
 @Injectable()
 export class AdminEmployeesService {
@@ -141,14 +145,14 @@ export class AdminEmployeesService {
   async create(dto: CreateEmployeeDto): Promise<AdminEmployeeRow> {
     validateBirthDate(dto.birthDate);
     await this.mustHaveActiveCompany(dto.companyId);
+    const personnelCode = dto.personnelCode || dto.nationalCode;
+    // کارمندان حذف‌شده جای موبایل/کد پرسنلی را نمی‌گیرند؛ فقط فعال‌ها تکراری‌اند.
     const clash = await this.prisma.employee.findFirst({
       where: {
+        deletedAt: null,
         OR: [
           { companyId: dto.companyId, nationalCode: dto.nationalCode },
-          {
-            companyId: dto.companyId,
-            personnelCode: dto.personnelCode || dto.nationalCode,
-          },
+          { companyId: dto.companyId, personnelCode },
           { phone: dto.phone },
         ],
       },
@@ -161,19 +165,39 @@ export class AdminEmployeesService {
       );
     }
 
-    const employee = await this.prisma.employee.create({
-      data: {
-        nationalCode: dto.nationalCode,
-        personnelCode: dto.personnelCode || dto.nationalCode,
-        birthDate: dto.birthDate ? new Date(dto.birthDate) : null,
-        firstName: dto.firstName,
-        lastName: dto.lastName,
-        phone: dto.phone,
+    const deleted = await this.prisma.employee.findFirst({
+      where: {
         companyId: dto.companyId,
-        organizationalRank: dto.organizationalRank,
-        passwordHash: null,
+        nationalCode: dto.nationalCode,
+        deletedAt: { not: null },
       },
-      include: { company: true },
+      select: { id: true },
+    });
+    const data = {
+      personnelCode,
+      birthDate: dto.birthDate ? new Date(dto.birthDate) : null,
+      firstName: dto.firstName,
+      lastName: dto.lastName,
+      phone: dto.phone,
+      organizationalRank: dto.organizationalRank,
+    };
+    const employee = await this.prisma.$transaction(async (tx) => {
+      await releaseDeletedEmployeeSlots(
+        tx,
+        dto.companyId,
+        [dto.phone],
+        [personnelCode],
+      );
+      if (deleted) return restoreDeletedEmployee(tx, deleted.id, data);
+      return tx.employee.create({
+        data: {
+          ...data,
+          nationalCode: dto.nationalCode,
+          companyId: dto.companyId,
+          passwordHash: null,
+        },
+        include: { company: true },
+      });
     });
     return toRow({ ...employee, allocations: [] });
   }
@@ -233,32 +257,44 @@ export class AdminEmployeesService {
         ],
       },
       select: {
+        id: true,
         nationalCode: true,
         personnelCode: true,
         phone: true,
         companyId: true,
+        deletedAt: true,
       },
     });
-    const existingPersonnelCodes = new Set(
-      existing
+    // فقط کارمندان فعال تکراری حساب می‌شوند. کارمند حذف‌شده با همان کد ملی
+    // برمی‌گردد و بقیهٔ حذف‌شده‌ها موبایل/کد پرسنلی‌شان را پس می‌دهند.
+    const live = existing.filter((row) => !row.deletedAt);
+    const livePhones = new Set(live.map((row) => row.phone));
+    const livePersonnelCodes = new Set(
+      live
         .filter((row) => row.companyId === dto.companyId)
         .map((row) => row.personnelCode),
     );
-    const existingCompanyNationalCodes = new Set(
-      existing
+    const liveNationalCodes = new Set(
+      live
         .filter((row) => row.companyId === dto.companyId)
         .map((row) => row.nationalCode),
     );
+    const deletedByNationalCode = new Map(
+      existing
+        .filter((row) => row.deletedAt && row.companyId === dto.companyId)
+        .map((row) => [row.nationalCode, row.id]),
+    );
     const creatable = accepted.filter((entry) => {
+      const phoneTaken = livePhones.has(entry.phone);
       if (
-        existingCompanyNationalCodes.has(entry.nationalCode) ||
-        existingPersonnelCodes.has(entry.personnelCode || entry.nationalCode) ||
-        existing.some((row) => row.phone === entry.phone)
+        phoneTaken ||
+        liveNationalCodes.has(entry.nationalCode) ||
+        livePersonnelCodes.has(entry.personnelCode || entry.nationalCode)
       ) {
         rejected.push({
           rowNumber: entry.rowNumber,
           nationalCode: entry.nationalCode,
-          reason: existing.some((row) => row.phone === entry.phone)
+          reason: phoneTaken
             ? 'شماره موبایل قبلاً برای استخدام دیگری ثبت شده است'
             : 'کد ملی یا کد پرسنلی قبلاً در این شرکت ثبت شده است',
         });
@@ -267,20 +303,50 @@ export class AdminEmployeesService {
       return true;
     });
 
+    const toData = (entry: ImportEmployeesDto['entries'][number]) => ({
+      personnelCode: entry.personnelCode || entry.nationalCode,
+      birthDate: entry.birthDate ? new Date(entry.birthDate) : null,
+      firstName: entry.firstName,
+      lastName: entry.lastName,
+      phone: entry.phone,
+      organizationalRank: entry.organizationalRank,
+    });
+    const restorable = creatable.filter((entry) =>
+      deletedByNationalCode.has(entry.nationalCode),
+    );
+    const fresh = creatable.filter(
+      (entry) => !deletedByNationalCode.has(entry.nationalCode),
+    );
+
     if (creatable.length) {
-      await this.prisma.employee.createMany({
-        data: creatable.map((entry) => ({
-          nationalCode: entry.nationalCode,
-          personnelCode: entry.personnelCode || entry.nationalCode,
-          birthDate: entry.birthDate ? new Date(entry.birthDate) : null,
-          firstName: entry.firstName,
-          lastName: entry.lastName,
-          phone: entry.phone,
-          companyId: dto.companyId,
-          organizationalRank: entry.organizationalRank,
-          passwordHash: null,
-        })),
-      });
+      await this.prisma.$transaction(
+        async (tx) => {
+          await releaseDeletedEmployeeSlots(
+            tx,
+            dto.companyId,
+            creatable.map((entry) => entry.phone),
+            creatable.map((entry) => entry.personnelCode || entry.nationalCode),
+          );
+          for (const entry of restorable) {
+            await restoreDeletedEmployee(
+              tx,
+              deletedByNationalCode.get(entry.nationalCode)!,
+              toData(entry),
+            );
+          }
+          if (fresh.length) {
+            await tx.employee.createMany({
+              data: fresh.map((entry) => ({
+                ...toData(entry),
+                nationalCode: entry.nationalCode,
+                companyId: dto.companyId,
+                passwordHash: null,
+              })),
+            });
+          }
+        },
+        { timeout: 60_000 },
+      );
     }
 
     return { created: creatable.length, rejected };
@@ -312,6 +378,7 @@ export class AdminEmployeesService {
     const duplicate = await this.prisma.employee.findFirst({
       where: {
         id: { not: id },
+        deletedAt: null,
         OR: [
           { companyId: targetCompanyId, nationalCode: targetNationalCode },
           { companyId: targetCompanyId, personnelCode: targetPersonnelCode },
@@ -332,19 +399,27 @@ export class AdminEmployeesService {
           : 'کد ملی یا کد پرسنلی در این شرکت تکراری است',
       );
     }
-    const employee = await this.prisma.employee.update({
-      where: { id },
-      data: {
-        ...dto,
-        ...(dto.birthDate !== undefined
-          ? { birthDate: dto.birthDate ? new Date(dto.birthDate) : null }
-          : {}),
-        ...(dto.phone !== undefined ? { phone: dto.phone || null } : {}),
-      },
-      include: {
-        company: true,
-        allocations: { where: activeAllocation() },
-      },
+    const employee = await this.prisma.$transaction(async (tx) => {
+      await releaseDeletedEmployeeSlots(
+        tx,
+        targetCompanyId,
+        targetPhone ? [targetPhone] : [],
+        [targetPersonnelCode],
+      );
+      return tx.employee.update({
+        where: { id },
+        data: {
+          ...dto,
+          ...(dto.birthDate !== undefined
+            ? { birthDate: dto.birthDate ? new Date(dto.birthDate) : null }
+            : {}),
+          ...(dto.phone !== undefined ? { phone: dto.phone || null } : {}),
+        },
+        include: {
+          company: true,
+          allocations: { where: activeAllocation() },
+        },
+      });
     });
     return toRow(employee);
   }
@@ -352,13 +427,19 @@ export class AdminEmployeesService {
   async remove(id: string) {
     await this.mustExist(id);
     await this.prisma.$transaction(async (tx) => {
+      // موبایل آزاد می‌شود تا همان شخص (یا شمارهٔ اصلاح‌شده) دوباره ثبت شود؛
+      // شماره یکتای کل سامانه است و یک ردیف بایگانی نباید آن را نگه دارد.
       await tx.employee.update({
         where: { id },
-        data: { isActive: false, deletedAt: new Date() },
+        data: { isActive: false, deletedAt: new Date(), phone: null },
       });
       await tx.walletAllocation.updateMany({
         where: { employeeId: id },
         data: { isActive: false },
+      });
+      await tx.employeeSession.updateMany({
+        where: { employeeId: id, revokedAt: null },
+        data: { revokedAt: new Date() },
       });
     });
     return { ok: true };

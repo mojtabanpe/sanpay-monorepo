@@ -1,11 +1,11 @@
-import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { HttpClient } from '@angular/common/http';
 import { Injectable, computed, inject, signal } from '@angular/core';
 import {
   EmployeeAuthResponse,
   EmployeeProfile,
   OtpRequestResult,
 } from '@sanpay/models';
-import { firstValueFrom } from 'rxjs';
+import { firstValueFrom, timeout } from 'rxjs';
 
 const TOKEN_KEY = 'sanpay_token';
 const PROFILE_KEY = 'sanpay_profile';
@@ -100,12 +100,17 @@ export class AuthService {
     this._profile.set(profile);
   }
 
+  /**
+   * خروج همیشه روی همین گوشی انجام می‌شود. ابطال نشست در سرور تلاشِ جانبی
+   * است: قبلاً هر خطای غیر ۴۰۱ (قطعی شبکه، ۵۰۲، نشستِ از پیش باطل‌شده با ۴۰۴)
+   * کاربر را در حساب نگه می‌داشت و «خروج انجام نشد» تنها پاسخ دکمه بود.
+   * توکن در هر حال ۱۲ ساعته منقضی می‌شود و از «دستگاه‌ها» هم باطل‌شدنی است.
+   */
   async logout(): Promise<boolean> {
-    try {
-      await firstValueFrom(this.http.post('/api/auth/logout', {}));
-    } catch (error) {
-      if (!(error instanceof HttpErrorResponse) || error.status !== 401)
-        return false;
+    if (this.token) {
+      await firstValueFrom(
+        this.http.post('/api/auth/logout', {}).pipe(timeout(5_000)),
+      ).catch(() => undefined);
     }
     this.clearSession();
     return true;
