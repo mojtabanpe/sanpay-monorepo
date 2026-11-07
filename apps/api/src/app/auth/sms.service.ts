@@ -224,9 +224,9 @@ export class SmsService {
   }
 }
 
-/** مبالغ داخلی تومان‌اند؛ قالب‌های پیامک ریال نشان می‌دهند */
-function toRial(toman: number): string {
-  return (toman * 10).toLocaleString('en-US');
+/** مبالغ سامانه ریال‌اند؛ فقط جداکنندهٔ هزارگان اضافه می‌شود */
+function toRial(rial: number): string {
+  return rial.toLocaleString('en-US');
 }
 
 /** مثلاً `1405/07/20 ساعت 14:35` — تقویم شمسی، به وقت تهران */

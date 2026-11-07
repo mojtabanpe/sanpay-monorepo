@@ -44,7 +44,7 @@ export class ReceiptCard {
   protected readonly isSplit = computed(() => this.receipt().lines.length > 1);
 
   protected rial(value: number): string {
-    return `${this.faNumber.format(value * 10)} ریال`;
+    return `${this.faNumber.format(value)} ریال`;
   }
 
   protected date(value: Date): string {

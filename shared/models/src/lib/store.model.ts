@@ -6,7 +6,7 @@ export interface StoreWalletBadge {
   allocationId: string;
   name: string;
   icon: string | null;
-  /** ماندهٔ قابل خرج در این فروشگاه (تومان) */
+  /** ماندهٔ قابل خرج در این فروشگاه (ریال) */
   remaining: number;
 }
 
@@ -24,7 +24,7 @@ export interface EmployeeStore {
   longitude: number | null;
   /** کیف‌پول‌های کارمند که در این فروشگاه اعتبار دارند */
   wallets: StoreWalletBadge[];
-  /** جمع ماندهٔ کیف‌پول‌های بالا (تومان) */
+  /** جمع ماندهٔ کیف‌پول‌های بالا (ریال) */
   totalAvailable: number;
 }
 
@@ -56,7 +56,7 @@ export interface StorePasswordOtpChallenge {
 
 /** جمع فروش در یک بازهٔ زمانی */
 export interface StoreStatsBucket {
-  /** جمع مبلغ (تومان) */
+  /** جمع مبلغ (ریال) */
   total: number;
   /** تعداد خرید */
   count: number;
@@ -146,8 +146,8 @@ export type MerchantPaymentVerifyResult =
   | {
       status: 'AWAITING_EMPLOYEE';
       upgIntentId: string;
-      /** سهم اعتبار (تومان) */
+      /** سهم اعتبار (ریال) */
       creditAmount: number;
-      /** سهمی که کارمند باید با کارت بدهد (تومان) */
+      /** سهمی که کارمند باید با کارت بدهد (ریال) */
       cardAmount: number;
     };

@@ -1073,8 +1073,8 @@ export class SettlementsService {
     });
   }
 
-  private toSafeRial(toman: bigint): number {
-    const rial = toman * 10n;
+  /** مبالغ سامانه ریال‌اند؛ فقط بازهٔ امن عدد JS بررسی می‌شود */
+  private toSafeRial(rial: bigint): number {
     if (rial <= 0n || rial > BigInt(Number.MAX_SAFE_INTEGER)) {
       throw new Error('مبلغ تسویه خارج از بازهٔ امن عددی است');
     }

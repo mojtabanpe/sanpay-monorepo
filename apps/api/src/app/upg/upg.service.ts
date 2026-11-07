@@ -245,7 +245,7 @@ export class UpgService {
           },
           () =>
             gateway.create({
-              amountRial: amount * 10,
+              amountRial: amount,
               trackerId: payment.trackerId,
               callbackUrl: `${this.publicUrl}/api/upg/callback/${gateway.key}`,
               mobile: employee.phone,
@@ -454,7 +454,7 @@ export class UpgService {
             ? 'unknown'
             : 'failed',
       amountRial: verified.amountRial,
-      expectedAmountRial: Number(payment.amount) * 10,
+      expectedAmountRial: Number(payment.amount),
     });
     if (verified.pending) {
       // درگاه می‌گوید کاربر هنوز در بانک است، یا جوابی نرسید — cron استعلام
@@ -481,12 +481,12 @@ export class UpgService {
       await this.reopenIntent(payment);
       return;
     }
-    if (verified.amountRial !== Number(payment.amount) * 10) {
+    if (verified.amountRial !== Number(payment.amount)) {
       tomanLog(
         'payment.amount_mismatch',
         {
           amountRial: verified.amountRial,
-          expectedAmountRial: Number(payment.amount) * 10,
+          expectedAmountRial: Number(payment.amount),
         },
         'error',
       );
@@ -1099,7 +1099,7 @@ export class UpgService {
    * پس تکرار بی‌خطر است — ولی idempotency «این برگشت قبلاً انجام شده» با
    * بخش خرید است (مثلاً `HotelBooking.refundedAmount`).
    *
-   * @returns مبلغی که واقعاً برگشت (تومان)
+   * @returns مبلغی که واقعاً برگشت (ریال)
    */
   async refund(
     intentId: string,
@@ -1444,7 +1444,7 @@ export function gatewayRef(payment: GatewayPayment): GatewayPaymentRef {
   return {
     ref: payment.ref ?? '',
     trackerId: payment.trackerId,
-    amountRial: Number(payment.amount) * 10,
+    amountRial: Number(payment.amount),
     createdAt: payment.createdAt,
   };
 }

@@ -6,7 +6,7 @@ export class StartPaymentDto {
   @Matches(/^[A-Za-z0-9]{4,16}$/, { message: 'کد فروشگاه نامعتبر است' })
   storeCode!: string;
 
-  /** مبلغ کل به تومان — عدد صحیح مثبت */
+  /** مبلغ کل به ریال — عدد صحیح مثبت */
   @IsInt({ message: 'مبلغ باید عدد صحیح باشد' })
   @IsPositive({ message: 'مبلغ باید بیشتر از صفر باشد' })
   amount!: number;

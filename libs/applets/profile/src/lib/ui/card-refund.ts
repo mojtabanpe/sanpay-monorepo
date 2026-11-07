@@ -57,12 +57,11 @@ export class CardRefundCard {
   protected readonly recent = computed(
     () => this.summary()?.refunds.slice(0, RECENT) ?? [],
   );
-  protected readonly amount = computed(() => Number(this.rial() || 0) / 10);
+  protected readonly amount = computed(() => Number(this.rial() || 0));
   protected readonly invalid = computed(() => {
     const summary = this.summary();
     const amount = this.amount();
     if (!summary || amount <= 0) return null;
-    if (!Number.isInteger(amount)) return 'مبلغ باید مضربی از ۱۰ ریال باشد.';
     if (amount > summary.refundable)
       return 'مبلغ از ماندهٔ قابل بازگشت بیشتر است.';
     if (amount < summary.minimum && amount !== summary.refundable)
@@ -88,13 +87,13 @@ export class CardRefundCard {
 
   protected open(): void {
     const refundable = this.summary()?.refundable ?? 0;
-    this.rial.set(refundable > 0 ? String(refundable * 10) : '');
+    this.rial.set(refundable > 0 ? String(refundable) : '');
     this.error.set(null);
     this.sheetOpen.set(true);
   }
 
   protected fillAll(): void {
-    this.rial.set(String((this.summary()?.refundable ?? 0) * 10));
+    this.rial.set(String(this.summary()?.refundable ?? 0));
   }
 
   protected onSheetState(state: string): void {

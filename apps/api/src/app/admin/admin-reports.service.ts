@@ -229,7 +229,7 @@ export class AdminReportsService {
         employee: payment.employee.name,
         personnelCode: payment.employee.personnelCode,
         store: payment.store.name,
-        amount: payment.amount * 10,
+        amount: payment.amount,
         settlement: payment.settlement.status,
         followUpCode: payment.settlement.followUpCode ?? '',
         createdAt: new Date(payment.createdAt),

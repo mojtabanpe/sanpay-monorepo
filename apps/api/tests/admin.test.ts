@@ -59,6 +59,9 @@ test('employee deletion archives identity and disables allocations without delet
     walletAllocation: {
       updateMany: async (change: unknown) => changes.push(change),
     },
+    employeeSession: {
+      updateMany: async (change: unknown) => changes.push(change),
+    },
   };
   const prisma = {
     employee: { findUnique: async () => current },
@@ -67,7 +70,9 @@ test('employee deletion archives identity and disables allocations without delet
   await new AdminEmployeesService(prisma as unknown as PrismaService).remove(
     current.id,
   );
-  assert.equal(changes.length, 2);
+  assert.equal(changes.length, 3);
+  // موبایل آزاد می‌شود تا همان شخص دوباره قابل ثبت باشد
+  assert.equal((changes[0] as { data: { phone: null } }).data.phone, null);
   assert.equal(
     (changes[0] as { data: { isActive: boolean; deletedAt: Date } }).data
       .isActive,
@@ -81,6 +86,10 @@ test('employee deletion archives identity and disables allocations without delet
     where: { employeeId: current.id },
     data: { isActive: false },
   });
+  assert.equal(
+    (changes[2] as { where: { employeeId: string } }).where.employeeId,
+    current.id,
+  );
 });
 
 test('archived employees cannot reuse an existing JWT', async () => {

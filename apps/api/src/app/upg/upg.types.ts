@@ -37,7 +37,7 @@ export interface CreateIntentInput {
   targetId: string;
   title: string;
   subtitle?: string | null;
-  /** تومان */
+  /** ریال */
   amount: number;
   /** کیف‌پول‌های رفاهی مجاز — کیف پول شخصی همیشه مجاز است */
   allowedAllocationIds: string[];

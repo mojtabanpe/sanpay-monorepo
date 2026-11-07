@@ -64,7 +64,7 @@ export class MerchantPaymentsService {
     if (dto.amount > checkout.totalAvailable) {
       throw new BadRequestException(
         checkout.totalAvailable > 0
-          ? `اعتبار کارمند در این فروشگاه ${checkout.totalAvailable} تومان است؛ مازاد را جدا با کارت دریافت کنید`
+          ? `اعتبار کارمند در این فروشگاه ${checkout.totalAvailable.toLocaleString('fa-IR')} ریال است؛ مازاد را جدا با کارت دریافت کنید`
           : 'کارمند در این فروشگاه اعتباری ندارد',
       );
     }

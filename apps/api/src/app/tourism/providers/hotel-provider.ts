@@ -84,7 +84,7 @@ export interface ProviderReserveResult {
   /** شناسهٔ رزرو نزد تأمین‌کننده — برای confirm/cancel و تطبیق webhook */
   reserveRef: string;
   /**
-   * مبلغی که ما به تأمین‌کننده بدهکاریم (تومان) — مبنای تسویه، نه مبلغی که از
+   * مبلغی که ما به تأمین‌کننده بدهکاریم (ریال) — مبنای تسویه، نه مبلغی که از
    * کارمند گرفته‌ایم. اگر تأمین‌کننده تفکیک نداده باشد null است.
    */
   payable: number | null;
@@ -105,9 +105,9 @@ export type ProviderCancelStatus = 'CANCELED' | 'CANCELING' | 'REJECTED';
 
 export interface ProviderCancelResult {
   status: ProviderCancelStatus;
-  /** مبلغ قابل برگشت به کیف پول (تومان) */
+  /** مبلغ قابل برگشت به کیف پول (ریال) */
   refundable: number;
-  /** جریمهٔ کنسلی که نزد تأمین‌کننده می‌ماند (تومان) */
+  /** جریمهٔ کنسلی که نزد تأمین‌کننده می‌ماند (ریال) */
   penalty: number;
   message: string | null;
 }

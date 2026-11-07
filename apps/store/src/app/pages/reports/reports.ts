@@ -276,7 +276,7 @@ export class Reports {
   }
 
   protected rial(value: number): string {
-    return `${this.numberFormatter.format(value * 10)} ریال`;
+    return `${this.numberFormatter.format(value)} ریال`;
   }
 
   protected count(value: number): string {

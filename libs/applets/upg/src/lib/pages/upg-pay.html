@@ -87,7 +87,7 @@
             class="text-left text-base font-semibold tabular-nums"
             [sanpayAmount]="rialText(source)"
             (sanpayAmountChange)="onAmount(source, $event)"
-            [sanpayAmountMax]="source.max * 10"
+            [sanpayAmountMax]="source.max"
           />
           <hlm-input-group-addon align="inline-end">
             <span hlmInputGroupText>ریال</span>
@@ -160,10 +160,6 @@
       @if (overpaid()) {
       <p class="text-(--neg-fg) text-xs" role="status">
         جمع مبالغ اعتبار از مبلغ خرید بیشتر است.
-      </p>
-      } @else if (hasFraction()) {
-      <p class="text-(--warn-fg) text-xs" role="status">
-        مبلغ باید مضربی از ۱۰ ریال باشد.
       </p>
       } @else if (cardBlocked()) {
       <p class="text-(--warn-fg) text-xs" role="status">

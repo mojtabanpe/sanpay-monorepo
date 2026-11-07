@@ -63,9 +63,9 @@ const raw = [
     departure_flight: leg,
     return_flight: null,
     total_price: {
-      adult_guest_price: 10000,
-      child_guest_price: 5000,
-      infant_guest_price: 2000,
+      adult_guest_price: 1000,
+      child_guest_price: 500,
+      infant_guest_price: 200,
     },
   },
 ];
@@ -88,7 +88,7 @@ const input: FlightBookingInput = {
   ],
 };
 
-test('converts provider prices once and totals each passenger category', () => {
+test('keeps IRR prices as rial, converts IRT, and totals each passenger category', () => {
   assert.equal(offer.amount, 1000);
   assert.equal(
     flightAmount(
@@ -100,8 +100,10 @@ test('converts provider prices once and totals each passenger category', () => {
   );
   assert.equal(flightAmount(raw[0].total_price, search, 'IRT'), 10000);
   assert.throws(() => flightAmount(raw[0].total_price, search, ''));
-  assert.throws(() =>
+  // ریال اعشار ندارد، ولی مضرب ۱۰ بودن دیگر شرط نیست
+  assert.equal(
     flightAmount({ adult_guest_price: 10001 }, search, 'IRR'),
+    10001,
   );
   assert.throws(() => flightAmount({ adult_guest_price: -10 }, search, 'IRR'));
 });
@@ -536,7 +538,7 @@ test('HTTP adapter uses the documented paths and preserves return legs, passenge
     const reserve = {
       confirmation_code: 'ABC',
       status: 'booked',
-      total_guest_price: 10000,
+      total_guest_price: 1000,
       passengers: [{ id: 1, first_name_en: 'Ali', last_name_en: 'Ahmadi' }],
       tickets: [
         {

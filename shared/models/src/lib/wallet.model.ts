@@ -7,9 +7,9 @@ export interface Wallet {
   /** اسلاگ آیکون (WalletIcon) — مقادیر ناشناخته با آیکون پیش‌فرض نمایش داده می‌شوند */
   icon: string | null;
   imageUrl?: string | null;
-  /** سقف اعتبار (تومان) */
+  /** سقف اعتبار (ریال) */
   cap: number;
-  /** ماندهٔ اعتبار (تومان) */
+  /** ماندهٔ اعتبار (ریال) */
   remaining: number;
   /** تاریخ انقضا (ISO) — نمایش جلالی سمت کلاینت انجام می‌شود */
   expiresAt: string;

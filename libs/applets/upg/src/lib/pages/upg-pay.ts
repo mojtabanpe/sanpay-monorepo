@@ -47,20 +47,8 @@ export class UpgPayPage {
   /** بعد از ارسال به درگاه — صفحه تا رفتن مرورگر قفل می‌ماند */
   protected readonly redirecting = signal(false);
 
-  /**
-   * مبلغ هر منبع به **ریال**، همان واحد اینپوت. state تومانی رقم اول را
-   * می‌خورد (`۵` ریال → `۰` تومان)؛ تومان از رویش مشتق می‌شود.
-   */
-  private readonly rials = signal<Record<string, number>>({});
-
-  private readonly amounts = computed(() =>
-    Object.fromEntries(
-      Object.entries(this.rials()).map(([id, rial]) => [
-        id,
-        Math.floor(rial / 10),
-      ]),
-    ),
-  );
+  /** مبلغ هر منبع به **ریال** — همان واحد اینپوت و API */
+  private readonly amounts = signal<Record<string, number>>({});
 
   protected readonly creditTotal = computed(() =>
     Object.values(this.amounts()).reduce((sum, amount) => sum + amount, 0),
@@ -71,9 +59,6 @@ export class UpgPayPage {
   protected readonly overpaid = computed(
     () => this.creditTotal() > (this.intent()?.amount ?? 0),
   );
-  protected readonly hasFraction = computed(() =>
-    Object.values(this.rials()).some((rial) => rial % 10 !== 0),
-  );
   protected readonly cardBlocked = computed(
     () => this.cardAmount() > 0 && !this.intent()?.cardAvailable,
   );
@@ -81,7 +66,6 @@ export class UpgPayPage {
     () =>
       !!this.intent() &&
       !this.overpaid() &&
-      !this.hasFraction() &&
       !this.cardBlocked() &&
       !this.busy(),
   );
@@ -135,20 +119,18 @@ export class UpgPayPage {
   }
 
   private applyLines(lines: UpgLine[]): void {
-    this.rials.set(
-      Object.fromEntries(
-        lines.map((line) => [line.allocationId, line.amount * 10]),
-      ),
+    this.amounts.set(
+      Object.fromEntries(lines.map((line) => [line.allocationId, line.amount])),
     );
   }
 
   protected rialText(source: UpgSource): string {
-    const rial = this.rials()[source.allocationId] ?? 0;
+    const rial = this.amounts()[source.allocationId] ?? 0;
     return rial === 0 ? '' : String(rial);
   }
 
   protected onAmount(source: UpgSource, digits: string): void {
-    this.rials.update((current) => ({
+    this.amounts.update((current) => ({
       ...current,
       [source.allocationId]: Number(digits || 0),
     }));
@@ -160,7 +142,7 @@ export class UpgPayPage {
     const others =
       this.creditTotal() - (this.amounts()[source.allocationId] ?? 0);
     const room = Math.max(0, (this.intent()?.amount ?? 0) - others);
-    this.onAmount(source, String(Math.min(source.max, room) * 10));
+    this.onAmount(source, String(Math.min(source.max, room)));
   }
 
   protected useSuggested(): void {
@@ -169,7 +151,7 @@ export class UpgPayPage {
   }
 
   protected payAllByCard(): void {
-    this.rials.set({});
+    this.amounts.set({});
   }
 
   protected onConfirmStateChange(state: string): void {

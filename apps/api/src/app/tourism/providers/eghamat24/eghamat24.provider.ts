@@ -29,7 +29,7 @@ import {
   ProviderReserveStatus,
   ProviderSearchParams,
 } from '../hotel-provider';
-import { rialToToman } from '../money';
+import { providerRial } from '../money';
 import { ProviderKey, decodeId, decodeNumericId } from '../provider-id';
 import {
   suggestionToAvailability,
@@ -300,7 +300,7 @@ function toReserveResult(details: GrsReserveDetails): ProviderReserveResult {
     status: RESERVE_STATUS[details.status] ?? 'PENDING',
     reserveRef: details.confirmation_code,
     // بدهی ما به اقامت۲۴ نرخ GRS است، نه نرخ برد
-    payable: rialToToman(details.total_sales_price) || null,
+    payable: providerRial(details.total_sales_price) || null,
     expiresAt: parseGrsStamp(details.expire_date),
     message: details.description || null,
   };
@@ -313,8 +313,8 @@ const CANCEL_STATUS: Partial<Record<GrsReserveStatus, ProviderCancelStatus>> = {
 };
 
 function toCancelResult(details: GrsReserveDetails): ProviderCancelResult {
-  const penalty = rialToToman(details.total_canellation_fee ?? 0);
-  const paid = rialToToman(details.total_sales_price);
+  const penalty = providerRial(details.total_canellation_fee ?? 0);
+  const paid = providerRial(details.total_sales_price);
 
   return {
     status: CANCEL_STATUS[details.status] ?? 'REJECTED',

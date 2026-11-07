@@ -299,7 +299,7 @@ export class EmployeeDetailPage implements OnInit {
   ): Promise<void> {
     const amount = parseAmount(input.value);
     if (!Number.isSafeInteger(amount) || amount <= 0) {
-      notifyError('مبلغ شارژ باید مثبت و مضربی از ۱۰ ریال باشد');
+      notifyError('مبلغ شارژ باید عدد مثبت (ریال) باشد');
       return;
     }
     await this.run(async () => {

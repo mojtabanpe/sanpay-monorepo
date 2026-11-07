@@ -34,7 +34,7 @@ class UpgLineDto {
   @IsUUID()
   allocationId!: string;
 
-  /** تومان */
+  /** ریال */
   @IsInt({ message: 'مبلغ باید عدد صحیح باشد' })
   @Min(0)
   amount!: number;
@@ -49,7 +49,7 @@ class UpgPayDto {
 }
 
 class CardRefundDto {
-  /** تومان */
+  /** ریال */
   @IsInt({ message: 'مبلغ باید عدد صحیح باشد' })
   @Min(1, { message: 'مبلغ بازگشت باید بیشتر از صفر باشد' })
   amount!: number;

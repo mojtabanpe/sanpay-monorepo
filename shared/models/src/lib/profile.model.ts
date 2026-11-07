@@ -30,13 +30,13 @@ export interface OtpRequestResult {
 
 /** خلاصهٔ وضعیت اعتبار برای کارت بالای صفحهٔ پروفایل */
 export interface ProfileSummary {
-  /** جمع ماندهٔ همهٔ کیف‌پول‌های فعال (تومان) */
+  /** جمع ماندهٔ همهٔ کیف‌پول‌های فعال (ریال) */
   totalRemaining: number;
   /** تعداد کیف‌پول‌های فعال و منقضی‌نشده */
   walletCount: number;
   /** نزدیک‌ترین تاریخ انقضا (ISO) — اگر کیف پولی نمانده باشد null */
   nextExpiry: string | null;
-  /** جمع خرید ماه جاری (تومان) */
+  /** جمع خرید ماه جاری (ریال) */
   spentThisMonth: number;
   /** تعداد خریدهای ثبت‌شده */
   paymentCount: number;
@@ -47,7 +47,7 @@ export interface PaymentHistoryItem {
   id: string;
   receiptNo: string;
   storeName: string;
-  /** جمع کل (تومان) */
+  /** جمع کل (ریال) */
   amount: number;
   createdAt: string;
   /** تفکیک به‌ازای هر کیف پول */

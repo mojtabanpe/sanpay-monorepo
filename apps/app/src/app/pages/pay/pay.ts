@@ -58,23 +58,18 @@ export class PayPage implements OnDestroy {
 
   /**
    * مبلغ کل به **ریال** (ارقام لاتین بی‌جداکننده — مدل `sanpayAmount`)، همان
-   * واحدی که در اینپوت دیده می‌شود. API تومان می‌گیرد.
+   * واحدی که در اینپوت دیده می‌شود و API می‌گیرد.
    */
   protected readonly rial = signal('');
-  private readonly amount = computed(() => Math.floor(Number(this.rial() || 0) / 10));
-  /** ریال کمتر از ۱۰ قابل کسر نیست؛ به‌جای گردکردنِ بی‌صدا ادامه را می‌بندیم */
-  protected readonly hasFraction = computed(() => Number(this.rial() || 0) % 10 !== 0);
+  private readonly amount = computed(() => Number(this.rial() || 0));
   /** خرید فروشگاهی فقط تا سقف اعتبار؛ مازاد را مستقیم با کارت در فروشگاه بدهید */
   protected readonly overLimit = computed(
     () =>
-      this.amount() > 0 && this.amount() > (this.checkout()?.totalAvailable ?? 0),
+      this.amount() > 0 &&
+      this.amount() > (this.checkout()?.totalAvailable ?? 0),
   );
   protected readonly canContinue = computed(
-    () =>
-      this.amount() > 0 &&
-      !this.hasFraction() &&
-      !this.overLimit() &&
-      !this.busy(),
+    () => this.amount() > 0 && !this.overLimit() && !this.busy(),
   );
 
   private readonly faNumber = new Intl.NumberFormat('fa-IR');
@@ -174,7 +169,7 @@ export class PayPage implements OnDestroy {
   protected fillMax(): void {
     const available = this.checkout()?.totalAvailable ?? 0;
     if (this.busy() || available <= 0) return;
-    this.rial.set(String(available * 10));
+    this.rial.set(String(available));
     this.error.set(null);
   }
 
@@ -206,9 +201,8 @@ export class PayPage implements OnDestroy {
   }
 
   protected toman(value: number): string {
-    return `${this.faNumber.format(value * 10)} ریال`;
+    return `${this.faNumber.format(value)} ریال`;
   }
-
 }
 
 function messageOf(caught: unknown, fallback: string): string {

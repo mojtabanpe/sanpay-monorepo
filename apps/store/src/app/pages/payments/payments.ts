@@ -210,7 +210,7 @@ export class PaymentsPage implements OnDestroy {
   }
 
   protected rial(value: number): string {
-    return `${this.faNumber.format(value * 10)} ریال`;
+    return `${this.faNumber.format(value)} ریال`;
   }
 
   protected count(value: number): string {

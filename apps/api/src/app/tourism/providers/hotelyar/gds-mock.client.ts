@@ -215,8 +215,8 @@ function placeholder(label: string, from: string, to: string): string {
   return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
 }
 
-/** قیمت شبانهٔ پایدار (تومان) — بین فراخوانی‌ها تغییر نمی‌کند تا UI پرش نکند */
-/** نرخ یک شب به **ریال**، مثل API واقعی — مپر به تومان تبدیلش می‌کند */
+/** قیمت شبانهٔ پایدار (ریال) — بین فراخوانی‌ها تغییر نمی‌کند تا UI پرش نکند */
+/** نرخ یک شب به **ریال**، مثل API واقعی و خود سامانه */
 function nightlyRate(hotelId: number, roomId: number): number {
   return 15_000_000 + ((hotelId * 31 + roomId * 17) % 20) * 2_500_000;
 }

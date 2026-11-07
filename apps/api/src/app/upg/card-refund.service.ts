@@ -28,10 +28,10 @@ import { tomanLog, tomanOperation, tomanError } from '../toman/toman-log';
 /** وضعیت‌هایی که هنوز پیگیری می‌شوند */
 const OPEN: GatewayRefundStatus[] = ['SUBMITTING', 'PENDING', 'UNKNOWN'];
 /**
- * کمترین مبلغ یک درخواست (تومان) — مگر کل مانده کمتر باشد. هر بازگشت
- * کارمزد تومان دارد؛ بدون کف، چند درخواست یک‌تومانی هزینهٔ واقعی می‌سازد.
+ * کمترین مبلغ یک درخواست (ریال) — مگر کل مانده کمتر باشد. هر بازگشت
+ * کارمزد تومان دارد؛ بدون کف، چند درخواست چندریالی هزینهٔ واقعی می‌سازد.
  */
-const MIN_REFUND = 1_000;
+const MIN_REFUND = 10_000;
 /** بازگشت تازه را cron تا این مدت دست نمی‌زند — درخواست ثبتش هنوز در راه است */
 const SUBMIT_GRACE_MS = 60_000;
 const POLL_EVERY_MS = 2 * 60_000;
@@ -93,7 +93,7 @@ export class CardRefundService {
     };
   }
 
-  /** @param amount تومان */
+  /** @param amount ریال */
   async request(
     employeeId: string,
     amount: number,
@@ -552,7 +552,7 @@ export class CardRefundService {
       payment: gatewayRef(payment),
       trackerId: refund.trackerId,
       ref: refund.ref,
-      amountRial: Number(refund.amount) * 10,
+      amountRial: Number(refund.amount),
     };
   }
 }

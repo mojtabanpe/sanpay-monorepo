@@ -18,10 +18,10 @@ const dateTimeFormatter = new Intl.DateTimeFormat('fa-IR-u-ca-persian', {
   minute: '2-digit',
 });
 
-/** تومان ذخیره‌شده → ریال نمایشی */
+/** مبلغ (ریال، همان واحد API) با جداکننده و واحد */
 export function toman(value: number | null | undefined): string {
   if (value === null || value === undefined) return '—';
-  return `${amountFormatter.format(value * 10)} ریال`;
+  return `${amountFormatter.format(value)} ریال`;
 }
 
 /** فقط عدد فارسی، بدون واحد */
@@ -49,14 +49,14 @@ export function isoDate(date: Date): string {
   ).padStart(2, '0')}`;
 }
 
-/** ورودی ریالی کاربر (با رقم فارسی/عربی یا جداکنندهٔ هزار) → تومان برای API */
+/** ورودی ریالی کاربر (با رقم فارسی/عربی یا جداکنندهٔ هزار) → عدد ریال برای API */
 export function parseAmount(raw: string): number {
   const normalized = raw
     .replace(/[۰-۹]/g, (d) => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d)))
     .replace(/[٠-٩]/g, (d) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d)))
     .replace(/[^\d-]/g, '');
   const value = Number(normalized);
-  return Number.isFinite(value) ? value / 10 : 0;
+  return Number.isFinite(value) ? value : 0;
 }
 
 export const WALLET_KIND_LABELS: Record<string, string> = {

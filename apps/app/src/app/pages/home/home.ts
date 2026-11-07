@@ -202,7 +202,7 @@ export class HomePage {
 
   // arrow تا بشود آن را به‌عنوان `countUpFormat` پاس داد و `this` گم نشود
   protected readonly toman = (value: number): string =>
-    `${this.faNumber.format(value * 10)} ریال`;
+    `${this.faNumber.format(value)} ریال`;
 
   protected count(value: number): string {
     return this.faNumber.format(value);

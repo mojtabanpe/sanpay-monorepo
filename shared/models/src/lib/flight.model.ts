@@ -37,7 +37,7 @@ export interface FlightOffer {
   id: string;
   departure: FlightLeg;
   returning: FlightLeg | null;
-  /** Total for all passengers, in toman. */
+  /** Total for all passengers, in rial. */
   amount: number;
 }
 export interface FlightPassenger {

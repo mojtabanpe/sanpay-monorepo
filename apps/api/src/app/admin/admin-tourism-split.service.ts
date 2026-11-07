@@ -169,11 +169,11 @@ export class AdminTourismSplitService {
         nationalCode: person.employee.nationalCode,
         personnelCode: person.employee.personnelCode,
         count: person.count,
-        total: person.total * 10,
-        credit: person.credit * 10,
-        card: person.card * 10,
-        cardRefunded: person.cardRefunded * 10,
-        invoiceBase: person.invoiceBase * 10,
+        total: person.total,
+        credit: person.credit,
+        card: person.card,
+        cardRefunded: person.cardRefunded,
+        invoiceBase: person.invoiceBase,
       });
     }
 
@@ -197,11 +197,11 @@ export class AdminTourismSplitService {
         ...item,
         completedAt: new Date(item.completedAt),
         kind: item.kind === 'HOTEL' ? 'هتل' : 'پرواز',
-        total: item.total * 10,
-        credit: item.credit * 10,
-        card: item.card * 10,
-        cardRefunded: item.cardRefunded * 10,
-        invoiceBase: item.invoiceBase * 10,
+        total: item.total,
+        credit: item.credit,
+        card: item.card,
+        cardRefunded: item.cardRefunded,
+        invoiceBase: item.invoiceBase,
       });
     }
     detail.getColumn('completedAt').numFmt = 'yyyy-mm-dd hh:mm';

@@ -23,7 +23,7 @@ export interface FlightFilters {
   classes: string[];
   /** charter / system — خالی یعنی همه */
   types: string[];
-  /** مبلغ کل مسافران (تومان) */
+  /** مبلغ کل مسافران (ریال) */
   price: PriceRange;
   /** حداقل بار مجاز (کیلوگرم)؛ ۰ یعنی مهم نیست */
   minBaggage: number;
@@ -54,7 +54,9 @@ export function activeFlightFilters(filters: FlightFilters): number {
 }
 
 export function legsOf(offer: FlightOffer): FlightLeg[] {
-  return offer.returning ? [offer.departure, offer.returning] : [offer.departure];
+  return offer.returning
+    ? [offer.departure, offer.returning]
+    : [offer.departure];
 }
 
 /**
@@ -127,7 +129,8 @@ export function applyFlightFilters(
       );
     case 'short':
       return result.sort(
-        (a, b) => durationMinutes(a) - durationMinutes(b) || a.amount - b.amount,
+        (a, b) =>
+          durationMinutes(a) - durationMinutes(b) || a.amount - b.amount,
       );
   }
 }

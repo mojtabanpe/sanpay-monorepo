@@ -6,7 +6,7 @@ import { HotelSummary, RoomOffer } from './tourism.model';
  * از کل نتیجه حساب شود، نه از همان ۲۰ کارتی که به اپ رسیده.
  */
 
-/** بازهٔ قیمت [کمینه، بیشینه] به تومان؛ null یعنی بدون فیلتر */
+/** بازهٔ قیمت [کمینه، بیشینه] به ریال؛ null یعنی بدون فیلتر */
 export type PriceRange = readonly [number, number] | null;
 
 /** کارت فهرست — کاتالوگ، یا جست‌وجوی تاریخ‌دار با اتاق‌ها و کمترین قیمت */
@@ -42,7 +42,7 @@ export interface HotelFilters {
   types: string[];
   /** ستاره‌ها — خالی یعنی همه */
   rates: number[];
-  /** قیمت کل اقامت (تومان) */
+  /** قیمت کل اقامت (ریال) */
   price: PriceRange;
   breakfast: boolean;
   /** حداقل ظرفیت اتاق؛ ۰ یعنی مهم نیست */

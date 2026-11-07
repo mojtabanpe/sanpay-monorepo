@@ -130,7 +130,7 @@ interface PaymentGateway {
 - `GatewayPayment`: `intentId`, `gateway`, `trackerId` (یکتا), `ref` (uuid درگاه، یکتا), `amount`, `status`,
   `psp`, `terminal`, `traceNumber`, `referenceNumber`, `maskedCard`, `raw`, `verifiedAt`, `refundedAmount`.
 - `GatewayRefund`: `gatewayPaymentId`, `amount`, `trackerId`, `ref`, `status`.
-- مبالغ دیتابیس تومان، مرز درگاه ریال (× ۱۰) — مثل ماژول تسویه.
+- همهٔ مبالغ (دیتابیس، API و درگاه) ریال‌اند؛ تبدیلی در مرز درگاه نیست.
 
 ## فازها
 

@@ -51,7 +51,8 @@ export function flightAmount(
     num(price['adult_guest_price']) * search.adults +
     (search.children ? num(price['child_guest_price']) * search.children : 0) +
     (search.infants ? num(price['infant_guest_price']) * search.infants : 0);
-  const amount = total / (currency === 'IRR' ? 10 : 1);
+  // مبالغ سامانه ریال‌اند؛ فقط پاسخ تومانی (IRT) تبدیل می‌شود.
+  const amount = total * (currency === 'IRT' ? 10 : 1);
   if (!Number.isSafeInteger(amount) || amount <= 0)
     throw new BadGatewayException('مبلغ پرواز قابل پرداخت نیست');
   return amount;

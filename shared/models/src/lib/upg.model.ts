@@ -26,7 +26,7 @@ export interface UpgSource {
   allocationId: string;
   name: string;
   icon: string | null;
-  /** بیشترین مبلغ قابل کسر (تومان) */
+  /** بیشترین مبلغ قابل کسر (ریال) */
   max: number;
   /**
    * `PERSONAL` مانده‌ای است که از پرداخت‌های کارتی قبلی برگشته — به کاربر
@@ -37,7 +37,7 @@ export interface UpgSource {
 
 export interface UpgLine {
   allocationId: string;
-  /** مبلغ (تومان) */
+  /** مبلغ (ریال) */
   amount: number;
 }
 
@@ -68,9 +68,9 @@ export interface UpgIntentView {
   status: PaymentIntentStatus;
   title: string;
   subtitle: string | null;
-  /** مبلغ کل (تومان) */
+  /** مبلغ کل (ریال) */
   amount: number;
-  /** سهم کارت در آخرین تقسیم (تومان) */
+  /** سهم کارت در آخرین تقسیم (ریال) */
   gatewayAmount: number;
   failureReason: string | null;
   expiresAt: string;
@@ -99,7 +99,7 @@ export type CardRefundStatus =
 
 export interface CardRefundItem {
   id: string;
-  /** تومان */
+  /** ریال */
   amount: number;
   status: CardRefundStatus;
   /** کارتی که پول به آن برمی‌گردد */
@@ -109,17 +109,17 @@ export interface CardRefundItem {
 }
 
 export interface CardRefundSummary {
-  /** ماندهٔ پرداخت‌های کارتی (تومان) */
+  /** ماندهٔ پرداخت‌های کارتی (ریال) */
   balance: number;
-  /** چقدر از آن از طریق درگاه قابل بازگشت است (تومان) */
+  /** چقدر از آن از طریق درگاه قابل بازگشت است (ریال) */
   refundable: number;
-  /** کمترین مبلغ یک درخواست (تومان)، مگر کل مانده کمتر باشد */
+  /** کمترین مبلغ یک درخواست (ریال)، مگر کل مانده کمتر باشد */
   minimum: number;
   /** آخرین درخواست‌ها، جدیدترین اول */
   refunds: CardRefundItem[];
 }
 
 export interface CardRefundInput {
-  /** تومان */
+  /** ریال */
   amount: number;
 }

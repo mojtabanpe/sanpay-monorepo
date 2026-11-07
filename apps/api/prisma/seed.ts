@@ -115,8 +115,8 @@ async function main() {
       name: 'ارزاق ماهانه',
       icon: 'food',
       kind: 'RATION',
-      cap: 5_000_000n,
-      spent: 1_800_000n,
+      cap: 50_000_000n,
+      spent: 18_000_000n,
       expiresAt: new Date('2026-08-22'), // ۱۴۰۵/۰۵/۳۱
       storeUsernames: ['coop', 'pegah'],
     },
@@ -124,8 +124,8 @@ async function main() {
       name: 'خواربار و مواد غذایی',
       icon: 'grocery',
       kind: 'CREDIT',
-      cap: 15_000_000n,
-      spent: 5_200_000n,
+      cap: 150_000_000n,
+      spent: 52_000_000n,
       expiresAt: new Date('2026-09-22'), // ۱۴۰۵/۰۶/۳۱
       storeUsernames: ['ajil', 'fruit', 'zagros'],
     },
@@ -133,7 +133,7 @@ async function main() {
       name: 'پوشاک و ورزش',
       icon: 'sport',
       kind: 'CREDIT',
-      cap: 8_000_000n,
+      cap: 80_000_000n,
       spent: 0n,
       expiresAt: new Date('2027-03-20'), // ۱۴۰۵/۱۲/۲۹
       storeUsernames: ['olympic', 'iranmod'],
@@ -144,8 +144,8 @@ async function main() {
       name: 'هدیه رفاهی',
       icon: 'gift',
       kind: 'CREDIT',
-      cap: 2_000_000n,
-      spent: 400_000n,
+      cap: 20_000_000n,
+      spent: 4_000_000n,
       expiresAt: new Date('2026-11-21'), // ۱۴۰۵/۰۸/۳۰
       storeUsernames: ['olympic', 'iranmod', 'didgan'],
     },
@@ -153,8 +153,8 @@ async function main() {
       name: 'عینک و سلامت',
       icon: 'health',
       kind: 'CREDIT',
-      cap: 3_000_000n,
-      spent: 1_750_000n,
+      cap: 30_000_000n,
+      spent: 17_500_000n,
       expiresAt: new Date('2026-12-21'), // ۱۴۰۵/۰۹/۳۰
       storeUsernames: ['didgan'],
     },
@@ -164,7 +164,7 @@ async function main() {
       name: 'اعتبار گردشگری',
       icon: 'travel',
       kind: 'TOURISM',
-      cap: 40_000_000n,
+      cap: 400_000_000n,
       spent: 0n,
       expiresAt: new Date('2027-03-20'), // ۱۴۰۵/۱۲/۲۹
       storeUsernames: [],

@@ -102,9 +102,9 @@ export async function parseAllocationFile(
     }
 
     const capRaw = toLatinDigits(row[columns.cap] ?? '').replace(/[^\d]/g, '');
-    const cap = Number(capRaw) / 10;
+    const cap = Number(capRaw);
     if (!capRaw || !Number.isSafeInteger(cap) || cap <= 0) {
-      errors.push(`سطر ${lineNo}: مبلغ شارژ باید مثبت و مضربی از ۱۰ ریال باشد`);
+      errors.push(`سطر ${lineNo}: مبلغ شارژ باید عدد مثبت (ریال) باشد`);
       return;
     }
 

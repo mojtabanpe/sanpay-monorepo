@@ -6,7 +6,7 @@ import {
   RoomOffer,
   TourismCity,
 } from '@sanpay/models';
-import { rialToToman } from '../money';
+import { providerRial } from '../money';
 import { encodeId } from '../provider-id';
 import { GdsCity, GdsHotel, GdsSearchResult } from './gds.types';
 
@@ -18,7 +18,7 @@ const HY = 'hy' as const;
  *
  * GDS تقریباً همهٔ عددها را رشته برمی‌گرداند و بعضی فیلدها (hotelGeo، photo)
  * می‌توانند null باشند؛ نرمال‌سازی همین‌جا انجام می‌شود تا کلاینت با یک شکل
- * ثابت کار کند. قیمت‌های هتل‌یار **ریال**‌اند و همین‌جا به تومان تبدیل می‌شوند.
+ * ثابت کار کند. قیمت‌های هتل‌یار **ریال**‌اند، همان واحد سامانه.
  */
 
 export function toCity(city: GdsCity): TourismCity {
@@ -119,8 +119,8 @@ export function toAvailability(result: GdsSearchResult): HotelAvailability {
         extraBed: Number(room.extraBed) || 0,
         // realFreeCapacity وقتی هتل پکیج تعریف کرده باشد معتبرتر است
         freeCapacity: Number(room.realFreeCapacity ?? room.freeCapacity) || 0,
-        price: rialToToman(room.price),
-        rackRate: rialToToman(room.rackRate),
+        price: providerRial(room.price),
+        rackRate: providerRial(room.rackRate),
       }))
       // اتاق پر یا بدون قیمت به کارمند نشان داده نمی‌شود
       .filter((room) => room.freeCapacity > 0 && room.price > 0),

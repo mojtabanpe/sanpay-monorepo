@@ -64,14 +64,14 @@ describe('employee session authentication', () => {
     expect(auth.isLoggedIn()).toBe(false);
   });
 
-  it('keeps the session available to retry if remote logout fails', async () => {
+  it('still signs out on this device if remote logout fails', async () => {
     const result = auth.logout();
     http
       .expectOne('/api/auth/logout')
       .flush({}, { status: 503, statusText: 'Unavailable' });
-    expect(await result).toBe(false);
-    expect(auth.token).toBe('current-token');
-    expect(auth.isLoggedIn()).toBe(true);
+    expect(await result).toBe(true);
+    expect(auth.token).toBeNull();
+    expect(auth.isLoggedIn()).toBe(false);
   });
 
   it('clears a remotely revoked session on 401 without requesting logout again', async () => {

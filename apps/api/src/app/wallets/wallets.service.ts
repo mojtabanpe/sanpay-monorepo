@@ -7,9 +7,9 @@ export interface WalletView {
   name: string;
   icon: string | null;
   imageUrl: string | null;
-  /** سقف اعتبار (تومان) */
+  /** سقف اعتبار (ریال) */
   cap: number;
-  /** ماندهٔ اعتبار (تومان) */
+  /** ماندهٔ اعتبار (ریال) */
   remaining: number;
   expiresAt: string;
   stores: string[];

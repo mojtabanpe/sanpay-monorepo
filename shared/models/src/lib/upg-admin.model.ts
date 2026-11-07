@@ -150,7 +150,7 @@ export interface AdminRefundWallet {
   /** null اگر خواندن ممکن نشد (`error`) */
   balance: number | null;
   address: string | null;
-  /** کف هشدار (تومان) */
+  /** کف هشدار (ریال) */
   minimum: number;
   /** جمع بازگشت‌های در جریان روی همین درگاه — باید از مانده برداشت شوند */
   openRefunds: number;

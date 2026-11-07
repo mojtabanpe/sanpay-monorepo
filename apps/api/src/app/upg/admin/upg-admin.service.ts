@@ -28,8 +28,8 @@ import { GatewayPaymentQueryDto, UpgReviewDto } from './upg-admin.dto';
 const STUCK_SUBMITTING_MINUTES = 15;
 /** PENDING تا پایان چرخهٔ تسویهٔ بانک عادی است */
 const STUCK_PENDING_DAYS = 3;
-/** کف پیش‌فرض هشدار کیف پول بازگشت (تومان) — `UPG_REFUND_WALLET_MIN` */
-const REFUND_WALLET_MIN = 5_000_000;
+/** کف پیش‌فرض هشدار کیف پول بازگشت (ریال) — `UPG_REFUND_WALLET_MIN` */
+const REFUND_WALLET_MIN = 50_000_000;
 const DENIED_WINDOW_MS = 7 * 24 * 60 * 60_000;
 
 /** پرداخت‌هایی که هیچ cronی تکلیفشان را روشن نمی‌کند */
@@ -358,10 +358,7 @@ export class UpgAdminService {
             }),
           ),
         ]);
-        // ریال → تومان، به سمت پایین تا مانده هرگز بیشتر از واقعی دیده نشود
-        const balance = wallet.value
-          ? Math.floor(wallet.value.balanceRial / 10)
-          : null;
+        const balance = wallet.value ? wallet.value.balanceRial : null;
         return {
           gateway: gateway.key,
           gatewayLabel: gateway.label,

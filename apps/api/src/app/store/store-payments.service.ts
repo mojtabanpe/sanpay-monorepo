@@ -205,7 +205,7 @@ export class StorePaymentsService {
       sheet.addRow({
         receiptNo: payment.receiptNo,
         employee: `${payment.employee.firstName} ${payment.employee.lastName}`,
-        amount: Number(payment.amount) * 10,
+        amount: Number(payment.amount),
         createdAt: payment.createdAt,
         settlement: labels[settlementStatus(payment.settlementItem?.status)],
         settledAt: payment.settledAt ?? '',
@@ -215,7 +215,7 @@ export class StorePaymentsService {
     const totalRow = sheet.addRow({
       receiptNo: 'جمع کل',
       employee: `${payments.length} پرداخت`,
-      amount: Number(total) * 10,
+      amount: Number(total),
     });
     totalRow.font = { bold: true };
     sheet.getRow(1).font = { bold: true };

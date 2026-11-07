@@ -58,7 +58,7 @@ export class MerchantPayment implements OnDestroy {
   }
 
   protected async requestOtp(): Promise<void> {
-    const amount = Number(this.amount()) / 10;
+    const amount = Number(this.amount());
     if (
       !/^\d{10}$/.test(this.nationalCode()) ||
       !/^09\d{9}$/.test(this.phone())
@@ -66,8 +66,8 @@ export class MerchantPayment implements OnDestroy {
       this.error.set('کد ملی و شماره موبایل را کامل وارد کنید');
       return;
     }
-    if (!Number.isInteger(amount) || amount <= 0) {
-      this.error.set('مبلغ ریالی معتبر (مضرب ۱۰) وارد کنید');
+    if (!Number.isSafeInteger(amount) || amount <= 0) {
+      this.error.set('مبلغ ریالی معتبر وارد کنید');
       return;
     }
     await this.run(async () => {
@@ -121,8 +121,8 @@ export class MerchantPayment implements OnDestroy {
     this.stopStream?.();
   }
 
-  protected rial(toman: number): string {
-    return `${new Intl.NumberFormat('fa-IR').format(toman * 10)} ریال`;
+  protected rial(value: number): string {
+    return `${new Intl.NumberFormat('fa-IR').format(value)} ریال`;
   }
 
   protected reset(): void {

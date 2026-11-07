@@ -10,21 +10,20 @@ describe('parseAllocationFile', () => {
 
     expect(result.errors).toEqual([]);
     expect(result.entries).toEqual([
-      { nationalCode: '0012345678', cap: 1_000_000, expiresAt: '2026-09-22' },
-      { nationalCode: '0098765432', cap: 800_000, expiresAt: '2026-09-22' },
+      { nationalCode: '0012345678', cap: 10_000_000, expiresAt: '2026-09-22' },
+      { nationalCode: '0098765432', cap: 8_000_000, expiresAt: '2026-09-22' },
     ]);
   });
 
-  it('rejects zero or fractional toman charges', async () => {
+  it('accepts any positive rial amount and rejects zero', async () => {
     const result = await parseCsv(
       'کد ملی,مبلغ شارژ (ریال),تاریخ انقضا\n' +
         '0012345678,500,۱۴۰۵/۰۶/۳۱\n' +
         '0098765432,0,۱۴۰۵/۰۶/۳۱\n' +
         '0011223344,15,۱۴۰۵/۰۶/۳۱',
     );
-    expect(result.entries).toHaveLength(1);
-    expect(result.entries[0].cap).toBe(50);
-    expect(result.errors).toHaveLength(2);
+    expect(result.entries.map((entry) => entry.cap)).toEqual([500, 15]);
+    expect(result.errors).toHaveLength(1);
   });
 
   it('reads the default column order without headers', async () => {
@@ -34,7 +33,7 @@ describe('parseAllocationFile', () => {
 
     expect(result.errors).toEqual([]);
     expect(result.entries.map((entry) => entry.cap)).toEqual([
-      600_000, 400_000,
+      6_000_000, 4_000_000,
     ]);
   });
 
@@ -46,7 +45,7 @@ describe('parseAllocationFile', () => {
 
     expect(result.errors).toEqual([]);
     expect(result.entries).toEqual([
-      { nationalCode: '0012345678', cap: 600_000, expiresAt: '2026-09-22' },
+      { nationalCode: '0012345678', cap: 6_000_000, expiresAt: '2026-09-22' },
     ]);
   });
 

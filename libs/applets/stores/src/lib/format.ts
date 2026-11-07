@@ -7,5 +7,5 @@ export function faNumber(value: number): string {
 }
 
 export function toman(value: number): string {
-  return `${NUMBER.format(value * 10)} ریال`;
+  return `${NUMBER.format(value)} ریال`;
 }

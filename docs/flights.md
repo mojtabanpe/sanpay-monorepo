@@ -9,7 +9,7 @@
 - `FLIGHT_MODE=live`
 - `FLIGHT_URL`: محیط اصلی `https://gateway.grschannel.com/flight` (Host Url مستند پرواز)، محیط تست `https://gateway-test-01.denv.ir/flight`. روی `api.grschannel.com/flight` مسیر پرواز وجود ندارد (404).
 - توکن: اقامت۲۴ برای هتل و پرواز **یک** Client-Token می‌دهد؛ پرواز همان `GRS_CLIENT_TOKEN` / `GRS_CLIENT_TOKEN_BASE64` هتل را در هدر `CLIENT-TOKEN` می‌فرستد و متغیر جدایی ندارد. `Auth-Token` لازم نیست. توکن نادرست جواب 403 `messages.client_not_set` می‌گیرد.
-- `FLIGHT_CURRENCY=IRR`: واحد ریال توسط کاربر تأیید شد؛ مبالغ اپ به تومان تبدیل می‌شوند.
+- `FLIGHT_CURRENCY=IRR`: واحد ریال توسط کاربر تأیید شد؛ سامانه هم ریالی است و تبدیلی لازم نیست (`IRT` ×۱۰ می‌شود).
 
 در نبود تنظیمات، سرویس با پیام فارسی غیرفعال است. داده نمونه به جای پرواز واقعی نمایش داده نمی‌شود. کلیدهای دسترسی فقط در بک‌اند هستند. تغییرات دیتابیس با `pnpm exec prisma migrate deploy` و کلاینت با `pnpm exec prisma generate` آماده می‌شوند. مایگریشن‌ها در دیتابیس محلی این کار اجرا شده‌اند.
 

@@ -334,9 +334,7 @@ export class WalletsPage {
       imageUrl: definition.imageUrl ?? '',
       icon: definition.icon ?? '',
       defaultCap:
-        definition.defaultCap === null
-          ? ''
-          : String(definition.defaultCap * 10),
+        definition.defaultCap === null ? '' : String(definition.defaultCap),
       storeIds: definition.stores.map((store) => store.id),
       companyId: definition.company.id,
     });
@@ -453,7 +451,7 @@ export class WalletsPage {
     this.bulkFor.set(definition);
     // سقف پیش‌فرض کیف پول نقطهٔ شروع منطقی است؛ نامحدود یعنی باید دستی وارد شود
     this.bulkCap.set(
-      definition.defaultCap === null ? '' : String(definition.defaultCap * 10),
+      definition.defaultCap === null ? '' : String(definition.defaultCap),
     );
     this.bulkExpiry.set(defaultExpiry());
     this.clearFile();

@@ -3,8 +3,8 @@
  *
  * دو نکته که کل این فایل را شکل می‌دهند:
  *
- * ۱. **واحد پول.** GRS ریال می‌دهد، صنعت‌پی همه‌جا تومان کار می‌کند. تبدیل فقط
- *    همین‌جا انجام می‌شود تا هیچ عدد ریالی به سرویس و دیتابیس نشت نکند.
+ * ۱. **واحد پول.** GRS ریال می‌دهد و صنعت‌پی هم ریالی است. اعداد خام فقط
+ *    همین‌جا به ریال صحیح نرمال می‌شوند.
  *
  * ۲. **شناسهٔ اتاق سه‌بخشی است.** رزرو در GRS هم `room_type_id` می‌خواهد هم
  *    `rate_plan_id`؛ یک نوع اتاق می‌تواند چند نرخ‌نامه داشته باشد (با صبحانه،
@@ -21,7 +21,7 @@ import {
   RoomOffer,
   TourismCity,
 } from '@sanpay/models';
-import { rialToToman } from '../money';
+import { providerRial } from '../money';
 import { encodeId } from '../provider-id';
 import {
   GrsCity,
@@ -211,8 +211,8 @@ function toRoomOffer(
     ),
     extraBed: 0,
     freeCapacity: Math.min(...prices.map((price) => price.inventory)),
-    price: rialToToman(total),
-    rackRate: rialToToman(rack),
+    price: providerRial(total),
+    rackRate: providerRial(rack),
   };
 }
 
@@ -293,8 +293,8 @@ export function suggestionToAvailability(
         breakfast: !!room.meal_type_included,
         extraBed: Number(room.extra_capacity) || 0,
         freeCapacity: room.inventory,
-        price: rialToToman(room.total_sales_price),
-        rackRate: rialToToman(room.total_price),
+        price: providerRial(room.total_sales_price),
+        rackRate: providerRial(room.total_price),
       })),
   };
 }

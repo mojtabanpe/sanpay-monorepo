@@ -72,9 +72,9 @@ export interface RoomOffer {
   extraBed: number;
   /** تعداد اتاق خالی */
   freeCapacity: number;
-  /** قیمت کل اقامت برای این اتاق (تومان) */
+  /** قیمت کل اقامت برای این اتاق (ریال) */
   price: number;
-  /** قیمت بورد هتل — برای نمایش تخفیف (تومان) */
+  /** قیمت بورد هتل — برای نمایش تخفیف (ریال) */
   rackRate: number;
 }
 
@@ -104,7 +104,7 @@ export interface TourismWallet {
   allocationId: string;
   name: string;
   icon: string | null;
-  /** حداکثر مبلغ قابل برداشت (تومان) */
+  /** حداکثر مبلغ قابل برداشت (ریال) */
   max: number;
   expiresAt: string;
 }
@@ -117,7 +117,7 @@ export interface BookingQuote {
   checkin: string;
   checkout: string;
   nights: number;
-  /** مبلغ قابل پرداخت (تومان) */
+  /** مبلغ قابل پرداخت (ریال) */
   amount: number;
   wallets: TourismWallet[];
   totalAvailable: number;
@@ -193,16 +193,16 @@ export interface BookingReceipt {
   checkout: string;
   nights: number;
   guestName: string;
-  /** مبلغ کسرشده (تومان) */
+  /** مبلغ کسرشده (ریال) */
   amount: number;
   walletName: string;
-  /** ماندهٔ کیف پول بعد از رزرو (تومان) */
+  /** ماندهٔ کیف پول بعد از رزرو (ریال) */
   remainingAfter: number;
   /** توضیح هتل‌یار برای رزرو ردشده یا کنسل‌شده (از webhook) */
   statusNote?: string | null;
-  /** مبلغ برگشت‌خورده به کیف پول بابت رد یا کنسلی (تومان) */
+  /** مبلغ برگشت‌خورده به کیف پول بابت رد یا کنسلی (ریال) */
   refundedAmount?: number | null;
-  /** جریمهٔ کنسلیِ اعلام‌شده در وضعیت CANCELING (تومان) */
+  /** جریمهٔ کنسلیِ اعلام‌شده در وضعیت CANCELING (ریال) */
   cancellationFee?: number | null;
   /** مهلت نهایی‌سازی در وضعیت HOLD (ISO) */
   holdExpiresAt?: string | null;

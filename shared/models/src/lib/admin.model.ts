@@ -3,7 +3,7 @@ import { BookingStatus } from './tourism.model';
 
 /**
  * مدل‌های داشبورد مدیریت (`apps/dashboard`).
- * همهٔ مبالغ تومان و اعداد صحیح‌اند؛ تاریخ‌ها ISO string.
+ * همهٔ مبالغ ریال و اعداد صحیح‌اند؛ تاریخ‌ها ISO string.
  */
 
 export type AdminRole = 'SUPER_ADMIN' | 'ADMIN' | 'VIEWER';
@@ -98,7 +98,7 @@ export interface AdminEmployeeRow {
   createdAt: string;
   /** تعداد کیف‌پول‌های فعال و منقضی‌نشده */
   walletCount: number;
-  /** جمع ماندهٔ کیف‌پول‌های فعال (تومان) */
+  /** جمع ماندهٔ کیف‌پول‌های فعال (ریال) */
   remaining: number;
   /** آیا کارمند پس از ورود با OTP برای خودش رمز تعیین کرده است؟ */
   hasPassword: boolean;
@@ -123,7 +123,7 @@ export interface AdminAllocationRow {
 export interface AdminEmployeeDetail extends AdminEmployeeRow {
   allocations: AdminAllocationRow[];
   payments: AdminPaymentRow[];
-  /** جمع خرید کارمند (تومان) */
+  /** جمع خرید کارمند (ریال) */
   totalSpent: number;
 }
 
@@ -187,7 +187,7 @@ export interface AdminStoreRow {
   /** تعداد کیف‌پول‌هایی که در این فروشگاه قابل خرج‌اند */
   walletCount: number;
   paymentCount: number;
-  /** جمع فروش (تومان) */
+  /** جمع فروش (ریال) */
   totalAmount: number;
 }
 
@@ -221,7 +221,7 @@ export interface WalletDeletionPreview {
   allocationCount: number;
   /** کارمندانی که اعتبار مصرف‌نشده و منقضی‌نشده دارند */
   affectedEmployees: number;
-  /** جمع اعتبار باقی‌مانده‌ای که از دسترس خارج می‌شود (تومان) */
+  /** جمع اعتبار باقی‌مانده‌ای که از دسترس خارج می‌شود (ریال) */
   remainingAmount: number;
 }
 
@@ -366,7 +366,7 @@ export interface AdminFlightBookingRow {
 /**
  * گزارش تفکیک پرداخت گردشگری (هتل/پرواز): چه مقدار از اعتبار (بن) و چه مقدار
  * با کارت از درگاه بوده. مبلغ خالص کارت (بعد از بازگشت وجه) مبنای صدور فاکتور
- * به نام شخص در سامانهٔ مودیان است. همهٔ مبالغ تومان.
+ * به نام شخص در سامانهٔ مودیان است. همهٔ مبالغ ریال.
  */
 export interface AdminTourismSplitPerson {
   employee: {

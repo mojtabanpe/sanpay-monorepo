@@ -14,7 +14,13 @@
     </div>
 
     @if (info.refundable > 0) {
-    <button type="button" hlmBtn variant="outline" class="w-full" (click)="open()">
+    <button
+      type="button"
+      hlmBtn
+      variant="outline"
+      class="w-full"
+      (click)="open()"
+    >
       <svg
         class="size-4"
         viewBox="0 0 24 24"
@@ -36,7 +42,10 @@
       بگیرید.
     </p>
     } @if (recent().length > 0) {
-    <ul class="flex flex-col gap-2 border-t pt-3" style="border-color: var(--hairline)">
+    <ul
+      class="flex flex-col gap-2 border-t pt-3"
+      style="border-color: var(--hairline)"
+    >
       @for (refund of recent(); track refund.id) {
       <li class="flex items-center justify-between gap-3 text-xs">
         <div class="min-w-0 leading-tight">
@@ -77,15 +86,17 @@
     <div hlmSheetHeader>
       <h2 hlmSheetTitle>بازگشت پول به کارت</h2>
       <p hlmSheetDescription>
-        مبلغ به همان کارتی برمی‌گردد که با آن پرداخت کرده بودید. زمان رسیدن
-        پول به حساب به بانک شما بستگی دارد.
+        مبلغ به همان کارتی برمی‌گردد که با آن پرداخت کرده بودید. زمان رسیدن پول
+        به حساب به بانک شما بستگی دارد.
       </p>
     </div>
 
     <div class="flex flex-col gap-3 px-4">
       <div class="flex items-center justify-between text-xs">
         <span class="text-muted-foreground">قابل بازگشت</span>
-        <span class="font-semibold tabular-nums">{{ toman(info.refundable) }}</span>
+        <span class="font-semibold tabular-nums"
+          >{{ toman(info.refundable) }}</span
+        >
       </div>
       <div class="flex items-center gap-2">
         <hlm-input-group class="min-w-0 flex-1">
@@ -95,7 +106,7 @@
             aria-label="مبلغ بازگشت به کارت"
             class="text-left text-base font-semibold tabular-nums"
             [(sanpayAmount)]="rial"
-            [sanpayAmountMax]="info.refundable * 10"
+            [sanpayAmountMax]="info.refundable"
           />
           <hlm-input-group-addon align="inline-end">
             <span hlmInputGroupText>ریال</span>

@@ -74,7 +74,7 @@ export class HotelFiltersDto {
   @Max(5, { each: true })
   rates: number[] = [];
 
-  /** [کمینه، بیشینه] به تومان؛ null یعنی بدون فیلتر */
+  /** [کمینه، بیشینه] به ریال؛ null یعنی بدون فیلتر */
   @IsOptional()
   @IsArray()
   @ArrayMaxSize(2)

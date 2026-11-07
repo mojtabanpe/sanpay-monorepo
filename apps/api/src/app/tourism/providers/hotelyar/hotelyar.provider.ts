@@ -20,7 +20,7 @@ import {
   ProviderReserveResult,
   ProviderSearchParams,
 } from '../hotel-provider';
-import { rialToToman } from '../money';
+import { providerRial } from '../money';
 import { ProviderKey, decodeNumericId } from '../provider-id';
 import { GdsBookResponse, GdsClient } from './gds.types';
 import {
@@ -200,7 +200,7 @@ export class HotelyarProvider extends HotelProvider {
   }
 }
 
-/** جمع hotelPrice همهٔ شب‌ها و مسافرها — بدهی ما به هتل‌یار، به تومان */
+/** جمع hotelPrice همهٔ شب‌ها و مسافرها — بدهی ما به هتل‌یار، به ریال */
 function sumHotelPrice(response: GdsBookResponse): number {
   const rial = (response.reserve?.passenger ?? []).reduce(
     (total, passenger) =>
@@ -211,5 +211,5 @@ function sumHotelPrice(response: GdsBookResponse): number {
       ),
     0,
   );
-  return rialToToman(rial);
+  return providerRial(rial);
 }

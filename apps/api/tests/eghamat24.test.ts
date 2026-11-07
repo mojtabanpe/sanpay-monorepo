@@ -162,7 +162,7 @@ test('live hotel search maps nested plans, capacity and meals, excluding checkou
       const provider = new Eghamat24Provider(client);
       for (const hotelId of [null, 'eg:1416']) {
         const result = await provider.search({ ...params, hotelId });
-        assert.equal(result[0].rooms[0].price, 2150000);
+        assert.equal(result[0].rooms[0].price, 21500000);
         assert.equal(result[0].rooms[0].capacity, 2);
         assert.equal(result[0].rooms[0].breakfast, true);
         assert.equal(result[0].rooms[0].roomId, 'eg:1416:42:7');
@@ -265,7 +265,7 @@ test('rate-limited catalog reads retry, while reservation writes remain single-s
   }
 });
 
-test('flight API reads and converts IRR using Client-Token alone', async () => {
+test('flight API reads IRR as rial using Client-Token alone', async () => {
   await fixture(
     async (_client, requests) => {
       const provider = new FlightProvider();
@@ -280,7 +280,7 @@ test('flight API reads and converts IRR using Client-Token alone', async () => {
         children: 0,
         infants: 0,
       });
-      assert.equal(flights[0].amount, 2000);
+      assert.equal(flights[0].amount, 20000);
       assert.equal(requests[1].pathname, '/flight/api/v2/flights/search');
     },
     (url) =>

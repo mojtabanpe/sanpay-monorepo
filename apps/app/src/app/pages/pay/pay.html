@@ -146,21 +146,15 @@
         </div>
       </hlm-field>
       <p class="text-muted-foreground text-xs">
-        مبلغ را از فروشنده بپرسید.
-        @if (store.totalAvailable > 0) { اعتبار قابل استفادهٔ شما در این
-        فروشگاه {{ toman(store.totalAvailable) }} است؛ اگر مبلغ بیشتر باشد،
-        همین مقدار را با اعتبار و مازاد را مستقیم با کارت در فروشگاه
-        بپردازید. } @else { در این فروشگاه اعتباری ندارید. }
+        مبلغ را از فروشنده بپرسید. @if (store.totalAvailable > 0) { اعتبار قابل
+        استفادهٔ شما در این فروشگاه {{ toman(store.totalAvailable) }} است؛ اگر
+        مبلغ بیشتر باشد، همین مقدار را با اعتبار و مازاد را مستقیم با کارت در
+        فروشگاه بپردازید. } @else { در این فروشگاه اعتباری ندارید. }
       </p>
       @if (overLimit()) {
       <p class="text-(--warn-fg) text-xs" role="status">
         مبلغ از اعتبار شما بیشتر است. حداکثر {{ toman(store.totalAvailable) }}
         را اینجا وارد کنید و مازاد را در فروشگاه با کارت بپردازید.
-      </p>
-      }
-      @if (hasFraction()) {
-      <p class="text-(--warn-fg) text-xs" role="status">
-        مبلغ باید مضربی از ۱۰ ریال باشد.
       </p>
       } @if (error()) {
       <div hlmAlert variant="destructive">
