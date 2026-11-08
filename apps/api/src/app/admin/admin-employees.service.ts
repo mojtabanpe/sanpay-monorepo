@@ -67,7 +67,7 @@ export class AdminEmployeesService {
       this.prisma.employee.count({ where }),
       this.prisma.employee.findMany({
         where,
-        orderBy: { createdAt: 'desc' },
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
         skip: (page - 1) * pageSize,
         take: pageSize,
         include: { company: true, allocations: { where: activeAllocation() } },

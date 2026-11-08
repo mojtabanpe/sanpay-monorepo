@@ -28,7 +28,7 @@ export class AdminCompaniesService {
       this.prisma.company.count({ where }),
       this.prisma.company.findMany({
         where,
-        orderBy: { createdAt: 'desc' },
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
         skip: (page - 1) * pageSize,
         take: pageSize,
         include: {

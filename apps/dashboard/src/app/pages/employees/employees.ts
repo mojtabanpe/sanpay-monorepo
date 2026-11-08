@@ -44,6 +44,7 @@ export class EmployeesPage {
   private readonly api = inject(AdminApiService);
   private readonly confirm = inject(ConfirmService);
   private readonly auth = inject(AdminAuthService);
+  private loadVersion = 0;
 
   protected readonly canWrite = computed(() =>
     this.auth.hasPermission('employees:write'),
@@ -61,6 +62,9 @@ export class EmployeesPage {
 
   protected readonly rows = signal<AdminEmployeeRow[]>([]);
   protected readonly companies = signal<AdminCompanyRow[]>([]);
+  protected readonly activeCompanies = computed(() =>
+    this.companies().filter((company) => company.isActive),
+  );
   protected readonly total = signal(0);
   protected readonly page = signal(1);
   protected readonly pageSize = 25;
@@ -81,6 +85,7 @@ export class EmployeesPage {
   protected readonly query = signal('');
   /** '' = همه، 'true' = فعال، 'false' = غیرفعال */
   protected readonly activeFilter = signal('');
+  protected readonly companyFilter = signal('');
 
   protected readonly showForm = signal(false);
   protected readonly saving = signal(false);
@@ -100,32 +105,59 @@ export class EmployeesPage {
     this.companies().find((company) => company.id === value)?.name ??
     'انتخاب شرکت';
 
+  protected readonly filterCompanyLabel = (value: unknown): string =>
+    value ? this.companyLabel(value) : 'همهٔ شرکت‌ها';
+
   protected readonly rankLabel = (value: unknown): string =>
     ORGANIZATIONAL_RANK_LABELS[String(value)] ?? 'انتخاب رده';
 
   constructor() {
     void this.load();
+    void this.loadCompanies();
+  }
+
+  private async loadCompanies(): Promise<void> {
+    const pageSize = 200;
+    const companies: AdminCompanyRow[] = [];
+    try {
+      for (let page = 1; ; page++) {
+        const result = await this.api.companies({ page, pageSize });
+        companies.push(...result.items);
+        if (page * pageSize >= result.total) break;
+      }
+      this.companies.set(companies);
+    } catch (caught) {
+      notifyError(apiError(caught, 'خواندن فهرست شرکت‌ها ممکن نشد'));
+    }
   }
 
   protected async load(): Promise<void> {
+    const version = ++this.loadVersion;
     this.loading.set(true);
     try {
-      const [result, companies] = await Promise.all([
-        this.api.employees({
-          q: this.query().trim() || undefined,
-          active: this.activeFilter() || undefined,
-          page: this.page(),
-          pageSize: this.pageSize,
-        }),
-        this.api.companies({ active: 'true', pageSize: 200 }),
-      ]);
-      this.rows.set(result.items);
+      const result = await this.api.employees({
+        q: this.query().trim() || undefined,
+        active: this.activeFilter() || undefined,
+        companyId: this.companyFilter() || undefined,
+        page: this.page(),
+        pageSize: this.pageSize,
+      });
+      if (version !== this.loadVersion) return;
       this.total.set(result.total);
-      this.companies.set(companies.items);
+      if (result.page > this.pageCount()) {
+        this.page.set(this.pageCount());
+        await this.load();
+        return;
+      }
+      this.rows.set(result.items);
     } catch (caught) {
+      if (version !== this.loadVersion) return;
+      this.rows.set([]);
+      this.total.set(0);
+      this.page.set(1);
       notifyError(apiError(caught, 'خواندن فهرست کارمندان ممکن نشد'));
     } finally {
-      this.loading.set(false);
+      if (version === this.loadVersion) this.loading.set(false);
     }
   }
 
@@ -136,6 +168,11 @@ export class EmployeesPage {
 
   protected setFilter(value: string): void {
     this.activeFilter.set(value);
+    this.search();
+  }
+
+  protected setCompanyFilter(value: string): void {
+    this.companyFilter.set(value);
     this.search();
   }
 
