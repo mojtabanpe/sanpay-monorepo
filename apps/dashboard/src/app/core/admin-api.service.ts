@@ -145,6 +145,14 @@ export class AdminApiService {
     return this.get<Paginated<AdminEmployeeRow>>('/api/admin/employees', query);
   }
 
+  downloadEmployeesExcel(query: Query) {
+    return this.downloadExcel(
+      '/api/admin/employees/export.xlsx',
+      'employees',
+      query,
+    );
+  }
+
   employee(id: string) {
     return this.get<AdminEmployeeDetail>(`/api/admin/employees/${id}`);
   }
@@ -295,20 +303,8 @@ export class AdminApiService {
     return this.get<AdminPaymentPage>('/api/admin/payments', query);
   }
 
-  async downloadPaymentsExcel(query: Query = {}): Promise<void> {
-    const params = this.params(query);
-    const blob = await firstValueFrom(
-      this.http.get('/api/admin/payments.xlsx', {
-        params,
-        responseType: 'blob',
-      }),
-    );
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement('a');
-    anchor.href = url;
-    anchor.download = `sanpay-payments-${new Date().toISOString().slice(0, 10)}.xlsx`;
-    anchor.click();
-    URL.revokeObjectURL(url);
+  downloadPaymentsExcel(query: Query = {}) {
+    return this.downloadExcel('/api/admin/payments.xlsx', 'payments', query);
   }
 
   bookings(query: Query = {}) {
@@ -326,19 +322,12 @@ export class AdminApiService {
     return this.get<AdminTourismSplitReport>('/api/admin/tourism-split', query);
   }
 
-  async downloadTourismSplitExcel(query: Query = {}): Promise<void> {
-    const blob = await firstValueFrom(
-      this.http.get('/api/admin/tourism-split.xlsx', {
-        params: this.params(query),
-        responseType: 'blob',
-      }),
+  downloadTourismSplitExcel(query: Query = {}) {
+    return this.downloadExcel(
+      '/api/admin/tourism-split.xlsx',
+      'tourism-split',
+      query,
     );
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement('a');
-    anchor.href = url;
-    anchor.download = `sanpay-tourism-split-${new Date().toISOString().slice(0, 10)}.xlsx`;
-    anchor.click();
-    URL.revokeObjectURL(url);
   }
 
   settlementItems(query: Query = {}) {
@@ -476,6 +465,25 @@ export class AdminApiService {
   }
 
   // ─── پایه ─────────────────────────────────────────────────────────────
+  private async downloadExcel(
+    path: string,
+    report: string,
+    query: Query,
+  ): Promise<void> {
+    const blob = await firstValueFrom(
+      this.http.get(path, {
+        params: this.params(query),
+        responseType: 'blob',
+      }),
+    );
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = `sanpay-${report}-${new Date().toISOString().slice(0, 10)}.xlsx`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+  }
+
   private get<T>(url: string, query: Query = {}) {
     return firstValueFrom(
       this.http.get<T>(url, { params: this.params(query) }),

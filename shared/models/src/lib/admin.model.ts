@@ -36,6 +36,14 @@ export type WalletKind = 'CREDIT' | 'RATION' | 'TOURISM';
 export type OrganizationalRank =
   'CEO' | 'MANAGER' | 'DEPUTY' | 'HEAD' | 'EMPLOYEE';
 
+export const ORGANIZATIONAL_RANK_LABELS: Record<string, string> = {
+  CEO: 'مدیرعامل',
+  MANAGER: 'مدیر',
+  DEPUTY: 'معاون',
+  HEAD: 'رییس',
+  EMPLOYEE: 'کارمند',
+};
+
 export interface AdminCompanyRow {
   logoUrl: string | null;
   id: string;

@@ -10,11 +10,14 @@ import {
   AdminEmployeeRow,
   AdminPaymentRow,
   ImportEmployeesResult,
+  ORGANIZATIONAL_RANK_LABELS,
   Paginated,
   OrganizationalRank,
   WalletKind,
 } from '@sanpay/models';
 import * as bcrypt from 'bcrypt';
+import * as ExcelJS from 'exceljs';
+import { Prisma } from '../../generated/prisma/client';
 import { WELFARE_DEFINITION } from '../upg/personal-wallet';
 import { PrismaService } from '../prisma/prisma.service';
 import {
@@ -39,39 +42,11 @@ export class AdminEmployeesService {
   async list(query: ListQueryDto): Promise<Paginated<AdminEmployeeRow>> {
     const page = query.page ?? 1;
     const pageSize = query.pageSize ?? 25;
-    const q = query.q?.trim();
-
-    const where = {
-      deletedAt: null,
-      ...(query.active ? { isActive: query.active === 'true' } : {}),
-      ...(query.companyId ? { companyId: query.companyId } : {}),
-      ...(q
-        ? {
-            OR: [
-              { firstName: { contains: q, mode: 'insensitive' as const } },
-              { lastName: { contains: q, mode: 'insensitive' as const } },
-              { nationalCode: { contains: q } },
-              { personnelCode: { contains: q } },
-              { phone: { contains: q } },
-              {
-                company: {
-                  name: { contains: q, mode: 'insensitive' as const },
-                },
-              },
-            ],
-          }
-        : {}),
-    };
+    const where = this.employeeWhere(query);
 
     const [total, employees] = await Promise.all([
       this.prisma.employee.count({ where }),
-      this.prisma.employee.findMany({
-        where,
-        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
-        skip: (page - 1) * pageSize,
-        take: pageSize,
-        include: { company: true, allocations: { where: activeAllocation() } },
-      }),
+      this.findEmployees(where, { skip: (page - 1) * pageSize, take: pageSize }),
     ]);
 
     return {
@@ -79,6 +54,85 @@ export class AdminEmployeesService {
       total,
       page,
       pageSize,
+    };
+  }
+
+  async excel(query: ListQueryDto): Promise<Buffer> {
+    const employees = await this.findEmployees(this.employeeWhere(query));
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet('کارمندان', {
+      views: [{ rightToLeft: true }],
+    });
+    sheet.columns = [
+      { header: 'نام', key: 'name', width: 28 },
+      { header: 'کد ملی', key: 'nationalCode', width: 16 },
+      { header: 'کد پرسنلی', key: 'personnelCode', width: 16 },
+      { header: 'موبایل', key: 'phone', width: 18 },
+      { header: 'شرکت', key: 'company', width: 28 },
+      { header: 'رده', key: 'rank', width: 16 },
+      { header: 'ورود', key: 'login', width: 24 },
+      { header: 'کیف‌پول فعال', key: 'walletCount', width: 18 },
+      { header: 'ماندهٔ اعتبار (ریال)', key: 'remaining', width: 24 },
+      { header: 'وضعیت', key: 'status', width: 14 },
+    ];
+    for (const employee of employees) {
+      const row = toRow(employee);
+      sheet.addRow({
+        name: `${row.firstName} ${row.lastName}`,
+        nationalCode: row.nationalCode,
+        personnelCode: row.personnelCode,
+        phone: row.phone,
+        company: row.company.name,
+        rank:
+          ORGANIZATIONAL_RANK_LABELS[row.organizationalRank] ??
+          row.organizationalRank,
+        login: row.hasPassword ? 'رمز دارد' : 'در انتظار اولین ورود',
+        walletCount: row.walletCount,
+        remaining: row.remaining,
+        status: row.isActive ? 'فعال' : 'غیرفعال',
+      });
+    }
+    sheet.getRow(1).font = { bold: true };
+    sheet.getColumn('remaining').numFmt = '#,##0';
+    sheet.autoFilter = 'A1:J1';
+    return Buffer.from(await workbook.xlsx.writeBuffer());
+  }
+
+  private findEmployees(
+    where: Prisma.EmployeeWhereInput,
+    pagination?: { skip: number; take: number },
+  ) {
+    return this.prisma.employee.findMany({
+      where,
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      ...pagination,
+      include: { company: true, allocations: { where: activeAllocation() } },
+    });
+  }
+
+  private employeeWhere(query: ListQueryDto): Prisma.EmployeeWhereInput {
+    const q = query.q?.trim();
+
+    return {
+      deletedAt: null,
+      ...(query.active ? { isActive: query.active === 'true' } : {}),
+      ...(query.companyId ? { companyId: query.companyId } : {}),
+      ...(q
+        ? {
+            OR: [
+              { firstName: { contains: q, mode: 'insensitive' } },
+              { lastName: { contains: q, mode: 'insensitive' } },
+              { nationalCode: { contains: q } },
+              { personnelCode: { contains: q } },
+              { phone: { contains: q } },
+              {
+                company: {
+                  name: { contains: q, mode: 'insensitive' },
+                },
+              },
+            ],
+          }
+        : {}),
     };
   }
 

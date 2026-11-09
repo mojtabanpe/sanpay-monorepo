@@ -184,6 +184,14 @@ export class AdminEmployeesController {
     return this.employees.list(query);
   }
 
+  @Get('export.xlsx')
+  async excel(@Query() query: ListQueryDto) {
+    return xlsxFile(
+      await this.employees.excel(query),
+      `sanpay-employees-${new Date().toISOString().slice(0, 10)}.xlsx`,
+    );
+  }
+
   @Get(':id')
   detail(@Param('id') id: string) {
     return this.employees.detail(id);

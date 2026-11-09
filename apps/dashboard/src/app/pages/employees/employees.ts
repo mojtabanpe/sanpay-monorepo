@@ -16,7 +16,11 @@ import { HlmFieldImports } from '@sanpay/ui/field';
 import { HlmInputImports } from '@sanpay/ui/input';
 import { HlmSelectImports } from '@sanpay/ui/select';
 import { HlmTableImports } from '@sanpay/ui/table';
-import { AdminApiService, apiError } from '../../core/admin-api.service';
+import {
+  AdminApiService,
+  apiError,
+  type Query,
+} from '../../core/admin-api.service';
 import { AdminAuthService } from '../../core/admin-auth.service';
 import { ORGANIZATIONAL_RANK_LABELS, fa, toman } from '../../core/format';
 import {
@@ -69,6 +73,8 @@ export class EmployeesPage {
   protected readonly page = signal(1);
   protected readonly pageSize = 25;
   protected readonly loading = signal(false);
+  protected readonly exporting = signal(false);
+  protected readonly appliedFilters = signal<Query | null>(null);
   protected readonly importOpen = signal(false);
   protected readonly importCompanyId = signal('');
   protected readonly importEntries = signal<EmployeeImportEntry[]>([]);
@@ -134,11 +140,14 @@ export class EmployeesPage {
   protected async load(): Promise<void> {
     const version = ++this.loadVersion;
     this.loading.set(true);
+    const filters = {
+      q: this.query().trim() || undefined,
+      active: this.activeFilter() || undefined,
+      companyId: this.companyFilter() || undefined,
+    };
     try {
       const result = await this.api.employees({
-        q: this.query().trim() || undefined,
-        active: this.activeFilter() || undefined,
-        companyId: this.companyFilter() || undefined,
+        ...filters,
         page: this.page(),
         pageSize: this.pageSize,
       });
@@ -150,14 +159,30 @@ export class EmployeesPage {
         return;
       }
       this.rows.set(result.items);
+      this.appliedFilters.set(filters);
     } catch (caught) {
       if (version !== this.loadVersion) return;
       this.rows.set([]);
+      this.appliedFilters.set(null);
       this.total.set(0);
       this.page.set(1);
       notifyError(apiError(caught, 'خواندن فهرست کارمندان ممکن نشد'));
     } finally {
       if (version === this.loadVersion) this.loading.set(false);
+    }
+  }
+
+  protected async exportExcel(): Promise<void> {
+    const filters = this.appliedFilters();
+    if (!filters || this.loading() || this.exporting()) return;
+
+    this.exporting.set(true);
+    try {
+      await this.api.downloadEmployeesExcel(filters);
+    } catch (caught) {
+      notifyError(apiError(caught, 'ساخت خروجی اکسل ممکن نشد'));
+    } finally {
+      this.exporting.set(false);
     }
   }
 

@@ -284,6 +284,15 @@
         غیرفعال
       </button>
     </div>
+    <button
+      hlmBtn
+      type="button"
+      variant="outline"
+      [disabled]="loading() || exporting() || !appliedFilters()"
+      (click)="exportExcel()"
+    >
+      {{ exporting() ? 'در حال آماده‌سازی…' : 'خروجی اکسل' }}
+    </button>
   </div>
 
 
