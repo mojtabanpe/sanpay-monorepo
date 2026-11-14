@@ -62,6 +62,7 @@ export class EmployeesPage {
     'DEPUTY',
     'HEAD',
     'EMPLOYEE',
+    'EMPLOYEE_SPOUSE',
   ];
 
   protected readonly rows = signal<AdminEmployeeRow[]>([]);

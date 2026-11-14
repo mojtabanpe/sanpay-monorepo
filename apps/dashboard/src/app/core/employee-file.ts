@@ -131,6 +131,8 @@ function parseRank(raw: string): OrganizationalRank | null {
         head: 'HEAD',
         کارمند: 'EMPLOYEE',
         employee: 'EMPLOYEE',
+        همسرکارپذیر: 'EMPLOYEE_SPOUSE',
+        employeespouse: 'EMPLOYEE_SPOUSE',
       } as Record<string, OrganizationalRank>
     )[value] ?? null
   );

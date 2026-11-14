@@ -354,7 +354,7 @@ export class AuthService {
     firstName: string;
     lastName: string;
     phone: string | null;
-    organizationalRank: 'CEO' | 'MANAGER' | 'DEPUTY' | 'HEAD' | 'EMPLOYEE';
+    organizationalRank: 'CEO' | 'MANAGER' | 'DEPUTY' | 'HEAD' | 'EMPLOYEE' | 'EMPLOYEE_SPOUSE';
     avatarFile?: string | null;
     company: { id: string; name: string; logoUrl?: string | null };
   }): EmployeeProfile {

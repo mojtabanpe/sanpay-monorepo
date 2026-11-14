@@ -32,6 +32,7 @@ const ORGANIZATIONAL_RANKS = [
   'DEPUTY',
   'HEAD',
   'EMPLOYEE',
+  'EMPLOYEE_SPOUSE',
 ] as const;
 
 export class AdminLoginDto {

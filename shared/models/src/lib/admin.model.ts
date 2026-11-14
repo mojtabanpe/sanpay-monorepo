@@ -34,7 +34,7 @@ export interface AdminPaymentPage extends Paginated<AdminPaymentRow> {
 
 export type WalletKind = 'CREDIT' | 'RATION' | 'TOURISM';
 export type OrganizationalRank =
-  'CEO' | 'MANAGER' | 'DEPUTY' | 'HEAD' | 'EMPLOYEE';
+  'CEO' | 'MANAGER' | 'DEPUTY' | 'HEAD' | 'EMPLOYEE' | 'EMPLOYEE_SPOUSE';
 
 export const ORGANIZATIONAL_RANK_LABELS: Record<string, string> = {
   CEO: 'مدیرعامل',
@@ -42,6 +42,7 @@ export const ORGANIZATIONAL_RANK_LABELS: Record<string, string> = {
   DEPUTY: 'معاون',
   HEAD: 'رییس',
   EMPLOYEE: 'کارمند',
+  EMPLOYEE_SPOUSE: 'همسر کارپذیر',
 };
 
 export interface AdminCompanyRow {

@@ -90,6 +90,7 @@ export class EmployeeDetailPage implements OnInit {
     'DEPUTY',
     'HEAD',
     'EMPLOYEE',
+    'EMPLOYEE_SPOUSE',
   ];
 
   protected readonly employee = signal<AdminEmployeeDetail | null>(null);

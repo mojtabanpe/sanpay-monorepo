@@ -280,6 +280,7 @@ const ORGANIZATIONAL_RANK_LABELS: Record<string, string> = {
   DEPUTY: 'معاون',
   HEAD: 'رییس',
   EMPLOYEE: 'کارمند',
+  EMPLOYEE_SPOUSE: 'همسر کارپذیر',
 };
 
 /** ورودی فارسی/عربی کاربر را به رقم لاتین تبدیل می‌کند تا اعتبارسنجی درست کار کند */

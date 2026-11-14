@@ -1,0 +1,1 @@
+ALTER TYPE "OrganizationalRank" ADD VALUE 'EMPLOYEE_SPOUSE';

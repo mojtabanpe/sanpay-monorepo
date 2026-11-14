@@ -5,6 +5,18 @@ import {
 } from './employee-file';
 
 describe('parseEmployeeFile', () => {
+  it.each(['همسر کارپذیر', 'همسرکارپذیر', 'همسر كارپذير', 'EMPLOYEE_SPOUSE'])(
+    'accepts the employee spouse rank: %s',
+    async (rank) => {
+      const result = await parse(
+        'کد ملی,نام,نام خانوادگی,موبایل,سمت\n' +
+          `0012345678,علی,رضایی,09123456789,${rank}`,
+      );
+      expect(result.errors).toEqual([]);
+      expect(result.entries[0].organizationalRank).toBe('EMPLOYEE_SPOUSE');
+    },
+  );
+
   it.each(['مدیرعامل', 'مدیر عامل', 'مدیر‌عامل', 'CEO'])(
     'accepts the CEO rank: %s',
     async (rank) => {
