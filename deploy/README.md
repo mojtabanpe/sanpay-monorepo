@@ -99,14 +99,23 @@ data seed. An existing username is left unchanged.
 The Compose `gateway` service is the only public HTTP entry point and routes by
 hostname:
 
-- `sanpayco.com` and `www.sanpayco.com` to the employee app
-- `admin.sanpayco.com` to the admin dashboard
-- `store.sanpayco.com` to the store panel
+- `sanpayco.com`, `www.sanpayco.com`, `sanpai.ir` and `www.sanpai.ir` to the employee app
+- `admin.sanpayco.com` and `admin.sanpai.ir` to the admin dashboard
+- `store.sanpayco.com` and `store.sanpai.ir` to the store panel
 
 All names must have DNS records pointing to the server. By default the gateway
 only listens on `127.0.0.1:8080`, so the host reverse proxy can terminate HTTPS
-and forward all three hostnames to that single address. The original `Host`
+and forward all listed hostnames to that single address. The original `Host`
 header must be preserved so this gateway can select the correct application.
+The host reverse proxy's TLS certificates must cover the names served over HTTPS.
+
+After updating only `deploy/gateway.conf` in the deployment checkout, validate
+and reload the running gateway without rebuilding the application images:
+
+```bash
+docker compose --env-file .env.production -f compose.production.yml exec -T gateway nginx -t
+docker compose --env-file .env.production -f compose.production.yml exec -T gateway nginx -s reload
+```
 
 The gateway uses Docker's DNS resolver to refresh frontend service addresses.
 Deployment validates and reloads the gateway configuration after replacing
