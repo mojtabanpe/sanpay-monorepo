@@ -203,7 +203,7 @@
       [attr.aria-selected]="activeSection() === 'stores'"
       (click)="selectSection('stores')"
     >
-      فروشنده‌ها
+      {{ wallet.kind === 'TOURISM' ? 'خدمات گردشگری' : 'فروشنده‌ها' }}
     </button>
     <button
       role="tab"
@@ -221,7 +221,17 @@
   <div hlmCard class="sanpay-rise overflow-hidden" style="--i: 2">
     <div hlmCardContent>
       <div class="relative min-h-48">
-        @if (activeSection() === 'stores') { @if (stores().length) {
+        @if (activeSection() === 'stores') { @if (wallet.kind === 'TOURISM') {
+        <div class="flex min-h-48 flex-col items-center justify-center gap-4 py-4 text-center">
+          <div>
+            <p class="text-sm font-semibold">سفر با اعتبار گردشگری</p>
+            <p class="text-muted-foreground mt-2 text-sm leading-6">
+              برای رزرو هتل و پرواز با این کیف پول، به بخش گردشگری بروید.
+            </p>
+          </div>
+          <a hlmBtn routerLink="/tourism">رفتن به گردشگری</a>
+        </div>
+        } @else if (stores().length) {
         <div class="flex flex-col gap-2">
           @for (store of stores().slice(0, 3); track store.id; let i = $index) {
           <div

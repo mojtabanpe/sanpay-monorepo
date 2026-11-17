@@ -1,5 +1,5 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, inject, signal } from '@angular/core';
+import { Component, DOCUMENT, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { AuthService } from '@sanpay/applets/auth';
 import { HlmButtonImports } from '@sanpay/ui/button';
@@ -32,6 +32,13 @@ export class LoginPage {
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
+
+  protected readonly showEnamad = ['sanpayco.com', 'www.sanpayco.com'].includes(
+    inject(DOCUMENT).location?.hostname ?? '',
+  );
+  protected readonly showIranEnamad = ['sanpai.ir', 'www.sanpai.ir'].includes(
+    inject(DOCUMENT).location?.hostname ?? '',
+  );
 
   protected readonly mode = signal<LoginMode>('password');
   protected readonly otpStep = signal<OtpStep>('identity');

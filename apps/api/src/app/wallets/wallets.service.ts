@@ -5,6 +5,7 @@ import { PrismaService } from '../prisma/prisma.service';
 export interface WalletView {
   id: string;
   name: string;
+  kind: string;
   icon: string | null;
   imageUrl: string | null;
   /** سقف اعتبار (ریال) */
@@ -38,6 +39,7 @@ export class WalletsService {
     return allocations.map((allocation) => ({
       id: allocation.id,
       name: allocation.definition.name,
+      kind: allocation.definition.kind,
       icon: allocation.definition.icon,
       imageUrl: allocation.definition.imageUrl,
       cap: Number(allocation.cap),

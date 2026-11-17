@@ -10,6 +10,7 @@ import { AuthService } from '@sanpay/applets/auth';
 import { RouterLink } from '@angular/router';
 import { EmployeeStore, PaymentHistoryItem, Wallet } from '@sanpay/models';
 import { HlmCardImports } from '@sanpay/ui/card';
+import { HlmButtonImports } from '@sanpay/ui/button';
 import { HlmSkeletonImports } from '@sanpay/ui/skeleton';
 import { firstValueFrom } from 'rxjs';
 import { HomeService } from './home.service';
@@ -27,7 +28,7 @@ interface WalletPurchase {
 
 @Component({
   selector: 'app-home',
-  imports: [RouterLink, HlmCardImports, HlmSkeletonImports, CountUp],
+  imports: [RouterLink, HlmButtonImports, HlmCardImports, HlmSkeletonImports, CountUp],
   templateUrl: './home.html',
 })
 export class HomePage {
@@ -103,7 +104,7 @@ export class HomePage {
       this.payments.set(result.payments);
       this.activeWalletIndex.set(0);
       this.activeSection.set('stores');
-      if (spendable[0]) await this.loadStores(spendable[0].id);
+      if (spendable[0]) await this.loadStores(spendable[0]);
     } catch {
       this.error.set(true);
     } finally {
@@ -129,12 +130,17 @@ export class HomePage {
       : null;
   }
 
-  private async loadStores(walletId: string): Promise<void> {
+  private async loadStores(wallet: Wallet): Promise<void> {
     const requestId = ++this.storesRequestId;
+    if (wallet.kind === 'TOURISM') {
+      this.stores.set([]);
+      this.walletDetailsLoading.set(false);
+      return;
+    }
     const startedAt = Date.now();
     this.walletDetailsLoading.set(true);
     try {
-      const stores = await firstValueFrom(this.homeService.stores(walletId));
+      const stores = await firstValueFrom(this.homeService.stores(wallet.id));
       const remainingDelay = Math.max(0, 300 - (Date.now() - startedAt));
       if (remainingDelay) {
         await new Promise((resolve) => setTimeout(resolve, remainingDelay));
@@ -156,7 +162,7 @@ export class HomePage {
     this.activeWalletIndex.set(index);
     this.activeSection.set('stores');
     const wallet = this.wallets()[index];
-    if (wallet) void this.loadStores(wallet.id);
+    if (wallet) void this.loadStores(wallet);
   }
 
   protected moveCarousel(delta: number): void {

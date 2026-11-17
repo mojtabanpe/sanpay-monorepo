@@ -2,7 +2,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { Component, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { UpgIntentView, UpgLine, UpgSource } from '@sanpay/models';
-import { SanpayAmountInput } from '@sanpay/forms';
+import { normalizeAmount, SanpayAmountInput } from '@sanpay/forms';
 import { HlmAlertImports } from '@sanpay/ui/alert';
 import { HlmButtonImports } from '@sanpay/ui/button';
 import { HlmCardImports } from '@sanpay/ui/card';
@@ -130,19 +130,24 @@ export class UpgPayPage {
   }
 
   protected onAmount(source: UpgSource, digits: string): void {
+    const amount = Number(normalizeAmount(digits, this.maxFor(source)) || 0);
     this.amounts.update((current) => ({
       ...current,
-      [source.allocationId]: Number(digits || 0),
+      [source.allocationId]: amount,
     }));
     this.error.set(null);
   }
 
-  /** «حداکثر» تا جایی پر می‌کند که از مبلغ کل جلو نزند */
-  protected fillMax(source: UpgSource): void {
+  /** سهم هر منبع از ماندهٔ آن و مبلغ باقی‌ماندهٔ خرید بیشتر نمی‌شود. */
+  protected maxFor(source: UpgSource): number {
     const others =
       this.creditTotal() - (this.amounts()[source.allocationId] ?? 0);
     const room = Math.max(0, (this.intent()?.amount ?? 0) - others);
-    this.onAmount(source, String(Math.min(source.max, room)));
+    return Math.min(source.max, room);
+  }
+
+  protected fillMax(source: UpgSource): void {
+    this.onAmount(source, String(this.maxFor(source)));
   }
 
   protected useSuggested(): void {

@@ -87,7 +87,7 @@
             class="text-left text-base font-semibold tabular-nums"
             [sanpayAmount]="rialText(source)"
             (sanpayAmountChange)="onAmount(source, $event)"
-            [sanpayAmountMax]="source.max"
+            [sanpayAmountMax]="maxFor(source)"
           />
           <hlm-input-group-addon align="inline-end">
             <span hlmInputGroupText>ریال</span>
