@@ -1,3 +1,4 @@
+import { Enamad } from '../../components/enamad/enamad';
 import { Component, OnDestroy, computed, inject, signal } from '@angular/core';
 import { Receipt, StoreStats } from '@sanpay/models';
 import { HlmButtonImports } from '@sanpay/ui/button';
@@ -9,6 +10,7 @@ import { StorePaymentsService } from '../../core/payments.service';
 @Component({
   selector: 'store-payments',
   imports: [
+    Enamad,
     HlmButtonImports,
     HlmCardImports,
     HlmSkeletonImports,

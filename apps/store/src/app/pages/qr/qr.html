@@ -1,35 +1,3 @@
-<!--
-  استایل چاپ. هنگام چاپ فقط `.printable` می‌ماند و بقیهٔ صفحه (سربرگ، دکمه‌ها،
-  ناوبری) حذف می‌شود، تا برگه‌ای که روی میز صندوق می‌رود تمیز باشد.
--->
-<style>
-  @media print {
-    body * {
-      visibility: hidden;
-    }
-
-    .printable,
-    .printable * {
-      visibility: visible;
-    }
-
-    .printable {
-      position: absolute;
-      inset-block-start: 0;
-      inset-inline-start: 0;
-      width: 100%;
-      border: none !important;
-      box-shadow: none !important;
-    }
-
-    /* پس‌زمینهٔ تیره در چاپ هم باید تیره بماند وگرنه لوگو ناپیدا می‌شود */
-    .printable {
-      -webkit-print-color-adjust: exact;
-      print-color-adjust: exact;
-    }
-  }
-</style>
-
 <div class="mx-auto flex w-full max-w-md flex-col gap-4 px-4 py-6">
   <div class="leading-tight">
     <h1 class="text-xl font-bold">کد QR صندوق</h1>
@@ -54,15 +22,13 @@
 
   <!-- برگهٔ چاپ‌شدنی -->
   <div
-    class="printable flex flex-col items-center gap-4 rounded-[1.25rem] bg-white p-6 text-center"
+    #printArea
+    class="qr-print-card flex flex-col items-center gap-4 rounded-[1.25rem] bg-white p-6 text-center"
     style="border: 1px solid var(--hairline); box-shadow: var(--elev-2)"
   >
     <div class="leading-tight">
       <p class="text-base font-bold" style="color: var(--ink-900)">
         {{ store()?.name }}
-      </p>
-      <p class="mt-1 text-[11px]" style="color: var(--ink-400)">
-        پرداخت با اعتبار رفاهی جهان‌فولاد سیرجان
       </p>
     </div>
 

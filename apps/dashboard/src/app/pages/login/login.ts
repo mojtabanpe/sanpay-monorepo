@@ -1,3 +1,4 @@
+import { version } from '../../../../../../package.json';
 import { notifyError } from '../../core/notifications';
 import { Component, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
@@ -21,6 +22,8 @@ import { apiError } from '../../core/admin-api.service';
   templateUrl: './login.html',
 })
 export class LoginPage {
+  protected readonly appVersion = version;
+
   private readonly auth = inject(AdminAuthService);
   private readonly router = inject(Router);
 

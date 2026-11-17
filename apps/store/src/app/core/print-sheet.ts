@@ -10,11 +10,19 @@
 export function printSheet(element: HTMLElement): void {
   const parent = element.parentNode;
   const next = element.nextSibling;
+  const hadPrintClass = element.classList.contains('print-sheet');
+  element.classList.add('print-sheet');
   document.body.appendChild(element);
   const restore = () => {
     window.removeEventListener('afterprint', restore);
+    if (!hadPrintClass) element.classList.remove('print-sheet');
     parent?.insertBefore(element, next);
   };
   window.addEventListener('afterprint', restore);
-  window.print();
+  try {
+    window.print();
+  } catch (error) {
+    restore();
+    throw error;
+  }
 }

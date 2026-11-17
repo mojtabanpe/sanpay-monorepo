@@ -219,16 +219,73 @@
   @if (showEnamad) {
   <div class="flex justify-center">
     <!-- Keep the seal's origin referrer policy and omit rel as required by Enamad. -->
-    <a referrerpolicy="origin" target="_blank" href="https://trustseal.enamad.ir/?id=8595402&Code=h4GsUuRrFcmZ9duBk66SrNnHCzcvKI0U"><img referrerpolicy="origin" src="https://trustseal.enamad.ir/logo.aspx?id=8595402&Code=h4GsUuRrFcmZ9duBk66SrNnHCzcvKI0U" alt="" style="cursor:pointer" code="h4GsUuRrFcmZ9duBk66SrNnHCzcvKI0U"></a>
+    <a
+      referrerpolicy="origin"
+      target="_blank"
+      href="https://trustseal.enamad.ir/?id=8595402&Code=h4GsUuRrFcmZ9duBk66SrNnHCzcvKI0U"
+      class="text-primary text-sm underline underline-offset-4"
+    >
+      @if (enamadImageFailed()) {
+      <!-- Crop the supplied screenshot in the layout to show only the seal. -->
+      <span class="relative block h-[141px] w-[130px] overflow-hidden">
+        <img
+          src="/brand/enamad-fallback-source.png"
+          alt="استعلام اینماد"
+          width="430"
+          height="470"
+          class="absolute -left-[42.5px] -top-[49px] h-[235px] w-[215px] max-w-none"
+        >
+      </span>
+      } @else {
+      <img
+        referrerpolicy="origin"
+        src="https://trustseal.enamad.ir/logo.aspx?id=8595402&Code=h4GsUuRrFcmZ9duBk66SrNnHCzcvKI0U"
+        alt="استعلام اینماد"
+        style="cursor:pointer"
+        code="h4GsUuRrFcmZ9duBk66SrNnHCzcvKI0U"
+        (error)="enamadImageFailed.set(true)"
+      >
+      }
+    </a>
   </div>
   } @else if (showIranEnamad) {
   <div class="flex justify-center">
     <!-- Keep the seal's origin referrer policy and omit rel as required by Enamad. -->
-    <a referrerpolicy="origin" target="_blank" href="https://trustseal.enamad.ir/?id=8757327&Code=5sNv9NIWqFo9HGMYrTapsjCZHWFhitBV"><img referrerpolicy="origin" src="https://trustseal.enamad.ir/logo.aspx?id=8757327&Code=5sNv9NIWqFo9HGMYrTapsjCZHWFhitBV" alt="" style="cursor:pointer" code="5sNv9NIWqFo9HGMYrTapsjCZHWFhitBV"></a>
+    <a
+      referrerpolicy="origin"
+      target="_blank"
+      href="https://trustseal.enamad.ir/?id=8757327&Code=5sNv9NIWqFo9HGMYrTapsjCZHWFhitBV"
+      class="text-primary text-sm underline underline-offset-4"
+    >
+      @if (enamadImageFailed()) {
+      <!-- Crop the supplied screenshot in the layout to show only the seal. -->
+      <span class="relative block h-[141px] w-[130px] overflow-hidden">
+        <img
+          src="/brand/enamad-fallback-source.png"
+          alt="استعلام اینماد"
+          width="430"
+          height="470"
+          class="absolute -left-[42.5px] -top-[49px] h-[235px] w-[215px] max-w-none"
+        >
+      </span>
+      } @else {
+      <img
+        referrerpolicy="origin"
+        src="https://trustseal.enamad.ir/logo.aspx?id=8757327&Code=5sNv9NIWqFo9HGMYrTapsjCZHWFhitBV"
+        alt="استعلام اینماد"
+        style="cursor:pointer"
+        code="5sNv9NIWqFo9HGMYrTapsjCZHWFhitBV"
+        (error)="enamadImageFailed.set(true)"
+      >
+      }
+    </a>
   </div>
   }
 
   <p class="text-muted-foreground text-center text-xs">
     © ۱۴۰۵ صنعت‌پی — طراحی و توسعه: شرکت جهان صنعت پویا نگین مشیز
+  </p>
+  <p class="text-muted-foreground text-center text-xs">
+    نسخهٔ نرم‌افزار <bdi>{{ appVersion }}</bdi>
   </p>
 </main>

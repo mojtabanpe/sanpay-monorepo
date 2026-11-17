@@ -1,3 +1,4 @@
+import { version } from '../../../../../../package.json';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, DOCUMENT, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -29,6 +30,8 @@ function toEnglishDigits(value: string): string {
   templateUrl: './login.html',
 })
 export class LoginPage {
+  protected readonly appVersion = version;
+
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
@@ -48,6 +51,7 @@ export class LoginPage {
   protected readonly loading = signal(false);
   protected readonly error = signal<string | null>(null);
   protected readonly notice = signal<string | null>(null);
+  protected readonly enamadImageFailed = signal(false);
   protected readonly otpNationalCode = signal('');
   protected readonly otpPhone = signal('');
 

@@ -1,3 +1,5 @@
+import { Enamad } from '../../components/enamad/enamad';
+import { version } from '../../../../../../package.json';
 import { Component, DOCUMENT, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { HlmButtonImports } from '@sanpay/ui/button';
@@ -8,10 +10,12 @@ import { StoreAuthService } from '../../core/store-auth.service';
 
 @Component({
   selector: 'store-login',
-  imports: [HlmButtonImports, HlmCardImports, HlmInputImports, HlmLabelImports],
+  imports: [Enamad, HlmButtonImports, HlmCardImports, HlmInputImports, HlmLabelImports],
   templateUrl: './login.html',
 })
 export class LoginPage {
+  protected readonly appVersion = version;
+
   private readonly auth = inject(StoreAuthService);
   private readonly router = inject(Router);
 

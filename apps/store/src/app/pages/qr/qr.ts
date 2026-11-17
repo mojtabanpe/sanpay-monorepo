@@ -1,7 +1,8 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, ElementRef, computed, inject, signal, viewChild } from '@angular/core';
 import { HlmAlertImports } from '@sanpay/ui/alert';
 import { HlmButtonImports } from '@sanpay/ui/button';
 import { StoreAuthService } from '../../core/store-auth.service';
+import { printSheet } from '../../core/print-sheet';
 
 /**
  * کد QR صندوق — فروشنده اینجا کدش را می‌بیند، تصویرش را می‌گیرد و چاپ می‌کند
@@ -21,6 +22,7 @@ export class QrPage {
   protected readonly store = this.auth.profile;
   protected readonly error = signal(false);
   protected readonly busy = signal(false);
+  private readonly printArea = viewChild<ElementRef<HTMLElement>>('printArea');
 
   /** محتوای QR — همان قراردادی که `parseStoreCode` در اپ کارمند می‌خواند */
   protected readonly payload = computed(() => {
@@ -86,11 +88,9 @@ export class QrPage {
     link.click();
   }
 
-  /**
-   * چاپ. کل صفحه چاپ می‌شود ولی استایل چاپ در qr.html همه‌چیز جز کارتِ
-   * چاپ‌شدنی را پنهان می‌کند، پس خروجی یک برگهٔ تمیز است.
-   */
+  /** کارت باید بیرون از پوستهٔ پنهان‌شدهٔ برنامه چاپ شود. */
   protected print(): void {
-    window.print();
+    const element = this.printArea()?.nativeElement;
+    if (element && this.dataUrl() && !this.busy()) printSheet(element);
   }
 }
