@@ -39,6 +39,9 @@ export class LoginPage {
   protected readonly showIranEnamad = ['sanpai.ir', 'www.sanpai.ir'].includes(
     inject(DOCUMENT).location?.hostname ?? '',
   );
+  protected readonly storeLoginUrl = this.showIranEnamad
+    ? 'https://store.sanpai.ir/login'
+    : 'https://store.sanpayco.com/login';
 
   protected readonly mode = signal<LoginMode>('password');
   protected readonly otpStep = signal<OtpStep>('identity');

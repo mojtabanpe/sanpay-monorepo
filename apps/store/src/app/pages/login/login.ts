@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, DOCUMENT, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { HlmButtonImports } from '@sanpay/ui/button';
 import { HlmCardImports } from '@sanpay/ui/card';
@@ -14,6 +14,11 @@ import { StoreAuthService } from '../../core/store-auth.service';
 export class LoginPage {
   private readonly auth = inject(StoreAuthService);
   private readonly router = inject(Router);
+
+  protected readonly employeeLoginUrl =
+    inject(DOCUMENT).location?.hostname === 'store.sanpai.ir'
+      ? 'https://sanpai.ir/login'
+      : 'https://sanpayco.com/login';
 
   protected readonly loading = signal(false);
   protected readonly error = signal<string | null>(null);
