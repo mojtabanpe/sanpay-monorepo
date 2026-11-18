@@ -2,7 +2,7 @@ name: sanpay-production
 
 services:
   postgres:
-    image: postgres:17-alpine
+    image: docker-mirror.liara.ir/postgres:17-alpine
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-sanpay}
@@ -72,7 +72,7 @@ services:
       - api
 
   gateway:
-    image: nginx:1.29-alpine
+    image: docker-mirror.liara.ir/nginx:1.29-alpine
     restart: unless-stopped
     ports:
       - '${GATEWAY_BIND:-127.0.0.1}:${HTTP_PORT:-8080}:80'

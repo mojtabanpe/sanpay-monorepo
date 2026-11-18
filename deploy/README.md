@@ -12,10 +12,11 @@ GitHub webhook is required.
 - Outbound access to GitHub and container registries
 - A dedicated unprivileged user that can run Docker
 
-The production Dockerfile pulls the official Node image from Amazon ECR Public
-(`public.ecr.aws/docker/library/node:24-bookworm-slim`) because Docker Hub may
-return HTTP 403 from the deployment server. The server needs outbound access to
-Amazon ECR Public as well as Docker Hub for the Nginx and PostgreSQL images.
+Production pulls the Node, Nginx and PostgreSQL images through Liara's Docker Hub
+mirror (`docker-mirror.liara.ir`) using explicit image prefixes in the Dockerfile
+and Compose file. Image versions stay the same. No Docker daemon configuration
+or restart is needed. The server needs outbound HTTPS access to this mirror.
+See [Liara's direct mirror usage documentation](https://docs.liara.ir/mirrors/docker/).
 
 ## First installation
 
@@ -25,7 +26,7 @@ then install the timer:
 
 ```bash
 ssh -T git@github.com
-docker pull hello-world
+docker pull docker-mirror.liara.ir/hello-world
 cp .env.production.example .env.production
 chmod 600 .env.production
 ./deploy/deploy.sh
