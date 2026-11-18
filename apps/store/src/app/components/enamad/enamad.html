@@ -6,19 +6,20 @@
     [href]="'https://trustseal.enamad.ir/?id=' + seal.id + '&Code=' + seal.code"
   >
     @if (imageFailed()) {
-    <span class="relative block h-[141px] w-[130px] overflow-hidden">
+    <span class="relative block h-[70.5px] w-[65px] overflow-hidden">
       <img
         src="/enamad-fallback-source.png"
         alt="استعلام اینماد"
         width="430"
         height="470"
-        class="absolute -left-[42.5px] -top-[49px] h-[235px] w-[215px] max-w-none"
+        class="absolute -left-[21.25px] -top-[24.5px] h-[117.5px] w-[107.5px] max-w-none"
       >
     </span>
     } @else {
     <img
       referrerpolicy="origin"
       [src]="'https://trustseal.enamad.ir/logo.aspx?id=' + seal.id + '&Code=' + seal.code"
+      class="h-auto w-[65px]"
       [attr.code]="seal.code"
       alt="استعلام اینماد"
       (error)="imageFailed.set(true)"
