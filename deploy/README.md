@@ -12,6 +12,11 @@ GitHub webhook is required.
 - Outbound access to GitHub and container registries
 - A dedicated unprivileged user that can run Docker
 
+The production Dockerfile pulls the official Node image from Amazon ECR Public
+(`public.ecr.aws/docker/library/node:24-bookworm-slim`) because Docker Hub may
+return HTTP 403 from the deployment server. The server needs outbound access to
+Amazon ECR Public as well as Docker Hub for the Nginx and PostgreSQL images.
+
 ## First installation
 
 Clone the repository into a dedicated deployment checkout, create

@@ -1,4 +1,4 @@
-FROM node:24-bookworm-slim AS build
+FROM public.ecr.aws/docker/library/node:24-bookworm-slim AS build
 
 ENV CI=true
 WORKDIR /workspace
@@ -12,7 +12,7 @@ COPY . .
 RUN pnpm prisma generate \
   && pnpm nx run-many -t build -p app dashboard store api --configuration=production
 
-FROM node:24-bookworm-slim AS api
+FROM public.ecr.aws/docker/library/node:24-bookworm-slim AS api
 
 ENV NODE_ENV=production
 WORKDIR /app
