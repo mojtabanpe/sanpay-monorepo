@@ -277,6 +277,7 @@
           <label hlmFieldLabel for="fld-6">تاریخ انقضا</label>
           <hlm-date-picker
             sanpayDatePickerWidth
+            captionLayout="dropdown"
             [date]="allocExpiry()"
             [min]="minDate"
             (dateChange)="onAllocExpiryChange($event)"
@@ -327,6 +328,7 @@
                 @if (canManageWallets()) {
                 <hlm-date-picker
                   sanpayDatePickerWidth
+                  captionLayout="dropdown"
                   [date]="jalaliOf(allocation.expiresAt)"
                   (dateChange)="onRowExpiryChange(allocation.id, $event)"
                 >

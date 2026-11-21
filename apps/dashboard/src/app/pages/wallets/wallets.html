@@ -424,6 +424,7 @@
         <label hlmFieldLabel for="fld-7">تاریخ انقضا</label>
         <hlm-date-picker
           sanpayDatePickerWidth
+          captionLayout="dropdown"
           [date]="bulkExpiryDate()"
           [min]="minDate"
           (dateChange)="onBulkExpiryChange($event)"

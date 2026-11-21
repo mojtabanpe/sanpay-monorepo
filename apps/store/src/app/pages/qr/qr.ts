@@ -60,7 +60,7 @@ export class QrPage {
           errorCorrectionLevel: 'H',
           // بزرگ و با حاشیهٔ کافی تا بعد از چاپ هم اسکن شود
           width: 1024,
-          margin: 2,
+          margin: 4,
           color: { dark: '#071a33ff', light: '#ffffffff' },
         }),
       );

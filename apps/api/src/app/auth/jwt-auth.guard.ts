@@ -5,6 +5,10 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import {
+  SESSION_ACTIVITY_HEARTBEAT_MS,
+  SESSION_IDLE_TIMEOUT_MS,
+} from '@sanpay/models';
 import { Request } from 'express';
 import { PrismaService } from '../prisma/prisma.service';
 import { JwtPayload } from './auth.service';
@@ -47,6 +51,15 @@ export class JwtAuthGuard implements CanActivate {
               id: payload.sid,
               revokedAt: null,
               expiresAt: { gt: new Date() },
+              // ضربان فعالیت هر پنج دقیقه و ثبت سروری حداکثر با یک دقیقه تأخیر است.
+              lastSeenAt: {
+                gt: new Date(
+                  Date.now() -
+                    SESSION_IDLE_TIMEOUT_MS -
+                    SESSION_ACTIVITY_HEARTBEAT_MS -
+                    60_000,
+                ),
+              },
             },
           },
         },

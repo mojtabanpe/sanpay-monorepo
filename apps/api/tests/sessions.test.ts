@@ -54,6 +54,7 @@ function fixture() {
       : !where.id || session.id !== where.id.not) &&
     (where.revokedAt !== null || !session.revokedAt) &&
     (!where.expiresAt?.gt || session.expiresAt > where.expiresAt.gt) &&
+    (!where.lastSeenAt?.gt || session.lastSeenAt > where.lastSeenAt.gt) &&
     (!where.lastSeenAt?.lt || session.lastSeenAt < where.lastSeenAt.lt);
   const prisma = {
     employee: {
@@ -209,9 +210,16 @@ test('ordinary logout revokes the current token on the server', async () => {
 test('last activity is updated for a stale session', async () => {
   const f = fixture();
   const first = await f.login();
-  f.rows[0].lastSeenAt = new Date('2000-01-01');
+  f.rows[0].lastSeenAt = new Date(Date.now() - 2 * 60_000);
   await f.authorize(first.accessToken);
   assert.ok(f.rows[0].lastSeenAt.getTime() > Date.now() - 1000);
+});
+
+test('an inactive session is rejected even if its JWT has not expired', async () => {
+  const f = fixture();
+  const first = await f.login();
+  f.rows[0].lastSeenAt = new Date(Date.now() - 22 * 60_000);
+  await assert.rejects(f.authorize(first.accessToken), UnauthorizedException);
 });
 
 test('OTP login creates a session and initial password completion preserves its identity', async () => {

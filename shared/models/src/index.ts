@@ -10,3 +10,4 @@ export * from './lib/airline';
 export * from './lib/upg.model';
 export * from './lib/upg-admin.model';
 export * from './lib/admin-permissions';
+export * from './lib/session-policy';

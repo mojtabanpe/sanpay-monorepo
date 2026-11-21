@@ -28,6 +28,7 @@ import { classes, hlm } from '@sanpay/ui/utils';
 				<ng-template #month>
 					<hlm-select brnCalendarMonthSelect class="order-1">
 						<hlm-select-trigger size="sm" [class]="_selectClass">
+							<span class="sr-only">ماه </span>
 							<hlm-select-value />
 						</hlm-select-trigger>
 						<hlm-select-content *hlmSelectPortal class="max-h-80">
@@ -42,12 +43,13 @@ import { classes, hlm } from '@sanpay/ui/utils';
 				<ng-template #year>
 					<hlm-select brnCalendarYearSelect class="order-3">
 						<hlm-select-trigger size="sm" [class]="_selectClass">
+							<span class="sr-only">سال </span>
 							<hlm-select-value />
 						</hlm-select-trigger>
 						<hlm-select-content *hlmSelectPortal class="max-h-80">
 							<hlm-select-group>
 								@for (year of _i18n.config().years(); track year) {
-									<hlm-select-item [value]="year">{{ year }}</hlm-select-item>
+									<hlm-select-item [value]="year">{{ _i18n.config().formatYear(year) }}</hlm-select-item>
 								}
 							</hlm-select-group>
 						</hlm-select-content>
@@ -66,6 +68,7 @@ import { classes, hlm } from '@sanpay/ui/utils';
 
 				@switch (captionLayout()) {
 					@case ('dropdown') {
+						<span brnCalendarHeader class="sr-only">{{ heading.header }}</span>
 						<ng-container [ngTemplateOutlet]="month" />
 						<ng-container [ngTemplateOutlet]="year" />
 					}

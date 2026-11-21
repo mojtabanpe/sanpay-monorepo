@@ -74,6 +74,22 @@ describe('employee session authentication', () => {
     expect(auth.isLoggedIn()).toBe(false);
   });
 
+  it('does not clear a new login when an older logout finishes late', async () => {
+    const oldLogout = auth.logout();
+    const oldRequest = http.expectOne('/api/auth/logout');
+    auth.clearSession();
+    const login = auth.login(employee.phone ?? '', 'Password123!');
+    http
+      .expectOne('/api/auth/login')
+      .flush({ employee, accessToken: 'new-token' });
+    await login;
+    oldRequest.flush({}, { status: 401, statusText: 'Unauthorized' });
+    await oldLogout;
+    expect(auth.token).toBe('new-token');
+    expect(auth.isLoggedIn()).toBe(true);
+    expect(navigate).not.toHaveBeenCalled();
+  });
+
   it('clears a remotely revoked session on 401 without requesting logout again', async () => {
     const request = firstValueFrom(
       TestBed.inject(HttpClient).get('/api/wallets'),

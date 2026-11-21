@@ -20,6 +20,7 @@ export const authInterceptor: HttpInterceptorFn = (request, next) => {
       if (
         error instanceof HttpErrorResponse &&
         error.status === 401 &&
+        token === auth.token &&
         !request.url.includes('/auth/login') &&
         !request.url.includes('/auth/otp/')
       ) {

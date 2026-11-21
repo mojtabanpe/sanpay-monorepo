@@ -115,18 +115,20 @@ export class PayPage implements OnDestroy {
   private async startCamera(video: HTMLVideoElement): Promise<void> {
     const scanner = new QrScanner(video, (text) => {
       const code = parseStoreCode(text);
-      if (code) {
-        scanner.stop();
-        void this.loadStore(code);
-      }
+      if (!code) return false;
+      scanner.stop();
+      void this.loadStore(code);
+      return true;
     });
     this.scanner = scanner;
     try {
       await scanner.start();
-      this.cameraFailed.set(false);
+      if (this.scanner === scanner) this.cameraFailed.set(false);
     } catch {
-      this.cameraFailed.set(true);
-      this.scanner = null;
+      if (this.scanner === scanner) {
+        this.cameraFailed.set(true);
+        this.scanner = null;
+      }
     }
   }
 

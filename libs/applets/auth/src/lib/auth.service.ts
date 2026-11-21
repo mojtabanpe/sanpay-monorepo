@@ -9,6 +9,7 @@ import { firstValueFrom, timeout } from 'rxjs';
 
 const TOKEN_KEY = 'sanpay_token';
 const PROFILE_KEY = 'sanpay_profile';
+export const LAST_ACTIVITY_KEY = 'sanpay_last_activity';
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
@@ -80,6 +81,7 @@ export class AuthService {
       ),
     );
     localStorage.setItem(TOKEN_KEY, result.accessToken);
+    localStorage.setItem(LAST_ACTIVITY_KEY, String(Date.now()));
     if (this.pendingProfile) this.setProfile(this.pendingProfile);
     this.pendingProfile = null;
     return result;
@@ -107,18 +109,20 @@ export class AuthService {
    * توکن در هر حال ۱۲ ساعته منقضی می‌شود و از «دستگاه‌ها» هم باطل‌شدنی است.
    */
   async logout(): Promise<boolean> {
-    if (this.token) {
+    const token = this.token;
+    if (token) {
       await firstValueFrom(
         this.http.post('/api/auth/logout', {}).pipe(timeout(5_000)),
       ).catch(() => undefined);
     }
-    this.clearSession();
+    if (this.token === token) this.clearSession();
     return true;
   }
 
   clearSession(): void {
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(PROFILE_KEY);
+    localStorage.removeItem(LAST_ACTIVITY_KEY);
     this._profile.set(null);
     this.pendingProfile = null;
   }
@@ -126,6 +130,7 @@ export class AuthService {
   private storeSession(response: EmployeeAuthResponse): void {
     localStorage.setItem(TOKEN_KEY, response.accessToken);
     localStorage.setItem(PROFILE_KEY, JSON.stringify(response.employee));
+    localStorage.setItem(LAST_ACTIVITY_KEY, String(Date.now()));
     this._profile.set(response.employee);
   }
 }
