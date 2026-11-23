@@ -1,9 +1,21 @@
+import { Type } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, Router, convertToParamMap } from '@angular/router';
-import { UpgService } from '@sanpay/applets/upg';
 import { UpgIntentView } from '@sanpay/models';
 import { of } from 'rxjs';
-import { UpgPayPage } from '../../../../libs/applets/upg/src/lib/pages/upg-pay';
+
+// `@sanpay/applets/upg` is lazy-loaded in app.routes, so static imports of
+// it are forbidden by @nx/enforce-module-boundaries. Load the pay page the
+// same way production does: dynamically, through the applet's routes.
+async function loadUpgPay() {
+  const { UpgService, upgRoutes } = await import('@sanpay/applets/upg');
+  const payRoute = upgRoutes.find((route) => route.path === ':intentId');
+  if (!payRoute?.loadComponent) {
+    throw new Error('upg pay route is not a lazy component route');
+  }
+  const UpgPayPage = (await payRoute.loadComponent()) as Type<unknown>;
+  return { UpgService, UpgPayPage };
+}
 
 describe('flight payment from credit', () => {
   const source = {
@@ -32,6 +44,7 @@ describe('flight payment from credit', () => {
   };
 
   async function render(payment: UpgIntentView = intent) {
+    const { UpgService, UpgPayPage } = await loadUpgPay();
     TestBed.configureTestingModule({
       imports: [UpgPayPage],
       providers: [
