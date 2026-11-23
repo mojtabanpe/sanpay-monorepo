@@ -1,5 +1,5 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, effect, inject, signal } from '@angular/core';
 import {
   FormField,
   form,
@@ -23,6 +23,7 @@ import { HlmDatePickerImports } from '@sanpay/ui/date-picker';
 import { HlmFieldImports } from '@sanpay/ui/field';
 import { HlmInputImports } from '@sanpay/ui/input';
 import { HlmSkeletonImports } from '@sanpay/ui/skeleton';
+import { toLatinDigits } from '@sanpay/forms';
 import { firstValueFrom } from 'rxjs';
 import { TourismService } from '../data-access/tourism.service';
 import {
@@ -86,6 +87,16 @@ export class BookingPage {
       message: 'شمارهٔ موبایل معتبر نیست',
     });
     required(traveler.birthdate, { message: 'تاریخ تولد مسافر را وارد کنید' });
+  });
+
+  // کیبورد فارسی آیفون ارقام فارسی می‌فرستد و /^\d{10}$/ ردشان می‌کند؛
+  // فونت FD هر دو را یکسان نشان می‌دهد، پس کاربر علت خطا را نمی‌بیند.
+  private readonly latinDigits = effect(() => {
+    const t = this.travelerModel();
+    const nationalCode = toLatinDigits(t.nationalCode);
+    const mobile = toLatinDigits(t.mobile);
+    if (nationalCode !== t.nationalCode || mobile !== t.mobile)
+      this.travelerModel.set({ ...t, nationalCode, mobile });
   });
 
   // همان بازهٔ فرم پرواز

@@ -48,6 +48,7 @@ import { HlmDatePickerImports } from '@sanpay/ui/date-picker';
 import { HlmBadgeImports } from '@sanpay/ui/badge';
 import { HlmSliderImports } from '@sanpay/ui/slider';
 import { HlmSwitchImports } from '@sanpay/ui/switch';
+import { toLatinDigits } from '@sanpay/forms';
 import { firstValueFrom } from 'rxjs';
 import { FlightsService } from '../data-access/flights.service';
 import { TourismService } from '../data-access/tourism.service';
@@ -473,6 +474,9 @@ export class FlightsPage {
     key: keyof FlightPassenger,
     value: string,
   ): void {
+    // کیبورد فارسی آیفون ارقام فارسی می‌فرستد و pattern="[0-9]{10}" ردش
+    // می‌کند؛ فونت FD هر دو را یکسان نشان می‌دهد، پس کاربر خطا را نمی‌بیند.
+    if (typeof value === 'string') value = toLatinDigits(value);
     this.passengers.update((items) =>
       items.map((p, i) => (i === index ? { ...p, [key]: value } : p)),
     );

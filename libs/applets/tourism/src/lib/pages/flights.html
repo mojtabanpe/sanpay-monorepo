@@ -545,9 +545,13 @@
                 dir="ltr"
                 required
                 pattern="[A-Za-z][A-Za-z '\-]{0,69}"
+                #firstCtl="ngModel"
                 [ngModel]="p.firstName"
                 (ngModelChange)="updatePassenger(i, 'firstName', $event)"
-            /></hlm-field>
+              />
+              @if (firstCtl.invalid && (firstCtl.dirty || firstCtl.touched)) {
+              <hlm-field-error forceShow>نام را با حروف انگلیسی بنویسید.</hlm-field-error>
+              }</hlm-field>
             <hlm-field
               ><label hlmFieldLabel [for]="'last-' + i"
                 >نام خانوادگی انگلیسی</label
@@ -558,9 +562,13 @@
                 dir="ltr"
                 required
                 pattern="[A-Za-z][A-Za-z '\-]{0,69}"
+                #lastCtl="ngModel"
                 [ngModel]="p.lastName"
                 (ngModelChange)="updatePassenger(i, 'lastName', $event)"
-            /></hlm-field>
+              />
+              @if (lastCtl.invalid && (lastCtl.dirty || lastCtl.touched)) {
+              <hlm-field-error forceShow>نام خانوادگی را با حروف انگلیسی بنویسید.</hlm-field-error>
+              }</hlm-field>
             <hlm-field
               ><label hlmFieldLabel [for]="'birth-' + i"
                 >تاریخ تولد (شمسی)</label
@@ -620,10 +628,14 @@
                 required
                 pattern="[A-Z]{2}"
                 maxlength="2"
+                #nationCtl="ngModel"
                 [ngModel]="p.nationality"
                 (ngModelChange)="updatePassenger(i, 'nationality', $event.toUpperCase())"
               />
-              <p hlmFieldDescription>ایران: IR</p></hlm-field
+              <p hlmFieldDescription>ایران: IR</p>
+              @if (nationCtl.invalid && (nationCtl.dirty || nationCtl.touched)) {
+              <hlm-field-error forceShow>کد دوحرفی انگلیسی کشور را وارد کنید.</hlm-field-error>
+              }</hlm-field
             >
             @if (!needsPassport(p)) {
             <hlm-field
@@ -637,9 +649,13 @@
                 required
                 pattern="[0-9]{10}"
                 maxlength="10"
+                #nationalCtl="ngModel"
                 [ngModel]="p.nationalCode"
                 (ngModelChange)="updatePassenger(i, 'nationalCode', $event)"
-            /></hlm-field>
+              />
+              @if (nationalCtl.invalid && (nationalCtl.dirty || nationalCtl.touched)) {
+              <hlm-field-error forceShow>کد ملی باید ۱۰ رقم باشد.</hlm-field-error>
+              }</hlm-field>
             } @else {
             <hlm-field
               ><label hlmFieldLabel [for]="'passport-' + i">شماره گذرنامه</label
