@@ -139,13 +139,22 @@ export class HotelPageDto {
 /** همان الگوی نام در فرم پرواز */
 const LATIN_NAME = /^[A-Za-z][A-Za-z '\-]{0,69}$/;
 
+/**
+ * نام فارسی مهمان هتل: فقط حروف فارسی، فاصله و نیم‌فاصله — نام انگلیسی
+ * جای خودش (`firstNameEn`) را دارد و هرگز در این فیلد ذخیره نمی‌شود.
+ */
+const PERSIAN_NAME =
+  /^(?:(?![\u0660-\u0669\u06F0-\u06F9])[\u0600-\u06FF\u200c ])+$/;
+
 export class BookingGuestDto {
   @IsString()
   @IsNotEmpty({ message: 'نام مسافر لازم است' })
+  @Matches(PERSIAN_NAME, { message: 'نام را با حروف فارسی بنویسید' })
   firstName!: string;
 
   @IsString()
   @IsNotEmpty({ message: 'نام خانوادگی مسافر لازم است' })
+  @Matches(PERSIAN_NAME, { message: 'نام خانوادگی را با حروف فارسی بنویسید' })
   lastName!: string;
 
   @Matches(/^\d{10}$/, { message: 'کد ملی باید ۱۰ رقم باشد' })

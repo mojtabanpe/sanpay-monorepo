@@ -134,4 +134,9 @@ test('hotel guest English names are optional and must be Latin', async () => {
     [],
   );
   assert.deepEqual(await errors({ firstNameEn: 'سجاد' }), ['firstNameEn']);
+  // the Persian name fields never take English, digits or mixed scripts
+  assert.deepEqual(await errors({ firstName: 'Sajad' }), ['firstName']);
+  assert.deepEqual(await errors({ lastName: 'Ezzat' }), ['lastName']);
+  assert.deepEqual(await errors({ firstName: 'سجاد2' }), ['firstName']);
+  assert.deepEqual(await errors({ lastName: 'عزت‌آبادی پور' }), []);
 });

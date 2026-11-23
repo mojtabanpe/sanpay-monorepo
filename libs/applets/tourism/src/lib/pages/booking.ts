@@ -39,9 +39,14 @@ import {
 /** همان الگوی نام انگلیسی فرم پرواز؛ خالی هم مجاز است (اختیاری) */
 const LATIN_NAME = /^([A-Za-z][A-Za-z' -]{0,69})?$/;
 
-/** هر نام تمام‌لاتین (دادهٔ قدیمی پرواز) در فیلد نام فارسی هتل گذاشته نمی‌شود */
+/** حروف فارسی، فاصله و نیم‌فاصله — بدون رقم و بدون حرف لاتین (مثل API) */
+const PERSIAN_NAME =
+  /^(?:(?![\u0660-\u0669\u06F0-\u06F9])[\u0600-\u06FF\u200c ])+$/;
+
+/** فیلد نام فارسی هتل فقط نام فارسی می‌گیرد — هرگز نام انگلیسی */
 function persianOnly(value: string | undefined): string {
-  return value && !/^[A-Za-z][A-Za-z' -]*$/.test(value.trim()) ? value : '';
+  const name = value?.trim() ?? '';
+  return PERSIAN_NAME.test(name) ? name : '';
 }
 
 @Component({
@@ -84,11 +89,17 @@ export class BookingPage {
   protected readonly travelerForm = form(this.travelerModel, (traveler) => {
     required(traveler.firstName, { message: 'نام مسافر را وارد کنید' });
     minLength(traveler.firstName, 2, { message: 'نام باید حداقل ۲ حرف باشد' });
+    pattern(traveler.firstName, PERSIAN_NAME, {
+      message: 'نام را با حروف فارسی بنویسید',
+    });
     required(traveler.lastName, {
       message: 'نام خانوادگی مسافر را وارد کنید',
     });
     minLength(traveler.lastName, 2, {
       message: 'نام خانوادگی باید حداقل ۲ حرف باشد',
+    });
+    pattern(traveler.lastName, PERSIAN_NAME, {
+      message: 'نام خانوادگی را با حروف فارسی بنویسید',
     });
     pattern(traveler.nationalCode, /^\d{10}$/, {
       message: 'کد ملی باید ۱۰ رقم باشد',
