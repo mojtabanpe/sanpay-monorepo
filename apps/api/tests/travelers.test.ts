@@ -79,18 +79,37 @@ test('a flight never overwrites the Persian name; a hotel without English names 
     assert.equal(row.lastNameEn, 'Ezzatabadipour');
   }));
 
-test('a traveler first seen on a flight gets the English name in both columns until a hotel booking', () =>
+test('a traveler first seen on a flight has no Persian name until a hotel booking', () =>
   withEmployee(async (db, employeeId) => {
     const travelers = new TravelersService(db);
     await travelers.remember(employeeId, [
       { nationalCode: '0012345678', firstNameEn: 'Ali', lastNameEn: 'Rezaei' },
     ]);
     let [row] = await travelers.recent(employeeId);
-    assert.deepEqual([row.firstName, row.firstNameEn], ['Ali', 'Ali']);
+    assert.deepEqual(
+      [row.firstName, row.lastName, row.firstNameEn],
+      ['', '', 'Ali'],
+    );
     await travelers.remember(employeeId, [
       { nationalCode: '0012345678', firstName: 'علی', lastName: 'رضایی' },
     ]);
     [row] = await travelers.recent(employeeId);
+    assert.deepEqual(
+      [row.firstName, row.lastName, row.firstNameEn, row.lastNameEn],
+      ['علی', 'رضایی', 'Ali', 'Rezaei'],
+    );
+  }));
+
+test('an English name typed in the hotel Persian field is saved as the English name only', () =>
+  withEmployee(async (db, employeeId) => {
+    const travelers = new TravelersService(db);
+    await travelers.remember(employeeId, [
+      { nationalCode: '0012345678', firstName: 'علی', lastName: 'رضایی' },
+    ]);
+    await travelers.remember(employeeId, [
+      { nationalCode: '0012345678', firstName: 'Ali', lastName: 'Rezaei' },
+    ]);
+    const [row] = await travelers.recent(employeeId);
     assert.deepEqual(
       [row.firstName, row.lastName, row.firstNameEn, row.lastNameEn],
       ['علی', 'رضایی', 'Ali', 'Rezaei'],

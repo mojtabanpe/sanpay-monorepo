@@ -530,6 +530,16 @@ export class FlightsPage {
   ): void {
     this.updatePassenger(index, 'birthdate', value ? jalaliToIso(value) : '');
   }
+  /** برچسب دکمه: نام انگلیسی اگر ثبت شده، وگرنه نام فارسی (فقط برای شناختن) */
+  protected travelerLabel(traveler: PreviousTraveler): string {
+    const en = [traveler.firstNameEn, traveler.lastNameEn].filter(Boolean);
+    if (en.length) return en.join(' ');
+    return (
+      [traveler.firstName, traveler.lastName].filter(Boolean).join(' ') ||
+      traveler.nationalCode
+    );
+  }
+
   protected selectPrevious(index: number, traveler: PreviousTraveler): void {
     this.fillPassenger(index, traveler, traveler.nationalCode);
   }

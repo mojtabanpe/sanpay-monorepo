@@ -78,7 +78,7 @@
               خودم
             </button>
 
-            @for (traveler of previousTravelers(); track traveler.nationalCode)
+            @for (traveler of otherTravelers(); track traveler.nationalCode)
             {
             <button
               type="button"
@@ -87,15 +87,20 @@
               [attr.aria-pressed]="selectedTraveler() === traveler.nationalCode"
               (click)="selectPrevious(traveler)"
             >
-              <span class="block text-sm font-medium">
-                {{ traveler.firstName }} {{ traveler.lastName }}
-              </span>
+              @if (persianName(traveler); as name) {
+              <span class="block text-sm font-medium">{{ name }}</span>
               <span
                 class="text-muted-foreground block text-[0.65rem]"
                 dir="ltr"
               >
                 {{ traveler.nationalCode }}
               </span>
+              } @else {
+              <!-- فقط پرواز داشته: نام فارسی ندارد و نام انگلیسی در هتل پیشنهاد نمی‌شود -->
+              <span class="block text-sm font-medium" dir="ltr">
+                {{ traveler.nationalCode }}
+              </span>
+              }
             </button>
             }
           </div>
@@ -103,7 +108,7 @@
           <p class="text-muted-foreground text-xs" role="status">
             در حال دریافت مسافران قبلی…
           </p>
-          } @else if (previousTravelers().length === 0) {
+          } @else if (otherTravelers().length === 0) {
           <p class="text-muted-foreground text-xs">
             هنوز مسافر قبلی دیگری ثبت نشده است.
           </p>

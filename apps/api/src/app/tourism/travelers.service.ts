@@ -43,7 +43,11 @@ export class TravelersService {
     for (const traveler of travelers) {
       // مسافر خارجیِ پرواز کد ملی ندارد و قابل شناسایی دوباره نیست
       if (!traveler.nationalCode) continue;
-      const fields = definedOnly({ ...traveler, nationalCode: undefined });
+      const named = { ...traveler, ...splitByScript(traveler) };
+      const fields = definedOnly({
+        ...named,
+        nationalCode: undefined,
+      });
       await db.traveler.upsert({
         where: {
           employeeId_nationalCode: {
@@ -55,10 +59,9 @@ export class TravelersService {
           employeeId,
           nationalCode: traveler.nationalCode,
           ...fields,
-          // ستون فارسی اجباری است؛ مسافری که اول با پرواز ثبت شده تا اولین
-          // رزرو هتل همان نام انگلیسی را دارد. پرواز هرگز از این دو نمی‌خواند.
-          firstName: traveler.firstName || traveler.firstNameEn || '',
-          lastName: traveler.lastName || traveler.lastNameEn || '',
+          // مسافری که اول با پرواز ثبت شده تا اولین رزرو هتل نام فارسی ندارد
+          firstName: named.firstName || null,
+          lastName: named.lastName || null,
           lastUsedAt,
         },
         update: { ...fields, lastUsedAt },
@@ -74,8 +77,9 @@ export class TravelersService {
       take: 10,
     });
     return rows.map((row) => ({
-      firstName: row.firstName,
-      lastName: row.lastName,
+      // خالی یعنی نام فارسی ثبت نشده (مسافری که فقط پرواز داشته)
+      firstName: row.firstName ?? '',
+      lastName: row.lastName ?? '',
       nationalCode: row.nationalCode,
       mobile: row.mobile ?? '',
       lastUsedAt: row.lastUsedAt.toISOString(),
@@ -94,6 +98,28 @@ export class TravelersService {
       }),
     }));
   }
+}
+
+const LATIN = /^[A-Za-z][A-Za-z' -]*$/;
+
+/**
+ * ستون فارسی هرگز نام لاتین نمی‌گیرد: اگر مهمان هتل نامش را انگلیسی در
+ * فیلد «نام» نوشته باشد، همان نام انگلیسی ثبت می‌شود (اگر جدا نداده باشد)
+ * و نام فارسی دست نمی‌خورد — وگرنه فرم هتل بعداً نام انگلیسی پیشنهاد می‌داد.
+ */
+function splitByScript(t: TravelerSnapshot): Partial<TravelerSnapshot> {
+  const latin =
+    !!t.firstName &&
+    !!t.lastName &&
+    LATIN.test(t.firstName.trim()) &&
+    LATIN.test(t.lastName.trim());
+  if (!latin) return {};
+  return {
+    firstName: undefined,
+    lastName: undefined,
+    firstNameEn: t.firstNameEn || t.firstName,
+    lastNameEn: t.lastNameEn || t.lastName,
+  };
 }
 
 function definedOnly<T extends object>(value: T): Partial<T> {

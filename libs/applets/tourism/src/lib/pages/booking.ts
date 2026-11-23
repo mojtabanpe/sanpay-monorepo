@@ -39,6 +39,11 @@ import {
 /** همان الگوی نام انگلیسی فرم پرواز؛ خالی هم مجاز است (اختیاری) */
 const LATIN_NAME = /^([A-Za-z][A-Za-z' -]{0,69})?$/;
 
+/** هر نام تمام‌لاتین (دادهٔ قدیمی پرواز) در فیلد نام فارسی هتل گذاشته نمی‌شود */
+function persianOnly(value: string | undefined): string {
+  return value && !/^[A-Za-z][A-Za-z' -]*$/.test(value.trim()) ? value : '';
+}
+
 @Component({
   selector: 'tourism-booking',
   imports: [
@@ -146,6 +151,19 @@ export class BookingPage {
     void this.loadPreviousTravelers();
   }
 
+  /** «خودم» جدا دکمه دارد؛ کد ملی خود کارمند دوباره در فهرست نمی‌آید */
+  protected readonly otherTravelers = computed(() => {
+    const own = this.auth.profile()?.nationalCode;
+    return this.previousTravelers().filter((t) => t.nationalCode !== own);
+  });
+
+  /** نام فارسی یا خالی — هتل هرگز نام انگلیسی را در فیلد «نام» پیشنهاد نمی‌دهد */
+  protected persianName(traveler: PreviousTraveler): string {
+    return [persianOnly(traveler.firstName), persianOnly(traveler.lastName)]
+      .filter(Boolean)
+      .join(' ');
+  }
+
   protected selectSelf(): void {
     const profile = this.auth.profile();
     if (!profile) return;
@@ -155,9 +173,13 @@ export class BookingPage {
         lastName: profile.lastName,
         nationalCode: profile.nationalCode,
         mobile: profile.phone ?? '',
-        birthdate: profile.birthDate ?? '',
+        birthdate:
+          profile.birthDate ??
+          this.saved(profile.nationalCode)?.birthdate ??
+          '',
         // نام انگلیسیِ خود کارمند اگر قبلاً در رزروی ثبت شده باشد
-        ...this.englishName(profile.nationalCode),
+        firstNameEn: this.saved(profile.nationalCode)?.firstNameEn,
+        lastNameEn: this.saved(profile.nationalCode)?.lastNameEn,
       },
       'self',
     );
@@ -217,17 +239,16 @@ export class BookingPage {
     }
   }
 
-  private englishName(nationalCode: string) {
-    const saved = this.previousTravelers().find(
+  private saved(nationalCode: string): PreviousTraveler | undefined {
+    return this.previousTravelers().find(
       (t) => t.nationalCode === nationalCode,
     );
-    return { firstNameEn: saved?.firstNameEn, lastNameEn: saved?.lastNameEn };
   }
 
   private fillTraveler(traveler: HotelBookingGuest, key: string): void {
     this.travelerModel.set({
-      firstName: traveler.firstName,
-      lastName: traveler.lastName,
+      firstName: persianOnly(traveler.firstName),
+      lastName: persianOnly(traveler.lastName),
       nationalCode: traveler.nationalCode,
       mobile: traveler.mobile,
       birthdate: traveler.birthdate,

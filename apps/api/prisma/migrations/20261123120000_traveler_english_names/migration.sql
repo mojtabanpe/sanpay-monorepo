@@ -2,10 +2,16 @@
 -- the Persian name a hotel booking saved (and the flight form never reads it).
 ALTER TABLE "Traveler" ADD COLUMN "firstNameEn" TEXT;
 ALTER TABLE "Traveler" ADD COLUMN "lastNameEn" TEXT;
+ALTER TABLE "Traveler" ALTER COLUMN "firstName" DROP NOT NULL;
+ALTER TABLE "Traveler" ALTER COLUMN "lastName" DROP NOT NULL;
 
--- Rows whose name is already Latin came from a flight booking: keep it as
--- the English name. Persian names stay where they are.
+-- A Latin name in the Persian columns was written there by a flight booking
+-- (the old single name pair). Move it to the English columns and leave the
+-- Persian name empty, so the hotel form never offers an English name.
 UPDATE "Traveler"
-SET "firstNameEn" = "firstName", "lastNameEn" = "lastName"
+SET "firstNameEn" = "firstName",
+    "lastNameEn" = "lastName",
+    "firstName" = NULL,
+    "lastName" = NULL
 WHERE "firstName" ~ '^[A-Za-z][A-Za-z '' -]*$'
   AND "lastName" ~ '^[A-Za-z][A-Za-z '' -]*$';
