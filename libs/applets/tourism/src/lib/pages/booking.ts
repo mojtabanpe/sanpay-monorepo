@@ -94,10 +94,10 @@ export class BookingPage {
     required(traveler.birthdate, { message: 'تاریخ تولد مسافر را وارد کنید' });
     // اختیاری؛ اگر پر شود همان قاعدهٔ فرم پرواز
     pattern(traveler.firstNameEn, LATIN_NAME, {
-      message: 'نام انگلیسی را فقط با حروف انگلیسی بنویسید',
+      message: 'فقط حروف انگلیسی',
     });
     pattern(traveler.lastNameEn, LATIN_NAME, {
-      message: 'نام خانوادگی انگلیسی را فقط با حروف انگلیسی بنویسید',
+      message: 'فقط حروف انگلیسی',
     });
   });
 
