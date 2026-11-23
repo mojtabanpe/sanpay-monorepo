@@ -18,7 +18,13 @@ export default [
         'error',
         {
           enforceBuildableLibDependency: true,
-          allow: ['^.*/eslint(\\.base)?\\.config\\.[cm]?[jt]s$'],
+          allow: [
+            '^.*/eslint(\\.base)?\\.config\\.[cm]?[jt]s$',
+            // Apps read the workspace version from the root package.json —
+            // it is the single source of truth for the version bump, not a
+            // module dependency on another project.
+            '^.*/package\\.json$',
+          ],
           depConstraints: [
             // type: apps consume applets + libs; applets consume applets + libs;
             // plain libs stay at the bottom and may only consume other libs.
