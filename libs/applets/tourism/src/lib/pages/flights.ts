@@ -243,13 +243,21 @@ export class FlightsPage {
     }),
   );
   protected readonly classOptions = computed(() =>
-    flightOptions(this.offers(), (leg) => leg.flightClass, this.filters().classes),
+    flightOptions(
+      this.offers(),
+      (leg) => leg.flightClass,
+      this.filters().classes,
+    ),
   );
   protected readonly typeOptions = computed(() =>
     flightOptions(this.offers(), (leg) => leg.flightType, this.filters().types),
   );
-  protected readonly baggageOptions = computed(() => baggageOptions(this.offers()));
-  protected readonly priceBounds = computed(() => flightPriceBounds(this.offers()));
+  protected readonly baggageOptions = computed(() =>
+    baggageOptions(this.offers()),
+  );
+  protected readonly priceBounds = computed(() =>
+    flightPriceBounds(this.offers()),
+  );
   protected readonly priceStep = computed(() => {
     const bounds = this.priceBounds();
     return bounds ? priceStep(bounds[0], bounds[1]) : 1;
@@ -295,7 +303,10 @@ export class FlightsPage {
   }
 
   protected clearFilters(): void {
-    this.filters.update((filters) => ({ ...NO_FLIGHT_FILTERS, sort: filters.sort }));
+    this.filters.update((filters) => ({
+      ...NO_FLIGHT_FILTERS,
+      sort: filters.sort,
+    }));
   }
 
   protected readonly money = toman;
@@ -532,8 +543,9 @@ export class FlightsPage {
         i === index
           ? {
               ...passenger,
-              firstName: traveler.firstName,
-              lastName: traveler.lastName,
+              // فقط نام انگلیسی؛ نام فارسیِ رزرو هتل هرگز در فرم پرواز نمی‌نشیند
+              firstName: latinOnly(traveler.firstNameEn),
+              lastName: latinOnly(traveler.lastNameEn),
               nationalCode: traveler.nationalCode,
               ...(traveler.birthdate ? { birthdate: traveler.birthdate } : {}),
               ...(traveler.gender ? { gender: traveler.gender } : {}),
@@ -672,6 +684,11 @@ export class FlightsPage {
   }
 }
 
+/** نام انگلیسی یا خالی — هر چیز غیرلاتین (مثلاً دادهٔ قدیمی) کنار گذاشته می‌شود */
+function latinOnly(value: string | undefined): string {
+  return value && /^[A-Za-z][A-Za-z' -]{0,69}$/.test(value) ? value : '';
+}
+
 function isoDate(value: Date): string {
   return `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, '0')}-${String(value.getDate()).padStart(2, '0')}`;
 }
@@ -686,7 +703,9 @@ function searchFromQuery(query: ParamMap): FlightSearchInput {
   };
   const count = (key: string, fallback: number) => {
     const value = Number(query.get(key) ?? fallback);
-    return Number.isInteger(value) && value >= 0 && value <= 9 ? value : fallback;
+    return Number.isInteger(value) && value >= 0 && value <= 9
+      ? value
+      : fallback;
   };
   const departureDate = date('date') ?? addDays(today(), 1);
   const returnDate = date('return');

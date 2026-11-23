@@ -206,6 +206,15 @@
           "SWC_NODE_PROJECT": "apps/api/tsconfig.test.json"
         }
       }
+    },
+    "test-travelers": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "node -r @swc-node/register --test apps/api/tests/travelers.test.ts",
+        "env": {
+          "SWC_NODE_PROJECT": "apps/api/tsconfig.test.json"
+        }
+      }
     }
   },
   "tags": ["type:app", "scope:api"]

@@ -274,8 +274,9 @@ export class FlightsService {
           employeeId,
           input.passengers.map((p) => ({
             nationalCode: p.nationalCode ?? '',
-            firstName: p.firstName,
-            lastName: p.lastName,
+            // فقط ستون انگلیسی؛ نام فارسیِ ثبت‌شده از هتل دست نمی‌خورد
+            firstNameEn: p.firstName,
+            lastNameEn: p.lastName,
             mobile: input.mobile,
             birthdate: p.birthdate,
             gender: p.gender,

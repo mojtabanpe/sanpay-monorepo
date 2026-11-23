@@ -136,6 +136,9 @@ export class HotelPageDto {
   pageSize = 20;
 }
 
+/** همان الگوی نام در فرم پرواز */
+const LATIN_NAME = /^[A-Za-z][A-Za-z '\-]{0,69}$/;
+
 export class BookingGuestDto {
   @IsString()
   @IsNotEmpty({ message: 'نام مسافر لازم است' })
@@ -154,6 +157,18 @@ export class BookingGuestDto {
   /** فقط برای دفترچهٔ مسافران — به تأمین‌کننده فرستاده نمی‌شود */
   @Matches(ISO_DATE, { message: 'تاریخ تولد باید به شکل YYYY-MM-DD باشد' })
   birthdate!: string;
+  /** اختیاری — فقط دفترچهٔ مسافران (برای پرواز)؛ به تأمین‌کنندهٔ هتل نمی‌رود */
+  @IsOptional()
+  @Matches(LATIN_NAME, {
+    message: 'نام انگلیسی را فقط با حروف انگلیسی بنویسید',
+  })
+  firstNameEn?: string;
+
+  @IsOptional()
+  @Matches(LATIN_NAME, {
+    message: 'نام خانوادگی انگلیسی را فقط با حروف انگلیسی بنویسید',
+  })
+  lastNameEn?: string;
 }
 
 export class CreateBookingDto {

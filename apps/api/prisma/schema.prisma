@@ -915,8 +915,13 @@ model Traveler {
   employeeId             String
   /// کد ملی — کلید یکتایی مسافر در دفترچهٔ هر کارمند
   nationalCode           String
+  /// نام فارسی (از رزرو هتل). رزرو پرواز به این دو دست نمی‌زند.
   firstName              String
   lastName               String
+  /// نام انگلیسی — پرواز فقط از این دو می‌خواند و فقط در این دو می‌نویسد؛
+  /// در رزرو هتل اختیاری گرفته می‌شود.
+  firstNameEn            String?
+  lastNameEn             String?
   /// برای مسافر پرواز، موبایل رزروکننده
   mobile                 String?
   /// YYYY-MM-DD — در رزرو هتل هم گرفته می‌شود ولی به تأمین‌کننده نمی‌رود

@@ -6,8 +6,12 @@ import { PrismaService } from '../prisma/prisma.service';
 /** مشخصاتی که یک رزرو از یک مسافر دارد؛ فیلدِ نداده یعنی «دست نزن». */
 export interface TravelerSnapshot {
   nationalCode: string;
-  firstName: string;
-  lastName: string;
+  /** نام فارسی — فقط رزرو هتل می‌فرستد */
+  firstName?: string;
+  lastName?: string;
+  /** نام انگلیسی — پرواز، یا هتل اگر کاربر وارد کرده باشد */
+  firstNameEn?: string;
+  lastNameEn?: string;
   mobile?: string;
   birthdate?: string;
   gender?: 'male' | 'female';
@@ -51,8 +55,10 @@ export class TravelersService {
           employeeId,
           nationalCode: traveler.nationalCode,
           ...fields,
-          firstName: traveler.firstName,
-          lastName: traveler.lastName,
+          // ستون فارسی اجباری است؛ مسافری که اول با پرواز ثبت شده تا اولین
+          // رزرو هتل همان نام انگلیسی را دارد. پرواز هرگز از این دو نمی‌خواند.
+          firstName: traveler.firstName || traveler.firstNameEn || '',
+          lastName: traveler.lastName || traveler.lastNameEn || '',
           lastUsedAt,
         },
         update: { ...fields, lastUsedAt },
@@ -74,6 +80,8 @@ export class TravelersService {
       mobile: row.mobile ?? '',
       lastUsedAt: row.lastUsedAt.toISOString(),
       ...definedOnly({
+        firstNameEn: row.firstNameEn ?? undefined,
+        lastNameEn: row.lastNameEn ?? undefined,
         birthdate: row.birthdate ?? undefined,
         gender:
           row.gender === 'male' || row.gender === 'female'

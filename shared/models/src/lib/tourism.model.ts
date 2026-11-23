@@ -135,6 +135,9 @@ export interface BookingGuest {
 export interface PreviousTraveler extends BookingGuest {
   /** آخرین زمانی که این مشخصات در یک رزرو استفاده شده است. */
   lastUsedAt: string;
+  /** نام انگلیسی — فرم پرواز فقط این را پر می‌کند، هرگز نام فارسی را */
+  firstNameEn?: string;
+  lastNameEn?: string;
   /** مشخصات تکمیلی؛ تاریخ تولد از هتل و پرواز، بقیه فقط از پرواز. */
   birthdate?: string;
   gender?: 'male' | 'female';
@@ -148,6 +151,9 @@ export interface PreviousTraveler extends BookingGuest {
 export interface HotelBookingGuest extends BookingGuest {
   /** YYYY-MM-DD */
   birthdate: string;
+  /** اختیاری — فقط در دفترچهٔ مسافران برای رزرو پرواز ذخیره می‌شود */
+  firstNameEn?: string;
+  lastNameEn?: string;
 }
 
 export interface CreateBookingInput {

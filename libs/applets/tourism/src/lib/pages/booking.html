@@ -38,15 +38,16 @@
         @if (selectedWallet(); as wallet) {
         <div class="flex items-center justify-between gap-3 text-sm">
           <span class="font-medium">{{ wallet.name }}</span>
-          <span class="text-muted-foreground">مانده: {{ toman(wallet.max) }}</span>
+          <span class="text-muted-foreground"
+            >مانده: {{ toman(wallet.max) }}</span
+          >
         </div>
         @if (shortfall() > 0) {
         <p role="status" class="text-muted-foreground text-xs">
           ماندهٔ کیف پول گردشگری کافی نیست؛ {{ toman(shortfall()) }} باقی‌مانده
           را با کارت بانکی می‌پردازید.
         </p>
-        }
-        } @else {
+        } } @else {
         <p class="text-muted-foreground text-xs">
           کیف پول گردشگری فعالی ندارید؛ مبلغ رزرو با کارت بانکی پرداخت می‌شود.
         </p>
@@ -153,6 +154,53 @@
             </hlm-field>
           </div>
 
+          <div class="flex flex-col gap-1">
+            <div class="flex flex-col gap-3 sm:flex-row">
+              <hlm-field class="flex-1">
+                <label hlmFieldLabel for="traveller-first-en"
+                  >نام انگلیسی (اختیاری)</label
+                >
+                <input
+                  hlmInput
+                  id="traveller-first-en"
+                  type="text"
+                  dir="ltr"
+                  autocomplete="off"
+                  [formField]="travelerForm.firstNameEn"
+                  (input)="travelerEdited()"
+                />
+                @if (travelerForm.firstNameEn().invalid()) {
+                <p class="text-xs text-red-700">
+                  {{ travelerForm.firstNameEn().errors()[0].message }}
+                </p>
+                }
+              </hlm-field>
+              <hlm-field class="flex-1">
+                <label hlmFieldLabel for="traveller-last-en"
+                  >نام خانوادگی انگلیسی (اختیاری)</label
+                >
+                <input
+                  hlmInput
+                  id="traveller-last-en"
+                  type="text"
+                  dir="ltr"
+                  autocomplete="off"
+                  [formField]="travelerForm.lastNameEn"
+                  (input)="travelerEdited()"
+                />
+                @if (travelerForm.lastNameEn().invalid()) {
+                <p class="text-xs text-red-700">
+                  {{ travelerForm.lastNameEn().errors()[0].message }}
+                </p>
+                }
+              </hlm-field>
+            </div>
+            <p class="text-muted-foreground text-xs">
+              مثل گذرنامه، با حروف انگلیسی. برای رزرو پرواز همین مسافر ذخیره
+              می‌شود.
+            </p>
+          </div>
+
           <hlm-field>
             <label hlmFieldLabel for="traveller-national-code">کد ملی</label>
             <input
@@ -220,7 +268,11 @@
             </hlm-date-picker>
             @if (travelerForm.birthdate().touched() &&
             travelerForm.birthdate().invalid()) {
-            <p id="traveller-birthdate-error" role="alert" class="text-xs text-red-700">
+            <p
+              id="traveller-birthdate-error"
+              role="alert"
+              class="text-xs text-red-700"
+            >
               {{ travelerForm.birthdate().errors()[0].message }}
             </p>
             }
@@ -238,12 +290,7 @@
     </p>
     }
 
-    <button
-      hlmBtn
-      type="submit"
-      class="w-full"
-      [disabled]="busy()"
-    >
+    <button hlmBtn type="submit" class="w-full" [disabled]="busy()">
       @if (busy()) { در حال آماده‌سازی… } @else { ادامه به پرداخت — {{
       toman(q.amount) }} }
     </button>

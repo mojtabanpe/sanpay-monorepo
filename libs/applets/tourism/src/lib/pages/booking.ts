@@ -36,6 +36,9 @@ import {
   toman,
 } from '../format';
 
+/** همان الگوی نام انگلیسی فرم پرواز؛ خالی هم مجاز است (اختیاری) */
+const LATIN_NAME = /^([A-Za-z][A-Za-z' -]{0,69})?$/;
+
 @Component({
   selector: 'tourism-booking',
   imports: [
@@ -64,12 +67,14 @@ export class BookingPage {
   protected readonly previousTravelers = signal<PreviousTraveler[]>([]);
   protected readonly selectedTraveler = signal<string | null>(null);
 
-  protected readonly travelerModel = signal<HotelBookingGuest>({
+  protected readonly travelerModel = signal<Required<HotelBookingGuest>>({
     firstName: '',
     lastName: '',
     nationalCode: '',
     mobile: '',
     birthdate: '',
+    firstNameEn: '',
+    lastNameEn: '',
   });
   protected readonly travelerForm = form(this.travelerModel, (traveler) => {
     required(traveler.firstName, { message: 'نام مسافر را وارد کنید' });
@@ -87,6 +92,13 @@ export class BookingPage {
       message: 'شمارهٔ موبایل معتبر نیست',
     });
     required(traveler.birthdate, { message: 'تاریخ تولد مسافر را وارد کنید' });
+    // اختیاری؛ اگر پر شود همان قاعدهٔ فرم پرواز
+    pattern(traveler.firstNameEn, LATIN_NAME, {
+      message: 'نام انگلیسی را فقط با حروف انگلیسی بنویسید',
+    });
+    pattern(traveler.lastNameEn, LATIN_NAME, {
+      message: 'نام خانوادگی انگلیسی را فقط با حروف انگلیسی بنویسید',
+    });
   });
 
   // کیبورد فارسی آیفون ارقام فارسی می‌فرستد و /^\d{10}$/ ردشان می‌کند؛
@@ -144,6 +156,8 @@ export class BookingPage {
         nationalCode: profile.nationalCode,
         mobile: profile.phone ?? '',
         birthdate: profile.birthDate ?? '',
+        // نام انگلیسیِ خود کارمند اگر قبلاً در رزروی ثبت شده باشد
+        ...this.englishName(profile.nationalCode),
       },
       'self',
     );
@@ -203,6 +217,13 @@ export class BookingPage {
     }
   }
 
+  private englishName(nationalCode: string) {
+    const saved = this.previousTravelers().find(
+      (t) => t.nationalCode === nationalCode,
+    );
+    return { firstNameEn: saved?.firstNameEn, lastNameEn: saved?.lastNameEn };
+  }
+
   private fillTraveler(traveler: HotelBookingGuest, key: string): void {
     this.travelerModel.set({
       firstName: traveler.firstName,
@@ -210,6 +231,8 @@ export class BookingPage {
       nationalCode: traveler.nationalCode,
       mobile: traveler.mobile,
       birthdate: traveler.birthdate,
+      firstNameEn: traveler.firstNameEn ?? '',
+      lastNameEn: traveler.lastNameEn ?? '',
     });
     this.selectedTraveler.set(key);
   }
@@ -235,6 +258,12 @@ export class BookingPage {
               nationalCode: traveler.nationalCode.trim(),
               mobile: traveler.mobile.trim(),
               birthdate: traveler.birthdate,
+              ...(traveler.firstNameEn?.trim()
+                ? { firstNameEn: traveler.firstNameEn.trim() }
+                : {}),
+              ...(traveler.lastNameEn?.trim()
+                ? { lastNameEn: traveler.lastNameEn.trim() }
+                : {}),
             },
           }),
         );
