@@ -549,7 +549,7 @@
                 [ngModel]="p.firstName"
                 (ngModelChange)="updatePassenger(i, 'firstName', $event)"
               />
-              @if (firstCtl.invalid && (firstCtl.dirty || firstCtl.touched)) {
+              @if (firstCtl.invalid && (firstCtl.dirty || firstCtl.touched || firstCtl.value)) {
               <hlm-field-error forceShow>نام را با حروف انگلیسی بنویسید.</hlm-field-error>
               }</hlm-field>
             <hlm-field
@@ -566,7 +566,7 @@
                 [ngModel]="p.lastName"
                 (ngModelChange)="updatePassenger(i, 'lastName', $event)"
               />
-              @if (lastCtl.invalid && (lastCtl.dirty || lastCtl.touched)) {
+              @if (lastCtl.invalid && (lastCtl.dirty || lastCtl.touched || lastCtl.value)) {
               <hlm-field-error forceShow>نام خانوادگی را با حروف انگلیسی بنویسید.</hlm-field-error>
               }</hlm-field>
             <hlm-field
@@ -634,7 +634,7 @@
                 (ngModelChange)="updatePassenger(i, 'nationality', $event.toUpperCase())"
               />
               <p hlmFieldDescription>ایران: IR</p>
-              @if (nationCtl.invalid && (nationCtl.dirty || nationCtl.touched)) {
+              @if (nationCtl.invalid && (nationCtl.dirty || nationCtl.touched || nationCtl.value)) {
               <hlm-field-error forceShow>کد دوحرفی انگلیسی کشور را وارد کنید.</hlm-field-error>
               }</hlm-field
             >
@@ -654,7 +654,7 @@
                 [ngModel]="p.nationalCode"
                 (ngModelChange)="updatePassenger(i, 'nationalCode', $event)"
               />
-              @if (nationalCtl.invalid && (nationalCtl.dirty || nationalCtl.touched)) {
+              @if (nationalCtl.invalid && (nationalCtl.dirty || nationalCtl.touched || nationalCtl.value)) {
               <hlm-field-error forceShow>کد ملی باید ۱۰ رقم باشد.</hlm-field-error>
               }</hlm-field>
             } @else {
@@ -734,6 +734,12 @@
             می‌شود و اگر صادر نشد مبلغ برمی‌گردد. تا مشخص شدن نتیجه، رزرو دیگری
             برای همین سفر ثبت نکنید.
           </p>
+          @if (bookingForm.invalid) {
+          <p role="status" class="text-muted-foreground text-xs">
+            برخی مشخصات مسافران نادرست است؛ پیام‌های قرمز بالای صفحه را اصلاح
+            کنید. نام و نام خانوادگی باید با حروف انگلیسی باشد.
+          </p>
+          }
           @if (missingPassengerFields(); as missing) {
           <p role="status" class="text-muted-foreground text-xs">
             {{ missing }}
