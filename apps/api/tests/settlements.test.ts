@@ -137,9 +137,10 @@ async function createFixture() {
   };
   const toman = {
     isLive: () => false,
+    sourceIban: () => null,
     createBatch: async (amount: number, count: number) => {
       assert.equal(count, 1);
-      assert.equal(amount, 100000);
+      assert.equal(amount, 10000, 'rial is sent as-is');
       state.creates++;
       if (state.failCreate) throw new Error('permission_denied');
       return { uuid: randomUUID(), status: 1 };
@@ -211,7 +212,7 @@ test('preview does not send or claim; manual run isolates one store and never in
     assert.equal(batch.items.length, 1);
     assert.equal(batch.items[0].storeId, f.stores[0].id);
     assert.equal(batch.status, 'PROCESSING');
-    assert.equal(f.state.items[0].amount, 100000, 'toman is converted to rial');
+    assert.equal(f.state.items[0].amount, 10000, 'rial is sent as-is');
     assert.equal(f.state.items[0].iban_destination, preview.destinationIban);
     assert.equal(
       (
@@ -256,6 +257,43 @@ test('preview does not send or claim; manual run isolates one store and never in
       else process.env.TOMAN_SETTLEMENTS_ENABLED = old;
     }
     assert.equal(f.state.creates, 1);
+  }));
+
+test('store list carries pending totals; bulk preview signs each store and skips the unsendable', async () =>
+  fixture(async (f) => {
+    const listed = (await f.service.stores()).filter((s) =>
+      f.stores.some((store) => store.id === s.id),
+    );
+    assert.deepEqual(
+      listed.map((s) => [s.pendingAmount, s.pendingCount, s.ibanValid]).sort(),
+      [
+        [10000, 1, true],
+        [20000, 1, true],
+      ],
+    );
+    // nothing to settle for this one any more
+    await f.db.payment.updateMany({
+      where: { storeId: f.stores[1].id },
+      data: { settledAt: new Date() },
+    });
+    const result = await f.service.previewStores([
+      f.stores[0].id,
+      f.stores[1].id,
+      f.stores[0].id,
+    ]);
+    assert.equal(result.previews.length, 1, 'duplicates are previewed once');
+    assert.equal(result.previews[0].storeId, f.stores[0].id);
+    assert.deepEqual(
+      result.skipped.map((s) => s.storeId),
+      [f.stores[1].id],
+    );
+    assert.match(result.skipped[0].error, /تسویه‌نشده ندارد/);
+    assert.equal(f.state.creates, 0, 'preview never sends');
+    const batch = await f.service.runManual(
+      result.previews[0].storeId,
+      result.previews[0].previewToken,
+    );
+    assert.equal(batch.items[0].storeId, f.stores[0].id);
   }));
 
 test('replaying or concurrently submitting one approval makes only one transfer', async () =>
@@ -718,6 +756,7 @@ function recoveryFixture(remoteUuid: string | null = null) {
   };
   const toman = {
     isLive: () => false,
+    sourceIban: () => null,
     createBatch: async () => {
       state.creates++;
       return { uuid: 'remote-unit' };

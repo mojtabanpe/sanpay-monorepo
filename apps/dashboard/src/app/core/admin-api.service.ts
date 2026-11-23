@@ -46,6 +46,15 @@ export type Query = Record<string, string | number | undefined | null>;
 export interface SettlementStoreOption {
   id: string;
   name: string;
+  /** جمع خریدهای تسویه‌نشده (ریال) */
+  pendingAmount: number;
+  pendingCount: number;
+  ibanValid: boolean;
+}
+export interface StoreSettlementPreviews {
+  previews: StoreSettlementPreview[];
+  /** فروشگاه‌هایی که پیش‌نمایش نگرفتند (بدون خرید، شبای نامعتبر…) */
+  skipped: { storeId: string; storeName: string; error: string }[];
 }
 export interface StoreSettlementPreview {
   storeId: string;
@@ -342,6 +351,13 @@ export class AdminApiService {
     return this.post<StoreSettlementPreview>('/api/admin/settlements/preview', {
       storeId,
     });
+  }
+
+  previewSettlements(storeIds: string[]) {
+    return this.post<StoreSettlementPreviews>(
+      '/api/admin/settlements/preview-many',
+      { storeIds },
+    );
   }
 
   runSettlements(storeId: string, previewToken: string) {

@@ -88,12 +88,64 @@ export class SettlementsService {
     ]);
   }
 
+  /**
+   * فروشگاه‌های فعال با جمع خریدهای تسویه‌نشده — تا مدیر بدون پیش‌نمایش
+   * تک‌تک ببیند کدام فروشگاه چیزی برای تسویه دارد و گروهی انتخاب کند.
+   */
   async stores() {
-    return this.prisma.store.findMany({
-      where: { isActive: true, deletedAt: null },
-      select: { id: true, name: true },
-      orderBy: { name: 'asc' },
+    const [stores, pending] = await Promise.all([
+      this.prisma.store.findMany({
+        where: { isActive: true, deletedAt: null },
+        select: { id: true, name: true, settlementIban: true },
+        orderBy: { name: 'asc' },
+      }),
+      this.prisma.payment.groupBy({
+        by: ['storeId'],
+        where: { settlementItemId: null, settledAt: null },
+        _sum: { amount: true },
+        _count: { _all: true },
+      }),
+    ]);
+    const byStore = new Map(pending.map((row) => [row.storeId, row]));
+    return stores.map((store) => {
+      const row = byStore.get(store.id);
+      return {
+        id: store.id,
+        name: store.name,
+        pendingAmount: Number(row?._sum.amount ?? 0n),
+        pendingCount: row?._count._all ?? 0,
+        ibanValid: this.validIban(store.settlementIban) !== null,
+      };
     });
+  }
+
+  /**
+   * پیش‌نمایش چند فروشگاه در یک درخواست. هر فروشگاه توکن امضاشدهٔ خودش را
+   * می‌گیرد و جدا اجرا می‌شود (`runManual`)، پس ضمانت‌های تسویهٔ تکی سر
+   * جایش است؛ فروشگاهی که خطا دارد (بدون خرید، شبای نامعتبر) کنار می‌رود.
+   */
+  async previewStores(storeIds: string[]) {
+    const previews: Awaited<ReturnType<SettlementsService['previewStore']>>[] =
+      [];
+    const skipped: { storeId: string; storeName: string; error: string }[] =
+      [];
+    for (const storeId of [...new Set(storeIds)]) {
+      try {
+        previews.push(await this.previewStore(storeId));
+      } catch (error) {
+        if (!(error instanceof BadRequestException)) throw error;
+        const store = await this.prisma.store.findUnique({
+          where: { id: storeId },
+          select: { name: true },
+        });
+        skipped.push({
+          storeId,
+          storeName: store?.name ?? storeId,
+          error: error.message,
+        });
+      }
+    }
+    return { previews, skipped };
   }
 
   async previewStore(storeId: string) {

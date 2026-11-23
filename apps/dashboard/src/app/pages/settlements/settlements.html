@@ -16,39 +16,99 @@
   } @if (canWrite()) {
   <section hlmCard>
     <div hlmCardHeader>
-      <h2 hlmCardTitle>تسویهٔ دستی فروشگاه</h2>
+      <h2 hlmCardTitle>تسویهٔ دستی فروشگاه‌ها</h2>
       <p hlmCardDescription>
-        خریدهای تسویه‌نشدهٔ فروشگاه انتخاب‌شده را بررسی و سپس تأیید کنید.
+        فروشگاه‌هایی که خرید تسویه‌نشده دارند. چند فروشگاه را انتخاب کنید،
+        پیش‌نمایش همه را یک‌جا ببینید و با یک تأیید ارسال کنید.
       </p>
     </div>
-    <div hlmCardContent class="flex flex-wrap items-end gap-3">
-      <div class="flex min-w-60 flex-1 flex-col gap-2">
-        <label for="settlement-store">فروشگاه</label>
-        <hlm-select
-          [value]="storeId()"
-          [itemToString]="storeLabel"
-          [disabled]="loading()"
-          (valueChange)="storeId.set($any($event) ?? '')"
+    <div hlmCardContent class="flex flex-col gap-4">
+      <div class="flex flex-wrap items-end gap-3">
+        <hlm-field class="min-w-60 flex-1">
+          <label hlmFieldLabel for="settlement-store-q">جست‌وجوی فروشگاه</label>
+          <input
+            id="settlement-store-q"
+            hlmInput
+            class="w-full"
+            placeholder="نام فروشگاه"
+            [value]="storeQuery()"
+            (input)="storeQuery.set($any($event.target).value)"
+          />
+        </hlm-field>
+        <div class="text-muted-foreground text-sm">
+          {{ fa(selected().size) }} فروشگاه — {{ toman(selectedAmount()) }}
+        </div>
+        <button
+          hlmBtn
+          [disabled]="loading() || selected().size === 0"
+          (click)="showPreview()"
         >
-          <hlm-select-trigger id="settlement-store" class="w-full"
-            ><hlm-select-value placeholder="انتخاب فروشگاه"
-          /></hlm-select-trigger>
-          <hlm-select-content *hlmSelectPortal>
-            @for (store of stores(); track store.id) {
-            <hlm-select-item [value]="store.id"
-              >{{ store.name }}</hlm-select-item
-            >
-            }
-          </hlm-select-content>
-        </hlm-select>
+          پیش‌نمایش تسویه
+        </button>
       </div>
-      <button
-        hlmBtn
-        [disabled]="loading() || !storeId()"
-        (click)="showPreview()"
-      >
-        پیش‌نمایش تسویه
-      </button>
+
+      @if (pendingStores().length) {
+      <div hlmTableContainer class="max-h-96">
+        <table hlmTable class="w-full" aria-label="فروشگاه‌های قابل تسویه">
+          <thead hlmTHead>
+            <tr hlmTr>
+              <th hlmTh class="w-10">
+                <hlm-checkbox
+                  aria-label="انتخاب همه"
+                  [checked]="allSelected()"
+                  [indeterminate]="someSelected()"
+                  [disabled]="loading()"
+                  (checkedChange)="toggleAll(!allSelected())"
+                />
+              </th>
+              <th hlmTh>فروشگاه</th>
+              <th hlmTh>تعداد خرید</th>
+              <th hlmTh>مبلغ قابل تسویه</th>
+              <th hlmTh>شبا</th>
+            </tr>
+          </thead>
+          <tbody hlmTBody>
+            @for (store of pendingStores(); track store.id) {
+            <tr hlmTr>
+              <td hlmTd>
+                <hlm-checkbox
+                  [id]="'settle-' + store.id"
+                  [attr.aria-label]="'انتخاب ' + store.name"
+                  [checked]="isSelected(store.id)"
+                  [disabled]="loading() || !store.ibanValid"
+                  (checkedChange)="toggleStore(store.id, $event)"
+                />
+              </td>
+              <td hlmTd class="font-medium">
+                <label [for]="'settle-' + store.id">{{ store.name }}</label>
+              </td>
+              <td hlmTd>{{ fa(store.pendingCount) }}</td>
+              <td hlmTd class="font-semibold">
+                {{ toman(store.pendingAmount) }}
+              </td>
+              <td hlmTd>
+                @if (store.ibanValid) {
+                <span hlmBadge variant="secondary">معتبر</span>
+                } @else {
+                <span hlmBadge variant="destructive">شبا نامعتبر</span>
+                }
+              </td>
+            </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      } @else {
+      <p class="text-muted-foreground text-sm">
+        {{ storeQuery() ? 'فروشگاهی با این نام خرید تسویه‌نشده ندارد.' :
+        'هیچ فروشگاهی خرید تسویه‌نشده ندارد.' }}
+      </p>
+      } @if (idleStoreCount()) {
+      <p class="text-muted-foreground text-xs">
+        {{ fa(idleStoreCount()) }} فروشگاه دیگر خرید تسویه‌نشده ندارند و
+        نمایش داده نمی‌شوند.
+      </p>
+      }
     </div>
   </section>
   }
@@ -361,36 +421,71 @@
   [state]="confirmationOpen()"
   (stateChanged)="closeConfirmation($event)"
 >
-  <hlm-dialog-content *hlmDialogPortal class="sm:max-w-lg" dir="rtl">
+  <hlm-dialog-content *hlmDialogPortal class="sm:max-w-3xl" dir="rtl">
     <div hlmDialogHeader>
-      <h3 hlmDialogTitle>تأیید تسویهٔ فروشگاه</h3>
+      <h3 hlmDialogTitle>تأیید تسویهٔ فروشگاه‌ها</h3>
       <p hlmDialogDescription>
-        با تأیید، درخواست انتقال مبلغ زیر برای این فروشگاه ارسال می‌شود. این
+        با تأیید، برای هر فروشگاه جداگانه درخواست انتقال ارسال می‌شود. این
         پیش‌نمایش ۵ دقیقه اعتبار دارد.
       </p>
     </div>
-    @if (preview(); as item) {
+    @if (previews().length) {
+    <div hlmTableContainer class="max-h-80">
+      <table hlmTable class="w-full text-sm">
+        <thead hlmTHead>
+          <tr hlmTr>
+            <th hlmTh>فروشگاه</th>
+            <th hlmTh>صاحب حساب</th>
+            <th hlmTh>شبای مقصد</th>
+            <th hlmTh>تعداد خرید</th>
+            <th hlmTh>مبلغ انتقال</th>
+          </tr>
+        </thead>
+        <tbody hlmTBody>
+          @for (item of previews(); track item.storeId) {
+          <tr hlmTr>
+            <td hlmTd class="font-medium">{{ item.storeName }}</td>
+            <td hlmTd>{{ item.beneficiaryName }}</td>
+            <td hlmTd dir="ltr" class="text-right">
+              {{ item.destinationIban }}
+            </td>
+            <td hlmTd>{{ fa(item.paymentCount) }}</td>
+            <td hlmTd class="font-semibold">{{ toman(item.totalAmount) }}</td>
+          </tr>
+          }
+        </tbody>
+      </table>
+    </div>
     <dl class="grid grid-cols-[auto_1fr] gap-3 text-sm">
-      <dt>فروشگاه</dt>
-      <dd>{{ item.storeName }}</dd>
-      <dt>صاحب حساب</dt>
-      <dd>{{ item.beneficiaryName }}</dd>
-      <dt>شبای مقصد</dt>
-      <dd dir="ltr" class="break-all text-right">{{ item.destinationIban }}</dd>
-      <dt>تعداد خرید</dt>
-      <dd>{{ item.paymentCount }}</dd>
-      <dt>مبلغ انتقال</dt>
-      <dd class="font-bold">{{ toman(item.totalAmount) }}</dd>
+      <dt>جمع انتقال‌ها</dt>
+      <dd class="font-bold">
+        {{ toman(previewTotal()) }} — {{ fa(previews().length) }} فروشگاه
+      </dd>
       <dt>اتصال تومان</dt>
       <dd>
-        {{ item.mode === 'mock' ? 'شبیه‌سازی؛ بدون انتقال بانکی' : 'ارسال به
-        سرویس تومان' }}
+        {{ previews()[0].mode === 'mock' ? 'شبیه‌سازی؛ بدون انتقال بانکی' :
+        'ارسال به سرویس تومان' }}
       </dd>
-      @if (item.mode === 'live') {
+      @if (previews()[0].mode === 'live') {
       <dt>نشانی سرویس</dt>
-      <dd dir="ltr" class="break-all text-right">{{ item.apiUrl }}</dd>
+      <dd dir="ltr" class="break-all text-right">{{ previews()[0].apiUrl }}</dd>
       }
     </dl>
+    } @else {
+    <p class="text-sm">هیچ‌کدام از فروشگاه‌های انتخاب‌شده قابل تسویه نیست.</p>
+    } @if (skipped().length) {
+    <div hlmAlert variant="destructive">
+      <p hlmAlertTitle>این فروشگاه‌ها ارسال نمی‌شوند</p>
+      <ul hlmAlertDescription class="list-inside list-disc">
+        @for (item of skipped(); track item.storeId) {
+        <li>{{ item.storeName }}: {{ item.error }}</li>
+        }
+      </ul>
+    </div>
+    } @if (progress(); as p) {
+    <p role="status" class="text-sm">
+      در حال ارسال {{ fa(p.done) }} از {{ fa(p.total) }}…
+    </p>
     }
     <div hlmDialogFooter>
       <button
@@ -401,8 +496,13 @@
       >
         انصراف
       </button>
-      <button hlmBtn [disabled]="loading()" (click)="run()">
-        {{ loading() ? 'در حال ارسال…' : 'تأیید و ارسال تسویه' }}
+      <button
+        hlmBtn
+        [disabled]="loading() || previews().length === 0"
+        (click)="run()"
+      >
+        {{ loading() ? 'در حال ارسال…' : 'تأیید و ارسال ' +
+        fa(previews().length) + ' تسویه' }}
       </button>
     </div>
   </hlm-dialog-content>

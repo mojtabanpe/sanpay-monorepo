@@ -11,6 +11,9 @@ import { AdminAccess } from '../admin/permissions.decorator';
 import { AdminJwtGuard } from '../admin/admin-jwt.guard';
 import { Roles, WRITE_ROLES } from '../admin/roles.decorator';
 import {
+  ArrayMaxSize,
+  ArrayNotEmpty,
+  IsArray,
   IsIn,
   IsOptional,
   IsString,
@@ -25,6 +28,14 @@ import { SettlementsService } from './settlements.service';
 export class PreviewStoreSettlementDto {
   @IsUUID()
   storeId!: string;
+}
+
+export class PreviewStoresSettlementDto {
+  @IsArray()
+  @ArrayNotEmpty()
+  @ArrayMaxSize(500)
+  @IsUUID(undefined, { each: true })
+  storeIds!: string[];
 }
 
 export class RunStoreSettlementDto extends PreviewStoreSettlementDto {
@@ -88,6 +99,12 @@ export class SettlementsController {
   @Roles(...WRITE_ROLES)
   preview(@Body() input: PreviewStoreSettlementDto) {
     return this.settlements.previewStore(input.storeId);
+  }
+
+  @Post('preview-many')
+  @Roles(...WRITE_ROLES)
+  previewMany(@Body() input: PreviewStoresSettlementDto) {
+    return this.settlements.previewStores(input.storeIds);
   }
 
   @Get(':id')

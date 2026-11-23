@@ -9,6 +9,7 @@ import { HlmAlertImports } from '@sanpay/ui/alert';
 import { HlmBadgeImports } from '@sanpay/ui/badge';
 import { HlmButtonImports } from '@sanpay/ui/button';
 import { HlmCardImports } from '@sanpay/ui/card';
+import { HlmCheckboxImports } from '@sanpay/ui/checkbox';
 import { HlmDatePickerImports } from '@sanpay/ui/date-picker';
 import { HlmDialogImports } from '@sanpay/ui/dialog';
 import { HlmFieldImports } from '@sanpay/ui/field';
@@ -21,6 +22,7 @@ import {
   SettlementItemRow,
   SettlementStoreOption,
   StoreSettlementPreview,
+  StoreSettlementPreviews,
   apiError,
 } from '../../core/admin-api.service';
 import { AdminAuthService } from '../../core/admin-auth.service';
@@ -38,6 +40,7 @@ import { fa, jalaliTime, toman } from '../../core/format';
     HlmBadgeImports,
     HlmButtonImports,
     HlmCardImports,
+    HlmCheckboxImports,
     HlmDatePickerImports,
     HlmFieldImports,
     HlmInputImports,
@@ -83,11 +86,47 @@ export class Settlements {
     value ? this.typeLabel(String(value)) : 'همهٔ ذی‌نفع‌ها';
 
   protected readonly stores = signal<SettlementStoreOption[]>([]);
-  protected readonly storeId = signal('');
-  protected readonly preview = signal<StoreSettlementPreview | null>(null);
+  /** فقط فروشگاه‌هایی که چیزی برای تسویه دارند در جدول می‌آیند */
+  protected readonly storeQuery = signal('');
+  protected readonly pendingStores = computed(() => {
+    const q = this.storeQuery().trim();
+    return this.stores().filter(
+      (store) => store.pendingCount > 0 && (!q || store.name.includes(q)),
+    );
+  });
+  protected readonly idleStoreCount = computed(
+    () => this.stores().filter((store) => store.pendingCount === 0).length,
+  );
+  /** قابل انتخاب: خرید تسویه‌نشده و شبای معتبر */
+  private readonly selectable = computed(() =>
+    this.pendingStores().filter((store) => store.ibanValid),
+  );
+  protected readonly selected = signal<ReadonlySet<string>>(new Set());
+  protected readonly selectedStores = computed(() =>
+    this.stores().filter((store) => this.selected().has(store.id)),
+  );
+  protected readonly selectedAmount = computed(() =>
+    this.selectedStores().reduce((sum, store) => sum + store.pendingAmount, 0),
+  );
+  protected readonly allSelected = computed(() => {
+    const rows = this.selectable();
+    return rows.length > 0 && rows.every((s) => this.selected().has(s.id));
+  });
+  protected readonly someSelected = computed(
+    () =>
+      !this.allSelected() &&
+      this.selectable().some((s) => this.selected().has(s.id)),
+  );
+  protected readonly previews = signal<StoreSettlementPreview[]>([]);
+  protected readonly skipped = signal<StoreSettlementPreviews['skipped']>([]);
+  protected readonly previewTotal = computed(() =>
+    this.previews().reduce((sum, item) => sum + item.totalAmount, 0),
+  );
+  /** پیشرفت ارسال گروهی؛ null یعنی در حال ارسال نیستیم */
+  protected readonly progress = signal<{ done: number; total: number } | null>(
+    null,
+  );
   protected readonly confirmationOpen = signal<'open' | 'closed'>('closed');
-  protected readonly storeLabel = (value: unknown) =>
-    this.stores().find((store) => store.id === value)?.name ?? '';
   protected readonly loading = signal(false);
   protected readonly notice = signal<string | null>(null);
   protected readonly canWrite = computed(() =>
@@ -176,22 +215,86 @@ export class Settlements {
     );
   }
 
+  protected isSelected(storeId: string): boolean {
+    return this.selected().has(storeId);
+  }
+
+  protected toggleStore(storeId: string, checked: boolean): void {
+    this.selected.update((current) => {
+      const next = new Set(current);
+      if (checked) next.add(storeId);
+      else next.delete(storeId);
+      return next;
+    });
+  }
+
+  /** «انتخاب همه» فقط فروشگاه‌های قابل تسویهٔ همین فهرست فیلترشده را می‌گیرد */
+  protected toggleAll(checked: boolean): void {
+    this.selected.update((current) => {
+      const next = new Set(current);
+      for (const store of this.selectable()) {
+        if (checked) next.add(store.id);
+        else next.delete(store.id);
+      }
+      return next;
+    });
+  }
+
   protected async showPreview(): Promise<void> {
-    if (!this.canWrite() || !this.storeId() || this.loading()) return;
+    const storeIds = [...this.selected()];
+    if (!this.canWrite() || !storeIds.length || this.loading()) return;
     await this.action(async () => {
-      this.preview.set(await this.api.previewSettlement(this.storeId()));
+      const result = await this.api.previewSettlements(storeIds);
+      this.previews.set(result.previews);
+      this.skipped.set(result.skipped);
       this.confirmationOpen.set('open');
     }, false);
   }
 
+  /**
+   * هر فروشگاه با توکن امضاشدهٔ خودش و یکی‌یکی ارسال می‌شود؛ خطای یکی بقیه
+   * را متوقف نمی‌کند و تکرار همان توکن در سرور دوباره پول نمی‌فرستد.
+   */
   protected async run(): Promise<void> {
-    const preview = this.preview();
-    if (!this.canWrite() || !preview) return;
-    await this.action(async () => {
-      await this.api.runSettlements(preview.storeId, preview.previewToken);
-      this.confirmationOpen.set('closed');
-      this.preview.set(null);
-    });
+    const previews = this.previews();
+    if (!this.canWrite() || !previews.length || this.loading()) return;
+    this.loading.set(true);
+    this.notice.set(null);
+    const failed: StoreSettlementPreview[] = [];
+    this.progress.set({ done: 0, total: previews.length });
+    try {
+      for (const item of previews) {
+        try {
+          await this.api.runSettlements(item.storeId, item.previewToken);
+        } catch (caught) {
+          failed.push(item);
+          const message = apiError(caught, 'ارسال تسویه ممکن نشد');
+          notifyError(
+            previews.length > 1 ? `${item.storeName}: ${message}` : message,
+          );
+        }
+        this.progress.update((p) => p && { ...p, done: p.done + 1 });
+      }
+      const sent = previews.length - failed.length;
+      if (sent > 0)
+        this.notice.set(
+          failed.length
+            ? `تسویهٔ ${fa(sent)} فروشگاه ارسال شد؛ ${fa(failed.length)} فروشگاه ناموفق بود.`
+            : `تسویهٔ ${fa(sent)} فروشگاه ارسال شد.`,
+        );
+      // ناموفق‌ها با همان توکن در پنجره می‌مانند تا دوباره ارسال شوند؛
+      // تکرار توکن در سرور هرگز دو بار پول نمی‌فرستد.
+      this.previews.set(failed);
+      if (!failed.length) {
+        this.confirmationOpen.set('closed');
+        this.skipped.set([]);
+        this.selected.set(new Set());
+      }
+    } finally {
+      this.progress.set(null);
+      this.loading.set(false);
+    }
+    await this.load();
   }
 
   protected closeConfirmation(state: 'open' | 'closed'): void {

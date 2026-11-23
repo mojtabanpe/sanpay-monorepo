@@ -44,6 +44,9 @@ function row(overrides: Partial<SettlementItemRow>): SettlementItemRow {
   };
 }
 
+const TRANSFER_ROWS =
+  'table:not([aria-label="فروشگاه‌های قابل تسویه"]) tbody tr';
+
 function buttons(fixture: { nativeElement: unknown }, text: string) {
   return [
     ...(fixture.nativeElement as HTMLElement).querySelectorAll('button'),
@@ -81,10 +84,39 @@ describe('manual store settlement approval', () => {
       }),
       resumeSettlement: vi.fn().mockResolvedValue({}),
       retrySettlementItem: vi.fn().mockResolvedValue({}),
-      settlementStores: vi
+      settlementStores: vi.fn().mockResolvedValue([
+        {
+          id: preview.storeId,
+          name: preview.storeName,
+          pendingAmount: 12345,
+          pendingCount: 2,
+          ibanValid: true,
+        },
+        {
+          id: 'store-b',
+          name: 'فروشگاه دوم',
+          pendingAmount: 500,
+          pendingCount: 1,
+          ibanValid: true,
+        },
+        {
+          id: 'store-bad-iban',
+          name: 'بدون شبا',
+          pendingAmount: 900,
+          pendingCount: 1,
+          ibanValid: false,
+        },
+        {
+          id: 'store-idle',
+          name: 'بی‌خرید',
+          pendingAmount: 0,
+          pendingCount: 0,
+          ibanValid: true,
+        },
+      ]),
+      previewSettlements: vi
         .fn()
-        .mockResolvedValue([{ id: preview.storeId, name: preview.storeName }]),
-      previewSettlement: vi.fn().mockResolvedValue(preview),
+        .mockResolvedValue({ previews: [preview], skipped: [] }),
       runSettlements: vi.fn().mockResolvedValue({}),
       reconcileSettlement: vi
         .fn()
@@ -102,13 +134,15 @@ describe('manual store settlement approval', () => {
     fixture.detectChanges();
     // Set selection directly; the browser test covers the select interaction.
     const component = fixture.componentInstance as unknown as {
-      storeId: { set(value: string): void };
+      toggleStore(id: string, checked: boolean): void;
+      toggleAll(checked: boolean): void;
+      selected(): ReadonlySet<string>;
       showPreview(): Promise<void>;
       run(): Promise<void>;
       closeConfirmation(state: 'open' | 'closed'): void;
       confirmationOpen(): string;
     };
-    component.storeId.set(preview.storeId);
+    component.toggleStore(preview.storeId, true);
     fixture.detectChanges();
     return { api, fixture, component };
   }
@@ -150,6 +184,52 @@ describe('manual store settlement approval', () => {
     expect(component.confirmationOpen()).toBe('closed');
   });
 
+  it('select all takes only stores with pending purchases and a valid IBAN', async () => {
+    const { api, component } = await setup();
+    component.toggleAll(true);
+    expect([...component.selected()].sort()).toEqual(
+      [preview.storeId, 'store-b'].sort(),
+    );
+    await component.showPreview();
+    expect(api.previewSettlements).toHaveBeenCalledOnce();
+    expect(
+      [...(api.previewSettlements.mock.calls[0][0] as string[])].sort(),
+    ).toEqual([preview.storeId, 'store-b'].sort());
+    component.toggleAll(false);
+    expect(component.selected().size).toBe(0);
+  });
+
+  it('sends every previewed store with its own token; one failure does not stop the rest', async () => {
+    const { api, component } = await setup();
+    const second = { ...preview, storeId: 'store-b', previewToken: 'token-b' };
+    api.previewSettlements.mockResolvedValue({
+      previews: [preview, second],
+      skipped: [{ storeId: 'x', storeName: 'x', error: 'no purchases' }],
+    });
+    api.runSettlements.mockRejectedValueOnce(new Error('boom'));
+    component.toggleAll(true);
+    await component.showPreview();
+    await component.run();
+    expect(api.runSettlements).toHaveBeenCalledTimes(2);
+    expect(api.runSettlements).toHaveBeenNthCalledWith(
+      1,
+      preview.storeId,
+      preview.previewToken,
+    );
+    expect(api.runSettlements).toHaveBeenNthCalledWith(2, 'store-b', 'token-b');
+    expect(toast.error).toHaveBeenCalledWith(
+      `${preview.storeName}: boom`,
+      expect.any(Object),
+    );
+    // only the failed store stays in the dialog, with its token, for a retry
+    expect(component.confirmationOpen()).toBe('open');
+    expect(
+      (component as unknown as { previews(): { storeId: string }[] })
+        .previews()
+        .map((p) => p.storeId),
+    ).toEqual([preview.storeId]);
+  });
+
   it('inquires about the selected batch without calling submission', async () => {
     const { api, fixture } = await setup();
     // فقط سطر در حال پردازش استعلام دارد؛ سطرهای ناموفق نهایی ندارند
@@ -169,7 +249,7 @@ describe('manual store settlement approval', () => {
     const { api, fixture } = await setup();
     const text = (fixture.nativeElement as HTMLElement).textContent ?? '';
     expect(
-      (fixture.nativeElement as HTMLElement).querySelectorAll('tbody tr'),
+      (fixture.nativeElement as HTMLElement).querySelectorAll(TRANSFER_ROWS),
     ).toHaveLength(3);
     expect(text).toContain('test-batch');
     expect(text).toContain('تلاش مجدد ثبت شده');
@@ -258,7 +338,7 @@ describe('manual store settlement approval', () => {
       trigger?.closest('hlm-popover')?.classList.contains('md:hidden'),
     ).toBe(false);
     expect(
-      (fixture.nativeElement as HTMLElement).querySelectorAll('tbody tr'),
+      (fixture.nativeElement as HTMLElement).querySelectorAll(TRANSFER_ROWS),
     ).toHaveLength(1);
     expect(fixture.nativeElement.textContent).not.toContain(
       'ارتباط با تومان ناموفق بود',
@@ -415,7 +495,7 @@ describe('manual store settlement approval', () => {
     const { api, fixture, component } = await setup(false);
     await component.showPreview();
     await component.run();
-    expect(api.previewSettlement).not.toHaveBeenCalled();
+    expect(api.previewSettlements).not.toHaveBeenCalled();
     expect(api.runSettlements).not.toHaveBeenCalled();
     expect((fixture.nativeElement as HTMLElement).textContent).not.toContain(
       'پیش‌نمایش تسویه',
