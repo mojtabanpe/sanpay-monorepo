@@ -125,6 +125,32 @@ export class FlightsService {
   airports() {
     return this.provider.airports();
   }
+
+  private airportNames: { until: number; names: Map<string, string> } | null =
+    null;
+  /**
+   * نام خوانای فرودگاه برای عنوان صفحهٔ پرداخت («پرواز تهران به مشهد»)، تا
+   * سربرگ UPG پرواز هم مثل هتل («رزرو …») نام واقعی داشته باشد. خطای
+   * تأمین‌کننده رزرو را متوقف نمی‌کند؛ کد IATA جایگزین می‌شود.
+   */
+  private async airportLabel(iata: string): Promise<string> {
+    if (!this.airportNames || this.airportNames.until < Date.now()) {
+      try {
+        const airports = await this.provider.airports();
+        this.airportNames = {
+          until: Date.now() + 3_600_000,
+          names: new Map(airports.map((a) => [a.iata, a.name])),
+        };
+      } catch (error) {
+        this.logger.warn(`airport names unavailable: ${String(error)}`);
+        return iata;
+      }
+    }
+    const name = this.airportNames.names.get(iata);
+    return name
+      ? name.replace(/^فرودگاه\s+(بین[\u200c ]المللی\s+)?/, '').trim() || iata
+      : iata;
+  }
   search(input: FlightSearchInput) {
     validateFlightSearch(input);
     return this.provider.search(input);
@@ -225,6 +251,11 @@ export class FlightsService {
       where: { employeeId, definition: { kind: 'TOURISM' } },
       select: { id: true },
     });
+    const [origin, destination] = await Promise.all([
+      this.airportLabel(offer.departure.origin),
+      this.airportLabel(offer.departure.destination),
+    ]);
+    const travelers = search.adults + search.children + search.infants;
     try {
       return await this.prisma.$transaction(async (tx) => {
         const booking = await tx.flightBooking.create({
@@ -260,8 +291,8 @@ export class FlightsService {
             employeeId,
             purpose: 'FLIGHT',
             targetId: booking.id,
-            title: `پرواز ${offer.departure.origin} به ${offer.departure.destination}`,
-            subtitle: offer.returning ? 'رفت و برگشت' : 'یک‌طرفه',
+            title: `پرواز ${origin} به ${destination}`,
+            subtitle: `${offer.returning ? 'رفت و برگشت' : 'یک‌طرفه'} — ${travelers} مسافر`,
             amount: Number(quote.amount),
             allowedAllocationIds: allowed.map((allocation) => allocation.id),
           },
