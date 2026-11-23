@@ -129,8 +129,17 @@ export class EmployeeDetailPage implements OnInit {
   /** حداقل انتخاب: امروز — تخصیص با تاریخ گذشته بی‌معنی است */
   protected readonly minDate = isoToJalali(isoDate(new Date()));
 
+  /**
+   * هر بار شیء تازه‌ای بدهد، hlm-date-picker با هر change detection
+   * (`linkedSignal(date)`) به همان تاریخ برمی‌گردد و سال/ماهی که مدیر از
+   * dropdown انتخاب کرده بلافاصله پاک می‌شود؛ پس برای هر رشته یک شیء ثابت.
+   */
+  private readonly jalaliCache = new Map<string, JalaliDate>();
   protected jalaliOf(iso: string): JalaliDate {
-    return isoToJalali(iso.slice(0, 10));
+    const key = iso.slice(0, 10);
+    let date = this.jalaliCache.get(key);
+    if (!date) this.jalaliCache.set(key, (date = isoToJalali(key)));
+    return date;
   }
 
   protected onAllocExpiryChange(date: JalaliDate | undefined): void {

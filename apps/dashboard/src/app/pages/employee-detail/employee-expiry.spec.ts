@@ -222,4 +222,53 @@ describe('wallet expiry date picker', () => {
       expiresAt: jalaliToIso(selected),
     });
   });
+
+  it('keeps the year picked from the dropdown in an existing wallet row', async () => {
+    const api = {
+      employee: vi.fn().mockResolvedValue(employee),
+      walletDefinitions: vi.fn().mockResolvedValue({ items: [] }),
+      companies: vi.fn().mockResolvedValue({ items: [] }),
+      updateAllocation: vi.fn().mockResolvedValue({}),
+    };
+    await TestBed.configureTestingModule({
+      imports: [EmployeeDetailPage],
+      providers: [
+        provideRouter([]),
+        providePersianDates(),
+        { provide: AdminApiService, useValue: api },
+        { provide: AdminAuthService, useValue: { hasPermission: () => true } },
+        { provide: ConfirmService, useValue: {} },
+      ],
+    }).compileComponents();
+    const fixture = TestBed.createComponent(EmployeeDetailPage);
+    fixture.componentRef.setInput('id', employee.id);
+    fixture.autoDetectChanges();
+    await fixture.whenStable();
+    await vi.waitFor(() => {
+      expect(
+        fixture.debugElement.queryAll(By.directive(HlmDatePicker)),
+      ).toHaveLength(2);
+    });
+    const rowPicker = fixture.debugElement
+      .queryAll(By.directive(HlmDatePicker))[1]
+      .injector.get(HlmDatePicker<JalaliDate>);
+    rowPicker.open();
+    await fixture.whenStable();
+    // the row's [date] used to be a fresh object per change detection,
+    // which reset the calendar to the saved date right after a year pick
+    const header = () =>
+      document.querySelector('[brnCalendarHeader]')?.textContent ?? '';
+    const yearButton = document.querySelector<HTMLButtonElement>(
+      '[brnCalendarYearSelect] button',
+    );
+    yearButton?.click();
+    await fixture.whenStable();
+    document
+      .querySelector<HTMLElement>('[role="option"][data-value="1407"]')
+      ?.click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(header()).toContain('۱۴۰۷');
+  });
 });

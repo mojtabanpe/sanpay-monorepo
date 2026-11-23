@@ -485,10 +485,20 @@ export class FlightsPage {
       [index]: null,
     }));
   }
+  // شیء تاریخ باید برای یک رشته ثابت بماند: date-picker با هر شیء تازه
+  // (linkedSignal روی [date]) ماه/سالی را که از dropdown انتخاب شده پاک می‌کند.
+  private readonly gregorianCache = new Map<string, Date | undefined>();
+  private readonly jalaliCache = new Map<string, JalaliDate>();
   protected dateValue(value: string | undefined): Date | undefined {
     if (!value) return undefined;
-    const [year, month, day] = value.split('-').map(Number);
-    return year && month && day ? new Date(year, month - 1, day) : undefined;
+    if (!this.gregorianCache.has(value)) {
+      const [year, month, day] = value.split('-').map(Number);
+      this.gregorianCache.set(
+        value,
+        year && month && day ? new Date(year, month - 1, day) : undefined,
+      );
+    }
+    return this.gregorianCache.get(value);
   }
   protected updateGregorianDate(
     index: number,
@@ -498,7 +508,10 @@ export class FlightsPage {
     this.updatePassenger(index, key, value ? isoDate(value) : '');
   }
   protected jalaliDateValue(value: string | undefined): JalaliDate | undefined {
-    return value ? isoToJalali(value) : undefined;
+    if (!value) return undefined;
+    let date = this.jalaliCache.get(value);
+    if (!date) this.jalaliCache.set(value, (date = isoToJalali(value)));
+    return date;
   }
   protected updateJalaliBirthdate(
     index: number,
