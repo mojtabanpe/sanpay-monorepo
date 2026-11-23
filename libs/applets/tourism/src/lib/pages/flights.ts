@@ -577,10 +577,30 @@ export class FlightsPage {
       p.nationality !== 'IR'
     );
   }
+  /**
+   * جنسیت و تاریخ‌ها کنترل فرم نیستند (toggle-group / date-picker)، پس
+   * `bookingForm.invalid` آن‌ها را نمی‌بیند. بدون این، دکمه فعال می‌ماند و
+   * سرور با 400 و پیام کلی «درخواست انجام نشد» رد می‌کرد — کاربر هیچ‌وقت به
+   * صفحهٔ پرداخت نمی‌رسید.
+   */
+  protected readonly missingPassengerFields = computed(() => {
+    const missing = new Set<string>();
+    for (const p of this.passengers()) {
+      if (p.gender !== 'male' && p.gender !== 'female') missing.add('جنسیت');
+      if (!p.birthdate) missing.add('تاریخ تولد');
+      if (this.needsPassport(p) && !p.passportExpirationDate)
+        missing.add('انقضای گذرنامه');
+    }
+    return missing.size
+      ? `برای ادامه، ${[...missing].join('، ')} همهٔ مسافران را وارد کنید.`
+      : '';
+  });
+
   protected async pay(): Promise<void> {
     const q = this.quote();
     const profile = this.auth.profile();
     if (!q || !profile || !this.hasBookingContact() || this.busy()) return;
+    if (this.missingPassengerFields()) return;
     this.busy.set(true);
     this.error.set('');
     try {
@@ -644,9 +664,11 @@ export class FlightsPage {
   private message(error: unknown): string {
     const message =
       error instanceof HttpErrorResponse ? error.error?.message : null;
-    return typeof message === 'string'
-      ? message
-      : 'درخواست انجام نشد؛ اطلاعات را بررسی و دوباره تلاش کنید';
+    if (typeof message === 'string') return message;
+    // خطای اعتبارسنجی Nest آرایه است؛ کلی‌گویی علت را از کاربر و پشتیبانی پنهان می‌کرد
+    if (Array.isArray(message) && message.length)
+      return `اطلاعات مسافران کامل نیست (${message.join('؛ ')})`;
+    return 'درخواست انجام نشد؛ اطلاعات را بررسی و دوباره تلاش کنید';
   }
 }
 

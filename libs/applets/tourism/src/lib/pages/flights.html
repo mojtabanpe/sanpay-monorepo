@@ -595,8 +595,9 @@
                 type="single"
                 variant="outline"
                 [spacing]="2"
+                [nullable]="false"
                 [value]="p.gender"
-                (valueChange)="updatePassenger(i, 'gender', $any($event))"
+                (valueChange)="$event && updatePassenger(i, 'gender', $any($event))"
                 class="w-full"
               >
                 <button
@@ -733,10 +734,15 @@
             می‌شود و اگر صادر نشد مبلغ برمی‌گردد. تا مشخص شدن نتیجه، رزرو دیگری
             برای همین سفر ثبت نکنید.
           </p>
+          @if (missingPassengerFields(); as missing) {
+          <p role="status" class="text-muted-foreground text-xs">
+            {{ missing }}
+          </p>
+          }
           <button
             hlmBtn
             type="submit"
-            [disabled]="busy() || bookingForm.invalid || !hasBookingContact()"
+            [disabled]="busy() || bookingForm.invalid || !hasBookingContact() || !!missingPassengerFields()"
           >
             {{ busy() ? 'در حال آماده‌سازی…' : 'ادامه به پرداخت — ' +
             money(q.offer.amount) }}
