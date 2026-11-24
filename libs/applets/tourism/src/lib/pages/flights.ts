@@ -53,6 +53,7 @@ import { firstValueFrom } from 'rxjs';
 import { FlightsService } from '../data-access/flights.service';
 import { TourismService } from '../data-access/tourism.service';
 import { AirportPicker, airportShortName } from '../ui/airport-picker';
+import { CountryPicker } from '../ui/country-picker';
 import {
   addDays,
   faNumber,
@@ -99,6 +100,7 @@ import {
     HlmInputImports,
     HlmFieldImports,
     AirportPicker,
+    CountryPicker,
     HlmToggleGroupImports,
     HlmDatePickerImports,
     HlmBadgeImports,
@@ -610,8 +612,11 @@ export class FlightsPage {
     for (const p of this.passengers()) {
       if (p.gender !== 'male' && p.gender !== 'female') missing.add('جنسیت');
       if (!p.birthdate) missing.add('تاریخ تولد');
+      if (!p.nationality) missing.add('تابعیت');
       if (this.needsPassport(p) && !p.passportExpirationDate)
         missing.add('انقضای گذرنامه');
+      if (this.needsPassport(p) && !p.passportIssueCountry)
+        missing.add('کشور صادرکنندهٔ گذرنامه');
     }
     return missing.size
       ? `برای ادامه، ${[...missing].join('، ')} همهٔ مسافران را وارد کنید.`

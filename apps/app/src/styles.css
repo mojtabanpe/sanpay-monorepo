@@ -27,6 +27,7 @@
  */
 html {
   scrollbar-gutter: stable;
+  scroll-padding-bottom: calc(7.5rem + env(safe-area-inset-bottom));
 }
 
 /*

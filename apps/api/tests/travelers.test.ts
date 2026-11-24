@@ -5,7 +5,10 @@ import { randomUUID } from 'node:crypto';
 import { test } from 'node:test';
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
-import { BookingGuestDto } from '../src/app/tourism/dto/tourism.dto';
+import {
+  BookingGuestDto,
+  SaveTravelerDto,
+} from '../src/app/tourism/dto/tourism.dto';
 import { PrismaService } from '../src/app/prisma/prisma.service';
 import { TravelersService } from '../src/app/tourism/travelers.service';
 
@@ -140,3 +143,79 @@ test('hotel guest English names are optional and must be Latin', async () => {
   assert.deepEqual(await errors({ firstName: 'سجاد2' }), ['firstName']);
   assert.deepEqual(await errors({ lastName: 'عزت‌آبادی پور' }), []);
 });
+
+test('SaveTravelerDto validates nationalCode, scripts, nationality, and passport fields', async () => {
+  const errors = async (payload: object) =>
+    (await validate(plainToInstance(SaveTravelerDto, payload))).map(
+      (e) => e.property,
+    );
+  assert.deepEqual(
+    await errors({
+      nationalCode: '3071479204',
+      firstName: 'سجاد',
+      lastName: 'عزت آبادی پور',
+      firstNameEn: 'Sajad',
+      lastNameEn: 'Ezatabadipour',
+      mobile: '09133794408',
+      birthdate: '1984-09-11',
+      gender: 'male',
+      nationality: 'IR',
+    }),
+    [],
+  );
+  assert.deepEqual(await errors({ nationalCode: '123' }), ['nationalCode']);
+  assert.deepEqual(
+    await errors({ nationalCode: '3071479204', nationality: 'iran' }),
+    ['nationality'],
+  );
+  assert.deepEqual(
+    await errors({ nationalCode: '3071479204', firstNameEn: 'سجاد' }),
+    ['firstNameEn'],
+  );
+  assert.deepEqual(
+    await errors({ nationalCode: '3071479204', firstName: 'Sajad' }),
+    ['firstName'],
+  );
+});
+
+test('traveler book CRUD creates, updates, rejects duplicates, and deletes travelers', () =>
+  withEmployee(async (db, employeeId) => {
+    const travelers = new TravelersService(db);
+    const created = await travelers.create(employeeId, {
+      nationalCode: '3071479204',
+      firstName: 'سجاد',
+      lastName: 'عزت آبادی پور',
+      firstNameEn: 'Sajad',
+      lastNameEn: 'Ezatabadipour',
+      birthdate: '1984-09-11',
+      gender: 'male',
+      nationality: 'IR',
+    });
+    assert.ok(created.id);
+    assert.equal(created.firstNameEn, 'Sajad');
+
+    await assert.rejects(
+      () =>
+        travelers.create(employeeId, {
+          nationalCode: '3071479204',
+          firstName: 'سجاد',
+          lastName: 'عزت',
+        }),
+      /قبلاً ثبت شده/,
+    );
+
+    const updated = await travelers.update(employeeId, created.id, {
+      nationalCode: '3071479204',
+      firstName: 'سجاد',
+      lastName: 'عزت‌آبادی‌پور',
+      firstNameEn: 'Sajjad',
+      lastNameEn: 'Ezatabadipour',
+      nationality: 'IR',
+    });
+    assert.equal(updated.firstNameEn, 'Sajjad');
+    assert.equal(updated.lastName, 'عزت‌آبادی‌پور');
+
+    const removed = await travelers.remove(employeeId, created.id);
+    assert.deepEqual(removed, { ok: true });
+    assert.deepEqual(await travelers.recent(employeeId), []);
+  }));

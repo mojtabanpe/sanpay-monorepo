@@ -64,9 +64,17 @@
           class="flex flex-col gap-2"
           aria-labelledby="traveler-picker-label"
         >
-          <p id="traveler-picker-label" class="text-muted-foreground text-xs">
-            انتخاب سریع مشخصات
-          </p>
+          <div class="flex items-center justify-between gap-2">
+            <p id="traveler-picker-label" class="text-muted-foreground text-xs">
+              انتخاب سریع مشخصات
+            </p>
+            <a
+              routerLink="/profile/travelers"
+              class="text-primary text-xs font-medium hover:underline"
+            >
+              مدیریت لیست مسافران
+            </a>
+          </div>
           <div class="flex gap-2 overflow-x-auto pb-1">
             <button
               type="button"

@@ -10,6 +10,7 @@ import {
   HotelPageRequest,
   HotelSummary,
   PreviousTraveler,
+  SaveTravelerInput,
   TourismCity,
   UpgIntentCreated,
 } from '@sanpay/models';
@@ -108,5 +109,25 @@ export class TourismService {
 
   previousTravelers(): Observable<PreviousTraveler[]> {
     return this.http.get<PreviousTraveler[]>('/api/tourism/travelers');
+  }
+
+  createTraveler(input: SaveTravelerInput): Observable<PreviousTraveler> {
+    return this.http.post<PreviousTraveler>('/api/tourism/travelers', input);
+  }
+
+  updateTraveler(
+    id: string,
+    input: SaveTravelerInput,
+  ): Observable<PreviousTraveler> {
+    return this.http.patch<PreviousTraveler>(
+      `/api/tourism/travelers/${encodeURIComponent(id)}`,
+      input,
+    );
+  }
+
+  deleteTraveler(id: string): Observable<{ ok: boolean }> {
+    return this.http.delete<{ ok: boolean }>(
+      `/api/tourism/travelers/${encodeURIComponent(id)}`,
+    );
   }
 }

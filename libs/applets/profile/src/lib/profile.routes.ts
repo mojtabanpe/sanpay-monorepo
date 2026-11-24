@@ -12,6 +12,11 @@ export const profileRoutes: Route[] = [
     loadComponent: () => import('./pages/sessions').then((m) => m.SessionsPage),
   },
   {
+    path: 'travelers',
+    loadComponent: () =>
+      import('./pages/travelers').then((m) => m.TravelersPage),
+  },
+  {
     path: 'wallet-transactions',
     loadComponent: () =>
       import('./pages/wallet-transactions').then(

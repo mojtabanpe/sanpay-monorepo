@@ -131,8 +131,9 @@ export interface BookingGuest {
   mobile: string;
 }
 
-/** مشخصات کامل یک مسافر که کاربر قبلاً برای او رزرو ثبت کرده است. */
+/** مشخصات کامل یک مسافر در دفترچهٔ مسافران کاربر (رزرو قبلی یا ثبت‌شده در پروفایل). */
 export interface PreviousTraveler extends BookingGuest {
+  id: string;
   /** آخرین زمانی که این مشخصات در یک رزرو استفاده شده است. */
   lastUsedAt: string;
   /** نام انگلیسی — فرم پرواز فقط این را پر می‌کند، هرگز نام فارسی را */
@@ -144,6 +145,26 @@ export interface PreviousTraveler extends BookingGuest {
   nationality?: string;
   passportNumber?: string;
   passportExpirationDate?: string;
+  passportIssueCountry?: string;
+}
+
+/** ورودی افزودن یا ویرایش مسافر در دفترچهٔ مسافران پروفایل */
+export interface SaveTravelerInput {
+  nationalCode: string;
+  firstName?: string;
+  lastName?: string;
+  firstNameEn?: string;
+  lastNameEn?: string;
+  mobile?: string;
+  /** YYYY-MM-DD */
+  birthdate?: string;
+  gender?: 'male' | 'female';
+  /** ISO 3166-1 alpha-2 (e.g. IR) */
+  nationality?: string;
+  passportNumber?: string;
+  /** YYYY-MM-DD */
+  passportExpirationDate?: string;
+  /** ISO 3166-1 alpha-2 */
   passportIssueCountry?: string;
 }
 

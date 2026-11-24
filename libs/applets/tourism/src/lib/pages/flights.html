@@ -497,12 +497,20 @@
             class="flex flex-col gap-2"
             [attr.aria-labelledby]="'flight-traveler-picker-' + i"
           >
-            <p
-              [id]="'flight-traveler-picker-' + i"
-              class="text-muted-foreground text-xs"
-            >
-              انتخاب سریع مشخصات
-            </p>
+            <div class="flex items-center justify-between gap-2">
+              <p
+                [id]="'flight-traveler-picker-' + i"
+                class="text-muted-foreground text-xs"
+              >
+                انتخاب سریع مشخصات
+              </p>
+              <a
+                routerLink="/profile/travelers"
+                class="text-primary text-xs font-medium hover:underline"
+              >
+                مدیریت لیست مسافران
+              </a>
+            </div>
             <div class="flex gap-2 overflow-x-auto pb-1">
               @for (traveler of previousTravelers(); track
               traveler.nationalCode) {
@@ -619,24 +627,15 @@
               </hlm-toggle-group>
             </fieldset>
             <hlm-field
-              ><label hlmFieldLabel [for]="'nation-' + i"
-                >تابعیت (کد دوحرفی کشور)</label
-              ><input
-                hlmInput
-                [id]="'nation-' + i"
-                [name]="'nation-' + i"
-                dir="ltr"
-                required
-                pattern="[A-Z]{2}"
-                maxlength="2"
-                #nationCtl="ngModel"
-                [ngModel]="p.nationality"
-                (ngModelChange)="updatePassenger(i, 'nationality', $event.toUpperCase())"
-              />
-              <p hlmFieldDescription>ایران: IR</p>
-              @if (nationCtl.invalid && (nationCtl.dirty || nationCtl.touched || nationCtl.value)) {
-              <hlm-field-error forceShow>کد دوحرفی انگلیسی کشور را وارد کنید.</hlm-field-error>
-              }</hlm-field
+              ><label hlmFieldLabel [for]="'nation-' + i">تابعیت</label
+              ><tourism-country-picker
+                [buttonId]="'nation-' + i"
+                title="انتخاب تابعیت"
+                placeholder="انتخاب کشور"
+                [disabled]="busy()"
+                [value]="p.nationality"
+                (valueChange)="updatePassenger(i, 'nationality', $event)"
+              /></hlm-field
             >
             @if (!needsPassport(p)) {
             <hlm-field
@@ -684,19 +683,15 @@
             >
             <hlm-field
               ><label hlmFieldLabel [for]="'country-' + i"
-                >کشور صادرکننده (کد دوحرفی)</label
-              ><input
-                hlmInput
-                [id]="'country-' + i"
-                [name]="'country-' + i"
-                dir="ltr"
-                required
-                pattern="[A-Z]{2}"
-                maxlength="2"
-                [ngModel]="p.passportIssueCountry"
-                (ngModelChange)="updatePassenger(i, 'passportIssueCountry', $event.toUpperCase())"
-              />
-              <p hlmFieldDescription>ایران: IR</p></hlm-field
+                >کشور صادرکنندهٔ گذرنامه</label
+              ><tourism-country-picker
+                [buttonId]="'country-' + i"
+                title="انتخاب کشور صادرکننده"
+                placeholder="انتخاب کشور"
+                [disabled]="busy()"
+                [value]="p.passportIssueCountry ?? ''"
+                (valueChange)="updatePassenger(i, 'passportIssueCountry', $event)"
+              /></hlm-field
             >
             }
           </div>

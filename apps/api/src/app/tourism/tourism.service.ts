@@ -8,6 +8,7 @@ import {
   BookingQuote,
   BookingReceipt,
   PreviousTraveler,
+  SaveTravelerInput,
   BookingStatus,
   HotelAvailability,
   HotelCard,
@@ -463,6 +464,28 @@ export class TourismService {
    */
   async previousTravelers(employeeId: string): Promise<PreviousTraveler[]> {
     return this.travelers.recent(employeeId);
+  }
+
+  async createTraveler(
+    employeeId: string,
+    input: SaveTravelerInput,
+  ): Promise<PreviousTraveler> {
+    return this.travelers.create(employeeId, input);
+  }
+
+  async updateTraveler(
+    employeeId: string,
+    id: string,
+    input: SaveTravelerInput,
+  ): Promise<PreviousTraveler> {
+    return this.travelers.update(employeeId, id, input);
+  }
+
+  async deleteTraveler(
+    employeeId: string,
+    id: string,
+  ): Promise<{ ok: boolean }> {
+    return this.travelers.remove(employeeId, id);
   }
 
   /**

@@ -1,11 +1,14 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
   HttpStatus,
   Param,
   ParseIntPipe,
+  ParseUUIDPipe,
+  Patch,
   Post,
   Query,
   Req,
@@ -28,6 +31,7 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import {
   CreateBookingDto,
   HotelPageDto,
+  SaveTravelerDto,
   SearchHotelsDto,
 } from './dto/tourism.dto';
 import { TourismService } from './tourism.service';
@@ -100,6 +104,31 @@ export class TourismController {
   @Get('travelers')
   previousTravelers(@Req() request: Request): Promise<PreviousTraveler[]> {
     return this.tourism.previousTravelers(employeeId(request));
+  }
+
+  @Post('travelers')
+  createTraveler(
+    @Req() request: Request,
+    @Body() dto: SaveTravelerDto,
+  ): Promise<PreviousTraveler> {
+    return this.tourism.createTraveler(employeeId(request), dto);
+  }
+
+  @Patch('travelers/:id')
+  updateTraveler(
+    @Req() request: Request,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: SaveTravelerDto,
+  ): Promise<PreviousTraveler> {
+    return this.tourism.updateTraveler(employeeId(request), id, dto);
+  }
+
+  @Delete('travelers/:id')
+  deleteTraveler(
+    @Req() request: Request,
+    @Param('id', ParseUUIDPipe) id: string,
+  ): Promise<{ ok: boolean }> {
+    return this.tourism.deleteTraveler(employeeId(request), id);
   }
 }
 

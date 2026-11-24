@@ -1,0 +1,447 @@
+<div class="flex flex-col gap-4 px-4 py-6">
+  <header class="flex items-center justify-between gap-3">
+    <div>
+      <h1 class="text-lg font-bold">لیست مسافران</h1>
+      <p class="text-muted-foreground mt-1 text-xs">
+        مسافران ذخیره‌شده برای انتخاب سریع در رزرو پرواز و هتل
+      </p>
+    </div>
+    <a hlmBtn variant="ghost" size="sm" routerLink="/profile">پروفایل</a>
+  </header>
+
+  @if (!editorMode()) {
+    <button
+      type="button"
+      hlmBtn
+      class="h-11 w-full rounded-xl"
+      [disabled]="busy()"
+      (click)="startCreate()"
+    >
+      افزودن مسافر جدید
+    </button>
+  }
+
+  @if (notice()) {
+    <p class="text-primary text-sm" role="status">{{ notice() }}</p>
+  }
+
+  @if (error() && !deleting()) {
+    <p class="text-destructive text-sm" role="alert">{{ error() }}</p>
+    <button
+      type="button"
+      hlmBtn
+      variant="outline"
+      [disabled]="busy()"
+      (click)="load()"
+    >
+      تلاش دوباره
+    </button>
+  }
+
+  @if (editorMode()) {
+    <section hlmCard>
+      <form
+        hlmCardContent
+        class="flex flex-col gap-4 pt-6"
+        (ngSubmit)="save()"
+      >
+        <div class="flex items-center justify-between gap-2">
+          <h2 class="text-sm font-bold">{{ editingTitle() }}</h2>
+          <button
+            type="button"
+            hlmBtn
+            variant="ghost"
+            size="sm"
+            [disabled]="busy()"
+            (click)="cancelEdit()"
+          >
+            انصراف
+          </button>
+        </div>
+
+        <fieldset [disabled]="busy()" class="flex min-w-0 flex-col gap-3">
+          <legend class="sr-only">{{ editingTitle() }}</legend>
+
+          <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <hlm-field>
+              <label hlmFieldLabel for="tr-first-fa">نام (فارسی)</label>
+              <input
+                hlmInput
+                id="tr-first-fa"
+                name="firstName"
+                autocomplete="given-name"
+                [ngModel]="draft().firstName"
+                (ngModelChange)="updateDraft('firstName', $event)"
+              />
+            </hlm-field>
+            <hlm-field>
+              <label hlmFieldLabel for="tr-last-fa">نام خانوادگی (فارسی)</label>
+              <input
+                hlmInput
+                id="tr-last-fa"
+                name="lastName"
+                autocomplete="family-name"
+                [ngModel]="draft().lastName"
+                (ngModelChange)="updateDraft('lastName', $event)"
+              />
+            </hlm-field>
+          </div>
+
+          <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <hlm-field>
+              <label hlmFieldLabel for="tr-first-en">نام انگلیسی</label>
+              <input
+                hlmInput
+                id="tr-first-en"
+                name="firstNameEn"
+                dir="ltr"
+                autocomplete="off"
+                [ngModel]="draft().firstNameEn"
+                (ngModelChange)="updateDraft('firstNameEn', $event)"
+              />
+            </hlm-field>
+            <hlm-field>
+              <label hlmFieldLabel for="tr-last-en">نام خانوادگی انگلیسی</label>
+              <input
+                hlmInput
+                id="tr-last-en"
+                name="lastNameEn"
+                dir="ltr"
+                autocomplete="off"
+                [ngModel]="draft().lastNameEn"
+                (ngModelChange)="updateDraft('lastNameEn', $event)"
+              />
+            </hlm-field>
+          </div>
+
+          <hlm-field>
+            <label hlmFieldLabel for="tr-national-code">کد ملی</label>
+            <input
+              hlmInput
+              id="tr-national-code"
+              name="nationalCode"
+              dir="ltr"
+              inputmode="numeric"
+              maxlength="10"
+              autocomplete="off"
+              [ngModel]="draft().nationalCode"
+              (ngModelChange)="updateDraft('nationalCode', $event)"
+            />
+          </hlm-field>
+
+          <hlm-field>
+            <label hlmFieldLabel for="tr-mobile">شمارهٔ موبایل (اختیاری)</label>
+            <input
+              hlmInput
+              id="tr-mobile"
+              name="mobile"
+              type="tel"
+              dir="ltr"
+              inputmode="numeric"
+              placeholder="09xxxxxxxxx"
+              autocomplete="tel"
+              [ngModel]="draft().mobile"
+              (ngModelChange)="updateDraft('mobile', $event)"
+            />
+          </hlm-field>
+
+          <hlm-field>
+            <label hlmFieldLabel for="tr-birthdate">تاریخ تولد (شمسی)</label>
+            <hlm-date-picker
+              sanpayDatePickerWidth
+              [date]="jalaliBirthdateValue(draft().birthdate)"
+              [defaultFocusedDate]="defaultJalaliBirthdate"
+              [min]="minJalaliBirthdate"
+              [max]="maxJalaliBirthdate"
+              captionLayout="dropdown"
+              (dateChange)="setJalaliBirthdate($event)"
+            >
+              <hlm-date-picker-trigger
+                id="tr-birthdate"
+                class="h-12 w-full rounded-xl"
+              >
+                انتخاب تاریخ تولد
+              </hlm-date-picker-trigger>
+            </hlm-date-picker>
+          </hlm-field>
+
+          <fieldset hlmFieldSet>
+            <legend hlmFieldLegend>جنسیت</legend>
+            <hlm-toggle-group
+              type="single"
+              variant="outline"
+              [spacing]="2"
+              [nullable]="false"
+              [value]="draft().gender"
+              (valueChange)="$event && updateDraft('gender', $any($event))"
+              class="w-full"
+            >
+              <button
+                hlmToggleGroupItem
+                type="button"
+                value="male"
+                class="h-11 flex-1 rounded-xl"
+              >
+                مرد
+              </button>
+              <button
+                hlmToggleGroupItem
+                type="button"
+                value="female"
+                class="h-11 flex-1 rounded-xl"
+              >
+                زن
+              </button>
+            </hlm-toggle-group>
+          </fieldset>
+
+          <hlm-field>
+            <label hlmFieldLabel for="tr-nationality">تابعیت</label>
+            <tourism-country-picker
+              buttonId="tr-nationality"
+              title="انتخاب تابعیت"
+              placeholder="انتخاب کشور"
+              [value]="draft().nationality"
+              (valueChange)="updateDraft('nationality', $event)"
+            />
+          </hlm-field>
+
+          <details class="rounded-xl border px-3 py-2">
+            <summary class="cursor-pointer text-xs font-medium">
+              مشخصات گذرنامه (اختیاری — برای پرواز خارجی)
+            </summary>
+            <div class="mt-3 flex flex-col gap-3">
+              <hlm-field>
+                <label hlmFieldLabel for="tr-passport">شماره گذرنامه</label>
+                <input
+                  hlmInput
+                  id="tr-passport"
+                  name="passportNumber"
+                  dir="ltr"
+                  autocomplete="off"
+                  [ngModel]="draft().passportNumber"
+                  (ngModelChange)="updateDraft('passportNumber', $event)"
+                />
+              </hlm-field>
+              <hlm-field>
+                <label hlmFieldLabel for="tr-passport-exp"
+                  >انقضای گذرنامه (میلادی)</label
+                >
+                <sanpay-gregorian-date-picker
+                  [date]="gregorianDateValue(draft().passportExpirationDate)"
+                  [min]="minPassportExpiry"
+                  buttonId="tr-passport-exp"
+                  triggerClass="h-12 w-full rounded-xl"
+                  (dateChange)="setPassportExpiry($event)"
+                >
+                  انتخاب تاریخ انقضای گذرنامه
+                </sanpay-gregorian-date-picker>
+              </hlm-field>
+              <hlm-field>
+                <label hlmFieldLabel for="tr-passport-country"
+                  >کشور صادرکنندهٔ گذرنامه</label
+                >
+                <tourism-country-picker
+                  buttonId="tr-passport-country"
+                  title="انتخاب کشور صادرکننده"
+                  placeholder="انتخاب کشور"
+                  [value]="draft().passportIssueCountry"
+                  (valueChange)="updateDraft('passportIssueCountry', $event)"
+                />
+              </hlm-field>
+            </div>
+          </details>
+
+          @if (formError()) {
+            <p class="text-destructive text-xs" role="alert">
+              {{ formError() }}
+            </p>
+          }
+
+          <div class="flex gap-2 pt-1">
+            <button
+              type="submit"
+              hlmBtn
+              class="h-11 flex-1 rounded-xl"
+              [disabled]="busy()"
+            >
+              {{ busy() ? 'در حال ذخیره…' : 'ذخیرهٔ مسافر' }}
+            </button>
+            <button
+              type="button"
+              hlmBtn
+              variant="outline"
+              class="h-11 rounded-xl"
+              [disabled]="busy()"
+              (click)="cancelEdit()"
+            >
+              انصراف
+            </button>
+          </div>
+        </fieldset>
+      </form>
+    </section>
+  }
+
+  @if (loading()) {
+    @for (placeholder of [1, 2]; track placeholder) {
+      <div
+        hlmSkeleton
+        class="h-32 w-full rounded-xl"
+        aria-label="در حال دریافت فهرست مسافران"
+      ></div>
+    }
+  } @else {
+    @for (traveler of travelers(); track traveler.id) {
+      <section hlmCard>
+        <div hlmCardContent class="flex flex-col gap-3 pt-6">
+          <div class="flex items-start justify-between gap-2">
+            <div class="min-w-0 flex-1">
+              <h2 class="truncate text-sm font-bold" dir="auto">
+                {{ primaryName(traveler) }}
+              </h2>
+              @if (secondaryName(traveler); as sub) {
+                <p class="text-muted-foreground mt-0.5 truncate text-xs" dir="ltr">
+                  {{ sub }}
+                </p>
+              }
+            </div>
+            @if (traveler.gender) {
+              <span hlmBadge variant="secondary" class="shrink-0 text-[0.65rem]">
+                {{ traveler.gender === 'male' ? 'مرد' : 'زن' }}
+              </span>
+            }
+          </div>
+
+          <dl class="flex flex-col gap-1.5 text-xs">
+            <div class="flex items-center justify-between gap-2">
+              <dt class="text-muted-foreground">کد ملی</dt>
+              <dd dir="ltr" class="font-medium">{{ traveler.nationalCode }}</dd>
+            </div>
+            @if (traveler.birthdate) {
+              <div class="flex items-center justify-between gap-2">
+                <dt class="text-muted-foreground">تاریخ تولد</dt>
+                <dd>{{ jalali(traveler.birthdate) }}</dd>
+              </div>
+            }
+            @if (traveler.nationality) {
+              <div class="flex items-center justify-between gap-2">
+                <dt class="text-muted-foreground">تابعیت</dt>
+                <dd>{{ countryLabel(traveler.nationality) }}</dd>
+              </div>
+            }
+            @if (traveler.mobile) {
+              <div class="flex items-center justify-between gap-2">
+                <dt class="text-muted-foreground">شمارهٔ موبایل</dt>
+                <dd dir="ltr">{{ traveler.mobile }}</dd>
+              </div>
+            }
+            @if (traveler.passportNumber) {
+              <div class="flex items-center justify-between gap-2">
+                <dt class="text-muted-foreground">گذرنامه</dt>
+                <dd dir="ltr">{{ traveler.passportNumber }}</dd>
+              </div>
+            }
+          </dl>
+
+          <div class="flex gap-2 pt-1">
+            <button
+              type="button"
+              hlmBtn
+              variant="outline"
+              size="sm"
+              class="flex-1"
+              [disabled]="busy()"
+              (click)="startEdit(traveler)"
+            >
+              ویرایش
+            </button>
+            <button
+              type="button"
+              hlmBtn
+              variant="ghost"
+              size="sm"
+              class="text-destructive hover:text-destructive"
+              [disabled]="busy()"
+              (click)="askDelete(traveler)"
+            >
+              حذف
+            </button>
+          </div>
+        </div>
+      </section>
+    } @empty {
+      @if (!editorMode()) {
+        <section hlmCard>
+          <div
+            hlmCardContent
+            class="flex flex-col items-center gap-3 py-8 text-center"
+          >
+            <p class="text-sm font-medium">هنوز مسافری ذخیره نشده است</p>
+            <p class="text-muted-foreground text-xs leading-relaxed">
+              مشخصات خود و همراهانتان را اینجا ذخیره کنید تا هنگام رزرو پرواز و
+              هتل با یک لمس پر شود.
+            </p>
+            <button
+              type="button"
+              hlmBtn
+              variant="outline"
+              size="sm"
+              (click)="startCreate()"
+            >
+              افزودن اولین مسافر
+            </button>
+          </div>
+        </section>
+      }
+    }
+  }
+
+  <hlm-sheet
+    side="bottom"
+    role="alertdialog"
+    closeOnOutsidePointerEvents
+    [disableClose]="busy()"
+    [state]="deleting() ? 'open' : 'closed'"
+    (stateChanged)="onDeleteSheetState($event)"
+  >
+    <hlm-sheet-content
+      *hlmSheetPortal
+      [showCloseButton]="false"
+      class="rounded-t-2xl pb-[max(1rem,env(safe-area-inset-bottom))]"
+    >
+      <div hlmSheetHeader>
+        <h2 hlmSheetTitle>
+          حذف {{ deleting() ? primaryName(deleting()!) : '' }}
+        </h2>
+        <p hlmSheetDescription>
+          این مسافر از فهرست انتخاب سریع رزرو پرواز و هتل حذف می‌شود. رزروهای
+          قبلی شما تغییری نمی‌کنند.
+        </p>
+      </div>
+      @if (error()) {
+        <p class="text-destructive px-4 text-sm" role="alert">{{ error() }}</p>
+      }
+      <div hlmSheetFooter>
+        <button
+          type="button"
+          hlmBtn
+          variant="destructive"
+          [disabled]="busy()"
+          (click)="confirmDelete()"
+        >
+          {{ busy() ? 'در حال حذف…' : 'تأیید حذف' }}
+        </button>
+        <button
+          type="button"
+          hlmBtn
+          variant="outline"
+          hlmSheetClose
+          [disabled]="busy()"
+        >
+          انصراف
+        </button>
+      </div>
+    </hlm-sheet-content>
+  </hlm-sheet>
+</div>

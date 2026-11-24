@@ -8,7 +8,7 @@ import {
   required,
   submit,
 } from '@angular/forms/signals';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AuthService } from '@sanpay/applets/auth';
 import { SanpayDatePickerWidth } from '@sanpay/dates';
 import {
@@ -59,6 +59,7 @@ function persianOnly(value: string | undefined): string {
     HlmInputImports,
     HlmSkeletonImports,
     FormField,
+    RouterLink,
     SanpayDatePickerWidth,
   ],
   templateUrl: './booking.html',

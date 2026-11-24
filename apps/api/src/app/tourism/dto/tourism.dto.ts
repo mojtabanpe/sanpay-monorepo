@@ -137,7 +137,7 @@ export class HotelPageDto {
 }
 
 /** همان الگوی نام در فرم پرواز */
-const LATIN_NAME = /^[A-Za-z][A-Za-z '\-]{0,69}$/;
+const LATIN_NAME = /^[A-Za-z][A-Za-z '-]{0,69}$/;
 
 /**
  * نام فارسی مهمان هتل: فقط حروف فارسی، فاصله و نیم‌فاصله — نام انگلیسی
@@ -206,4 +206,62 @@ export class CreateBookingDto {
   @IsOptional()
   @IsUUID(undefined, { message: 'کیف پول انتخاب‌شده معتبر نیست' })
   allocationId?: string;
+}
+
+/** افزودن یا ویرایش مسافر در دفترچهٔ مسافران کارمند */
+export class SaveTravelerDto {
+  @Matches(/^\d{10}$/, { message: 'کد ملی باید ۱۰ رقم باشد' })
+  nationalCode!: string;
+
+  @IsOptional()
+  @Matches(PERSIAN_NAME, { message: 'نام را با حروف فارسی بنویسید' })
+  firstName?: string;
+
+  @IsOptional()
+  @Matches(PERSIAN_NAME, { message: 'نام خانوادگی را با حروف فارسی بنویسید' })
+  lastName?: string;
+
+  @IsOptional()
+  @Matches(LATIN_NAME, {
+    message: 'نام انگلیسی را فقط با حروف انگلیسی بنویسید',
+  })
+  firstNameEn?: string;
+
+  @IsOptional()
+  @Matches(LATIN_NAME, {
+    message: 'نام خانوادگی انگلیسی را فقط با حروف انگلیسی بنویسید',
+  })
+  lastNameEn?: string;
+
+  @IsOptional()
+  @Matches(/^09\d{9}$/, { message: 'شمارهٔ موبایل معتبر نیست' })
+  mobile?: string;
+
+  @IsOptional()
+  @Matches(ISO_DATE, { message: 'تاریخ تولد باید به شکل YYYY-MM-DD باشد' })
+  birthdate?: string;
+
+  @IsOptional()
+  @IsIn(['male', 'female'], { message: 'جنسیت معتبر نیست' })
+  gender?: 'male' | 'female';
+
+  @IsOptional()
+  @Matches(/^[A-Z]{2}$/, { message: 'کد کشور باید ۲ حرف انگلیسی بزرگ باشد' })
+  nationality?: string;
+
+  @IsOptional()
+  @Matches(/^[A-Za-z0-9]{3,20}$/, { message: 'شماره گذرنامه معتبر نیست' })
+  passportNumber?: string;
+
+  @IsOptional()
+  @Matches(ISO_DATE, {
+    message: 'تاریخ انقضای گذرنامه باید به شکل YYYY-MM-DD باشد',
+  })
+  passportExpirationDate?: string;
+
+  @IsOptional()
+  @Matches(/^[A-Z]{2}$/, {
+    message: 'کد کشور صادرکننده گذرنامه باید ۲ حرف انگلیسی بزرگ باشد',
+  })
+  passportIssueCountry?: string;
 }
