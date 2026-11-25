@@ -47,6 +47,10 @@ code; everything that differs lives only in each server's `.env.production`:
 - `UPG_PUBLIC_URL`, the employee-app address the payment gateway returns to
 - provider modes and credentials (`GDS_MODE`, `GRS_MODE`, `TOMAN_IPG_MODE`, `SMS_MODE`, …)
 - on staging only, `UPG_ALLOW_MOCK=true` for the simulated gateways
+- on staging only, `TOURISM_PROVIDER_BOOKING=disabled`: hotel and flight search
+  use the real providers (like production), but the booking step after a
+  (simulated) payment is skipped and the money is returned, so staging never
+  issues a real ticket or reservation
 
 Never commit a staging-only value to the code: it would reach production with
 the next merge.

@@ -34,6 +34,10 @@ import {
   SearchHotelsDto,
 } from './dto/tourism.dto';
 import { TravelersService } from './travelers.service';
+import {
+  PROVIDER_BOOKING_DISABLED_NOTE,
+  providerBookingDisabled,
+} from './provider-booking';
 import { HotelProviderRouter } from './providers/hotel-provider.router';
 import {
   PROVIDER_NAMES,
@@ -367,6 +371,9 @@ export class TourismService {
       });
       return new BadRequestException(`${note}؛ مبلغ برگشت داده شد`);
     };
+
+    if (providerBookingDisabled())
+      throw await reject(PROVIDER_BOOKING_DISABLED_NOTE);
 
     // قیمت دوباره گرفته می‌شود — پرداخت ممکن است چند دقیقه طول کشیده باشد
     let quote: BookingQuote;

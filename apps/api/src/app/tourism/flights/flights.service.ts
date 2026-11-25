@@ -27,6 +27,10 @@ import {
 } from './flight-provider';
 import { QuoteFlightDto } from './flights.dto';
 import { TravelersService } from '../travelers.service';
+import {
+  PROVIDER_BOOKING_DISABLED_NOTE,
+  providerBookingDisabled,
+} from '../provider-booking';
 
 export function validateFlightSearch(input: FlightSearchInput): void {
   const today = new Intl.DateTimeFormat('en-CA', {
@@ -335,6 +339,16 @@ export class FlightsService {
       data: { status: 'PROCESSING' },
     });
     if (claimed.count !== 1) return;
+
+    if (providerBookingDisabled()) {
+      await this.prisma.flightBooking.updateMany({
+        where: { id: booking.id, refunded: false },
+        data: { status: 'REJECTED', refunded: true },
+      });
+      throw new BadRequestException(
+        `${PROVIDER_BOOKING_DISABLED_NOTE}؛ مبلغ برگشت داده شد`,
+      );
+    }
 
     const offer = booking.quote.offer as unknown as FlightOffer;
     const input: FlightBookingInput = {

@@ -314,7 +314,7 @@ The whole system has one version: `version` in the root `package.json`, shown at
 **Branches: `staging` first, then `master`.** Every change is pushed to `staging`, which auto-deploys to the staging server (`uat.sanpai.ir`, `adminuat.sanpai.ir`, `storeuat.sanpai.ir`). Once it is checked there, `staging` is merged into `master`, which auto-deploys to production (`deploy/poll-and-deploy.sh` on each server, following its own branch). Do not push straight to `master` unless the user asks for it (e.g. a hotfix), and then merge `master` back into `staging`.
 
 - **Every merge (or push) to `master` bumps the patch** (`1.0.0` → `1.0.1`) in the same push — unless the user explicitly asks for a minor or major bump. Pushes to `staging` do not bump.
-- **Environment differences live only in each server's `.env.production`, never in code**: gateway hostnames (`EMPLOYEE_HOSTS` / `ADMIN_HOSTS` / `STORE_HOSTS`, defaults = production names), `UPG_PUBLIC_URL`, provider modes, `UPG_ALLOW_MOCK` (staging only). A staging-only value committed to code reaches production with the next merge. See `deploy/README.md` → _Staging and production_.
+- **Environment differences live only in each server's `.env.production`, never in code**: gateway hostnames (`EMPLOYEE_HOSTS` / `ADMIN_HOSTS` / `STORE_HOSTS`, defaults = production names), `UPG_PUBLIC_URL`, provider modes, `UPG_ALLOW_MOCK` and `TOURISM_PROVIDER_BOOKING=disabled` (staging only — real providers for search, no real booking after a simulated payment; `apps/api/src/app/tourism/provider-booking.ts`). A staging-only value committed to code reaches production with the next merge. See `deploy/README.md` → _Staging and production_.
 
 ## Commands
 
