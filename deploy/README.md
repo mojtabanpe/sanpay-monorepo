@@ -33,6 +33,24 @@ chmod 600 .env.production
 sudo ./deploy/install-systemd.sh "$(whoami)"
 ```
 
+The timer follows `master` by default. A staging server follows its own branch:
+`sudo ./deploy/install-systemd.sh "$(whoami)" staging`.
+
+## Staging and production
+
+Changes go to `staging` first (`uat.sanpai.ir`, its own server), and `staging`
+is merged into `master` once it is checked there. Both servers run the same
+code; everything that differs lives only in each server's `.env.production`:
+
+- the branch the deploy timer follows (`install-systemd.sh … staging`)
+- the gateway hostnames (`EMPLOYEE_HOSTS`, `ADMIN_HOSTS`, `STORE_HOSTS`)
+- `UPG_PUBLIC_URL`, the employee-app address the payment gateway returns to
+- provider modes and credentials (`GDS_MODE`, `GRS_MODE`, `TOMAN_IPG_MODE`, `SMS_MODE`, …)
+- on staging only, `UPG_ALLOW_MOCK=true` for the simulated gateways
+
+Never commit a staging-only value to the code: it would reach production with
+the next merge.
+
 For a private repository, add a read-only GitHub deploy key to the server before
 cloning. Generate passwords as URL-safe hexadecimal values, for example with
 `openssl rand -hex 32`, because the database password is also used in
@@ -105,9 +123,16 @@ data seed. An existing username is left unchanged.
 The Compose `gateway` service is the only public HTTP entry point and routes by
 hostname:
 
-- `sanpayco.com`, `www.sanpayco.com`, `sanpai.ir` and `www.sanpai.ir` to the employee app
-- `admin.sanpayco.com` and `admin.sanpai.ir` to the admin dashboard
-- `store.sanpayco.com` and `store.sanpai.ir` to the store panel
+| App          | Production (default)                                             | Staging (`.env.production` on the staging server) |
+| ------------ | ---------------------------------------------------------------- | ------------------------------------------------- |
+| employee app | `sanpayco.com`, `www.sanpayco.com`, `sanpai.ir`, `www.sanpai.ir` | `EMPLOYEE_HOSTS=uat.sanpai.ir`                    |
+| dashboard    | `admin.sanpayco.com`, `admin.sanpai.ir`                          | `ADMIN_HOSTS=adminuat.sanpai.ir`                  |
+| store panel  | `store.sanpayco.com`, `store.sanpai.ir`                          | `STORE_HOSTS=storeuat.sanpai.ir`                  |
+
+The names live in each server's `.env.production`, not in Git, so merging
+`staging` into `master` never changes what production serves. The production
+names are the defaults in `compose.production.yml`. The config file is
+`deploy/gateway.conf.template`; the nginx image renders it at container start.
 
 All names must have DNS records pointing to the server. By default the gateway
 only listens on `127.0.0.1:8080`, so the host reverse proxy can terminate HTTPS
@@ -115,12 +140,13 @@ and forward all listed hostnames to that single address. The original `Host`
 header must be preserved so this gateway can select the correct application.
 The host reverse proxy's TLS certificates must cover the names served over HTTPS.
 
-After updating only `deploy/gateway.conf` in the deployment checkout, validate
-and reload the running gateway without rebuilding the application images:
+Deployment recreates the gateway when the template or the hostnames change (a
+checksum label on the container). To apply a gateway change by hand without
+rebuilding the application images:
 
 ```bash
-docker compose --env-file .env.production -f compose.production.yml exec -T gateway nginx -t
-docker compose --env-file .env.production -f compose.production.yml exec -T gateway nginx -s reload
+GATEWAY_CONFIG_HASH="$(sha256sum deploy/gateway.conf.template | cut -c1-16)" \
+  docker compose --env-file .env.production -f compose.production.yml up -d --no-deps gateway
 ```
 
 The gateway uses Docker's DNS resolver to refresh frontend service addresses.

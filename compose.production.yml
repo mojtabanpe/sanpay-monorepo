@@ -76,8 +76,16 @@ services:
     restart: unless-stopped
     ports:
       - '${GATEWAY_BIND:-127.0.0.1}:${HTTP_PORT:-8080}:80'
+    environment:
+      EMPLOYEE_HOSTS: ${EMPLOYEE_HOSTS:-sanpayco.com www.sanpayco.com sanpai.ir www.sanpai.ir}
+      ADMIN_HOSTS: ${ADMIN_HOSTS:-admin.sanpayco.com admin.sanpai.ir}
+      STORE_HOSTS: ${STORE_HOSTS:-store.sanpayco.com store.sanpai.ir}
+    labels:
+      # deploy.sh sets this to the template's checksum, so a template change
+      # makes `up -d` recreate the gateway and re-render its config.
+      sanpay.gateway-config: ${GATEWAY_CONFIG_HASH:-}
     volumes:
-      - ./deploy/gateway.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./deploy/gateway.conf.template:/etc/nginx/templates/default.conf.template:ro
     depends_on:
       - app
       - dashboard

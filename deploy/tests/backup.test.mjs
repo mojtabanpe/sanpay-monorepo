@@ -27,6 +27,10 @@ function fixture(t, options = {}) {
     copyFileSync(join(source, name), join(root, 'deploy', name));
     chmodSync(join(root, 'deploy', name), 0o755);
   }
+  copyFileSync(
+    join(source, 'gateway.conf.template'),
+    join(root, 'deploy', 'gateway.conf.template'),
+  );
   writeFileSync(
     join(root, '.env.production'),
     'POSTGRES_USER=test\nPOSTGRES_DB=test\nPOSTGRES_PASSWORD=test-only\n',
