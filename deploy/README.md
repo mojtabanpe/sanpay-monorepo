@@ -111,6 +111,7 @@ hostname:
 - `sanpayco.com`, `www.sanpayco.com`, `sanpai.ir` and `www.sanpai.ir` to the employee app
 - `admin.sanpayco.com` and `admin.sanpai.ir` to the admin dashboard
 - `store.sanpayco.com` and `store.sanpai.ir` to the store panel
+- staging: `uat.sanpai.ir`, `adminuat.sanpai.ir` and `storeuat.sanpai.ir` to the same three apps
 
 All names must have DNS records pointing to the server. By default the gateway
 only listens on `127.0.0.1:8080`, so the host reverse proxy can terminate HTTPS
