@@ -22,7 +22,17 @@ docker compose --env-file "${env_file}" -f "${compose_file}" build
 # No application container or migration is started until this backup succeeds.
 "${project_root}/deploy/backup-database.sh"
 docker compose --env-file "${env_file}" -f "${compose_file}" up -d --remove-orphans
-# Bind-mounted configuration changes do not recreate the gateway container.
-docker compose --env-file "${env_file}" -f "${compose_file}" exec -T gateway nginx -t
-docker compose --env-file "${env_file}" -f "${compose_file}" exec -T gateway nginx -s reload
+# Bind-mounted configuration changes do not recreate the gateway container, and
+# `git reset` replaces gateway.conf with a new inode, so a single-file bind mount
+# keeps showing the container the old file. Recreate the gateway when its live
+# config differs from the checkout; otherwise a reload is enough.
+if docker compose --env-file "${env_file}" -f "${compose_file}" exec -T gateway \
+  cat /etc/nginx/conf.d/default.conf | cmp -s - "${project_root}/deploy/gateway.conf"; then
+  docker compose --env-file "${env_file}" -f "${compose_file}" exec -T gateway nginx -t
+  docker compose --env-file "${env_file}" -f "${compose_file}" exec -T gateway nginx -s reload
+else
+  echo 'Gateway config changed; recreating the gateway container.'
+  docker compose --env-file "${env_file}" -f "${compose_file}" up -d --no-deps --force-recreate gateway
+  docker compose --env-file "${env_file}" -f "${compose_file}" exec -T gateway nginx -t
+fi
 docker compose --env-file "${env_file}" -f "${compose_file}" ps
