@@ -33,6 +33,9 @@ chmod 600 .env.production
 sudo ./deploy/install-systemd.sh "$(whoami)"
 ```
 
+The timer follows `master` by default. A staging server follows its own branch:
+`sudo ./deploy/install-systemd.sh "$(whoami)" staging`.
+
 For a private repository, add a read-only GitHub deploy key to the server before
 cloning. Generate passwords as URL-safe hexadecimal values, for example with
 `openssl rand -hex 32`, because the database password is also used in
